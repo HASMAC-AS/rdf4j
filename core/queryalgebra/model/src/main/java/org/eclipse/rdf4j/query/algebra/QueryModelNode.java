@@ -104,4 +104,8 @@ public interface QueryModelNode extends Cloneable, Serializable {
 	default void setResultSizeEstimate(double rows) {
 		// no-op for backwards compatibility
 	}
+
+	long getResultSizeActual();
+
+	void setResultSizeActual(long resultSizeActual);
 }

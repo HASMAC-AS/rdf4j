@@ -154,7 +154,7 @@ import org.eclipse.rdf4j.util.UUIDable;
 /**
  * Minimally-conforming SPARQL 1.1 Query Evaluation strategy, to evaluate one {@link TupleExpr} on the given
  * {@link TripleSource}, optionally using the given {@link Dataset}.
- * 
+ *
  * @author Jeen Broekstra
  * @author James Leigh
  * @author Arjohn Kampman
@@ -436,12 +436,16 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 		return new DescribeIteration(iter, this, operator.getBindingNames(), bindings);
 	}
 
-	public CloseableIteration<BindingSet, QueryEvaluationException> evaluate(StatementPattern sp,
+	public CloseableIteration<BindingSet, QueryEvaluationException> evaluate(StatementPattern statementPattern,
 			final BindingSet bindings) throws QueryEvaluationException {
-		final Var subjVar = sp.getSubjectVar();
-		final Var predVar = sp.getPredicateVar();
-		final Var objVar = sp.getObjectVar();
-		final Var conVar = sp.getContextVar();
+		final Var subjVar = statementPattern.getSubjectVar();
+		final Var predVar = statementPattern.getPredicateVar();
+		final Var objVar = statementPattern.getObjectVar();
+		final Var conVar = statementPattern.getContextVar();
+
+		// This guarantees that if we return an empty iteration we set the result to 0 (initially -1) and if we create
+		// multiple iterations from the same StatementPattern we accumulate those results too.
+		statementPattern.setResultSizeActual(Math.max(0, statementPattern.getResultSizeActual()));
 
 		final Value subjValue = getVarValue(subjVar, bindings);
 		final Value predValue = getVarValue(predVar, bindings);
@@ -451,7 +455,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 		CloseableIteration<? extends Statement, QueryEvaluationException> stIter1 = null;
 		CloseableIteration<? extends Statement, QueryEvaluationException> stIter2 = null;
 		CloseableIteration<? extends Statement, QueryEvaluationException> stIter3 = null;
-		ConvertingIteration<Statement, BindingSet, QueryEvaluationException> result = null;
+		ConvertingIteration<Statement, BindingSet, QueryEvaluationException> resultingIterator = null;
 
 		if (isUnbound(subjVar, bindings) || isUnbound(predVar, bindings) || isUnbound(objVar, bindings)
 				|| isUnbound(conVar, bindings)) {
@@ -468,7 +472,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 				boolean emptyGraph = false;
 
 				if (dataset != null) {
-					if (sp.getScope() == Scope.DEFAULT_CONTEXTS) {
+					if (statementPattern.getScope() == Scope.DEFAULT_CONTEXTS) {
 						graphs = dataset.getDefaultGraphs();
 						emptyGraph = graphs.isEmpty() && !dataset.getNamedGraphs().isEmpty();
 					} else {
@@ -487,8 +491,8 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 					}
 					/*
 					 * TODO activate this to have an exclusive (rather than inclusive) interpretation of the default
-					 * graph in SPARQL querying. else if (sp.getScope() == Scope.DEFAULT_CONTEXTS ) { contexts = new
-					 * Resource[] { (Resource)null }; }
+					 * graph in SPARQL querying. else if (statementPattern.getScope() == Scope.DEFAULT_CONTEXTS ) {
+					 * contexts = new Resource[] { (Resource)null }; }
 					 */
 					else {
 						contexts = new Resource[0];
@@ -515,7 +519,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 				stIter1 = tripleSource.getStatements((Resource) subjValue, (IRI) predValue, objValue, contexts);
 
-				if (contexts.length == 0 && sp.getScope() == Scope.NAMED_CONTEXTS) {
+				if (contexts.length == 0 && statementPattern.getScope() == Scope.NAMED_CONTEXTS) {
 					// Named contexts are matched by retrieving all statements from
 					// the store and filtering out the statements that do not have a
 					// context.
@@ -579,7 +583,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 			};
 
 			// Return an iterator that converts the statements to var bindings
-			result = new ConvertingIteration<Statement, BindingSet, QueryEvaluationException>(stIter3) {
+			resultingIterator = new ConvertingIteration<Statement, BindingSet, QueryEvaluationException>(stIter3) {
 
 				@Override
 				protected BindingSet convert(Statement st) {
@@ -603,12 +607,37 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 				}
 			};
 			allGood = true;
-			return result;
+
+			CloseableIteration<BindingSet, QueryEvaluationException> finalIterator = resultingIterator;
+
+			return new CloseableIteration<BindingSet, QueryEvaluationException>() {
+				@Override
+				public boolean hasNext() throws QueryEvaluationException {
+					return finalIterator.hasNext();
+				}
+
+				@Override
+				public BindingSet next() throws QueryEvaluationException {
+					statementPattern.setResultSizeActual(statementPattern.getResultSizeActual() + 1);
+					return finalIterator.next();
+				}
+
+				@Override
+				public void remove() throws QueryEvaluationException {
+					finalIterator.remove();
+				}
+
+				@Override
+				public void close() throws QueryEvaluationException {
+					finalIterator.close();
+				}
+			};
+
 		} finally {
 			if (!allGood) {
 				try {
-					if (result != null) {
-						result.close();
+					if (resultingIterator != null) {
+						resultingIterator.close();
 					}
 				} finally {
 					try {
@@ -1191,7 +1220,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 	/**
 	 * Determines whether the operand (a variable) contains a Resource.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operand contains a Resource, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(IsResource node, BindingSet bindings)
@@ -1202,7 +1231,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 	/**
 	 * Determines whether the operand (a variable) contains a URI.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operand contains a URI, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(IsURI node, BindingSet bindings)
@@ -1213,7 +1242,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 	/**
 	 * Determines whether the operand (a variable) contains a BNode.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operand contains a BNode, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(IsBNode node, BindingSet bindings)
@@ -1224,7 +1253,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 	/**
 	 * Determines whether the operand (a variable) contains a Literal.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operand contains a Literal, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(IsLiteral node, BindingSet bindings)
@@ -1236,7 +1265,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 	/**
 	 * Determines whether the operand (a variable) contains a numeric datatyped literal, i.e. a literal with datatype
 	 * xsd:float, xsd:double, xsd:decimal, or a derived datatype of xsd:decimal.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operand contains a numeric datatyped literal, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(IsNumeric node, BindingSet bindings)
@@ -1256,7 +1285,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 	/**
 	 * Creates a URI from the operand value (a plain literal or a URI).
-	 * 
+	 *
 	 * @param node     represents an invocation of the SPARQL IRI function
 	 * @param bindings used to generate the value that the URI is based on
 	 * @return a URI generated from the given arguments
@@ -1301,7 +1330,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 
 	/**
 	 * Determines whether the two operands match according to the <code>regex</code> operator.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operands match according to the <tt>regex</tt> operator, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(Regex node, BindingSet bindings)
@@ -1388,7 +1417,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 	 * Determines whether the two operands match according to the <code>like</code> operator. The operator is defined as
 	 * a string comparison with the possible use of an asterisk (*) at the end and/or the start of the second operand to
 	 * indicate substring matching.
-	 * 
+	 *
 	 * @return <tt>true</tt> if the operands match according to the <tt>like</tt> operator, <tt>false</tt> otherwise.
 	 */
 	public Value evaluate(Like node, BindingSet bindings)
@@ -1825,7 +1854,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 	/**
 	 * evaluates a TripleRef node returning bindingsets from the matched Triple nodes in the dataset (or explore
 	 * standard reification)
-	 * 
+	 *
 	 * @param ref      to evaluate
 	 * @param bindings with the solutions
 	 * @return iteration over the solutions

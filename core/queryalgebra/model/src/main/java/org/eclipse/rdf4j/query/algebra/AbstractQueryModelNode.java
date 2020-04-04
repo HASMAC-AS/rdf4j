@@ -28,6 +28,7 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, GraphPat
 	private boolean isGraphPatternGroup;
 
 	private double resultSizeEstimate = -1;
+	private long resultSizeActual = -1;
 
 	/*---------*
 	 * Methods *
@@ -145,6 +146,16 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, GraphPat
 		this.resultSizeEstimate = resultSizeEstimate;
 	}
 
+	@Override
+	public long getResultSizeActual() {
+		return resultSizeActual;
+	}
+
+	@Override
+	public void setResultSizeActual(long resultSizeActual) {
+		this.resultSizeActual = resultSizeActual;
+	}
+
 	/**
 	 *
 	 * @return Human readable number. Eg. 12.1M for 1212213.4 and UNKNOWN for -1.
@@ -155,7 +166,7 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, GraphPat
 			humanReadbleString = Math.round(number / 100_000) / 10.0 + "M";
 		} else if (number > 1_000) {
 			humanReadbleString = Math.round(number / 100) / 10.0 + "K";
-		} else if (number > 0) {
+		} else if (number >= 0) {
 			humanReadbleString = Math.round(number) + "";
 		} else {
 			humanReadbleString = "UNKNOWN";
