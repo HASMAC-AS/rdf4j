@@ -46,6 +46,7 @@ public class FilterIterator extends FilterIteration<BindingSet, QueryEvaluationE
 		this.filter = filter;
 		this.strategy = strategy;
 		this.scopeBindingNames = filter.getBindingNames();
+		filter.setResultSizeActual(Math.max(0, filter.getResultSizeActual()));
 
 	}
 
@@ -84,5 +85,11 @@ public class FilterIterator extends FilterIteration<BindingSet, QueryEvaluationE
 			// failed to evaluate condition
 			return false;
 		}
+	}
+
+	@Override
+	public BindingSet next() throws QueryEvaluationException {
+		filter.setResultSizeActual(filter.getResultSizeActual() + 1);
+		return super.next();
 	}
 }

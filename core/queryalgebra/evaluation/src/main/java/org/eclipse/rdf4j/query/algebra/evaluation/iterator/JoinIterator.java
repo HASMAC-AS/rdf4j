@@ -47,6 +47,7 @@ public class JoinIterator extends LookAheadIteration<BindingSet, QueryEvaluation
 	public JoinIterator(EvaluationStrategy strategy, Join join, BindingSet bindings) throws QueryEvaluationException {
 		this.strategy = strategy;
 		this.join = join;
+		join.setResultSizeActual(Math.max(0, join.getResultSizeActual()));
 
 		leftIter = strategy.evaluate(join.getLeftArg(), bindings);
 
@@ -63,6 +64,7 @@ public class JoinIterator extends LookAheadIteration<BindingSet, QueryEvaluation
 		try {
 			while (rightIter.hasNext() || leftIter.hasNext()) {
 				if (rightIter.hasNext()) {
+					join.setResultSizeActual(join.getResultSizeActual() + 1);
 					return rightIter.next();
 				}
 

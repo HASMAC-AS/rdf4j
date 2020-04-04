@@ -15,7 +15,7 @@ import java.util.stream.Stream;
  * The FILTER operator, as defined in <a href="http://www.w3.org/TR/rdf-sparql-query/#defn_algFilter">SPARQL Query
  * Language for RDF</a>. The FILTER operator filters specific results from the underlying tuple expression based on a
  * configurable condition.
- * 
+ *
  * @author Arjohn Kampman
  */
 public class Filter extends UnaryTupleOperator {
@@ -103,5 +103,17 @@ public class Filter extends UnaryTupleOperator {
 		Filter clone = (Filter) super.clone();
 		clone.setCondition(getCondition().clone());
 		return clone;
+	}
+
+	@Override
+	public String getSignature() {
+		StringBuilder sb = new StringBuilder(128);
+
+		sb.append(super.getSignature());
+
+		sb.append(" (resultSizeEstimate=").append(toHumanReadbleNumber(getResultSizeEstimate())).append(", ");
+		sb.append("resultSizeActual=").append(toHumanReadbleNumber(getResultSizeActual())).append(")");
+
+		return sb.toString();
 	}
 }
