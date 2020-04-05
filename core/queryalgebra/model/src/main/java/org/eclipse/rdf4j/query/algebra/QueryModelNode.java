@@ -108,4 +108,8 @@ public interface QueryModelNode extends Cloneable, Serializable {
 	long getResultSizeActual();
 
 	void setResultSizeActual(long resultSizeActual);
+
+	double getCostEstimate();
+
+	void setCostEstimate(double costEstimate);
 }

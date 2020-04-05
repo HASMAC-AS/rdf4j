@@ -255,7 +255,8 @@ public class StatementPattern extends AbstractQueryModelNode implements TupleExp
 			sb.append(" FROM NAMED CONTEXT");
 		}
 
-		sb.append(" (resultSizeEstimate=").append(toHumanReadbleNumber(getResultSizeEstimate())).append(", ");
+		sb.append(" (costEstimate=").append(toHumanReadbleNumber(getCostEstimate())).append(", ");
+		sb.append(" resultSizeEstimate=").append(toHumanReadbleNumber(getResultSizeEstimate())).append(", ");
 		sb.append("resultSizeActual=").append(toHumanReadbleNumber(getResultSizeActual())).append(")");
 
 		return sb.toString();

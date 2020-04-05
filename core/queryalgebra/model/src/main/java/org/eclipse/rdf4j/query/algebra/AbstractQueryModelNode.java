@@ -7,10 +7,10 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.query.algebra;
 
+import org.eclipse.rdf4j.query.algebra.helpers.QueryModelTreePrinter;
+
 import java.util.List;
 import java.util.ListIterator;
-
-import org.eclipse.rdf4j.query.algebra.helpers.QueryModelTreePrinter;
 
 /**
  * Base implementation of {@link QueryModelNode}.
@@ -29,6 +29,7 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, GraphPat
 
 	private double resultSizeEstimate = -1;
 	private long resultSizeActual = -1;
+	private double costEstimate = -1;
 
 	/*---------*
 	 * Methods *
@@ -156,13 +157,25 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, GraphPat
 		this.resultSizeActual = resultSizeActual;
 	}
 
+	@Override
+	public double getCostEstimate() {
+		return costEstimate;
+	}
+
+	@Override
+	public void setCostEstimate(double costEstimate) {
+		this.costEstimate = costEstimate;
+	}
+
 	/**
 	 *
 	 * @return Human readable number. Eg. 12.1M for 1212213.4 and UNKNOWN for -1.
 	 */
 	static String toHumanReadbleNumber(double number) {
 		String humanReadbleString;
-		if (number > 1_000_000) {
+		if (number == Double.POSITIVE_INFINITY) {
+			humanReadbleString = "∞";
+		} else if (number > 1_000_000) {
 			humanReadbleString = Math.round(number / 100_000) / 10.0 + "M";
 		} else if (number > 1_000) {
 			humanReadbleString = Math.round(number / 100) / 10.0 + "K";
