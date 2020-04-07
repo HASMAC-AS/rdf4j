@@ -42,6 +42,7 @@ public class CheckStatementPattern implements StatementTupleExpr, BoundJoinTuple
 	protected final QueryInfo queryInfo;
 
 	private double resultSizeEstimate = -1;
+	private double costEstimate = -1;
 	private long resultSizeActual = -1;
 
 	public CheckStatementPattern(StatementTupleExpr stmt, QueryInfo queryInfo) {
@@ -151,6 +152,16 @@ public class CheckStatementPattern implements StatementTupleExpr, BoundJoinTuple
 	@Override
 	public void setResultSizeActual(long resultSizeActual) {
 		this.resultSizeActual = resultSizeActual;
+	}
+
+	@Override
+	public double getCostEstimate() {
+		return costEstimate;
+	}
+
+	@Override
+	public void setCostEstimate(double costEstimate) {
+		this.costEstimate = costEstimate;
 	}
 
 	@Override
