@@ -25,7 +25,7 @@ public class TempTest {
 		try {
 //			query1 = IOUtils.toString(getResourceAsStream("tempTest/query1.qr"), StandardCharsets.UTF_8);
 			query2 = IOUtils.toString(getResourceAsStream("tempTest/query2.qr"), StandardCharsets.UTF_8);
-//			query3 = IOUtils.toString(getResourceAsStream("tempTest/query3.qr"), StandardCharsets.UTF_8);
+			query3 = IOUtils.toString(getResourceAsStream("tempTest/query3.qr"), StandardCharsets.UTF_8);
 			query4 = IOUtils.toString(getResourceAsStream("tempTest/query4.qr"), StandardCharsets.UTF_8);
 			parse = Rio.parse(getResourceAsStream("tempTest/bsbm-100.ttl.txt"), "", RDFFormat.TURTLE);
 
@@ -43,7 +43,7 @@ public class TempTest {
 		try (SailRepositoryConnection connection = sailRepository.getConnection()) {
 			connection.add(parse);
 
-			try (TupleQueryResult evaluate = connection.prepareTupleQuery(query4).evaluate()) {
+			try (TupleQueryResult evaluate = connection.prepareTupleQuery(query3).evaluate()) {
 
 				System.out.println();
 

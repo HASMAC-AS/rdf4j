@@ -7,10 +7,6 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.federated.algebra;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.EmptyIteration;
 import org.eclipse.rdf4j.federated.endpoint.Endpoint;
@@ -24,6 +20,10 @@ import org.eclipse.rdf4j.query.algebra.QueryModelNode;
 import org.eclipse.rdf4j.query.algebra.QueryModelVisitor;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.repository.RepositoryException;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A statement pattern with no free variables when provided with some particular BindingSet in evaluate. For evaluation
@@ -103,7 +103,7 @@ public class CheckStatementPattern implements StatementTupleExpr, BoundJoinTuple
 
 	@Override
 	public void replaceChildNode(QueryModelNode current,
-			QueryModelNode replacement) {
+								 QueryModelNode replacement) {
 		stmt.replaceChildNode(current, replacement);
 	}
 
@@ -119,13 +119,13 @@ public class CheckStatementPattern implements StatementTupleExpr, BoundJoinTuple
 
 	@Override
 	public <X extends Exception> void visit(QueryModelVisitor<X> visitor)
-			throws X {
+		throws X {
 		stmt.visit(visitor);
 	}
 
 	@Override
 	public <X extends Exception> void visitChildren(QueryModelVisitor<X> visitor)
-			throws X {
+		throws X {
 		stmt.visitChildren(visitor);
 	}
 
@@ -166,7 +166,7 @@ public class CheckStatementPattern implements StatementTupleExpr, BoundJoinTuple
 
 	@Override
 	public CloseableIteration<BindingSet, QueryEvaluationException> evaluate(BindingSet bindings)
-			throws QueryEvaluationException {
+		throws QueryEvaluationException {
 
 		StatementPattern st = (StatementPattern) stmt;
 
@@ -174,11 +174,12 @@ public class CheckStatementPattern implements StatementTupleExpr, BoundJoinTuple
 			// return true if at least one endpoint has a result for this binding set
 			for (StatementSource source : stmt.getStatementSources()) {
 				Endpoint ownedEndpoint = queryInfo.getFederationContext()
-						.getEndpointManager()
-						.getEndpoint(source.getEndpointID());
+					.getEndpointManager()
+					.getEndpoint(source.getEndpointID());
 				TripleSource t = ownedEndpoint.getTripleSource();
-				if (t.hasStatements(st, bindings, queryInfo))
+				if (t.hasStatements(st, bindings, queryInfo)) {
 					return new SingleBindingSetIteration(bindings);
+				}
 			}
 		} catch (RepositoryException | MalformedQueryException e) {
 			throw new QueryEvaluationException(e);
