@@ -50,6 +50,8 @@ public class LeftJoinIterator extends LookAheadIteration<BindingSet, QueryEvalua
 		this.join = join;
 		this.scopeBindingNames = join.getBindingNames();
 
+		join.setResultSizeActual(Math.max(0, join.getResultSizeActual()));
+
 		leftIter = strategy.evaluate(join.getLeftArg(), bindings);
 
 		// Initialize with empty iteration so that var is never null
@@ -80,6 +82,7 @@ public class LeftJoinIterator extends LookAheadIteration<BindingSet, QueryEvalua
 
 					try {
 						if (join.getCondition() == null) {
+							join.setResultSizeActual(join.getResultSizeActual() + 1);
 							return rightBindings;
 						} else {
 							// Limit the bindings to the ones that are in scope for
@@ -88,6 +91,7 @@ public class LeftJoinIterator extends LookAheadIteration<BindingSet, QueryEvalua
 							scopeBindings.retainAll(scopeBindingNames);
 
 							if (strategy.isTrue(join.getCondition(), scopeBindings)) {
+								join.setResultSizeActual(join.getResultSizeActual() + 1);
 								return rightBindings;
 							}
 						}
@@ -98,6 +102,7 @@ public class LeftJoinIterator extends LookAheadIteration<BindingSet, QueryEvalua
 
 				if (leftBindings != null) {
 					// Join failed, return left arg's bindings
+					join.setResultSizeActual(join.getResultSizeActual() + 1);
 					return leftBindings;
 				}
 			}
