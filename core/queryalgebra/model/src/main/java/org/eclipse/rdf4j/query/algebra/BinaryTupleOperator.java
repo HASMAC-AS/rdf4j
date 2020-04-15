@@ -136,7 +136,6 @@ public abstract class BinaryTupleOperator extends AbstractQueryModelNode impleme
 
 		sb.append(super.getSignature());
 
-		sb.append(" (resultSizeEstimate=").append(toHumanReadbleNumber(getResultSizeEstimate())).append(", ");
 		sb.append("resultSizeActual=").append(toHumanReadbleNumber(getResultSizeActual())).append(")");
 
 		return sb.toString();

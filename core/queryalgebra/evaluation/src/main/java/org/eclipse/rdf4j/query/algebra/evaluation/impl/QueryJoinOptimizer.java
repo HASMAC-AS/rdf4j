@@ -130,8 +130,6 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 						TupleExpr tupleExpr = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap,
 								boundVars);
 
-						// tupleExpr = joinArgs.get(joinArgs.size()-1);
-
 						joinArgs.remove(tupleExpr);
 						orderedJoinArgs.add(tupleExpr);
 

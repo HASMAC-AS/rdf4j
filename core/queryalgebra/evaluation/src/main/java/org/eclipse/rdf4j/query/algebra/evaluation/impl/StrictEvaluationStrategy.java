@@ -138,6 +138,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.iterator.MultiProjectionIterat
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.OrderIterator;
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.PathIteration;
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.ProjectionIterator;
+import org.eclipse.rdf4j.query.algebra.evaluation.iterator.ResultSizeCountingIterator;
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.SPARQLMinusIteration;
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.ZeroLengthPathIteration;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.EvaluationStrategies;
@@ -608,30 +609,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 			};
 			allGood = true;
 
-			CloseableIteration<BindingSet, QueryEvaluationException> finalIterator = resultingIterator;
-
-			return new CloseableIteration<BindingSet, QueryEvaluationException>() {
-				@Override
-				public boolean hasNext() throws QueryEvaluationException {
-					return finalIterator.hasNext();
-				}
-
-				@Override
-				public BindingSet next() throws QueryEvaluationException {
-					statementPattern.setResultSizeActual(statementPattern.getResultSizeActual() + 1);
-					return finalIterator.next();
-				}
-
-				@Override
-				public void remove() throws QueryEvaluationException {
-					finalIterator.remove();
-				}
-
-				@Override
-				public void close() throws QueryEvaluationException {
-					finalIterator.close();
-				}
-			};
+			return new ResultSizeCountingIterator(resultingIterator, statementPattern);
 
 		} finally {
 			if (!allGood) {
