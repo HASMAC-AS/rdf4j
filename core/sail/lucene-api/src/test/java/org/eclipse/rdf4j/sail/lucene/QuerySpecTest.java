@@ -27,8 +27,8 @@ public class QuerySpecTest extends SearchQueryEvaluatorTest {
 
 	@Test
 	public void testReplaceQueryPatternsWithNonEmptyResults() {
-		final String expectedQueryPlan = "Join\n" +
-				"   Join\n" +
+		final String expectedQueryPlan = "Join (resultSizeActual=UNKNOWN)\n" +
+				"   Join (resultSizeActual=UNKNOWN)\n" +
 				"      SingletonSet\n" +
 				"      SingletonSet\n" +
 				"   BindingSetAssignment ([[searchR=urn:1]])\n";
@@ -47,8 +47,8 @@ public class QuerySpecTest extends SearchQueryEvaluatorTest {
 
 	@Test
 	public void testReplaceQueryPatternsWithEmptyResults() {
-		final String expectedQueryPlan = "Join\n" +
-				"   Join\n" +
+		final String expectedQueryPlan = "Join (resultSizeActual=UNKNOWN)\n" +
+				"   Join (resultSizeActual=UNKNOWN)\n" +
 				"      SingletonSet\n" +
 				"      SingletonSet\n" +
 				"   EmptySet\n";
