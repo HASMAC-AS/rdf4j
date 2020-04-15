@@ -249,31 +249,38 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 	@Override
 	public CloseableIteration<BindingSet, QueryEvaluationException> evaluate(TupleExpr expr, BindingSet bindings)
 			throws QueryEvaluationException {
+
+		CloseableIteration<BindingSet, QueryEvaluationException> ret;
+
 		if (expr instanceof StatementPattern) {
-			return evaluate((StatementPattern) expr, bindings);
+			ret = evaluate((StatementPattern) expr, bindings);
 		} else if (expr instanceof UnaryTupleOperator) {
-			return evaluate((UnaryTupleOperator) expr, bindings);
+			ret = evaluate((UnaryTupleOperator) expr, bindings);
 		} else if (expr instanceof BinaryTupleOperator) {
-			return evaluate((BinaryTupleOperator) expr, bindings);
+			ret = evaluate((BinaryTupleOperator) expr, bindings);
 		} else if (expr instanceof SingletonSet) {
-			return evaluate((SingletonSet) expr, bindings);
+			ret = evaluate((SingletonSet) expr, bindings);
 		} else if (expr instanceof EmptySet) {
-			return evaluate((EmptySet) expr, bindings);
+			ret = evaluate((EmptySet) expr, bindings);
 		} else if (expr instanceof ExternalSet) {
-			return evaluate((ExternalSet) expr, bindings);
+			ret = evaluate((ExternalSet) expr, bindings);
 		} else if (expr instanceof ZeroLengthPath) {
-			return evaluate((ZeroLengthPath) expr, bindings);
+			ret = evaluate((ZeroLengthPath) expr, bindings);
 		} else if (expr instanceof ArbitraryLengthPath) {
-			return evaluate((ArbitraryLengthPath) expr, bindings);
+			ret = evaluate((ArbitraryLengthPath) expr, bindings);
 		} else if (expr instanceof BindingSetAssignment) {
-			return evaluate((BindingSetAssignment) expr, bindings);
+			ret = evaluate((BindingSetAssignment) expr, bindings);
 		} else if (expr instanceof TripleRef) {
-			return evaluate((TripleRef) expr, bindings);
+			ret = evaluate((TripleRef) expr, bindings);
 		} else if (expr == null) {
 			throw new IllegalArgumentException("expr must not be null");
 		} else {
 			throw new QueryEvaluationException("Unsupported tuple expr type: " + expr.getClass());
 		}
+
+		// set resultsSizeActual to at least be 0 so we can track iterations that don't procude anything
+		expr.setResultSizeActual(Math.max(0, expr.getResultSizeActual()));
+		return new ResultSizeCountingIterator(ret, expr);
 	}
 
 	public CloseableIteration<BindingSet, QueryEvaluationException> evaluate(ArbitraryLengthPath alp,
@@ -444,10 +451,6 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 		final Var objVar = statementPattern.getObjectVar();
 		final Var conVar = statementPattern.getContextVar();
 
-		// This guarantees that if we return an empty iteration we set the result to 0 (initially -1) and if we create
-		// multiple iterations from the same StatementPattern we accumulate those results too.
-		statementPattern.setResultSizeActual(Math.max(0, statementPattern.getResultSizeActual()));
-
 		final Value subjValue = getVarValue(subjVar, bindings);
 		final Value predValue = getVarValue(predVar, bindings);
 		final Value objValue = getVarValue(objVar, bindings);
@@ -609,7 +612,7 @@ public class StrictEvaluationStrategy implements EvaluationStrategy, FederatedSe
 			};
 			allGood = true;
 
-			return new ResultSizeCountingIterator(resultingIterator, statementPattern);
+			return resultingIterator;
 
 		} finally {
 			if (!allGood) {
