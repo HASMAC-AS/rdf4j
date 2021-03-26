@@ -353,15 +353,15 @@ abstract public class Shape implements ConstraintComponent, Identifiable, Export
 		ValidationApproach validationApproach = ValidationApproach.SPARQL;
 		if (!validateEntireBaseSail) {
 			validationApproach = constraintComponents.stream()
-					.map(ConstraintComponent::getPreferedValidationApproach)
-					.reduce(ValidationApproach::reduce)
+					.map(constraintComponent -> constraintComponent.getPreferredValidationApproach(connectionsGroup))
+					.reduce(ValidationApproach::reducePreferred)
 					.get();
 		}
 
 		if (validationApproach == ValidationApproach.SPARQL) {
-			if (Shape.this.getSupportedValidationApproaches().contains(ValidationApproach.SPARQL)) {
-				return Shape.this.generateSparqlValidationPlan(connectionsGroup, logValidationPlans, false, false,
-						Scope.none);
+			if (Shape.this.getOptimalBulkValidationApproach() == ValidationApproach.SPARQL) {
+				return Shape.this.generateSparqlValidationQuery(connectionsGroup, logValidationPlans, false, false,
+						Scope.none).getValidationPlan(connectionsGroup.getBaseConnection());
 			} else {
 
 				return Shape.this.generateTransactionalValidationPlan(connectionsGroup, logValidationPlans,
@@ -426,6 +426,15 @@ abstract public class Shape implements ConstraintComponent, Identifiable, Export
 			StatementMatcher.Variable object,
 			RdfsSubClassOfReasoner rdfsSubClassOfReasoner, Scope scope) {
 		throw new UnsupportedOperationException(this.getClass().getSimpleName());
+	}
+
+	@Override
+	public ValidationApproach getOptimalBulkValidationApproach() {
+		return constraintComponents.stream()
+				.map(ConstraintComponent::getOptimalBulkValidationApproach)
+				.reduce(ValidationApproach::reduceCompatible)
+				.orElse(ValidationApproach.MOST_COMPATIBLE);
+
 	}
 
 	public static class Factory {

@@ -1,6 +1,5 @@
 package org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents;
 
-import java.util.Set;
 import java.util.stream.Stream;
 
 import org.eclipse.rdf4j.sail.shacl.ConnectionsGroup;
@@ -11,21 +10,22 @@ import org.eclipse.rdf4j.sail.shacl.ast.SparqlFragment;
 import org.eclipse.rdf4j.sail.shacl.ast.StatementMatcher;
 import org.eclipse.rdf4j.sail.shacl.ast.TargetChainInterface;
 import org.eclipse.rdf4j.sail.shacl.ast.ValidationApproach;
+import org.eclipse.rdf4j.sail.shacl.ast.ValidationQuery;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNodeProvider;
 
 public interface ConstraintComponent extends Exportable, TargetChainInterface {
 
-	PlanNode generateSparqlValidationPlan(ConnectionsGroup connectionsGroup, boolean logValidationPlans,
+	ValidationQuery generateSparqlValidationQuery(ConnectionsGroup connectionsGroup, boolean logValidationPlans,
 			boolean negatePlan, boolean negateChildren, Scope scope);
 
 	PlanNode generateTransactionalValidationPlan(ConnectionsGroup connectionsGroup,
 			boolean logValidationPlans, PlanNodeProvider overrideTargetNode,
 			Scope scope);
 
-	ValidationApproach getPreferedValidationApproach();
+	ValidationApproach getPreferredValidationApproach(ConnectionsGroup connectionsGroup);
 
-	Set<ValidationApproach> getSupportedValidationApproaches();
+	ValidationApproach getOptimalBulkValidationApproach();
 
 	boolean requiresEvaluation(ConnectionsGroup connectionsGroup, Scope scope);
 

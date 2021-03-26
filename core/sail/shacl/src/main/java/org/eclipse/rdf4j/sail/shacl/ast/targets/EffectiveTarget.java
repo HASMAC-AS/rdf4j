@@ -249,6 +249,12 @@ public class EffectiveTarget {
 
 	}
 
+	public List<StatementMatcher.Variable> getAllTargetVariables() {
+		return chain.stream()
+				.map(c -> c.var)
+				.collect(Collectors.toCollection(ArrayList::new));
+	}
+
 	public enum Extend {
 		left,
 		right

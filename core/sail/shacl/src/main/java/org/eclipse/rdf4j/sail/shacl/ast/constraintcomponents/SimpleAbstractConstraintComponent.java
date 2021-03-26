@@ -3,7 +3,6 @@ package org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
@@ -13,6 +12,7 @@ import org.eclipse.rdf4j.sail.shacl.SourceConstraintComponent;
 import org.eclipse.rdf4j.sail.shacl.ast.ShaclUnsupportedException;
 import org.eclipse.rdf4j.sail.shacl.ast.StatementMatcher;
 import org.eclipse.rdf4j.sail.shacl.ast.ValidationApproach;
+import org.eclipse.rdf4j.sail.shacl.ast.ValidationQuery;
 import org.eclipse.rdf4j.sail.shacl.ast.paths.Path;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.BufferedPlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.BulkedExternalInnerJoin;
@@ -21,7 +21,6 @@ import org.eclipse.rdf4j.sail.shacl.ast.planNodes.FilterPlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.InnerJoin;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNodeProvider;
-import org.eclipse.rdf4j.sail.shacl.ast.planNodes.Select;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.ShiftToPropertyShape;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.UnBufferedPlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.UnionNode;
@@ -76,69 +75,39 @@ public abstract class SimpleAbstractConstraintComponent extends AbstractConstrai
 	}
 
 	@Override
-	public PlanNode generateSparqlValidationPlan(ConnectionsGroup connectionsGroup,
+	public ValidationQuery generateSparqlValidationQuery(ConnectionsGroup connectionsGroup,
 			boolean logValidationPlans, boolean negatePlan, boolean negateChildren, Scope scope) {
 
 		String targetVarPrefix = "target_";
 		StatementMatcher.Variable value = new StatementMatcher.Variable("value");
 
-		ComplexQueryFragment complexQueryFragment = getComplexQueryFragment(targetVarPrefix, value, negatePlan,
-				connectionsGroup);
-
-		String query = complexQueryFragment.getQuery();
-		StatementMatcher.Variable targetVar = complexQueryFragment.getTargetVar();
-
-		return new Select(connectionsGroup.getBaseConnection(), query, null, b -> {
-
-			List<String> collect = b.getBindingNames()
-					.stream()
-					.filter(s -> s.startsWith(targetVarPrefix))
-					.sorted()
-					.collect(Collectors.toList());
-
-			ValidationTuple validationTuple = new ValidationTuple(b, collect, scope, true);
-
-//			if (targetChain.getPath().isPresent()) {
-//				validationTuple.setPath(targetChain.getPath().get());
-//				validationTuple.setValue(b.getValue(value.getName()));
-//			} else {
-//				validationTuple.setValue(b.getValue(targetVar.getName()));
-//			}
-
-			return validationTuple;
-
-		});
-
-	}
-
-	private ComplexQueryFragment getComplexQueryFragment(String targetVarPrefix, StatementMatcher.Variable value,
-			boolean negated,
-			ConnectionsGroup connectionsGroup) {
-
 		EffectiveTarget effectiveTarget = targetChain.getEffectiveTarget(targetVarPrefix, Scope.propertyShape,
 				connectionsGroup.getRdfsSubClassOfReasoner());
-		String query = effectiveTarget.getQuery(false);
+		String query1 = effectiveTarget.getQuery(false);
 
-		StatementMatcher.Variable targetVar = effectiveTarget.getTargetVar();
+		StatementMatcher.Variable targetVar1 = effectiveTarget.getTargetVar();
 
 		Optional<String> pathQuery = targetChain.getPath()
 				.map(p -> p.getTargetQueryFragment(effectiveTarget.getTargetVar(), value,
 						connectionsGroup.getRdfsSubClassOfReasoner()));
 
 		if (pathQuery.isPresent()) {
-			query += "\n" + pathQuery.get();
-			query += "\n FILTER(" + getSparqlFilterExpression(value.getName(), negated) + ")";
+			query1 += "\n" + pathQuery.get();
+			query1 += "\n FILTER(" + getSparqlFilterExpression(value.getName(), negatePlan) + ")";
 		} else {
-			query += "\n FILTER(" + getSparqlFilterExpression(targetVar.getName(), negated) + ")";
+			query1 += "\n FILTER(" + getSparqlFilterExpression(targetVar1.getName(), negatePlan) + ")";
 		}
 
-		return new ComplexQueryFragment(query, targetVarPrefix, targetVar, value);
+		List<StatementMatcher.Variable> allTargetVariables = effectiveTarget.getAllTargetVariables();
+
+		return new ValidationQuery(query1, allTargetVariables, value, scope, getConstraintComponent(), null, null);
 
 	}
 
 	abstract String getSparqlFilterExpression(String varName, boolean negated);
 
-	PlanNode generateTransactionalValidationPlan(ConnectionsGroup connectionsGroup, PlanNodeProvider overrideTargetNode,
+	private PlanNode generateTransactionalValidationPlan(ConnectionsGroup connectionsGroup,
+			PlanNodeProvider overrideTargetNode,
 			Function<PlanNode, FilterPlanNode> filterAttacher,
 			Scope scope) {
 
@@ -248,7 +217,7 @@ public abstract class SimpleAbstractConstraintComponent extends AbstractConstrai
 	}
 
 	@Override
-	public ValidationApproach getPreferedValidationApproach() {
+	public ValidationApproach getPreferredValidationApproach(ConnectionsGroup connectionsGroup) {
 		return ValidationApproach.Transactional;
 	}
 

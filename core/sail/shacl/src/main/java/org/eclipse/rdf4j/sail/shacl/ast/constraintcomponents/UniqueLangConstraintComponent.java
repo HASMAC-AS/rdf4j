@@ -12,7 +12,9 @@ import org.eclipse.rdf4j.model.impl.BooleanLiteral;
 import org.eclipse.rdf4j.model.vocabulary.SHACL;
 import org.eclipse.rdf4j.sail.shacl.ConnectionsGroup;
 import org.eclipse.rdf4j.sail.shacl.SourceConstraintComponent;
+import org.eclipse.rdf4j.sail.shacl.ast.ShaclUnsupportedException;
 import org.eclipse.rdf4j.sail.shacl.ast.StatementMatcher;
+import org.eclipse.rdf4j.sail.shacl.ast.ValidationQuery;
 import org.eclipse.rdf4j.sail.shacl.ast.paths.Path;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.BulkedExternalInnerJoin;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.EmptyNode;
@@ -46,34 +48,36 @@ public class UniqueLangConstraintComponent extends AbstractConstraintComponent {
 	}
 
 	@Override
-	public PlanNode generateSparqlValidationPlan(ConnectionsGroup connectionsGroup, boolean logValidationPlans,
+	public ValidationQuery generateSparqlValidationQuery(ConnectionsGroup connectionsGroup, boolean logValidationPlans,
 			boolean negatePlan, boolean negateChildren, Scope scope) {
-		assert !negateChildren : "There are no subplans!";
-		assert !negatePlan;
+//		assert !negateChildren : "There are no subplans!";
+//		assert !negatePlan;
+//
+//		if (!getTargetChain().getPath().isPresent()) {
+//			throw new IllegalStateException("UniqueLang only operates on paths");
+//		}
+//
+//		String targetVarPrefix = "target_";
+//
+//		ComplexQueryFragment complexQueryFragment = getComplexQueryFragment(targetVarPrefix, connectionsGroup);
+//
+//		String query = complexQueryFragment.getQuery();
+//
+//		return new Select(connectionsGroup.getBaseConnection(), query, null, b -> {
+//
+//			List<String> targetVars = b.getBindingNames()
+//					.stream()
+//					.filter(s -> s.startsWith(targetVarPrefix))
+//					.sorted()
+//					.collect(Collectors.toList());
+//
+//			ValidationTuple validationTuple = new ValidationTuple(b, targetVars, scope, false);
+//
+//			return validationTuple;
+//
+//		});
 
-		if (!getTargetChain().getPath().isPresent()) {
-			throw new IllegalStateException("UniqueLang only operates on paths");
-		}
-
-		String targetVarPrefix = "target_";
-
-		ComplexQueryFragment complexQueryFragment = getComplexQueryFragment(targetVarPrefix, connectionsGroup);
-
-		String query = complexQueryFragment.getQuery();
-
-		return new Select(connectionsGroup.getBaseConnection(), query, null, b -> {
-
-			List<String> targetVars = b.getBindingNames()
-					.stream()
-					.filter(s -> s.startsWith(targetVarPrefix))
-					.sorted()
-					.collect(Collectors.toList());
-
-			ValidationTuple validationTuple = new ValidationTuple(b, targetVars, scope, false);
-
-			return validationTuple;
-
-		});
+		throw new ShaclUnsupportedException();
 
 	}
 

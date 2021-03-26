@@ -5,7 +5,20 @@ public enum ValidationApproach {
 	Transactional,
 	SPARQL;
 
-	public static ValidationApproach reduce(ValidationApproach a, ValidationApproach b) {
+	public static final ValidationApproach MOST_COMPATIBLE = Transactional;
+
+	public static ValidationApproach reducePreferred(ValidationApproach a, ValidationApproach b) {
+		if (a == SPARQL) {
+			return a;
+		}
+		if (b == SPARQL) {
+			return b;
+		}
+
+		return a;
+	}
+
+	public static ValidationApproach reduceCompatible(ValidationApproach a, ValidationApproach b) {
 		if (a == SPARQL) {
 			return a;
 		}
