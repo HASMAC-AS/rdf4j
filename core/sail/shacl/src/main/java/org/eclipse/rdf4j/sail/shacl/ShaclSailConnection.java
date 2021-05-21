@@ -846,6 +846,14 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 			removedStatementsSet.remove(statement);
 		}
 
+		checkTransactionalValidationLimit();
+
+	}
+
+	private void checkTransactionalValidationLimit() {
+		if((addedStatementsSet.size()+removedStatementsSet.size()) > sail.getTransactionalValidationLimit()){
+			System.out.println();
+		}
 	}
 
 	@Override
@@ -858,6 +866,8 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 		if (!add) {
 			addedStatementsSet.remove(statement);
 		}
+
+		checkTransactionalValidationLimit();
 	}
 
 	public RdfsSubClassOfReasoner getRdfsSubClassOfReasoner() {
