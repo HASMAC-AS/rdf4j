@@ -59,20 +59,24 @@ public class MaxCountConstraintComponent extends AbstractConstraintComponent {
 				connectionsGroup.getRdfsSubClassOfReasoner());
 		Optional<Path> path = getTargetChain().getPath();
 
-		PlanNode addedTargets = effectiveTarget.getPlanNode(connectionsGroup, scope, false);
-
-		PlanNode addedByPath = path.get().getAdded(connectionsGroup, null);
-
-		addedByPath = effectiveTarget.getTargetFilter(connectionsGroup,
-				new Unique(new TrimToTarget(addedByPath), false));
-
-		addedByPath = effectiveTarget.extend(addedByPath, connectionsGroup, scope, EffectiveTarget.Extend.left, false);
-
-		PlanNode mergeNode = new UnionNode(addedTargets, addedByPath);
+		PlanNode mergeNode;
 
 		if (overrideTargetNode != null) {
 			mergeNode = effectiveTarget.extend(overrideTargetNode.getPlanNode(), connectionsGroup, scope,
 					EffectiveTarget.Extend.right, false);
+		} else {
+			PlanNode addedTargets = effectiveTarget.getPlanNode(connectionsGroup, scope, false);
+
+			PlanNode addedByPath = path.get().getAdded(connectionsGroup, null);
+
+			addedByPath = effectiveTarget.getTargetFilter(connectionsGroup,
+					new Unique(new TrimToTarget(addedByPath), false));
+
+			addedByPath = effectiveTarget.extend(addedByPath, connectionsGroup, scope, EffectiveTarget.Extend.left,
+					false);
+
+			mergeNode = new UnionNode(addedTargets, addedByPath);
+
 		}
 
 		mergeNode = new Unique(new TrimToTarget(mergeNode), false);

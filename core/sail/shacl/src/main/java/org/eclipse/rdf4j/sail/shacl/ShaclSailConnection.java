@@ -126,31 +126,7 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 
 		currentIsolationLevel = level;
 
-		Settings localTransactionSettings = new Settings();
-
-		Arrays.stream(transactionSettingsRaw)
-				.filter(Objects::nonNull)
-				.forEach(setting -> {
-					if (setting instanceof ShaclSail.TransactionSettings.ValidationApproach) {
-						localTransactionSettings.validationApproach = (ShaclSail.TransactionSettings.ValidationApproach) setting;
-					}
-					if (setting instanceof ShaclSail.TransactionSettings.PerformanceHint) {
-						switch (((ShaclSail.TransactionSettings.PerformanceHint) setting)) {
-						case ParallelValidation:
-							localTransactionSettings.parallelValidation = true;
-							break;
-						case SerialValidation:
-							localTransactionSettings.parallelValidation = false;
-							break;
-						case CacheDisabled:
-							localTransactionSettings.cacheSelectedNodes = false;
-							break;
-						case CacheEnabled:
-							localTransactionSettings.cacheSelectedNodes = true;
-							break;
-						}
-					}
-				});
+		Settings localTransactionSettings = getLocalTransactionSettings();
 
 		transactionSettings = getDefaultSettings(sail);
 		transactionSettings.applyTransactionSettings(localTransactionSettings);
@@ -187,6 +163,40 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 			addConnectionListener(this);
 		}
 
+	}
+
+	/**
+	 *
+	 * @return the transaction settings that are based purely on the settings based down through the begin(...) method
+	 *         without considering any sail level settings for things like caching or parallel validation.
+	 */
+	private Settings getLocalTransactionSettings() {
+		Settings localTransactionSettings = new Settings();
+
+		Arrays.stream(transactionSettingsRaw)
+				.filter(Objects::nonNull)
+				.forEach(setting -> {
+					if (setting instanceof ShaclSail.TransactionSettings.ValidationApproach) {
+						localTransactionSettings.validationApproach = (ShaclSail.TransactionSettings.ValidationApproach) setting;
+					}
+					if (setting instanceof ShaclSail.TransactionSettings.PerformanceHint) {
+						switch (((ShaclSail.TransactionSettings.PerformanceHint) setting)) {
+						case ParallelValidation:
+							localTransactionSettings.parallelValidation = true;
+							break;
+						case SerialValidation:
+							localTransactionSettings.parallelValidation = false;
+							break;
+						case CacheDisabled:
+							localTransactionSettings.cacheSelectedNodes = false;
+							break;
+						case CacheEnabled:
+							localTransactionSettings.cacheSelectedNodes = true;
+							break;
+						}
+					}
+				});
+		return localTransactionSettings;
 	}
 
 	@Override
@@ -400,7 +410,9 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 			rdfsSubClassOfReasoner = RdfsSubClassOfReasoner.createReasoner(this);
 		}
 
-		fillAddedAndRemovedStatementRepositories();
+		if (!isBulkValidation()) {
+			fillAddedAndRemovedStatementRepositories();
+		}
 
 	}
 
@@ -540,6 +552,9 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 	}
 
 	void fillAddedAndRemovedStatementRepositories() {
+
+		assert !isBulkValidation();
+		assert isValidationEnabled();
 
 		long before = 0;
 		if (sail.isPerformanceLogging()) {
@@ -850,12 +865,6 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 
 	}
 
-	private void checkTransactionalValidationLimit() {
-		if((addedStatementsSet.size()+removedStatementsSet.size()) > sail.getTransactionalValidationLimit()){
-			System.out.println();
-		}
-	}
-
 	@Override
 	public void statementRemoved(Statement statement) {
 		if (preparedHasRun) {
@@ -868,6 +877,18 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 		}
 
 		checkTransactionalValidationLimit();
+	}
+
+	private void checkTransactionalValidationLimit() {
+		if ((addedStatementsSet.size() + removedStatementsSet.size()) > sail.getTransactionalValidationLimit()) {
+			logger.debug("Transaction size limit exceeded, reverting to bulk validation.");
+			removeConnectionListener(this);
+			Settings bulkValidation = getLocalTransactionSettings();
+			bulkValidation.validationApproach = ShaclSail.TransactionSettings.ValidationApproach.Bulk;
+			getTransactionSettings().applyTransactionSettings(bulkValidation);
+			removedStatementsSet.clear();
+			addedStatementsSet.clear();
+		}
 	}
 
 	public RdfsSubClassOfReasoner getRdfsSubClassOfReasoner() {

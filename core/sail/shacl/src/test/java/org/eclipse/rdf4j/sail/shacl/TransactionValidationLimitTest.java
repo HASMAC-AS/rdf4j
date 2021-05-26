@@ -8,17 +8,18 @@
 
 package org.eclipse.rdf4j.sail.shacl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
+import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
-import org.eclipse.rdf4j.rio.RDFFormat;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.mockito.Mockito;
-
-import java.io.IOException;
-import java.io.StringReader;
 
 /**
  * @author Håvard Ottestad
@@ -38,21 +39,34 @@ public class TransactionValidationLimitTest {
 		((ShaclSail) shaclRepository.getSail()).setTransactionalValidationLimit(3);
 
 		try (SailRepositoryConnection connection = shaclRepository.getConnection()) {
+			ShaclSailConnection shaclSailConnection = (ShaclSailConnection) connection.getSailConnection();
 
 			connection.begin();
 			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("a"));
 			connection.commit();
 
-
-
-			connection.begin();
+			connection.begin(ShaclSail.TransactionSettings.PerformanceHint.CacheEnabled,
+					ShaclSail.TransactionSettings.PerformanceHint.ParallelValidation);
 			connection.add(RDFS.RESOURCE, RDF.TYPE, RDFS.RESOURCE);
 			connection.add(RDFS.RESOURCE, RDFS.LABEL, connection.getValueFactory().createLiteral("a"));
 			connection.add(RDFS.CLASS, RDF.TYPE, RDFS.RESOURCE);
-			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("yay"));
-			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("yay2"));
-			connection.commit();
 
+			assertEquals(ShaclSail.TransactionSettings.ValidationApproach.Auto,
+					shaclSailConnection.getTransactionSettings().getValidationApproach(),
+					"Auto is the default validation approach so should still be the case since we haven't hit the transaction size limit yet.");
+
+			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("4th statement"));
+
+			assertEquals(ShaclSail.TransactionSettings.ValidationApproach.Bulk,
+					shaclSailConnection.getTransactionSettings().getValidationApproach(),
+					"We have added more than 3 statements so the validation approach should have switched to Bulk.");
+			assertTrue(shaclSailConnection.getTransactionSettings().isCacheSelectNodes(),
+					"Bulk validation should by default disable caching select nodes, but the local transaction settings should override this.");
+			assertTrue(shaclSailConnection.getTransactionSettings().isParallelValidation(),
+					"Bulk validation should by default disable parallel validation, but the local transaction settings should override this.");
+
+			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("5th statement"));
+			connection.commit();
 
 		} finally {
 			shaclRepository.shutDown();
@@ -75,15 +89,29 @@ public class TransactionValidationLimitTest {
 		}
 
 		try (SailRepositoryConnection connection = shaclRepository.getConnection()) {
+			ShaclSailConnection shaclSailConnection = (ShaclSailConnection) connection.getSailConnection();
 
 			connection.begin();
 			connection.add(RDFS.RESOURCE, RDF.TYPE, RDFS.RESOURCE);
 			connection.add(RDFS.RESOURCE, RDFS.LABEL, connection.getValueFactory().createLiteral("a"));
 			connection.add(RDFS.CLASS, RDF.TYPE, RDFS.RESOURCE);
-			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("yay"));
-			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("yay2"));
-			connection.commit();
 
+			assertEquals(ShaclSail.TransactionSettings.ValidationApproach.Auto,
+					shaclSailConnection.getTransactionSettings().getValidationApproach(),
+					"Auto is the default validation approach so should still be the case since we haven't hit the transaction size limit yet.");
+
+			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("4th statement"));
+
+			assertEquals(ShaclSail.TransactionSettings.ValidationApproach.Bulk,
+					shaclSailConnection.getTransactionSettings().getValidationApproach(),
+					"We have added more than 3 statements so the validation approach should have switched to Bulk.");
+			assertFalse(shaclSailConnection.getTransactionSettings().isCacheSelectNodes(),
+					"Bulk validation should by default disable caching select nodes.");
+			assertFalse(shaclSailConnection.getTransactionSettings().isParallelValidation(),
+					"Bulk validation should by default disable parallel validation.");
+
+			connection.add(RDFS.CLASS, RDFS.LABEL, connection.getValueFactory().createLiteral("5th statement"));
+			connection.commit();
 
 		} finally {
 			shaclRepository.shutDown();
@@ -91,13 +119,40 @@ public class TransactionValidationLimitTest {
 
 	}
 
-	private void add(SailRepositoryConnection connection, String data) throws IOException {
-		connection.begin();
+	@Test
+	public void testFailoverToBulkValidationTriggersValidation() throws Exception {
 
-		StringReader invalidSampleData = new StringReader(data);
+		SailRepository shaclRepository = Utils.getInitializedShaclRepository("shacl.ttl");
 
-		connection.add(invalidSampleData, "", RDFFormat.TURTLE);
-		connection.commit();
+		((ShaclSail) shaclRepository.getSail()).setTransactionalValidationLimit(3);
+
+		try (SailRepositoryConnection connection = shaclRepository.getConnection()) {
+			ShaclSailConnection shaclSailConnection = (ShaclSailConnection) connection.getSailConnection();
+
+			connection.begin();
+			connection.add(RDFS.CLASS, RDFS.COMMENT, connection.getValueFactory().createLiteral("a"));
+			connection.commit();
+
+			connection.begin(ShaclSail.TransactionSettings.PerformanceHint.CacheEnabled,
+					ShaclSail.TransactionSettings.PerformanceHint.ParallelValidation);
+			connection.add(RDFS.RESOURCE, RDF.TYPE, RDFS.RESOURCE);
+			connection.add(RDFS.RESOURCE, RDFS.LABEL, connection.getValueFactory().createLiteral("a"));
+			connection.add(RDFS.CLASS, RDF.TYPE, RDFS.RESOURCE);
+			connection.add(RDFS.CLASS, RDFS.COMMENT, connection.getValueFactory().createLiteral("4th statement"));
+			connection.add(RDFS.CLASS, RDFS.COMMENT, connection.getValueFactory().createLiteral("5th statement"));
+
+			assertThrows(ShaclSailValidationException.class, () -> {
+				try {
+					connection.commit();
+				} catch (RepositoryException repositoryException) {
+					throw repositoryException.getCause();
+				}
+			});
+
+		} finally {
+			shaclRepository.shutDown();
+		}
+
 	}
 
 }
