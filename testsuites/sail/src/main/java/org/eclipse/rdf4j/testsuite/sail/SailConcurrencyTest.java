@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.transaction.IsolationLevels;
@@ -42,6 +43,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -739,5 +743,83 @@ public abstract class SailConcurrencyTest {
 			}
 		}
 		return count;
+	}
+
+	@ParameterizedTest(name = "threads={0}, iterations={1}, level={2}")
+	@MethodSource("sizeConsistencyParameters")
+	@Timeout(value = 2, unit = TimeUnit.MINUTES)
+	public void testSizeConsistencyScenarios(int threadCount, int iterations, IsolationLevels level) throws Exception {
+		try (SailConnection testCon = store.getConnection()) {
+			try {
+				testCon.begin(level);
+			} catch (UnknownSailTransactionStateException e) {
+				logger.warn("{} does not support {}", store, level);
+				return;
+			} finally {
+				testCon.rollback();
+			}
+		}
+
+		final IRI context1 = vf.createIRI("urn:context1");
+		final IRI context2 = vf.createIRI("urn:context2");
+
+		ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+		AtomicBoolean failure = new AtomicBoolean(false);
+
+		for (int t = 0; t < threadCount; t++) {
+			executor.submit(() -> {
+				Random random = new Random();
+				try (SailConnection connection = store.getConnection()) {
+					for (int i = 0; i < iterations && !failure.get(); i++) {
+						connection.begin(level);
+						if (random.nextBoolean()) {
+							int idx = random.nextInt(MAX_STATEMENT_IDX);
+							if (random.nextBoolean()) {
+								insertTestStatement(connection, idx);
+							} else {
+								removeTestStatement(connection, idx);
+							}
+						} else {
+							if (random.nextBoolean()) {
+								long size = connection.size();
+								long manual = manualCount(connection);
+								if (size != manual) {
+									failure.set(true);
+								}
+							} else {
+								IRI ctx = random.nextBoolean() ? context1 : context2;
+								long size = connection.size(ctx);
+								long manual = manualCount(connection, ctx);
+								if (size != manual) {
+									failure.set(true);
+								}
+							}
+						}
+						connection.commit();
+					}
+				} catch (SailException e) {
+					failure.set(true);
+				}
+			});
+		}
+
+		executor.shutdown();
+		executor.awaitTermination(2, TimeUnit.MINUTES);
+
+		Assertions.assertFalse(failure.get(), "size() inconsistent with manual count");
+	}
+
+	private static Stream<Arguments> sizeConsistencyParameters() {
+		return Stream.of(
+				Arguments.of(1, 25, IsolationLevels.SNAPSHOT),
+				Arguments.of(2, 25, IsolationLevels.SNAPSHOT),
+				Arguments.of(4, 25, IsolationLevels.SNAPSHOT),
+				Arguments.of(8, 25, IsolationLevels.SNAPSHOT),
+				Arguments.of(4, 50, IsolationLevels.SNAPSHOT),
+				Arguments.of(4, 100, IsolationLevels.SNAPSHOT),
+				Arguments.of(4, 25, IsolationLevels.SERIALIZABLE),
+				Arguments.of(4, 25, IsolationLevels.READ_COMMITTED),
+				Arguments.of(4, 25, IsolationLevels.READ_UNCOMMITTED),
+				Arguments.of(4, 25, IsolationLevels.NONE));
 	}
 }
