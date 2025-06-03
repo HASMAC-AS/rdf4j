@@ -378,14 +378,8 @@
 		<junit.version>5.9.3</junit.version>
 		<jetty.version>9.4.54.v20240208</jetty.version>
 		<netty.version>4.1.111.Final</netty.version>
+		<surefire_failsafe.version>3.5.3</surefire_failsafe.version>
 	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.apache.maven.surefire</groupId>
-			<artifactId>surefire-junit-platform</artifactId>
-			<version>3.5.3</version>
-		</dependency>
-	</dependencies>
 	<dependencyManagement>
 		<dependencies>
 			<!-- Jackson Bill-of-Materials -->
@@ -653,8 +647,21 @@
 				<artifactId>kerby-pkix</artifactId>
 				<version>1.1.1</version>
 			</dependency>
+			<dependency>
+				<groupId>org.apache.maven.surefire</groupId>
+				<artifactId>surefire-junit-platform</artifactId>
+				<version>${surefire_failsafe.version}</version>
+				<scope>test</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.maven.surefire</groupId>
+			<artifactId>surefire-junit-platform</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 	<build>
 		<pluginManagement>
 			<plugins>
@@ -819,7 +826,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.5.3</version>
+					<version>${surefire_failsafe.version}</version>
 					<configuration>
 						<encoding>UTF-8</encoding>
 						<argLine>-Xmx2048M</argLine>
@@ -828,7 +835,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>3.5.3</version>
+					<version>${surefire_failsafe.version}</version>
 					<configuration>
 						<encoding>UTF-8</encoding>
 						<forkCount>1</forkCount>
