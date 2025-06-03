@@ -46,3 +46,11 @@ mvn -o -q process-resources
   ```
 - Replace `${year}` with the current year for new files only.
 - Do not modify or omit any other part of the header.
+
+## Elasticsearch Integration Tests
+The Elasticsearch Store module uses Testcontainers to spin up a Docker-based Elasticsearch instance during tests. Ensure Docker is running locally. Execute the module tests with:
+```bash
+mvn -o -pl core/sail/elasticsearch-store test
+```
+Tests are skipped automatically when Docker is unavailable (via `@Testcontainers(disabledWithoutDocker = true)`).
+
