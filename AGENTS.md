@@ -20,3 +20,21 @@ This is a large multi-module Maven project. Building and testing the entire repo
   mvn -o -pl core/sail/shacl test
   ```
 - Running from a module subdirectory is also possible; remember to include `-o`.
+
+## Source File Headers
+- All new source files must include the standard RDF4J copyright header.
+- Use the template from `CONTRIBUTING.md` exactly as provided:
+  ```
+  /*******************************************************************************
+   * Copyright (c) ${year} Eclipse RDF4J contributors.
+   *
+   * All rights reserved. This program and the accompanying materials
+   * are made available under the terms of the Eclipse Distribution License v1.0
+   * which accompanies this distribution, and is available at
+   * http://www.eclipse.org/org/documents/edl-v10.php.
+   *
+   * SPDX-License-Identifier: BSD-3-Clause
+   *******************************************************************************/
+  ```
+- Replace `${year}` with the current year for new files only.
+- Do not modify or omit any other part of the header.
