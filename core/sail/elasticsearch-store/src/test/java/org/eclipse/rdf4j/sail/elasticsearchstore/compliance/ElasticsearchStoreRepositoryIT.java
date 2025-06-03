@@ -13,34 +13,26 @@ package org.eclipse.rdf4j.sail.elasticsearchstore.compliance;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.elasticsearchstore.ElasticsearchStore;
+import org.eclipse.rdf4j.sail.elasticsearchstore.ElasticsearchTestContainer;
 import org.eclipse.rdf4j.sail.elasticsearchstore.SingletonClientProvider;
-import org.eclipse.rdf4j.sail.elasticsearchstore.TestHelpers;
-import org.eclipse.rdf4j.testsuite.repository.RepositoryTest;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 
-public class ElasticsearchStoreRepositoryIT extends RepositoryTest {
+public class ElasticsearchStoreRepositoryIT extends ElasticsearchTestContainer {
 
-	private static SingletonClientProvider clientPool;
-
-	@BeforeAll
-	public static void beforeClass() {
-		TestHelpers.openClient();
-		clientPool = new SingletonClientProvider("localhost", TestHelpers.PORT, TestHelpers.CLUSTER);
-	}
+	private SingletonClientProvider clientPool;
 
 	@AfterAll
-	public static void afterClass() throws Exception {
-		clientPool.close();
-		TestHelpers.closeClient();
+	public void afterClass() throws Exception {
+		if (clientPool != null) {
+			clientPool.close();
+		}
 	}
 
 	@Override
 	protected Repository createRepository() {
-		SailRepository sailRepository = new SailRepository(
-				new ElasticsearchStore(clientPool, "index1"));
-		return sailRepository;
+		clientPool = new SingletonClientProvider("localhost", transportPort, CLUSTER_NAME);
+		return new SailRepository(new ElasticsearchStore(clientPool, "index1"));
 	}
 
 	@Disabled
