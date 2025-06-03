@@ -16,7 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -30,6 +33,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.SailException;
+import org.eclipse.rdf4j.sail.UnknownSailTransactionStateException;
 import org.eclipse.rdf4j.sail.helpers.AbstractSail;
 import org.eclipse.rdf4j.sail.helpers.SailWrapper;
 import org.junit.jupiter.api.AfterEach;
@@ -660,5 +664,80 @@ public abstract class SailConcurrencyTest {
 		// System.out.print("-");
 		connection.removeStatements(vf.createIRI("http://test#s" + i), vf.createIRI("http://test#p" + i),
 				vf.createIRI("http://test#o" + i), vf.createIRI("http://test#context_" + i));
+	}
+
+	@Test
+	@Timeout(value = 1, unit = TimeUnit.MINUTES)
+	public void testSizeConsistentWithManualCount() throws Exception {
+		try (SailConnection testCon = store.getConnection()) {
+			try {
+				testCon.begin(IsolationLevels.SNAPSHOT);
+			} catch (UnknownSailTransactionStateException e) {
+				logger.warn("{} does not support {}", store, IsolationLevels.SNAPSHOT);
+				return;
+			} finally {
+				testCon.rollback();
+			}
+		}
+
+		final IRI context1 = vf.createIRI("urn:context1");
+		final IRI context2 = vf.createIRI("urn:context2");
+
+		ExecutorService executor = Executors.newFixedThreadPool(4);
+		AtomicBoolean failure = new AtomicBoolean(false);
+
+		for (int t = 0; t < 4; t++) {
+			executor.submit(() -> {
+				Random random = new Random();
+				try (SailConnection connection = store.getConnection()) {
+					for (int i = 0; i < 50 && !failure.get(); i++) {
+						connection.begin(IsolationLevels.SNAPSHOT);
+						if (random.nextBoolean()) {
+							int idx = random.nextInt(MAX_STATEMENT_IDX);
+							if (random.nextBoolean()) {
+								insertTestStatement(connection, idx);
+							} else {
+								removeTestStatement(connection, idx);
+							}
+						} else {
+							if (random.nextBoolean()) {
+								long size = connection.size();
+								long manual = manualCount(connection);
+								if (size != manual) {
+									failure.set(true);
+								}
+							} else {
+								IRI ctx = random.nextBoolean() ? context1 : context2;
+								long size = connection.size(ctx);
+								long manual = manualCount(connection, ctx);
+								if (size != manual) {
+									failure.set(true);
+								}
+							}
+						}
+						connection.commit();
+					}
+				} catch (SailException e) {
+					failure.set(true);
+				}
+			});
+		}
+
+		executor.shutdown();
+		executor.awaitTermination(2, TimeUnit.MINUTES);
+
+		Assertions.assertFalse(failure.get(), "size() inconsistent with manual count");
+	}
+
+	private long manualCount(SailConnection connection, Resource... contexts) throws SailException {
+		long count = 0;
+		try (CloseableIteration<? extends org.eclipse.rdf4j.model.Statement> iter = connection.getStatements(null, null,
+				null, false, contexts)) {
+			while (iter.hasNext()) {
+				iter.next();
+				count++;
+			}
+		}
+		return count;
 	}
 }
