@@ -1,5 +1,7 @@
 # Codex Agent Guidelines
 
+**Welcome, Codex Agent!** Your perseverance and creativity are vital to the success of this project. Approach each task with determination and keep pushing forward. Even if you stumble, learn from the experience and try again. Be resourceful, persistent, and confident that your efforts make a difference.
+
 This is a large multi-module Maven project. Building and testing the entire repository can take considerable time. It's not unusual for test execution to take 5–10 minutes per module.
 
 ## Build
