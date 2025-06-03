@@ -20,10 +20,10 @@ import org.junit.jupiter.api.Disabled;
 
 public class ElasticsearchStoreRepositoryIT extends ElasticsearchTestContainer {
 
-	private SingletonClientProvider clientPool;
+	private static SingletonClientProvider clientPool;
 
 	@AfterAll
-	public void afterClass() throws Exception {
+	public static void afterClass() throws Exception {
 		if (clientPool != null) {
 			clientPool.close();
 		}
