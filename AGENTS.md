@@ -31,6 +31,22 @@ mvn -o -q process-resources
   ```
 - Running from a module subdirectory is also possible; remember to include `-o`.
 
+## Pre-commit checklist
+Before finalizing your work, make sure the following commands succeed:
+1. **Format the code**
+   ```bash
+   mvn -o -q process-resources
+   ```
+2. **Check that the code compiles**
+   ```bash
+   mvn -o verify -DskipTests
+   ```
+3. **Run the tests for the relevant module(s)**
+   ```bash
+   mvn -o -pl <module> test
+   ```
+   You can also run from a module subdirectory; just remember to include `-o`.
+
 ## Source File Headers
 - All new source files must include the standard RDF4J copyright header.
 - Use the template from `CONTRIBUTING.md` exactly as provided:
