@@ -14,6 +14,12 @@ This is a large multi-module Maven project. Building and testing the entire repo
   ```
   Running all modules sequentially will take a long time.
 
+## Code Formatting
+- This project has strict code formatting requirements. Always run the automatic formatter before executing tests or finalizing your code:
+```bash
+mvn -o -q process-resources
+```
+
 ## Running Tests
 - To test a specific module, use the `-pl` option. Example for running the SHACL tests:
   ```bash
