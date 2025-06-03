@@ -6,6 +6,21 @@ This is a large multi-module Maven project. Building and testing the entire repo
 
 ## Build
 - Always invoke Maven in offline mode using the `-o` flag.
+- Occasionally you may need online access to download dependencies or plugins. When Maven requires internet access, omit `-o` and pass your proxy settings:
+  ```bash
+  echo "$http_proxy"
+  echo "$https_proxy"
+
+  proxy=$http_proxy
+  proxy=${proxy#*://}; host=${proxy%%:*}; port=${proxy#*:}
+
+  mvn -B -Dhttp.proxyHost=$host \
+      -Dhttp.proxyPort=$port \
+      -Dhttps.proxyHost=$host \
+      -Dhttps.proxyPort=$port \
+      --no-transfer-progress \
+      verify -DskipTests
+  ```
 - To build the entire project without running tests:
   ```bash
   mvn -o verify -DskipTests
