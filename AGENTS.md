@@ -15,6 +15,8 @@ This is a large multi-module Maven project. Building and testing the entire repo
   mvn -o verify
   ```
   Running all modules sequentially will take a long time.
+- Maven stores all build output in each module's `target/` directory. You can
+  usually ignore these directories.
 
 ## Code Formatting
 - This project has strict code formatting requirements. Always run the automatic formatter before executing tests or finalizing your code:
