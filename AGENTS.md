@@ -79,3 +79,8 @@ Before finalizing your work, make sure the following commands succeed:
   ```
 - Replace `${year}` with the current year for new files only.
 - Do not modify or omit any other part of the header.
+
+## Elasticsearch Store Tests
+- Integration tests require Docker because they use Testcontainers to spin up Elasticsearch.
+- If Docker is not available, these tests will be skipped.
+
