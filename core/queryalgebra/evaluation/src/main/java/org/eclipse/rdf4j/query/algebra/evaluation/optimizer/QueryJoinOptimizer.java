@@ -177,50 +177,13 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 				}
 
 				// Reorder the (recursive) join arguments to a more optimal sequence
+				joinArgs = reorderByJoinCardinality(joinArgs);
 				Deque<TupleExpr> orderedJoinArgs = new ArrayDeque<>(joinArgs.size());
 
-				// We order all remaining join arguments based on cardinality and
-				// variable frequency statistics
 				if (!joinArgs.isEmpty()) {
-					// Build maps of cardinalities and vars per tuple expression
-					Map<TupleExpr, Double> cardinalityMap = Collections.emptyMap();
-					Map<TupleExpr, List<Var>> varsMap = new HashMap<>();
-
 					for (TupleExpr tupleExpr : joinArgs) {
-						if (tupleExpr instanceof Join) {
-							// we can skip calculating the cardinality for instances of Join since we will anyway "meet"
-							// these nodes
-							continue;
-						}
-
 						double cardinality = statistics.getCardinality(tupleExpr);
-
 						tupleExpr.setResultSizeEstimate(Math.max(cardinality, tupleExpr.getResultSizeEstimate()));
-						if (!hasCachedCardinality(tupleExpr)) {
-							if (cardinalityMap.isEmpty()) {
-								cardinalityMap = new HashMap<>();
-							}
-							cardinalityMap.put(tupleExpr, cardinality);
-						}
-						if (tupleExpr instanceof ZeroLengthPath) {
-							varsMap.put(tupleExpr, ((ZeroLengthPath) tupleExpr).getVarList());
-						} else {
-							varsMap.put(tupleExpr, getStatementPatternVars(tupleExpr));
-						}
-					}
-
-					// Build map of var frequences
-					Map<Var, Integer> varFreqMap = new HashMap<>((varsMap.size() + 1) * 2);
-					for (List<Var> varList : varsMap.values()) {
-						fillVarFreqMap(varList, varFreqMap);
-					}
-
-					// order all other join arguments based on available statistics
-					while (!joinArgs.isEmpty()) {
-						TupleExpr tupleExpr = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
-						this.currentHighestCost = Math.max(currentHighestCost, tupleExpr.getCostEstimate());
-
-						joinArgs.remove(tupleExpr);
 						orderedJoinArgs.addLast(tupleExpr);
 
 						// Recursively optimize join arguments
@@ -547,6 +510,74 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 			}
 
 			return result;
+		}
+
+		/**
+		 * Reorder join arguments using estimated join cardinality. The method greedily chooses the pair with the
+		 * smallest estimated cardinality and then repeatedly joins the current result with the remaining argument that
+		 * yields the lowest join cardinality.
+		 */
+		protected List<TupleExpr> reorderByJoinCardinality(List<TupleExpr> joinArgs) {
+			if (joinArgs.size() <= 2) {
+				return joinArgs;
+			}
+
+			List<TupleExpr> remaining = new ArrayList<>(joinArgs);
+			List<TupleExpr> ordered = new ArrayList<>(joinArgs.size());
+
+			TupleExpr first = null;
+			TupleExpr second = null;
+			double best = Double.POSITIVE_INFINITY;
+			for (int i = 0; i < remaining.size(); i++) {
+				TupleExpr a = remaining.get(i);
+				for (int j = i + 1; j < remaining.size(); j++) {
+					TupleExpr b = remaining.get(j);
+					Join join = new Join(a.clone(), b.clone());
+					double card = statistics.getCardinality(join);
+					if (card < best) {
+						best = card;
+						first = a;
+						second = b;
+					}
+				}
+			}
+
+			if (first == null || second == null) {
+				return joinArgs;
+			}
+
+			ordered.add(first);
+			ordered.add(second);
+			remaining.remove(first);
+			remaining.remove(second);
+
+			TupleExpr current = new Join(first.clone(), second.clone());
+			while (!remaining.isEmpty()) {
+				TupleExpr bestCandidate = null;
+				best = Double.POSITIVE_INFINITY;
+				for (TupleExpr candidate : remaining) {
+					Join join = new Join(current.clone(), candidate.clone());
+					double card = statistics.getCardinality(join);
+					if (card < best) {
+						best = card;
+						bestCandidate = candidate;
+					}
+				}
+
+				if (bestCandidate == null) {
+					break;
+				}
+
+				ordered.add(bestCandidate);
+				remaining.remove(bestCandidate);
+				current = new Join(current.clone(), bestCandidate.clone());
+			}
+
+			if (!remaining.isEmpty()) {
+				ordered.addAll(remaining);
+			}
+
+			return ordered;
 		}
 
 		private TupleExpr getNextSubselect(List<TupleExpr> currentList, List<TupleExpr> joinArgs) {
