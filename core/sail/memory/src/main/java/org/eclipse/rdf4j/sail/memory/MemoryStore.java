@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.sail.base.SailSink;
 import org.eclipse.rdf4j.sail.base.SailStore;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSail;
 import org.eclipse.rdf4j.sail.helpers.DirectoryLockManager;
+import org.eclipse.rdf4j.sail.memory.SketchRegistry;
 import org.eclipse.rdf4j.sail.memory.model.MemValueFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,7 @@ public class MemoryStore extends AbstractNotifyingSail implements FederatedServi
 	 * Factory/cache for MemValue objects.
 	 */
 	private SailStore store;
+	private final SketchRegistry registry = new SketchRegistry();
 
 	private volatile boolean persist = false;
 
@@ -258,7 +260,7 @@ public class MemoryStore extends AbstractNotifyingSail implements FederatedServi
 	protected void initializeInternal() throws SailException {
 		logger.debug("Initializing MemoryStore...");
 
-		this.store = new MemorySailStore(debugEnabled());
+		this.store = new MemorySailStore(debugEnabled(), registry);
 
 		if (persist) {
 			File dataDir = getDataDir();

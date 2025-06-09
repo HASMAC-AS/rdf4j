@@ -50,6 +50,7 @@ import org.eclipse.rdf4j.sail.base.SailDataset;
 import org.eclipse.rdf4j.sail.base.SailSink;
 import org.eclipse.rdf4j.sail.base.SailSource;
 import org.eclipse.rdf4j.sail.base.SailStore;
+import org.eclipse.rdf4j.sail.memory.SketchRegistry;
 import org.eclipse.rdf4j.sail.memory.model.MemBNode;
 import org.eclipse.rdf4j.sail.memory.model.MemIRI;
 import org.eclipse.rdf4j.sail.memory.model.MemResource;
@@ -124,6 +125,8 @@ class MemorySailStore implements SailStore {
 
 	final SnapshotMonitor snapshotMonitor;
 
+	private final SketchRegistry registry;
+
 	/**
 	 * Store for namespace prefix info.
 	 */
@@ -149,8 +152,9 @@ class MemorySailStore implements SailStore {
 	 */
 	private final Object snapshotCleanupThreadLockObject = new Object();
 
-	public MemorySailStore(boolean debug) {
+	public MemorySailStore(boolean debug, SketchRegistry registry) {
 		snapshotMonitor = new SnapshotMonitor(debug);
+		this.registry = registry;
 	}
 
 	@Override
@@ -852,6 +856,7 @@ class MemorySailStore implements SailStore {
 			MemStatement st = new MemStatement(memSubj, memPred, memObj, memContext, explicit, nextSnapshot);
 			statements.add(st);
 			st.addToComponentLists();
+			registry.forPred(pred.stringValue()).update(subj, obj);
 			invalidateCache();
 			return st;
 		}
