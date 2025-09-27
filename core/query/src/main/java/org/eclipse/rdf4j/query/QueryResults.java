@@ -540,9 +540,8 @@ public class QueryResults extends Iterations {
 	 * @return true if compatible
 	 */
 	public static boolean bindingSetsCompatible(BindingSet bs1, BindingSet bs2) {
-
-		if (bs1.size() != bs2.size()) {
-			return false;
+		if (bs1.isEmpty() || bs2.isEmpty()) {
+			return true;
 		}
 
 		for (Binding binding : bs1) {
