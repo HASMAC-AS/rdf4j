@@ -99,6 +99,7 @@ public final class Varint {
 	 * @param value value to encode
 	 */
 	public static void writeUnsigned(final ByteBuffer bb, final long value) {
+
 		// Fast path for Long.MAX_VALUE (0xFF header + 8 data bytes)
 		if (value == Long.MAX_VALUE) {
 			final ByteOrder prev = bb.order();

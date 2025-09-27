@@ -15,6 +15,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 public final class Bytes {
+
+	private final static boolean bigEndian = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+
 	private Bytes() {
 	}
 
@@ -113,28 +116,27 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			return equals(bigEndian ? expected : expectedLE, b.getShort());
 		};
 	}
 
 	private static RegionComparator comparatorLen4(byte[] array, int offset) {
 
-		final short expected = toShort(array, offset + 1);
-		final short expectedLE = Short.reverseBytes(expected);
-		final byte expectedTail = array[offset + 3];
+		final int expected = toInt(array, offset);
+		final int expectedLE = Integer.reverseBytes(expected);
+
+//		final byte expectedTail = array[offset + 3];
 
 		return (firstByte, b) -> {
-			if (!equals(array[offset], firstByte)) {
+
+			b.position(b.position() - 1);
+
+			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
 				return false;
 			}
-
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
-			if (!equals(bigEndian ? expected : expectedLE, b.getShort())) {
-				return false;
-			}
-
-			return equals(expectedTail, b.get());
+			return true;
+//
+//			return equals(expectedTail, b.get());
 		};
 	}
 
@@ -148,7 +150,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			return equals(bigEndian ? expected : expectedLE, b.getInt());
 		};
 	}
@@ -164,7 +165,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
 				return false;
 			}
@@ -185,7 +185,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
 				return false;
 			}
@@ -207,7 +206,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
 				return false;
 			}
@@ -232,7 +230,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -254,7 +251,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -281,7 +277,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -309,7 +304,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -340,7 +334,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -368,7 +361,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -401,7 +393,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -435,7 +426,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -472,7 +462,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -506,7 +495,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -545,7 +533,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
@@ -585,7 +572,6 @@ public final class Bytes {
 				return false;
 			}
 
-			boolean bigEndian = b.order() == ByteOrder.BIG_ENDIAN;
 			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
 				return false;
 			}
