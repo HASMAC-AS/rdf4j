@@ -136,15 +136,6 @@ class LmdbRecordIterator implements RecordIterator {
 		}
 	}
 
-	public GroupMatcher getGroupMatcher() {
-		if (groupMatcher != null)
-			return groupMatcher;
-		if (matchValues) {
-			this.groupMatcher = index.createMatcher(subj, pred, obj, context);
-		}
-		return groupMatcher;
-	}
-
 	@Override
 	public long[] next() {
 		long readStamp;
@@ -204,7 +195,7 @@ class LmdbRecordIterator implements RecordIterator {
 				// if (maxKey != null && TripleStore.COMPARATOR.compare(keyData.mv_data(), maxKey.mv_data()) > 0) {
 				if (maxKey != null && mdb_cmp(txn, dbi, keyData, maxKey) > 0) {
 					lastResult = MDB_NOTFOUND;
-				} else if (getGroupMatcher() != null && !getGroupMatcher().matches(keyData.mv_data())) {
+				} else if (matches()) {
 					// value doesn't match search key/mask, fetch next value
 					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
 				} else {
@@ -219,6 +210,18 @@ class LmdbRecordIterator implements RecordIterator {
 			return null;
 		} finally {
 			txnLockManager.unlockRead(readStamp);
+		}
+	}
+
+	private boolean matches() {
+
+		if (groupMatcher != null) {
+			return !this.groupMatcher.matches(keyData.mv_data());
+		} else if (matchValues) {
+			this.groupMatcher = index.createMatcher(subj, pred, obj, context);
+			return !this.groupMatcher.matches(keyData.mv_data());
+		} else {
+			return false;
 		}
 	}
 

@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
  */
 public class GroupMatcher {
 
+	public static final Bytes.RegionComparator NULL_REGION_COMPARATOR = (a, b) -> true;
 	private final int length0;
 	private final int length1;
 	private final int length2;
@@ -46,18 +47,27 @@ public class GroupMatcher {
 			this.firstByte0 = fb;
 			int len = firstToLength(fb);
 			this.length0 = len;
-
-			this.cmp0 = Bytes.capturedComparator(valueArray, 0, len);
+			if (shouldMatch[0]) {
+				this.cmp0 = Bytes.capturedComparator(valueArray, 0, len);
+			} else {
+				this.cmp0 = NULL_REGION_COMPARATOR;
+				;
+			}
 
 			baseOffset += len;
 		}
 		{
+
 			byte fb = valueArray[baseOffset];
 			this.firstByte1 = fb;
 			int len = firstToLength(fb);
 			this.length1 = len;
 
-			this.cmp1 = Bytes.capturedComparator(valueArray, baseOffset, len);
+			if (shouldMatch[1]) {
+				this.cmp1 = Bytes.capturedComparator(valueArray, baseOffset, len);
+			} else {
+				this.cmp1 = NULL_REGION_COMPARATOR;
+			}
 
 			baseOffset += len;
 		}
@@ -66,8 +76,11 @@ public class GroupMatcher {
 			this.firstByte2 = fb;
 			int len = firstToLength(fb);
 			this.length2 = len;
-
-			this.cmp2 = Bytes.capturedComparator(valueArray, baseOffset, len);
+			if (shouldMatch[2]) {
+				this.cmp2 = Bytes.capturedComparator(valueArray, baseOffset, len);
+			} else {
+				this.cmp2 = NULL_REGION_COMPARATOR;
+			}
 
 			baseOffset += len;
 		}
@@ -77,7 +90,11 @@ public class GroupMatcher {
 			int len = firstToLength(fb);
 			this.length3 = len;
 
-			this.cmp3 = Bytes.capturedComparator(valueArray, baseOffset, len);
+			if (shouldMatch[3]) {
+				this.cmp3 = Bytes.capturedComparator(valueArray, baseOffset, len);
+			} else {
+				this.cmp3 = NULL_REGION_COMPARATOR;
+			}
 		}
 
 		this.matcher = selectMatcher(shouldMatch);
