@@ -109,55 +109,48 @@ public final class Bytes {
 	private static RegionComparator comparatorLen3(byte[] array, int offset) {
 
 		final short expected = toShort(array, offset + 1);
-		final short expectedLE = Short.reverseBytes(expected);
+		final short expectedEndian = bigEndian ? expected : Short.reverseBytes(expected);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			return equals(bigEndian ? expected : expectedLE, b.getShort());
+			return equals(expectedEndian, b.getShort());
 		};
 	}
 
 	private static RegionComparator comparatorLen4(byte[] array, int offset) {
 
 		final int expected = toInt(array, offset);
-		final int expectedLE = Integer.reverseBytes(expected);
-
-//		final byte expectedTail = array[offset + 3];
+		final int expectedEndian = bigEndian ? expected : Integer.reverseBytes(expected);
 
 		return (firstByte, b) -> {
 
 			b.position(b.position() - 1);
 
-			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
-				return false;
-			}
-			return true;
-//
-//			return equals(expectedTail, b.get());
+			return equals(expectedEndian, b.getInt());
 		};
 	}
 
 	private static RegionComparator comparatorLen5(byte[] array, int offset) {
 
 		final int expected = toInt(array, offset + 1);
-		final int expectedLE = Integer.reverseBytes(expected);
+		final int expectedEndian = bigEndian ? expected : Integer.reverseBytes(expected);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			return equals(bigEndian ? expected : expectedLE, b.getInt());
+			return equals(expectedEndian, b.getInt());
 		};
 	}
 
 	private static RegionComparator comparatorLen6(byte[] array, int offset) {
 
 		final int expected = toInt(array, offset + 1);
-		final int expectedLE = Integer.reverseBytes(expected);
+		final int expectedEndian = bigEndian ? expected : Integer.reverseBytes(expected);
 		final byte tail = array[offset + 5];
 
 		return (firstByte, b) -> {
@@ -165,7 +158,7 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
+			if (!equals(expectedEndian, b.getInt())) {
 				return false;
 			}
 
@@ -176,29 +169,29 @@ public final class Bytes {
 	private static RegionComparator comparatorLen7(byte[] array, int offset) {
 
 		final int expected = toInt(array, offset + 1);
-		final int expectedLE = Integer.reverseBytes(expected);
+		final int expectedEndian = bigEndian ? expected : Integer.reverseBytes(expected);
 		final short expectedTail = toShort(array, offset + 5);
-		final short expectedTailLE = Short.reverseBytes(expectedTail);
+		final short expectedTailEndian = bigEndian ? expectedTail : Short.reverseBytes(expectedTail);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
+			if (!equals(expectedEndian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expectedTail : expectedTailLE, b.getShort());
+			return equals(expectedTailEndian, b.getShort());
 		};
 	}
 
 	private static RegionComparator comparatorLen8(byte[] array, int offset) {
 
 		final int expected = toInt(array, offset + 1);
-		final int expectedLE = Integer.reverseBytes(expected);
+		final int expectedEndian = bigEndian ? expected : Integer.reverseBytes(expected);
 		final short expectedShort = toShort(array, offset + 5);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 		final byte tail = array[offset + 7];
 
 		return (firstByte, b) -> {
@@ -206,11 +199,11 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected : expectedLE, b.getInt())) {
+			if (!equals(expectedEndian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expectedShort : expectedShortLE, b.getShort())) {
+			if (!equals(expectedShortEndian, b.getShort())) {
 				return false;
 			}
 
@@ -221,29 +214,29 @@ public final class Bytes {
 	private static RegionComparator comparatorLen9(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expected2 : expected2LE, b.getInt());
+			return equals(expected2Endian, b.getInt());
 		};
 	}
 
 	private static RegionComparator comparatorLen10(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final byte tail = array[offset + 9];
 
 		return (firstByte, b) -> {
@@ -251,11 +244,11 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
@@ -266,37 +259,37 @@ public final class Bytes {
 	private static RegionComparator comparatorLen11(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final short expectedShort = toShort(array, offset + 9);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expectedShort : expectedShortLE, b.getShort());
+			return equals(expectedShortEndian, b.getShort());
 		};
 	}
 
 	private static RegionComparator comparatorLen12(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final short expectedShort = toShort(array, offset + 9);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 		final byte tail = array[offset + 11];
 
 		return (firstByte, b) -> {
@@ -304,15 +297,15 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expectedShort : expectedShortLE, b.getShort())) {
+			if (!equals(expectedShortEndian, b.getShort())) {
 				return false;
 			}
 
@@ -323,37 +316,37 @@ public final class Bytes {
 	private static RegionComparator comparatorLen13(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expected3 : expected3LE, b.getInt());
+			return equals(expected3Endian, b.getInt());
 		};
 	}
 
 	private static RegionComparator comparatorLen14(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final byte tail = array[offset + 13];
 
 		return (firstByte, b) -> {
@@ -361,15 +354,15 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
@@ -380,45 +373,45 @@ public final class Bytes {
 	private static RegionComparator comparatorLen15(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final short expectedShort = toShort(array, offset + 13);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expectedShort : expectedShortLE, b.getShort());
+			return equals(expectedShortEndian, b.getShort());
 		};
 	}
 
 	private static RegionComparator comparatorLen16(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final short expectedShort = toShort(array, offset + 13);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 		final byte tail = array[offset + 15];
 
 		return (firstByte, b) -> {
@@ -426,19 +419,19 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expectedShort : expectedShortLE, b.getShort())) {
+			if (!equals(expectedShortEndian, b.getShort())) {
 				return false;
 			}
 
@@ -449,45 +442,45 @@ public final class Bytes {
 	private static RegionComparator comparatorLen17(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final int expected4 = toInt(array, offset + 13);
-		final int expected4LE = Integer.reverseBytes(expected4);
+		final int expected4Endian = bigEndian ? expected4 : Integer.reverseBytes(expected4);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expected4 : expected4LE, b.getInt());
+			return equals(expected4Endian, b.getInt());
 		};
 	}
 
 	private static RegionComparator comparatorLen18(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final int expected4 = toInt(array, offset + 13);
-		final int expected4LE = Integer.reverseBytes(expected4);
+		final int expected4Endian = bigEndian ? expected4 : Integer.reverseBytes(expected4);
 		final byte tail = array[offset + 17];
 
 		return (firstByte, b) -> {
@@ -495,19 +488,19 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected4 : expected4LE, b.getInt())) {
+			if (!equals(expected4Endian, b.getInt())) {
 				return false;
 			}
 
@@ -518,53 +511,53 @@ public final class Bytes {
 	private static RegionComparator comparatorLen19(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final int expected4 = toInt(array, offset + 13);
-		final int expected4LE = Integer.reverseBytes(expected4);
+		final int expected4Endian = bigEndian ? expected4 : Integer.reverseBytes(expected4);
 		final short expectedShort = toShort(array, offset + 17);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 
 		return (firstByte, b) -> {
 			if (!equals(array[offset], firstByte)) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected4 : expected4LE, b.getInt())) {
+			if (!equals(expected4Endian, b.getInt())) {
 				return false;
 			}
 
-			return equals(bigEndian ? expectedShort : expectedShortLE, b.getShort());
+			return equals(expectedShortEndian, b.getShort());
 		};
 	}
 
 	private static RegionComparator comparatorLen20(byte[] array, int offset) {
 
 		final int expected1 = toInt(array, offset + 1);
-		final int expected1LE = Integer.reverseBytes(expected1);
+		final int expected1Endian = bigEndian ? expected1 : Integer.reverseBytes(expected1);
 		final int expected2 = toInt(array, offset + 5);
-		final int expected2LE = Integer.reverseBytes(expected2);
+		final int expected2Endian = bigEndian ? expected2 : Integer.reverseBytes(expected2);
 		final int expected3 = toInt(array, offset + 9);
-		final int expected3LE = Integer.reverseBytes(expected3);
+		final int expected3Endian = bigEndian ? expected3 : Integer.reverseBytes(expected3);
 		final int expected4 = toInt(array, offset + 13);
-		final int expected4LE = Integer.reverseBytes(expected4);
+		final int expected4Endian = bigEndian ? expected4 : Integer.reverseBytes(expected4);
 		final short expectedShort = toShort(array, offset + 17);
-		final short expectedShortLE = Short.reverseBytes(expectedShort);
+		final short expectedShortEndian = bigEndian ? expectedShort : Short.reverseBytes(expectedShort);
 		final byte tail = array[offset + 19];
 
 		return (firstByte, b) -> {
@@ -572,23 +565,23 @@ public final class Bytes {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected1 : expected1LE, b.getInt())) {
+			if (!equals(expected1Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected2 : expected2LE, b.getInt())) {
+			if (!equals(expected2Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected3 : expected3LE, b.getInt())) {
+			if (!equals(expected3Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expected4 : expected4LE, b.getInt())) {
+			if (!equals(expected4Endian, b.getInt())) {
 				return false;
 			}
 
-			if (!equals(bigEndian ? expectedShort : expectedShortLE, b.getShort())) {
+			if (!equals(expectedShortEndian, b.getShort())) {
 				return false;
 			}
 
