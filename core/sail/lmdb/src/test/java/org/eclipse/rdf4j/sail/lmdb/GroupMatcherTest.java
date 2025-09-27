@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,7 +39,7 @@ class GroupMatcherTest {
 			for (byte[] valueLengths : ALL_LENGTH_COMBINATIONS) {
 				final byte[] lengthsRef = valueLengths;
 				long[] referenceValues = valuesForLengths(valueLengths);
-				GroupMatcher matcher = new GroupMatcher(encode(referenceValues).duplicate().array(), shouldMatch);
+				GroupMatcher matcher = new GroupMatcher(encodeBE(referenceValues).duplicate().array(), shouldMatch);
 
 				for (CandidateStrategy strategy : CANDIDATE_STRATEGIES) {
 					final CandidateStrategy strategyRef = strategy;
@@ -46,7 +47,7 @@ class GroupMatcherTest {
 					final long[] candidateCopy = candidateValues;
 					ByteBuffer matchBuffer = encode(candidateCopy);
 
-					assertTrue(matcher.matches(matchBuffer.duplicate()),
+					assertTrue(matcher.matches(nativeOrder(matchBuffer.duplicate())),
 							() -> failureMessage("expected match", maskBits, lengthsRef, strategyRef, candidateCopy,
 									null));
 
@@ -62,7 +63,7 @@ class GroupMatcherTest {
 								}
 								final long[] mismatchCopy = mismatchValues;
 								ByteBuffer mismatchBuffer = encode(mismatchCopy);
-								assertFalse(matcher.matches(mismatchBuffer.duplicate()),
+								assertFalse(matcher.matches(nativeOrder(mismatchBuffer.duplicate())),
 										() -> failureMessage("expected mismatch",
 												maskBits, lengthsRef, strategyRef, mismatchCopy, mismatchType));
 							}
@@ -71,6 +72,11 @@ class GroupMatcherTest {
 				}
 			}
 		}
+	}
+
+	private ByteBuffer nativeOrder(ByteBuffer duplicate) {
+		duplicate.order(ByteOrder.nativeOrder());
+		return duplicate;
 	}
 
 	private static long[] valuesForLengths(byte[] lengthIndices) {
@@ -113,6 +119,18 @@ class GroupMatcherTest {
 	private static ByteBuffer encode(long[] values) {
 		ByteBuffer buffer = ByteBuffer
 				.allocate(Varint.calcListLengthUnsigned(values[0], values[1], values[2], values[3]));
+		buffer.order(ByteOrder.nativeOrder());
+		for (long value : values) {
+			Varint.writeUnsigned(buffer, value);
+		}
+		buffer.flip();
+		return buffer;
+	}
+
+	private static ByteBuffer encodeBE(long[] values) {
+		ByteBuffer buffer = ByteBuffer
+				.allocate(Varint.calcListLengthUnsigned(values[0], values[1], values[2], values[3]));
+		buffer.order(ByteOrder.nativeOrder());
 		for (long value : values) {
 			Varint.writeUnsigned(buffer, value);
 		}
