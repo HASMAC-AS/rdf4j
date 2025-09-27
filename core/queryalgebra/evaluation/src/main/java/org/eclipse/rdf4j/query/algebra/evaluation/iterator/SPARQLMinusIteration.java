@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.query.algebra.evaluation.iterator;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -42,6 +43,7 @@ public class SPARQLMinusIteration extends FilterIteration<BindingSet> {
 	private Set<BindingSet> excludeSet;
 	private Set<String> excludeSetBindingNames;
 	private boolean excludeSetBindingNamesAreAllTheSame;
+	private BindingSet[] excludeSetList;
 
 	/*--------------*
 	 * Constructors *
@@ -73,6 +75,7 @@ public class SPARQLMinusIteration extends FilterIteration<BindingSet> {
 		if (!initialized) {
 			// Build set of elements-to-exclude from right argument
 			excludeSet = makeSet(getRightArg());
+			excludeSetList = excludeSet.toArray(new BindingSet[0]);
 			excludeSetBindingNames = excludeSet.stream()
 					.map(BindingSet::getBindingNames)
 					.flatMap(Set::stream)
@@ -104,7 +107,9 @@ public class SPARQLMinusIteration extends FilterIteration<BindingSet> {
 			}
 		}
 
-		for (BindingSet excluded : excludeSet) {
+		// noinspection ForLoopReplaceableByForEach
+		for (int i = 0, excludeSetListLength = excludeSetList.length; i < excludeSetListLength; i++) {
+			BindingSet excluded = excludeSetList[i];
 
 			if (!excludeSetBindingNamesAreAllTheSame) {
 				hasSharedBindings = false;
@@ -114,7 +119,6 @@ public class SPARQLMinusIteration extends FilterIteration<BindingSet> {
 						break;
 					}
 				}
-
 			}
 
 			// two bindingsets that share no variables are compatible by
