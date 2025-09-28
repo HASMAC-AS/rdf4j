@@ -78,12 +78,12 @@ Score the change on these lenses. If any are **High**, prefer **Routine A**.
 * **Bias to action:** when inputs are ambiguous, choose a reasonable path, state assumptions, and proceed.
 * **Ask only when blocked or irreversible:** permissions, missing deps, conflicting requirements, destructive repo‑wide changes.
 * **Definition of Done**
-  * Code formatted and imports sorted.
-  * Compiles with a quick profile / targeted modules.
-  * Relevant module tests pass; failures triaged or crisply explained.
-  * Only necessary files changed; headers correct for new files.
-  * Clear final summary: what changed, why, where, how verified, next steps.
-  * **Evidence present:** failing test output (pre‑fix) and passing output (post‑fix) are shown for Routine A; for Routine B show **pre/post green** from the **same selection** plus **Hit Proof**.
+    * Code formatted and imports sorted.
+    * Compiles with a quick profile / targeted modules.
+    * Relevant module tests pass; failures triaged or crisply explained.
+    * Only necessary files changed; headers correct for new files.
+    * Clear final summary: what changed, why, where, how verified, next steps.
+    * **Evidence present:** failing test output (pre‑fix) and passing output (post‑fix) are shown for Routine A; for Routine B show **pre/post green** from the **same selection** plus **Hit Proof**.
 
 ### No Monkey‑Patching or Band‑Aid Fixes (Non‑Negotiable)
 
@@ -138,10 +138,35 @@ Snippet:
 **Routine B additions**
 * **Pre‑green:** capture a pre‑change **passing** snippet from the **most specific** test selection that hits your code (ideally a class or method).
 * **Hit Proof (choose one):**
-  * An existing test class/method that directly calls the edited class/method, plus a short `rg -n` snippet showing the call site; **or**
-  * A Surefire/Failsafe output line containing the edited class/method names; **or**
-  * A temporary assertion or deliberate, isolated failing check in a **scratch test** proving the path is executed (then remove).
+    * An existing test class/method that directly calls the edited class/method, plus a short `rg -n` snippet showing the call site; **or**
+    * A Surefire/Failsafe output line containing the edited class/method names; **or**
+    * A temporary assertion or deliberate, isolated failing check in a **scratch test** proving the path is executed (then remove).
 * **Post‑green:** after the patch, re‑run the **same selection** and capture a passing snippet.
+
+---
+
+### Initial Evidence Capture (Required)
+
+To avoid losing the first test evidence when later runs overwrite `target/*-reports/`, immediately persist the initial verify results to a top‑level `initial-evidence.txt` file.
+
+• On a fully green verify run:
+
+- Capture and store the last 200 lines of the Maven verify output.
+- Example (module‑scoped):
+    - `mvn -o -pl <module> verify | tee .initial-verify.log`
+    - `tail -200 .initial-verify.log > initial-evidence.txt`
+
+• On any failing verify run (unit or IT failures):
+
+- Concatenate the Surefire and/or Failsafe report text files into `initial-evidence.txt`.
+- Example (repo‑root):
+    - `find . -type f \( -path "*/target/surefire-reports/*.txt" -o -path "*/target/failsafe-reports/*.txt" \) -print0 | xargs -0 cat > initial-evidence.txt`
+
+Notes
+
+- Keep `initial-evidence.txt` at the repository root alongside your final handoff.
+- Do not rely on `target/*-reports/` for the final report; they may be overwritten by subsequent runs.
+- Continue to include the standard Evidence block(s) in your messages as usual.
 
 ---
 
@@ -178,7 +203,7 @@ Plan
 `-am` is helpful for **compiles**, hazardous for **tests**.
 
 * ✅ Use `-am` **only** for compile/verify with tests skipped (e.g. `-Pquick`):
-  * `mvn -o -pl <module> -am -Pquick install`
+    * `mvn -o -pl <module> -am -Pquick install`
 * ❌ Do **not** use `-am` with `verify` when tests are enabled.
 
 **Two-step pattern (fast + safe)**
@@ -201,26 +226,26 @@ Running `install` publishes your changed modules there so downstream modules and
 * Always run `mvn -o -Pquick install | tail -200` before any `verify` or test runs.
 * If offline resolution fails due to a missing dependency or plugin, rerun the exact `install` command once without `-o`, then return offline.
 * Skipping this step can lead to stale or missing artifacts during tests, producing confusing compilation or linkage errors.
-* Never ever change the repo location. Never use `-Dmaven.repo.local=.m2_repo`. 
+* Never ever change the repo location. Never use `-Dmaven.repo.local=.m2_repo`.
 * Always try to run these commands first to see if they run without needing any approvals from the user w.r.t. the sandboxing.
 ---
 
 ## Quick Start (First 10 Minutes)
 
 1. **Discover**
-   * Inspect root `pom.xml` and module tree (see “Maven Module Overview”).
-   * Search fast with ripgrep: `rg -n "<symbol or string>"`
+    * Inspect root `pom.xml` and module tree (see “Maven Module Overview”).
+    * Search fast with ripgrep: `rg -n "<symbol or string>"`
 2. **Build sanity (fast, skip tests)**
-   * `mvn -o -Pquick install | tail -200`
+    * `mvn -o -Pquick install | tail -200`
 3. **Format (Java, imports, XML)**
-   * `mvn -o -q -T 2C formatter:format impsort:sort xml-format:xml-format`
+    * `mvn -o -q -T 2C formatter:format impsort:sort xml-format:xml-format`
 4. **Targeted tests (tight loops)**
-   * Module: `mvn -o -pl <module> verify  | tail -500`
-   * Class: `mvn -o -pl <module> -Dtest=ClassName verify  | tail -500`
-   * Method: `mvn -o -pl <module> -Dtest=ClassName#method verify | tail -500`
+    * Module: `mvn -o -pl <module> verify  | tail -500`
+    * Class: `mvn -o -pl <module> -Dtest=ClassName verify  | tail -500`
+    * Method: `mvn -o -pl <module> -Dtest=ClassName#method verify | tail -500`
 5. **Inspect failures**
-   * **Unit (Surefire):** `<module>/target/surefire-reports/`
-   * **IT (Failsafe):** `<module>/target/failsafe-reports/`
+    * **Unit (Surefire):** `<module>/target/surefire-reports/`
+    * **IT (Failsafe):** `<module>/target/failsafe-reports/`
 
 It is illegal to `-am` when running tests!
 It is illegal to `-q` when running tests!
@@ -328,14 +353,14 @@ It is illegal to `-q` when running tests!
 * **Narrow further** to a class/method; then broaden to the module.
 * **Expand scope** when changes cross boundaries or neighbor modules fail.
 * **Read reports**
-  * Surefire (unit): `target/surefire-reports/`
-  * Failsafe (IT): `target/failsafe-reports/`
+    * Surefire (unit): `target/surefire-reports/`
+    * Failsafe (IT): `target/failsafe-reports/`
 * **Helpful flags**
-  * `-Dtest=Class#method` (unit selection)
-  * `-Dit.test=ITClass#method` (integration selection)
-  * `-DtrimStackTrace=false` (full traces)
-  * `-DskipITs` (focus on unit tests)
-  * `-DfailIfNoTests=false` (when selecting a class that has no tests on some platforms)
+    * `-Dtest=Class#method` (unit selection)
+    * `-Dit.test=ITClass#method` (integration selection)
+    * `-DtrimStackTrace=false` (full traces)
+    * `-DskipITs` (focus on unit tests)
+    * `-DfailIfNoTests=false` (when selecting a class that has no tests on some platforms)
 
 ### Optional: Redirect test stdout/stderr to files
 ```bash
@@ -491,7 +516,7 @@ Do **not** modify existing headers’ years.
   `mvn -o -pl <module> verify -PslowTestsOnly,-skipSlowTests | tail -500`
 * Slow tests (specific test):
 
-  * `mvn -o -pl core/sail/shacl -PslowTestsOnly,-skipSlowTests -Dtest=ClassName#method verify | tail -500`
+    * `mvn -o -pl core/sail/shacl -PslowTestsOnly,-skipSlowTests -Dtest=ClassName#method verify | tail -500`
 * Integration tests (entire repo):
   `mvn -o verify -PskipUnitTests | tail -500`
 * Integration tests (by module):
