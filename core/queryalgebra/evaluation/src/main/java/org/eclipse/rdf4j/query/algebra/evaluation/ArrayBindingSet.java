@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -53,6 +54,7 @@ public class ArrayBindingSet extends AbstractBindingSet implements MutableBindin
 	private boolean empty;
 
 	private final Value[] values;
+	private int cachedHashCode;
 
 	/**
 	 * Creates a new Array-based BindingSet for the supplied bindings names. <em>The supplied list of binding names is
@@ -379,6 +381,7 @@ public class ArrayBindingSet extends AbstractBindingSet implements MutableBindin
 
 	private void clearCache() {
 		bindingNamesSetCache = null;
+		cachedHashCode = 0;
 	}
 
 	public void addAll(ArrayBindingSet other) {
@@ -403,22 +406,47 @@ public class ArrayBindingSet extends AbstractBindingSet implements MutableBindin
 
 	}
 
-//	@Override
-//	public boolean equals(Object other){
-//		if(other == null) return false;
-//		if(other == this) return true;
-//
-//		if(other.getClass() != ArrayBindingSet.class){
-//			return super.equals(other);
-//		}
-//
-//		ArrayBindingSet that = (ArrayBindingSet) other;
-//
-//		// TODO make a faster equals for ArrayBindingSet
-//		return super.equals(that);
-//
-//
-//	}
+	@Override
+	public int hashCode() {
+		if (cachedHashCode == 0) {
+			cachedHashCode = super.hashCode();
+		}
+		return cachedHashCode;
+	}
+
+	@Override
+	public boolean equals(Object other) {
+		if (other == null)
+			return false;
+		if (other == this)
+			return true;
+
+		if (other.getClass() != ArrayBindingSet.class) {
+			return super.equals(other);
+		}
+
+		ArrayBindingSet o = (ArrayBindingSet) other;
+		if (empty && o.empty)
+			return true;
+		if (empty != o.empty)
+			return false;
+		if (size() != o.size())
+			return false;
+
+		if (bindingNames == o.bindingNames) {
+			for (int i = 0; i < values.length; i++) {
+				if (values[i] != o.values[i]) {
+					if (!Objects.equals(values[i], o.values[i])) {
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		return super.equals(other);
+
+	}
 
 	private class ArrayBindingSetIterator implements Iterator<Binding> {
 
