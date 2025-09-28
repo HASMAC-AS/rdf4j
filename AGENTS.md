@@ -542,6 +542,35 @@ Do **not** modify existing headers’ years.
 
 ---
 
+## Using JaCoCo (Coverage)
+
+JaCoCo is configured via the `jacoco` Maven profile in the root POM. Surefire/Failsafe honor the prepared agent `argLine`, so no extra flags are required beyond `-Pjacoco`.
+
+- Run with coverage
+    - Module: `mvn -o -pl <module> -Pjacoco verify | tail -500`
+    - Class: `mvn -o -pl <module> -Pjacoco -Dtest=ClassName verify | tail -500`
+    - Method: `mvn -o -pl <module> -Pjacoco -Dtest=ClassName#method verify | tail -500`
+
+- Where to find reports (per module)
+    - Exec data: `<module>/target/jacoco.exec`
+    - HTML report: `<module>/target/site/jacoco/index.html`
+    - XML report: `<module>/target/site/jacoco/jacoco.xml`
+
+- Check if a specific test covers code X
+    - Run only that test (class or method) with `-Dtest=...` (see above) and `-Pjacoco`.
+    - Open the HTML report and navigate to the class/method of interest; non-zero line/branch coverage indicates the selected test touched it.
+    - For multiple tests, run them in small subsets to localize coverage quickly.
+
+- Troubleshooting
+    - If you see “Skipping JaCoCo execution due to missing execution data file”, ensure you passed `-Pjacoco` and ran the install step first.
+    - If offline resolution fails for the JaCoCo plugin, rerun the exact command once without `-o`, then return offline.
+
+- Notes
+    - The default JaCoCo reports do not list “which individual tests” hit each line. Use single-test runs to infer per-test coverage. If you need true per-test mapping, add a JUnit 5 extension that sets a JaCoCo session per test and writes per-test exec files.
+    - Do not use `-am` when running tests; keep runs targeted by module/class/method.
+
+---
+
 ## Prohibited Misinterpretations
 
 * A user stack trace, reproduction script, or verbal description **is not evidence** for behavior‑changing work. You must implement the smallest failing test **inside this repo**.
