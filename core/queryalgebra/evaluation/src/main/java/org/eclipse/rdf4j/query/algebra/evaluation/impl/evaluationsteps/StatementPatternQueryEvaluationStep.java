@@ -53,8 +53,8 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 	private final TripleSource tripleSource;
 	private final boolean emptyGraph;
 	private final Function<Value, Resource[]> contextSup;
-	private final BiConsumer<MutableBindingSet, Statement> converter;
-	private final BiConsumer<MutableBindingSet, Statement> convertStatementConverter;
+	private BiConsumer<MutableBindingSet, Statement> converter;
+	private BiConsumer<MutableBindingSet, Statement> convertStatementConverter;
 	private final QueryEvaluationContext context;
 	private final StatementOrder order;
 
@@ -64,6 +64,11 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 	private final Function<BindingSet, Value> getSubjectVar;
 	private final Function<BindingSet, Value> getPredicateVar;
 	private final Function<BindingSet, Value> getObjectVar;
+
+	private final Var normalizedSubjectVar;
+	private final Var normalizedPredicateVar;
+	private final Var normalizedObjectVar;
+	private final Var normalizedContextVar;
 
 	// We try to do as much work as possible in the constructor.
 	// With the aim of making the evaluate method as cheap as possible.
@@ -138,10 +143,13 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 			}
 		}
 
-		converter = makeConverter(context, subjVar, predVar, objVar, conVar);
-		convertStatementConverter = makeConvertStatementConverter(context, subjVar, predVar, objVar, conVar);
+		normalizedSubjectVar = subjVar;
+		normalizedPredicateVar = predVar;
+		normalizedObjectVar = objVar;
+		normalizedContextVar = conVar;
 
-		unboundTest = getUnboundTest(context, subjVar, predVar, objVar, conVar);
+		unboundTest = getUnboundTest(context, normalizedSubjectVar, normalizedPredicateVar, normalizedObjectVar,
+				normalizedContextVar);
 
 	}
 
@@ -278,7 +286,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 			iteration = handleFilter(contexts, (Resource) subject, (IRI) predicate, object, iteration);
 
 			// Return an iterator that converts the statements to var bindings
-			return new JoinStatementWithBindingSetIterator(iteration, converter, bindings, context);
+			return new JoinStatementWithBindingSetIterator(iteration, getConverter(), bindings, context);
 		} catch (Throwable t) {
 			if (iteration != null) {
 				iteration.close();
@@ -330,7 +338,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 			iteration = handleFilter(contexts, (Resource) subject, (IRI) predicate, object, iteration);
 
 			// Return an iterator that converts the statements to var bindings
-			return new ConvertStatementToBindingSetIterator(iteration, convertStatementConverter, context);
+			return new ConvertStatementToBindingSetIterator(iteration, getConvertStatementConverter(), context);
 		} catch (Throwable t) {
 			if (iteration != null) {
 				iteration.close();
@@ -340,6 +348,36 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 			}
 			throw new QueryEvaluationException(t);
 		}
+	}
+
+	private BiConsumer<MutableBindingSet, Statement> getConverter() {
+		BiConsumer<MutableBindingSet, Statement> localConverter = converter;
+		if (localConverter == null) {
+			synchronized (this) {
+				localConverter = converter;
+				if (localConverter == null) {
+					localConverter = makeConverter(context, normalizedSubjectVar, normalizedPredicateVar,
+							normalizedObjectVar, normalizedContextVar);
+					converter = localConverter;
+				}
+			}
+		}
+		return localConverter;
+	}
+
+	private BiConsumer<MutableBindingSet, Statement> getConvertStatementConverter() {
+		BiConsumer<MutableBindingSet, Statement> localConverter = convertStatementConverter;
+		if (localConverter == null) {
+			synchronized (this) {
+				localConverter = convertStatementConverter;
+				if (localConverter == null) {
+					localConverter = makeConvertStatementConverter(context, normalizedSubjectVar,
+							normalizedPredicateVar, normalizedObjectVar, normalizedContextVar);
+					convertStatementConverter = localConverter;
+				}
+			}
+		}
+		return localConverter;
 	}
 
 	private CloseableIteration<? extends Statement> handleFilter(Resource[] contexts,
