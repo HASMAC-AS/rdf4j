@@ -129,7 +129,7 @@ public abstract class AbstractValueFactory implements ValueFactory {
 		}
 
 		if (datatype == CoreDatatype.XSD.INTEGER) {
-			if (label.length() <= 3) {
+			if (label.length() <= 3 && !label.startsWith("+") && !label.startsWith("-")) {
 				try {
 					int v = Integer.parseInt(label);
 					if (v >= 0 && v <= 999) {
