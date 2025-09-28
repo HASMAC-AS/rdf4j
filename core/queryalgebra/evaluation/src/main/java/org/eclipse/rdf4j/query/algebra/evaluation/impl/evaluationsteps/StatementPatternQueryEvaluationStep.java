@@ -526,23 +526,23 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 	private static final class ConvertStatementToBindingSetIterator
 			implements CloseableIteration<BindingSet> {
 
-		private final BiConsumer<MutableBindingSet, Statement> action;
+		private final BiConsumer<MutableBindingSet, Statement> converter;
 		private final QueryEvaluationContext context;
 		private final CloseableIteration<? extends Statement> iteration;
 		private boolean closed = false;
 
 		private ConvertStatementToBindingSetIterator(
 				CloseableIteration<? extends Statement> iteration,
-				BiConsumer<MutableBindingSet, Statement> action, QueryEvaluationContext context) {
+				BiConsumer<MutableBindingSet, Statement> converter, QueryEvaluationContext context) {
 			assert iteration != null;
 			this.iteration = iteration;
-			this.action = action;
+			this.converter = converter;
 			this.context = context;
 		}
 
 		private BindingSet convert(Statement st) {
 			MutableBindingSet made = context.createBindingSet();
-			action.accept(made, st);
+			converter.accept(made, st);
 			return made;
 		}
 
@@ -573,7 +573,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 	private static final class JoinStatementWithBindingSetIterator
 			implements CloseableIteration<BindingSet> {
 
-		private final BiConsumer<MutableBindingSet, Statement> action;
+		private final BiConsumer<MutableBindingSet, Statement> converter;
 		private final QueryEvaluationContext context;
 		private final BindingSet bindings;
 		private final CloseableIteration<? extends Statement> iteration;
@@ -581,11 +581,11 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 
 		private JoinStatementWithBindingSetIterator(
 				CloseableIteration<? extends Statement> iteration,
-				BiConsumer<MutableBindingSet, Statement> action, BindingSet bindings, QueryEvaluationContext context) {
+				BiConsumer<MutableBindingSet, Statement> converter, BindingSet bindings, QueryEvaluationContext context) {
 			assert iteration != null;
 			this.iteration = iteration;
 			assert !bindings.isEmpty();
-			this.action = action;
+			this.converter = converter;
 			this.context = context;
 			this.bindings = bindings;
 
@@ -593,7 +593,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 
 		private BindingSet convert(Statement st) {
 			MutableBindingSet made = context.createBindingSet(bindings);
-			action.accept(made, st);
+			converter.accept(made, st);
 			return made;
 		}
 
