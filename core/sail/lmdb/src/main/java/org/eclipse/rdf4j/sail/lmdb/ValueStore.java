@@ -190,7 +190,7 @@ class ValueStore extends AbstractValueFactory {
 	private final Set<ReadTxn> readTransactions = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	private final ThreadLocal<ReadTxn> threadLocalReadTxn = ThreadLocal.withInitial(() -> {
 		ReadTxn readTxn = new ReadTxn();
-		readTransactions.add(readTxn);
+		readTxn.registerIfNeeded();
 		cleaner.register(readTxn, readTxn::close);
 		return readTxn;
 	});
@@ -1263,7 +1263,9 @@ class ValueStore extends AbstractValueFactory {
 			ReadTxn[] snapshot = readTransactions.toArray(new ReadTxn[0]);
 			for (ReadTxn readTxn : snapshot) {
 				readTxn.close();
-				readTransactions.remove(readTxn);
+				if (readTransactions.remove(readTxn)) {
+					readTxn.unregister();
+				}
 			}
 			threadLocalReadTxn.remove();
 		} finally {
@@ -1290,6 +1292,7 @@ class ValueStore extends AbstractValueFactory {
 		private long txn;
 		private boolean initialized;
 		private int depth;
+		private boolean registered;
 
 		<T> T execute(Transaction<T> transaction) throws IOException {
 			try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -1304,7 +1307,7 @@ class ValueStore extends AbstractValueFactory {
 		}
 
 		private long ensureTxn() throws IOException {
-			readTransactions.add(this);
+			registerIfNeeded();
 			if (!initialized) {
 				txn = startTxn();
 				initialized = true;
@@ -1338,6 +1341,17 @@ class ValueStore extends AbstractValueFactory {
 			if (depth == 0 && initialized) {
 				mdb_txn_reset(txn);
 			}
+		}
+
+		private void registerIfNeeded() {
+			if (!registered) {
+				readTransactions.add(this);
+				registered = true;
+			}
+		}
+
+		private void unregister() {
+			registered = false;
 		}
 
 		private void closeInternal() {
