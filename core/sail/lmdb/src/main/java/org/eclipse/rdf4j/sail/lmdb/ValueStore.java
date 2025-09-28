@@ -22,6 +22,7 @@ import static org.lwjgl.util.lmdb.LMDB.MDB_NOMETASYNC;
 import static org.lwjgl.util.lmdb.LMDB.MDB_NOSYNC;
 import static org.lwjgl.util.lmdb.LMDB.MDB_NOTLS;
 import static org.lwjgl.util.lmdb.LMDB.MDB_PREV;
+import static org.lwjgl.util.lmdb.LMDB.MDB_RDONLY;
 import static org.lwjgl.util.lmdb.LMDB.MDB_RESERVE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SET_RANGE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SUCCESS;
@@ -186,6 +187,13 @@ class ValueStore extends AbstractValueFactory {
 	final Set<Long> unusedRevisionIds = new HashSet<>();
 
 	private final ConcurrentCleaner cleaner = new ConcurrentCleaner();
+	private final Set<ReadTxn> readTransactions = Collections.newSetFromMap(new ConcurrentHashMap<>());
+	private final ThreadLocal<ReadTxn> threadLocalReadTxn = ThreadLocal.withInitial(() -> {
+		ReadTxn readTxn = new ReadTxn();
+		readTransactions.add(readTxn);
+		cleaner.register(readTxn, readTxn::close);
+		return readTxn;
+	});
 
 	ValueStore(File dir, LmdbStoreConfig config) throws IOException {
 		this.dir = dir;
@@ -799,7 +807,10 @@ class ValueStore extends AbstractValueFactory {
 	<T> T readTransaction(long env, Transaction<T> transaction) throws IOException {
 		txnLock.readLock().lock();
 		try {
-			return LmdbUtil.readTransaction(env, writeTxn, transaction);
+			if (writeTxn != 0) {
+				return LmdbUtil.readTransaction(env, writeTxn, transaction);
+			}
+			return threadLocalReadTxn.get().execute(transaction);
 		} finally {
 			txnLock.readLock().unlock();
 		}
@@ -1246,6 +1257,20 @@ class ValueStore extends AbstractValueFactory {
 		commonVocabulary.clear();
 	}
 
+	private void closeReadTransactions() {
+		txnLock.writeLock().lock();
+		try {
+			ReadTxn[] snapshot = readTransactions.toArray(new ReadTxn[0]);
+			for (ReadTxn readTxn : snapshot) {
+				readTxn.close();
+				readTransactions.remove(readTxn);
+			}
+			threadLocalReadTxn.remove();
+		} finally {
+			txnLock.writeLock().unlock();
+		}
+	}
+
 	/**
 	 * Closes the ValueStore, releasing any file references, etc. Once closed, the ValueStore can no longer be used.
 	 *
@@ -1253,9 +1278,81 @@ class ValueStore extends AbstractValueFactory {
 	 */
 	public void close() throws IOException {
 		if (env != 0) {
+			closeReadTransactions();
 			endTransaction(false);
 			mdb_env_close(env);
 			env = 0;
+		}
+	}
+
+	private final class ReadTxn {
+
+		private long txn;
+		private boolean initialized;
+		private int depth;
+
+		<T> T execute(Transaction<T> transaction) throws IOException {
+			try (MemoryStack stack = MemoryStack.stackPush()) {
+				long handle = ensureTxn();
+				depth++;
+				try {
+					return transaction.exec(stack, handle);
+				} finally {
+					releaseTxn();
+				}
+			}
+		}
+
+		private long ensureTxn() throws IOException {
+			readTransactions.add(this);
+			if (!initialized) {
+				txn = startTxn();
+				initialized = true;
+				return txn;
+			}
+			if (depth == 0) {
+				try {
+					E(mdb_txn_renew(txn));
+				} catch (IOException e) {
+					closeInternal();
+					txn = startTxn();
+					initialized = true;
+				}
+			}
+			return txn;
+		}
+
+		private long startTxn() throws IOException {
+			try (MemoryStack stack = MemoryStack.stackPush()) {
+				PointerBuffer pp = stack.mallocPointer(1);
+				E(mdb_txn_begin(env, NULL, MDB_RDONLY, pp));
+				return pp.get(0);
+			}
+		}
+
+		private void releaseTxn() {
+			if (depth == 0) {
+				return;
+			}
+			depth--;
+			if (depth == 0 && initialized) {
+				mdb_txn_reset(txn);
+			}
+		}
+
+		private void closeInternal() {
+			if (initialized) {
+				if (depth > 0) {
+					mdb_txn_reset(txn);
+					depth = 0;
+				}
+				mdb_txn_abort(txn);
+				initialized = false;
+			}
+		}
+
+		void close() {
+			closeInternal();
 		}
 	}
 
