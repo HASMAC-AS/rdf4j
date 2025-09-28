@@ -54,6 +54,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 	private final boolean emptyGraph;
 	private final Function<Value, Resource[]> contextSup;
 	private final BiConsumer<MutableBindingSet, Statement> converter;
+	private final BiConsumer<MutableBindingSet, Statement> convertStatementConverter;
 	private final QueryEvaluationContext context;
 	private final StatementOrder order;
 
@@ -138,6 +139,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 		}
 
 		converter = makeConverter(context, subjVar, predVar, objVar, conVar);
+		convertStatementConverter = makeConvertStatementConverter(context, subjVar, predVar, objVar, conVar);
 
 		unboundTest = getUnboundTest(context, subjVar, predVar, objVar, conVar);
 
@@ -328,7 +330,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 			iteration = handleFilter(contexts, (Resource) subject, (IRI) predicate, object, iteration);
 
 			// Return an iterator that converts the statements to var bindings
-			return new ConvertStatementToBindingSetIterator(iteration, converter, context);
+			return new ConvertStatementToBindingSetIterator(iteration, convertStatementConverter, context);
 		} catch (Throwable t) {
 			if (iteration != null) {
 				iteration.close();
@@ -581,7 +583,8 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 
 		private JoinStatementWithBindingSetIterator(
 				CloseableIteration<? extends Statement> iteration,
-				BiConsumer<MutableBindingSet, Statement> converter, BindingSet bindings, QueryEvaluationContext context) {
+				BiConsumer<MutableBindingSet, Statement> converter, BindingSet bindings,
+				QueryEvaluationContext context) {
 			assert iteration != null;
 			this.iteration = iteration;
 			assert !bindings.isEmpty();
@@ -681,6 +684,60 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 		return (a, b) -> {
 		};
 
+	}
+
+	private static BiConsumer<MutableBindingSet, Statement> makeConvertStatementConverter(
+			QueryEvaluationContext context,
+			Var s, Var p, Var o, Var c) {
+
+		if (s != null && !s.isConstant()) {
+			if (p != null && !p.isConstant()) {
+				if (o != null && !o.isConstant()) {
+					if (c != null && !c.isConstant()) {
+						return StatementConvertorWithoutBindingChecks.spoc(context, s, p, o, c);
+					} else {
+						return StatementConvertorWithoutBindingChecks.spo(context, s, p, o);
+					}
+				} else if (c != null && !c.isConstant()) {
+					return StatementConvertorWithoutBindingChecks.spc(context, s, p, c);
+				} else {
+					return StatementConvertorWithoutBindingChecks.sp(context, s, p);
+				}
+			} else if (o != null && !o.isConstant()) {
+				if (c != null && !c.isConstant()) {
+					return StatementConvertorWithoutBindingChecks.soc(context, s, o, c);
+				} else {
+					return StatementConvertorWithoutBindingChecks.so(context, s, o);
+				}
+			} else if (c != null && !c.isConstant()) {
+				return StatementConvertorWithoutBindingChecks.sc(context, s, c);
+			} else {
+				return StatementConvertorWithoutBindingChecks.s(context, s);
+			}
+		} else if (p != null && !p.isConstant()) {
+			if (o != null && !o.isConstant()) {
+				if (c != null && !c.isConstant()) {
+					return StatementConvertorWithoutBindingChecks.poc(context, p, o, c);
+				} else {
+					return StatementConvertorWithoutBindingChecks.po(context, p, o);
+				}
+			} else if (c != null && !c.isConstant()) {
+				return StatementConvertorWithoutBindingChecks.pc(context, p, c);
+			} else {
+				return StatementConvertorWithoutBindingChecks.p(context, p);
+			}
+		} else if (o != null && !o.isConstant()) {
+			if (c != null && !c.isConstant()) {
+				return StatementConvertorWithoutBindingChecks.oc(context, o, c);
+			} else {
+				return StatementConvertorWithoutBindingChecks.o(context, o);
+			}
+		} else if (c != null && !c.isConstant()) {
+			return StatementConvertorWithoutBindingChecks.c(context, c);
+		}
+
+		return (a, b) -> {
+		};
 	}
 
 	private static Predicate<Statement> andThen(Predicate<Statement> pred, Predicate<Statement> and) {
