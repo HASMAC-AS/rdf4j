@@ -60,6 +60,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.StampedLock;
@@ -1231,6 +1232,7 @@ class ValueStore extends AbstractValueFactory {
 	 * @throws IOException If an I/O error occurred.
 	 */
 	public long storeValue(Value value) throws IOException {
+		storedValueCounter.increment();
 		return getId(value, true);
 	}
 
@@ -1262,7 +1264,10 @@ class ValueStore extends AbstractValueFactory {
 		setNewRevision();
 	}
 
+	LongAdder storedValueCounter = new LongAdder();
+
 	protected void clearCaches() {
+		storedValueCounter.increment();
 		for (int i = 0; i < valueCache.length(); i++) {
 			valueCache.set(i, null);
 		}
@@ -1271,6 +1276,7 @@ class ValueStore extends AbstractValueFactory {
 		namespaceIDCache.clear();
 		commonVocabulary.clear();
 		PREVIOUS_NAMESPACE_HANDLE.setRelease(this, null);
+
 	}
 
 	private void closeReadTransactions() {
@@ -1307,18 +1313,13 @@ class ValueStore extends AbstractValueFactory {
 
 		private long txn;
 		private boolean initialized;
-		private int depth;
 		private boolean registered;
+		private long counter = storedValueCounter.sum();
 
 		<T> T execute(Transaction<T> transaction) throws IOException {
 			try (MemoryStack stack = MemoryStack.stackPush()) {
 				long handle = ensureTxn();
-				depth++;
-				try {
-					return transaction.exec(stack, handle);
-				} finally {
-					releaseTxn();
-				}
+				return transaction.exec(stack, handle);
 			}
 		}
 
@@ -1329,8 +1330,10 @@ class ValueStore extends AbstractValueFactory {
 				initialized = true;
 				return txn;
 			}
-			if (depth == 0) {
+			if (counter != storedValueCounter.sum()) {
+				counter = storedValueCounter.sum();
 				try {
+					mdb_txn_reset(txn);
 					E(mdb_txn_renew(txn));
 				} catch (IOException e) {
 					closeInternal();
@@ -1349,16 +1352,6 @@ class ValueStore extends AbstractValueFactory {
 			}
 		}
 
-		private void releaseTxn() {
-			if (depth == 0) {
-				return;
-			}
-			depth--;
-			if (depth == 0 && initialized) {
-				mdb_txn_reset(txn);
-			}
-		}
-
 		private void registerIfNeeded() {
 			if (!registered) {
 				readTransactions.add(this);
@@ -1372,10 +1365,7 @@ class ValueStore extends AbstractValueFactory {
 
 		private void closeInternal() {
 			if (initialized) {
-				if (depth > 0) {
-					mdb_txn_reset(txn);
-					depth = 0;
-				}
+				mdb_txn_reset(txn);
 				mdb_txn_abort(txn);
 				initialized = false;
 			}
