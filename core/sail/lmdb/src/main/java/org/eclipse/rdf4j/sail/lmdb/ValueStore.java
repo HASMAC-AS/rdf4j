@@ -49,9 +49,10 @@ import static org.lwjgl.util.lmdb.LMDB.mdb_txn_reset;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -116,6 +117,18 @@ class ValueStore extends AbstractValueFactory {
 	 * Maximum size of keys before hashing is used (size of two long values)
 	 */
 	private static final int MAX_KEY_SIZE = 16;
+
+	private static final VarHandle PREVIOUS_NAMESPACE_HANDLE;
+
+	static {
+		try {
+			PREVIOUS_NAMESPACE_HANDLE = MethodHandles.lookup()
+					.findVarHandle(ValueStore.class, "previousNamespaceEntry", Object[].class);
+		} catch (ReflectiveOperationException e) {
+			throw new ExceptionInInitializerError(e);
+		}
+	}
+
 	/**
 	 * Used to do the actual storage of values, once they're translated to byte arrays.
 	 */
@@ -194,6 +207,8 @@ class ValueStore extends AbstractValueFactory {
 		cleaner.register(readTxn, readTxn::close);
 		return readTxn;
 	});
+
+	private Object[] previousNamespaceEntry;
 
 	ValueStore(File dir, LmdbStoreConfig config) throws IOException {
 		this.dir = dir;
@@ -1255,6 +1270,7 @@ class ValueStore extends AbstractValueFactory {
 		namespaceCache.clear();
 		namespaceIDCache.clear();
 		commonVocabulary.clear();
+		PREVIOUS_NAMESPACE_HANDLE.setRelease(this, null);
 	}
 
 	private void closeReadTransactions() {
@@ -1595,6 +1611,11 @@ class ValueStore extends AbstractValueFactory {
 	 *-------------------------------------*/
 
 	private String getNamespace(long id) throws IOException {
+		Object[] cached = (Object[]) PREVIOUS_NAMESPACE_HANDLE.getAcquire(this);
+		if (cached != null && (long) cached[0] == id) {
+			return (String) cached[1];
+		}
+
 		Long cacheID = id;
 		String namespace = namespaceCache.get(cacheID);
 
@@ -1605,6 +1626,8 @@ class ValueStore extends AbstractValueFactory {
 				namespaceCache.put(cacheID, namespace);
 			}
 		}
+
+		PREVIOUS_NAMESPACE_HANDLE.setRelease(this, new Object[] { cacheID, namespace });
 
 		return namespace;
 	}
