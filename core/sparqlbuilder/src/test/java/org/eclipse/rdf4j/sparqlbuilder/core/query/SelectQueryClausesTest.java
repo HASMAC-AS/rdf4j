@@ -37,4 +37,27 @@ class SelectQueryClausesTest {
 				"SELECT ?s ?p ?o WHERE { <http://example.com/ns#subject> ?p ?o . }",
 				query.getQueryString());
 	}
+
+	@Test
+	void qPfx01_singlePrefixDeclaration() {
+		SelectQuery query = Queries.SELECT()
+				.prefix(SparqlBuilder.prefix("ex", Rdf.iri("http://example.com/ns#")))
+				.where(GraphPatterns.tp(SparqlBuilder.var("s"), SparqlBuilder.var("p"), SparqlBuilder.var("o")));
+
+		assertSparqlEquals(
+				"PREFIX ex: <http://example.com/ns#> SELECT * WHERE { ?s ?p ?o . }",
+				query.getQueryString());
+	}
+
+	@Test
+	void qPfx02_multiplePrefixesNormalizedOrder() {
+		SelectQuery query = Queries.SELECT()
+				.prefix(SparqlBuilder.prefix("foaf", Rdf.iri("http://xmlns.com/foaf/0.1/")))
+				.prefix(SparqlBuilder.prefix("ex", Rdf.iri("http://example.com/ns#")))
+				.where(GraphPatterns.tp(SparqlBuilder.var("s"), SparqlBuilder.var("p"), SparqlBuilder.var("o")));
+
+		assertSparqlEquals(
+				"PREFIX ex: <http://example.com/ns#> PREFIX foaf: <http://xmlns.com/foaf/0.1/> SELECT * WHERE { ?s ?p ?o . }",
+				query.getQueryString());
+	}
 }
