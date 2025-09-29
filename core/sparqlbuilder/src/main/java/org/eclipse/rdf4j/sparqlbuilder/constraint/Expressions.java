@@ -216,6 +216,7 @@ public class Expressions {
 	 * @see <a href="https://www.w3.org/TR/sparql11-query/#func-in">SPARQL IN Function</a>
 	 */
 	public static Expression<?> in(Operand searchTerm, Operand... expressions) {
+		requireOptions(expressions, "IN");
 		return new In(searchTerm, expressions);
 	}
 
@@ -228,6 +229,7 @@ public class Expressions {
 	 * @see <a href="https://www.w3.org/TR/sparql11-query/#func-not-in">SPARQL NOT IN Function</a>
 	 */
 	public static Expression<?> notIn(Operand searchTerm, Operand... expressions) {
+		requireOptions(expressions, "NOT IN");
 		return new In(searchTerm, false, expressions);
 	}
 
@@ -576,18 +578,22 @@ public class Expressions {
 	}
 
 	public static Expression<?> notIn(Variable var, RdfValue... options) {
+		requireOptions(options, "NOT IN");
 		return new NotIn(var, options);
 	}
 
 	public static Expression<?> notIn(Variable var, IRI... options) {
+		requireOptions(options, "NOT IN");
 		return notIn(var, parseIRIOptionsToRDFValueVarargs(options));
 	}
 
 	public static Expression<?> in(Variable var, RdfValue... options) {
+		requireOptions(options, "IN");
 		return new In(var, options);
 	}
 
 	public static Expression<?> in(Variable var, IRI... options) {
+		requireOptions(options, "IN");
 		return in(var, parseIRIOptionsToRDFValueVarargs(options));
 	}
 
@@ -623,5 +629,11 @@ public class Expressions {
 			rdfValueOptions.add(iri(option));
 		}
 		return rdfValueOptions.toArray(new RdfValue[0]);
+	}
+
+	private static void requireOptions(Object[] options, String operator) {
+		if (options == null || options.length == 0) {
+			throw new IllegalArgumentException(operator + " requires at least one option");
+		}
 	}
 }
