@@ -11,6 +11,7 @@
 
 package org.eclipse.rdf4j.sparqlbuilder.constraint;
 
+import org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf;
 import org.eclipse.rdf4j.sparqlbuilder.util.SparqlBuilderUtils;
 
 /**
@@ -80,7 +81,7 @@ public class Aggregate extends Expression<Aggregate> {
 	 * @see <a href="https://www.w3.org/TR/2013/REC-sparql11-query-20130321/#defn_aggGroupConcat"> group_concat()</a>
 	 */
 	public Aggregate separator(String separator) {
-		this.separator = separator;
+		this.separator = separator == null ? null : Rdf.literalOf(separator).getQueryString();
 
 		return this;
 	}
