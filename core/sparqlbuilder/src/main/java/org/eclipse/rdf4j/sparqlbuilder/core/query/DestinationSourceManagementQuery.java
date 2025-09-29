@@ -129,11 +129,11 @@ public abstract class DestinationSourceManagementQuery<T extends DestinationSour
 //			query.append(from.map(Iri::getQueryString).orElse(DEFAULT));
 //		}
 
-		query.append(from.filter(f -> !fromDefault).map(Iri::getQueryString).orElse(DEFAULT));
+		query.append(formatGraphReference(from, fromDefault));
 
 		query.append(" ").append(TO).append(" ");
 
-		query.append(to.filter(t -> !toDefault).map(Iri::getQueryString).orElse(DEFAULT));
+		query.append(formatGraphReference(to, toDefault));
 
 //		if(toDefault) {
 //			query.append(DEFAULT);
@@ -142,5 +142,12 @@ public abstract class DestinationSourceManagementQuery<T extends DestinationSour
 //		}
 
 		return query.toString();
+	}
+
+	private String formatGraphReference(Optional<Iri> iri, boolean useDefault) {
+		if (useDefault || iri.isEmpty()) {
+			return DEFAULT;
+		}
+		return "GRAPH " + iri.get().getQueryString();
 	}
 }

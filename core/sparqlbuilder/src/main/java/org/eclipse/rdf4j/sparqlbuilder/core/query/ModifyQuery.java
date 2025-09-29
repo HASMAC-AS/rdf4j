@@ -13,6 +13,8 @@ package org.eclipse.rdf4j.sparqlbuilder.core.query;
 
 import static org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf.iri;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.rdf4j.model.IRI;
@@ -39,7 +41,7 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 
 	private Optional<Iri> with = Optional.empty();
 	private Optional<Iri> using = Optional.empty();
-	private boolean usingNamed = false;
+	private final List<Iri> usingNamed = new ArrayList<>();
 
 	private Optional<TriplesTemplate> deleteTriples = Optional.empty();
 	private Optional<TriplesTemplate> insertTriples = Optional.empty();
@@ -153,9 +155,13 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 	 * @return this modify query instance
 	 */
 	public ModifyQuery usingNamed(Iri iri) {
-		usingNamed = true;
+		if (iri == null) {
+			usingNamed.clear();
+		} else {
+			usingNamed.add(iri);
+		}
 
-		return using(iri);
+		return this;
 	}
 
 	/**
@@ -204,15 +210,16 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 		});
 
 		using.ifPresent(usingIri -> {
-			modifyQuery.append(USING).append(" ");
-
-			if (usingNamed) {
-				modifyQuery.append(NAMED).append(" ");
-			}
-
-			modifyQuery.append(usingIri.getQueryString());
-			modifyQuery.append("\n");
+			modifyQuery.append(USING).append(" ").append(usingIri.getQueryString()).append("\n");
 		});
+
+		usingNamed.forEach(namedIri -> modifyQuery
+				.append(USING)
+				.append(" ")
+				.append(NAMED)
+				.append(" ")
+				.append(namedIri.getQueryString())
+				.append("\n"));
 
 		modifyQuery.append(where.getQueryString());
 

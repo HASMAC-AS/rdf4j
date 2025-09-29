@@ -493,7 +493,7 @@ public class Section3Test extends BaseExamples {
 	public void example_13() {
 		CopyQuery copy = Queries.COPY().fromDefault().to(iri("http://example.org/named"));
 		assertThat(copy.getQueryString()).is(stringEqualsIgnoreCaseAndWhitespace(
-				"COPY DEFAULT TO <http://example.org/named>"
+				"COPY DEFAULT TO GRAPH <http://example.org/named>"
 		));
 	}
 
@@ -504,7 +504,7 @@ public class Section3Test extends BaseExamples {
 	public void example_14() {
 		MoveQuery move = Queries.MOVE().fromDefault().to(iri("http://example.org/named"));
 		assertThat(move.getQueryString()).is(stringEqualsIgnoreCaseAndWhitespace(
-				"MOVE DEFAULT TO <http://example.org/named>"
+				"MOVE DEFAULT TO GRAPH <http://example.org/named>"
 		));
 	}
 
@@ -515,7 +515,7 @@ public class Section3Test extends BaseExamples {
 	public void example_15() {
 		AddQuery add = Queries.ADD().fromDefault().to(iri("http://example.org/named"));
 		assertThat(add.getQueryString()).is(stringEqualsIgnoreCaseAndWhitespace(
-				"ADD DEFAULT TO <http://example.org/named>"
+				"ADD DEFAULT TO GRAPH <http://example.org/named>"
 		));
 	}
 
