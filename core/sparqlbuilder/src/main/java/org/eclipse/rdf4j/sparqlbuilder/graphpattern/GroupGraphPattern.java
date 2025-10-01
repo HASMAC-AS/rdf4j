@@ -94,14 +94,7 @@ class GroupGraphPattern extends QueryElementCollection<GraphPattern> implements 
 
 	@Override
 	public String getQueryString() {
-		StringBuilder pattern = new StringBuilder();
 		StringBuilder innerPattern = new StringBuilder();
-
-		if (isOptional) {
-			pattern.append(OPTIONAL).append(" ");
-		}
-
-		SparqlBuilderUtils.appendQueryElementIfPresent(from, pattern, GRAPH, " ");
 
 		innerPattern.append(super.getQueryString());
 
@@ -109,10 +102,29 @@ class GroupGraphPattern extends QueryElementCollection<GraphPattern> implements 
 				Optional.of(filter),
 				innerPattern, "\n", null));
 
+		String innerPatternString = innerPattern.toString();
+
+		if (isOptional && from.isPresent()) {
+			StringBuilder graphClause = new StringBuilder();
+
+			SparqlBuilderUtils.appendQueryElementIfPresent(from, graphClause, GRAPH, " ");
+			graphClause.append(SparqlBuilderUtils.getBracedString(innerPatternString));
+
+			return OPTIONAL + " " + SparqlBuilderUtils.getBracedString(graphClause.toString());
+		}
+
+		StringBuilder pattern = new StringBuilder();
+
+		if (isOptional) {
+			pattern.append(OPTIONAL).append(" ");
+		}
+
+		SparqlBuilderUtils.appendQueryElementIfPresent(from, pattern, GRAPH, " ");
+
 		if (bracketInner()) {
-			pattern.append(SparqlBuilderUtils.getBracedString(innerPattern.toString()));
+			pattern.append(SparqlBuilderUtils.getBracedString(innerPatternString));
 		} else {
-			pattern.append(innerPattern.toString());
+			pattern.append(innerPatternString);
 		}
 
 		return pattern.toString();
