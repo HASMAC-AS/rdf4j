@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.sparqlbuilder.core.Variable;
 import org.eclipse.rdf4j.sparqlbuilder.core.query.Queries;
 import org.eclipse.rdf4j.sparqlbuilder.examples.BaseExamples;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphPattern;
+import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphPatterns;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.TriplePattern;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.Iri;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf;
@@ -148,6 +149,45 @@ public class Section10Test extends BaseExamples {
 						+ "}"
 		));
 
+	}
+
+	@Test
+	public void example_10_values_inline_via_graphpattern_method() {
+		String str = Queries.SELECT(book)
+				.prefix(prefixBook, ns)
+				.where(book.has(ns.iri("type"), ns.iri("Hardcover"))
+						.values(v -> v.variables(book).values(prefixBook.iri("book1"), prefixBook.iri("book2"))))
+				.getQueryString();
+		assertThat(str).is(stringEqualsIgnoreCaseAndWhitespace(
+				"PREFIX :     <http://example.org/book/>\n"
+						+ "PREFIX ns:   <http://example.org/ns#>\n"
+						+ "\n"
+						+ "SELECT ?book\n"
+						+ "WHERE {\n"
+						+ "  ?book ns:type ns:Hardcover .\n"
+						+ "  VALUES ?book { :book1 :book2 }\n"
+						+ "}"
+		));
+	}
+
+	@Test
+	public void example_10_values_using_graphpatterns_factory() {
+		String str = Queries.SELECT(book)
+				.prefix(prefixBook, ns)
+				.where(book.has(ns.iri("type"), ns.iri("Hardcover")),
+						GraphPatterns.values(
+								v -> v.variables(book).values(prefixBook.iri("book1"), prefixBook.iri("book2"))))
+				.getQueryString();
+		assertThat(str).is(stringEqualsIgnoreCaseAndWhitespace(
+				"PREFIX :     <http://example.org/book/>\n"
+						+ "PREFIX ns:   <http://example.org/ns#>\n"
+						+ "\n"
+						+ "SELECT ?book\n"
+						+ "WHERE {\n"
+						+ "  ?book ns:type ns:Hardcover .\n"
+						+ "  VALUES ?book { :book1 :book2 }\n"
+						+ "}"
+		));
 	}
 
 }
