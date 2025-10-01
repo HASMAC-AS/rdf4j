@@ -16,9 +16,9 @@ import static org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf.iri;
 import java.util.Optional;
 
 import org.eclipse.rdf4j.model.IRI;
+import org.eclipse.rdf4j.sparqlbuilder.core.QuadPatternCollection;
 import org.eclipse.rdf4j.sparqlbuilder.core.QueryPattern;
 import org.eclipse.rdf4j.sparqlbuilder.core.SparqlBuilder;
-import org.eclipse.rdf4j.sparqlbuilder.core.TriplesTemplate;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphName;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphPattern;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.TriplePattern;
@@ -41,8 +41,8 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 	private Optional<Iri> using = Optional.empty();
 	private boolean usingNamed = false;
 
-	private Optional<TriplesTemplate> deleteTriples = Optional.empty();
-	private Optional<TriplesTemplate> insertTriples = Optional.empty();
+	private Optional<QuadPatternCollection> deletePatterns = Optional.empty();
+	private Optional<QuadPatternCollection> insertPatterns = Optional.empty();
 	private Optional<GraphName> deleteGraph = Optional.empty();
 	private Optional<GraphName> insertGraph = Optional.empty();
 
@@ -81,8 +81,21 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 	 * @see <a href="https://www.w3.org/TR/sparql11-update/#deleteWhere"> SPARQL DELETE WHERE shortcut</a>
 	 */
 	public ModifyQuery delete(TriplePattern... triples) {
-		deleteTriples = SparqlBuilderUtils.getOrCreateAndModifyOptional(deleteTriples, SparqlBuilder::triplesTemplate,
-				tt -> tt.and(triples));
+		deletePatterns = SparqlBuilderUtils.getOrCreateAndModifyOptional(deletePatterns, QuadPatternCollection::new,
+				qp -> qp.and(triples));
+
+		return this;
+	}
+
+	/**
+	 * Specify quad patterns to delete (allows named GRAPH blocks)
+	 *
+	 * @param patterns the graph patterns to delete
+	 * @return this modify query instance
+	 */
+	public ModifyQuery delete(GraphPattern... patterns) {
+		deletePatterns = SparqlBuilderUtils.getOrCreateAndModifyOptional(deletePatterns, QuadPatternCollection::new,
+				qp -> qp.and(patterns));
 
 		return this;
 	}
@@ -106,8 +119,21 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 	 * @return this modify query instance
 	 */
 	public ModifyQuery insert(TriplePattern... triples) {
-		insertTriples = SparqlBuilderUtils.getOrCreateAndModifyOptional(insertTriples, SparqlBuilder::triplesTemplate,
-				tt -> tt.and(triples));
+		insertPatterns = SparqlBuilderUtils.getOrCreateAndModifyOptional(insertPatterns, QuadPatternCollection::new,
+				qp -> qp.and(triples));
+
+		return this;
+	}
+
+	/**
+	 * Specify quad patterns to insert (allows named GRAPH blocks)
+	 *
+	 * @param patterns the graph patterns to insert
+	 * @return this modify query instance
+	 */
+	public ModifyQuery insert(GraphPattern... patterns) {
+		insertPatterns = SparqlBuilderUtils.getOrCreateAndModifyOptional(insertPatterns, QuadPatternCollection::new,
+				qp -> qp.and(patterns));
 
 		return this;
 	}
@@ -186,20 +212,20 @@ public class ModifyQuery extends UpdateQuery<ModifyQuery> {
 
 		with.ifPresent(withIri -> modifyQuery.append(WITH).append(" ").append(withIri.getQueryString()).append("\n"));
 
-		deleteTriples.ifPresent(delTriples -> {
+		deletePatterns.ifPresent(delPatterns -> {
 			modifyQuery.append(DELETE).append(" ");
 
 			// DELETE WHERE shortcut
 			// https://www.w3.org/TR/sparql11-update/#deleteWhere
-			if (!delTriples.isEmpty()) {
-				appendNamedTriplesTemplates(modifyQuery, deleteGraph, delTriples);
+			if (!delPatterns.isEmpty()) {
+				appendNamedGraphPatterns(modifyQuery, deleteGraph, delPatterns);
 			}
 			modifyQuery.append("\n");
 		});
 
-		insertTriples.ifPresent(insTriples -> {
+		insertPatterns.ifPresent(insPatterns -> {
 			modifyQuery.append(INSERT).append(" ");
-			appendNamedTriplesTemplates(modifyQuery, insertGraph, insTriples);
+			appendNamedGraphPatterns(modifyQuery, insertGraph, insPatterns);
 			modifyQuery.append("\n");
 		});
 
