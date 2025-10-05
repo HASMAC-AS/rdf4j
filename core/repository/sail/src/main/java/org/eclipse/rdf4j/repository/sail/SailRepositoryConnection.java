@@ -49,6 +49,7 @@ import org.eclipse.rdf4j.repository.UnknownTransactionStateException;
 import org.eclipse.rdf4j.repository.base.AbstractRepositoryConnection;
 import org.eclipse.rdf4j.rio.RDFHandler;
 import org.eclipse.rdf4j.rio.RDFHandlerException;
+import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.SailReadOnlyException;
@@ -69,6 +70,7 @@ public class SailRepositoryConnection extends AbstractRepositoryConnection imple
 	/**
 	 * The Sail connection wrapped by this repository connection object.
 	 */
+	private final SailRepository sailRepository;
 	private final SailConnection sailConnection;
 
 	/*--------------*
@@ -81,6 +83,7 @@ public class SailRepositoryConnection extends AbstractRepositoryConnection imple
 	 */
 	protected SailRepositoryConnection(SailRepository repository, SailConnection sailConnection) {
 		super(repository);
+		this.sailRepository = repository;
 		this.sailConnection = sailConnection;
 	}
 
@@ -155,8 +158,14 @@ public class SailRepositoryConnection extends AbstractRepositoryConnection imple
 			// always call receiveTransactionSettings(...) before calling begin();
 			sailConnection.setTransactionSettings();
 
-			if (getIsolationLevel() != null) {
-				sailConnection.begin(getIsolationLevel());
+			IsolationLevel isolationLevel = getIsolationLevel();
+			if (isolationLevel == null) {
+				isolationLevel = resolveDefaultIsolationLevel();
+				super.setIsolationLevel(isolationLevel);
+			}
+
+			if (isolationLevel != null) {
+				sailConnection.begin(isolationLevel);
 			} else {
 				sailConnection.begin();
 			}
@@ -167,12 +176,17 @@ public class SailRepositoryConnection extends AbstractRepositoryConnection imple
 
 	@Override
 	public void begin(IsolationLevel level) throws RepositoryException {
+		IsolationLevel isolationLevel = level;
+		if (isolationLevel == null) {
+			isolationLevel = resolveDefaultIsolationLevel();
+		}
+		super.setIsolationLevel(isolationLevel);
 		try {
 			// always call receiveTransactionSettings(...) before calling begin();
 			sailConnection.setTransactionSettings();
 
-			if (level != null) {
-				sailConnection.begin(level);
+			if (isolationLevel != null) {
+				sailConnection.begin(isolationLevel);
 			} else {
 				sailConnection.begin();
 			}
@@ -195,17 +209,29 @@ public class SailRepositoryConnection extends AbstractRepositoryConnection imple
 
 			for (TransactionSetting setting : settings) {
 				if (setting instanceof IsolationLevel) {
+					super.setIsolationLevel((IsolationLevel) setting);
 					sailConnection.begin((IsolationLevel) setting);
 					return;
 				}
 			}
 
+			IsolationLevel isolationLevel = resolveDefaultIsolationLevel();
+			super.setIsolationLevel(isolationLevel);
 			// if none of the transaction settings are isolation levels
-			sailConnection.begin();
+			if (isolationLevel != null) {
+				sailConnection.begin(isolationLevel);
+			} else {
+				sailConnection.begin();
+			}
 
 		} catch (SailException e) {
 			throw new RepositoryException(e);
 		}
+	}
+
+	private IsolationLevel resolveDefaultIsolationLevel() {
+		Sail sail = sailRepository != null ? sailRepository.getSail() : null;
+		return sail != null ? sail.getDefaultIsolationLevel() : null;
 	}
 
 	@Override
