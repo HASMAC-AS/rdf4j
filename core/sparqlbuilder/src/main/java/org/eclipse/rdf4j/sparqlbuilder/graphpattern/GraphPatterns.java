@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Value;
+import org.eclipse.rdf4j.sparqlbuilder.constraint.Values;
 import org.eclipse.rdf4j.sparqlbuilder.constraint.propertypath.builder.EmptyPropertyPathBuilder;
 import org.eclipse.rdf4j.sparqlbuilder.core.Projectable;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf;
@@ -158,6 +159,12 @@ public class GraphPatterns {
 		GroupGraphPattern and = new GroupGraphPattern();
 
 		return new GraphPatternNotTriples(and.and(patterns));
+	}
+
+	public static Values values(Consumer<Values.VariablesBuilder> valuesConfigurer) {
+		Values.Builder builder = (Values.Builder) Values.builder();
+		valuesConfigurer.accept(builder);
+		return builder.build();
 	}
 
 	/**
