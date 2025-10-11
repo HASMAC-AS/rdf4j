@@ -180,6 +180,7 @@ import org.eclipse.rdf4j.query.parser.sparql.ast.ASTOrderCondition;
 import org.eclipse.rdf4j.query.parser.sparql.ast.ASTPathAlternative;
 import org.eclipse.rdf4j.query.parser.sparql.ast.ASTPathElt;
 import org.eclipse.rdf4j.query.parser.sparql.ast.ASTPathMod;
+import org.eclipse.rdf4j.query.parser.sparql.ast.ASTPathNegatedPropertySet;
 import org.eclipse.rdf4j.query.parser.sparql.ast.ASTPathOneInPropertySet;
 import org.eclipse.rdf4j.query.parser.sparql.ast.ASTPathSequence;
 import org.eclipse.rdf4j.query.parser.sparql.ast.ASTProjectionElem;
@@ -250,9 +251,6 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 	protected ValueFactory valueFactory;
 
 	GraphPattern graphPattern = new GraphPattern();
-
-	// private Map<ValueConstant, Var> mappedValueConstants = new
-	// HashMap<ValueConstant, Var>();
 
 	/*--------------*
 	 * Constructors *
@@ -451,7 +449,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 
 				// create an extension linking the operator to the variable
 				// name.
-				ExtensionElem pe = new ExtensionElem(operator, alias);
+				ExtensionElem pe = new ExtensionElem(operator.clone(), alias);
 				extension.addElement(pe);
 
 				// add the aggregate operator to the group.
@@ -496,7 +494,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 					// name.
 					String alias = var.getName();
 
-					ExtensionElem pe = new ExtensionElem(operator, alias);
+					ExtensionElem pe = new ExtensionElem(operator.clone(), alias);
 					extension.addElement(pe);
 
 					// add the aggregate operator to the group.
@@ -578,7 +576,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 							Extension anonymousExtension = new Extension();
 							Var anonVar = createAnonVar();
 							expr.replaceChildNode(operator, anonVar);
-							anonymousExtension.addElement(new ExtensionElem(operator, anonVar.getName()));
+							anonymousExtension.addElement(new ExtensionElem(operator.clone(), anonVar.getName()));
 
 							anonymousExtension.setArg(result);
 							result = anonymousExtension;
@@ -595,7 +593,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 				// SELECT expressions need to be captured as an extension, so that original and alias are
 				// available for the ORDER BY clause (which gets applied _before_ projection). See GH-4066
 				// and https://www.w3.org/TR/sparql11-query/#sparqlSolMod .
-				ExtensionElem extElem = new ExtensionElem(valueExpr, alias);
+				ExtensionElem extElem = new ExtensionElem(cloneIfAggregate(valueExpr), alias);
 				extension.addElement(extElem);
 				elem.setSourceExpression(extElem);
 			} else if (child instanceof ASTVar) {
@@ -663,6 +661,13 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 		}
 
 		return result;
+	}
+
+	private ValueExpr cloneIfAggregate(ValueExpr valueExpr) {
+		if (valueExpr instanceof AggregateOperator) {
+			return ((AggregateOperator) valueExpr).clone();
+		}
+		return valueExpr;
 	}
 
 	private static boolean isIllegalCombinedWithGroupByExpression(ValueExpr expr, List<ProjectionElem> elements,
@@ -820,6 +825,12 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 
 	@Override
 	public TupleExpr visit(ASTConstruct node, Object data) throws VisitorException {
+
+		// check if the construct template contains any invalid nodes
+		if (isInvalidConstructQueryTemplate(node, true)) {
+			throw new MalformedQueryException("Invalid construct clause.");
+		}
+
 		TupleExpr result = (TupleExpr) data;
 
 		// Collect construct triples
@@ -872,7 +883,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 					// assign non-anonymous vars not present in where clause as
 					// extension elements. This is necessary to make external
 					// binding
-					// assingnment possible (see SES-996)
+					// assignment possible (see SES-996)
 					extElemMap.put(var, new ExtensionElem(var.clone(), var.getName()));
 				}
 			}
@@ -908,6 +919,41 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 		}
 
 		return new Reduced(result);
+	}
+
+	/**
+	 * Checks if the given node is invalid in a CONSTRUCT template.
+	 *
+	 * @param node                  The node to check.
+	 * @param isInConstructTemplate Indicates if the check is being performed within a CONSTRUCT clause.
+	 * @return true if the node is invalid, false otherwise.
+	 */
+	private static boolean isInvalidConstructQueryTemplate(Node node, boolean isInConstructTemplate) {
+		if (isInConstructTemplate && isInvalidConstructNode(node)) {
+			return true;
+		}
+
+		// recursively check child nodes
+		for (int i = 0; i < node.jjtGetNumChildren(); i++) {
+			if (isInvalidConstructQueryTemplate(node.jjtGetChild(i), isInConstructTemplate)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks if the given node is an invalid construct node.
+	 *
+	 * @param node The node to check.
+	 * @return true if the node is invalid, false otherwise.
+	 */
+	private static boolean isInvalidConstructNode(Node node) {
+		return node instanceof ASTPathMod
+				|| node instanceof ASTPathNegatedPropertySet
+				|| node instanceof ASTPathOneInPropertySet
+				|| (node instanceof ASTPathAlternative && node.jjtGetNumChildren() > 1);
 	}
 
 	/**
@@ -1359,7 +1405,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 				}
 			}
 
-			// when using union to execute path expressions, the scope does not not change
+			// when using union to execute path expressions, the scope does not change
 			union.setVariableScopeChange(false);
 			return union;
 		}
@@ -1548,7 +1594,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 
 		TupleExpr patternMatchInverse = null;
 
-		// build a inverse statement pattern if needed
+		// build an inverse statement pattern if needed
 		if (filterConditionInverse != null) {
 			patternMatchInverse = new StatementPattern(pathSequenceContext.scope, endVar.clone(), predVar.clone(),
 					subjVar.clone(),
@@ -2362,7 +2408,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 		ValueExpr ve = child0 instanceof ValueExpr ? (ValueExpr) child0
 				: (child0 instanceof TripleRef) ? ((TripleRef) child0).getExprVar() : null;
 		if (ve == null) {
-			throw new IllegalArgumentException("Unexpected expressin on bind");
+			throw new IllegalArgumentException("Unexpected expression on bind");
 		}
 
 		// name to bind the expression outcome to
@@ -2381,7 +2427,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 
 		// check if alias is not previously used in the BGP
 		if (arg.getBindingNames().contains(alias)) {
-			// SES-2314 we need to doublecheck that the reused varname is not just
+			// SES-2314 we need to double-check that the reused varname is not just
 			// for an anonymous var or a constant.
 			VarCollector collector = new VarCollector();
 			arg.visit(collector);
