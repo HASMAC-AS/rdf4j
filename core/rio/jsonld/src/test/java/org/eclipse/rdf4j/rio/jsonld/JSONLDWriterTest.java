@@ -19,12 +19,16 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 
+import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.DCTERMS;
+import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.eclipse.rdf4j.rio.ParserConfig;
 import org.eclipse.rdf4j.rio.RDFFormat;
@@ -236,6 +240,161 @@ public class JSONLDWriterTest extends RDFWriterTest {
 						"}",
 				stringWriter.toString());
 
+	}
+
+	@Test
+	public void testFrameCompactionWithTypedTermsAndNativeTypes() throws IOException, JsonLdError {
+		ValueFactory vf = SimpleValueFactory.getInstance();
+		Model data = new LinkedHashModel();
+		BNode notification = vf.createBNode();
+		BNode body = vf.createBNode();
+		IRI exBody = vf.createIRI("http://example.org/body");
+		IRI exAlertId = vf.createIRI("http://example.org/alert_id");
+		IRI exX = vf.createIRI("http://example.org/x");
+		IRI exY = vf.createIRI("http://example.org/y");
+		IRI exZ = vf.createIRI("http://example.org/z");
+
+		data.add(notification, RDF.TYPE, vf.createIRI("http://example.org/Notification"));
+		data.add(notification, exBody, body);
+		data.add(body, exAlertId, vf.createLiteral("test"));
+		data.add(body, exX, vf.createLiteral("-21330", XSD.FLOAT));
+		data.add(body, exY, vf.createLiteral("42464", XSD.FLOAT));
+		data.add(body, exZ, vf.createLiteral("18476", XSD.FLOAT));
+
+		Document frame = JsonDocument.of(new StringReader("{\n" +
+				"    \"@context\" : {\n" +
+				"        \"xsd\" : \"http://www.w3.org/2001/XMLSchema#\",\n" +
+				"        \"Notification\" : {\n" +
+				"            \"@id\" : \"Notification\"\n" +
+				"        },\n" +
+				"        \"ex\" : \"http://example.org/\",\n" +
+				"        \"@vocab\" : \"http://example.org/\",\n" +
+				"        \"alert_id\" : {\n" +
+				"            \"@id\" : \"alert_id\"\n" +
+				"        },\n" +
+				"        \"x\" : {\n" +
+				"            \"@type\" : \"xsd:float\",\n" +
+				"            \"@id\" : \"x\"\n" +
+				"        },\n" +
+				"        \"y\" : {\n" +
+				"            \"@type\" : \"xsd:float\",\n" +
+				"            \"@id\" : \"y\"\n" +
+				"        },\n" +
+				"        \"z\" : {\n" +
+				"            \"@type\" : \"xsd:float\",\n" +
+				"            \"@id\" : \"z\"\n" +
+				"        }\n" +
+				"    },\n" +
+				"    \"@omitGraph\" : true,\n" +
+				"    \"@type\" : \"ex:Notification\",\n" +
+				"    \"body\" : {\n" +
+				"        \"@embed\" : \"@always\"\n" +
+				"    }\n" +
+				"}"));
+
+		StringWriter stringWriter = new StringWriter();
+		RDFWriter rdfWriter = rdfWriterFactory.getWriter(stringWriter);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.JSONLD_MODE, JSONLDMode.FRAME);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.FRAME, frame);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.USE_NATIVE_TYPES, true);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.COMPACT_ARRAYS, true);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.OPTIMIZE, true);
+		rdfWriter.getWriterConfig().set(BasicWriterSettings.PRETTY_PRINT, true);
+
+		rdfWriter.startRDF();
+		data.forEach(rdfWriter::handleStatement);
+		rdfWriter.endRDF();
+
+		assertEquals("{\n" +
+				"  \"body\" : {\n" +
+				"    \"alert_id\" : \"test\",\n" +
+				"    \"z\" : 18476.0,\n" +
+				"    \"y\" : 42464.0,\n" +
+				"    \"x\" : -21330.0\n" +
+				"  }\n" +
+				"}", stringWriter.toString());
+	}
+
+	@Test
+	public void testFrameCompactionWithTypedTermsWithoutNativeTypes() throws IOException, JsonLdError {
+		ValueFactory vf = SimpleValueFactory.getInstance();
+		Model data = new LinkedHashModel();
+		BNode notification = vf.createBNode();
+		BNode body = vf.createBNode();
+		IRI exBody = vf.createIRI("http://example.org/body");
+		IRI exAlertId = vf.createIRI("http://example.org/alert_id");
+		IRI exX = vf.createIRI("http://example.org/x");
+		IRI exY = vf.createIRI("http://example.org/y");
+		IRI exZ = vf.createIRI("http://example.org/z");
+
+		data.add(notification, RDF.TYPE, vf.createIRI("http://example.org/Notification"));
+		data.add(notification, exBody, body);
+		data.add(body, exAlertId, vf.createLiteral("test"));
+		data.add(body, exX, vf.createLiteral("-21330", XSD.FLOAT));
+		data.add(body, exY, vf.createLiteral("42464", XSD.FLOAT));
+		data.add(body, exZ, vf.createLiteral("18476", XSD.FLOAT));
+
+		Document frame = JsonDocument.of(new StringReader("{\n" +
+				"    \"@context\" : {\n" +
+				"        \"xsd\" : \"http://www.w3.org/2001/XMLSchema#\",\n" +
+				"        \"Notification\" : {\n" +
+				"            \"@id\" : \"Notification\"\n" +
+				"        },\n" +
+				"        \"ex\" : \"http://example.org/\",\n" +
+				"        \"@vocab\" : \"http://example.org/\",\n" +
+				"        \"alert_id\" : {\n" +
+				"            \"@id\" : \"alert_id\"\n" +
+				"        },\n" +
+				"        \"x\" : {\n" +
+				"            \"@type\" : \"xsd:float\",\n" +
+				"            \"@id\" : \"x\"\n" +
+				"        },\n" +
+				"        \"y\" : {\n" +
+				"            \"@type\" : \"xsd:float\",\n" +
+				"            \"@id\" : \"y\"\n" +
+				"        },\n" +
+				"        \"z\" : {\n" +
+				"            \"@type\" : \"xsd:float\",\n" +
+				"            \"@id\" : \"z\"\n" +
+				"        }\n" +
+				"    },\n" +
+				"    \"@omitGraph\" : true,\n" +
+				"    \"@type\" : \"ex:Notification\",\n" +
+				"    \"body\" : {\n" +
+				"        \"@embed\" : \"@always\"\n" +
+				"    }\n" +
+				"}"));
+
+		StringWriter stringWriter = new StringWriter();
+		RDFWriter rdfWriter = rdfWriterFactory.getWriter(stringWriter);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.JSONLD_MODE, JSONLDMode.FRAME);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.FRAME, frame);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.USE_NATIVE_TYPES, false);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.COMPACT_ARRAYS, true);
+		rdfWriter.getWriterConfig().set(JSONLDSettings.OPTIMIZE, true);
+		rdfWriter.getWriterConfig().set(BasicWriterSettings.PRETTY_PRINT, true);
+
+		rdfWriter.startRDF();
+		data.forEach(rdfWriter::handleStatement);
+		rdfWriter.endRDF();
+
+		assertEquals("{\n" +
+				"  \"body\" : {\n" +
+				"    \"alert_id\" : \"test\",\n" +
+				"    \"z\" : {\n" +
+				"      \"@type\" : \"xsd:float\",\n" +
+				"      \"@value\" : \"18476\"\n" +
+				"    },\n" +
+				"    \"y\" : {\n" +
+				"      \"@type\" : \"xsd:float\",\n" +
+				"      \"@value\" : \"42464\"\n" +
+				"    },\n" +
+				"    \"x\" : {\n" +
+				"      \"@type\" : \"xsd:float\",\n" +
+				"      \"@value\" : \"-21330\"\n" +
+				"    }\n" +
+				"  }\n" +
+				"}", stringWriter.toString());
 	}
 
 	@Override
