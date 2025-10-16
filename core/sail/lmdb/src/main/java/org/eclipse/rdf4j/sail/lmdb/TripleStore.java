@@ -61,6 +61,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -160,6 +161,7 @@ class TripleStore implements Closeable {
 	 * The list of triple indexes that are used to store and retrieve triples.
 	 */
 	private final List<TripleIndex> indexes = new ArrayList<>();
+	private final SubjectPredicateIndex subjectPredicateIndex;
 	private final ValueStore valueStore;
 
 	private long env;
@@ -213,8 +215,9 @@ class TripleStore implements Closeable {
 		}
 
 		// Max DBs: 1 for contexts, 12 for triple indexes (2 per index),
-		// plus up to 12 dupsort companion DBs when enabled. Use a safe upper bound of 25.
-		E(mdb_env_set_maxdbs(env, 25));
+		// plus up to 12 dupsort companion DBs when enabled and an additional subject-predicate index.
+		// Use a safe upper bound of 27.
+		E(mdb_env_set_maxdbs(env, 27));
 		E(mdb_env_set_maxreaders(env, 256));
 
 		// Open environment
@@ -272,6 +275,8 @@ class TripleStore implements Closeable {
 				reindex(indexSpecs, reqIndexSpecs);
 			}
 		}
+
+		subjectPredicateIndex = dupsortIndices ? new SubjectPredicateIndex() : null;
 
 		if (!String.valueOf(SCHEME_VERSION).equals(properties.getProperty(VERSION_KEY))
 				|| !indexSpecStr.equals(properties.getProperty(INDEXES_KEY))) {
@@ -478,6 +483,15 @@ class TripleStore implements Closeable {
 				}
 			}
 
+			if (subjectPredicateIndex != null) {
+				try {
+					subjectPredicateIndex.close();
+				} catch (Throwable e) {
+					logger.warn("Failed to close subject-predicate dup index", e);
+					caughtExceptions.add(e);
+				}
+			}
+
 			mdb_env_close(env);
 			env = 0;
 
@@ -508,7 +522,9 @@ class TripleStore implements Closeable {
 		for (TripleIndex index : indexes) {
 			if (index.getFieldSeq()[0] == 'c') {
 				// found a context-first index
-				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false);
+				LmdbDupRecordIterator.FallbackSupplier fallback = () -> new LmdbRecordIterator(index, false, -1, -1, -1,
+						-1, true, txn);
+				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false, fallback);
 			}
 		}
 		return null;
@@ -519,7 +535,13 @@ class TripleStore implements Closeable {
 		TripleIndex index = getBestIndex(subj, pred, obj, context);
 		// System.out.println("get triples: " + Arrays.asList(subj, pred, obj,context));
 		boolean doRangeSearch = index.getPatternScore(subj, pred, obj, context) > 0;
-		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch);
+		LmdbDupRecordIterator.FallbackSupplier fallbackSupplier = () -> new LmdbRecordIterator(index, doRangeSearch,
+				subj, pred, obj, context, explicit, txn);
+		if (dupsortRead && subjectPredicateIndex != null && subj >= 0 && pred >= 0 && obj < 0 && context < 0) {
+			return new LmdbDupRecordIterator(subjectPredicateIndex, subj, pred, explicit, txn,
+					fallbackSupplier);
+		}
+		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch, fallbackSupplier);
 	}
 
 	boolean hasTriples(boolean explicit) throws IOException {
@@ -532,17 +554,13 @@ class TripleStore implements Closeable {
 	}
 
 	private RecordIterator getTriplesUsingIndex(Txn txn, long subj, long pred, long obj, long context,
-			boolean explicit, TripleIndex index, boolean rangeSearch) throws IOException {
-		if (dupsortRead && index.isDupsortEnabled()
-				&& leadingBoundCount(index.getFieldSeq(), subj, pred, obj, context) >= 2) {
-			return new LmdbDupRecordIterator(index, subj, pred, obj, context, explicit, txn);
-		}
-		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn);
+			boolean explicit, TripleIndex index, boolean rangeSearch,
+			LmdbDupRecordIterator.FallbackSupplier fallbackSupplier) throws IOException {
+		return fallbackSupplier.get();
 	}
 
 	private int leadingBoundCount(char[] fieldSeq, long subj, long pred, long obj, long context) {
 		int count = 0;
-
 
 		for (int i = 0; i < fieldSeq.length; i++) {
 			boolean bound;
@@ -1004,6 +1022,10 @@ class TripleStore implements Closeable {
 				}
 			}
 
+			if (stAdded && subjectPredicateIndex != null) {
+				subjectPredicateIndex.put(writeTxn, subj, pred, obj, context, explicit, stack);
+			}
+
 			if (stAdded) {
 				for (int i = 1; i < indexes.size(); i++) {
 
@@ -1045,6 +1067,9 @@ class TripleStore implements Closeable {
 				if (stAdded) {
 					incrementContext(stack, context);
 				}
+			}
+			if (foundImplicit && subjectPredicateIndex != null) {
+				subjectPredicateIndex.delete(writeTxn, subj, pred, obj, context, false, stack);
 			}
 		}
 
@@ -1175,6 +1200,12 @@ class TripleStore implements Closeable {
 							stack.setPointer(frame);
 						}
 					}
+
+				}
+
+				if (subjectPredicateIndex != null) {
+					subjectPredicateIndex.delete(writeTxn, quad[SUBJ_IDX], quad[PRED_IDX], quad[OBJ_IDX],
+							quad[CONTEXT_IDX], explicit, stack);
 				}
 
 				decrementContext(stack, quad[CONTEXT_IDX]);
@@ -1259,6 +1290,16 @@ class TripleStore implements Closeable {
 								}
 							}
 						}
+					}
+				}
+
+				if (subjectPredicateIndex != null && r != null) {
+					if (r.add) {
+						subjectPredicateIndex.put(writeTxn, r.quad[0], r.quad[1], r.quad[2], r.quad[3], explicit,
+								stack);
+					} else {
+						subjectPredicateIndex.delete(writeTxn, r.quad[0], r.quad[1], r.quad[2], r.quad[3], explicit,
+								stack);
 					}
 				}
 			}
@@ -1363,7 +1404,17 @@ class TripleStore implements Closeable {
 		}
 	}
 
-	class TripleIndex {
+	interface DupIndex {
+		char[] getFieldSeq();
+
+		int getDupDB(boolean explicit);
+
+		void toDupKeyPrefix(ByteBuffer bb, long subj, long pred, long obj, long context);
+
+		int getPatternScore(long subj, long pred, long obj, long context);
+	}
+
+	class TripleIndex implements DupIndex {
 
 		private final char[] fieldSeq;
 		private final IndexKeyWriters.KeyWriter keyWriter;
@@ -1413,7 +1464,8 @@ class TripleStore implements Closeable {
 			return explicit ? dbiDupExplicit : dbiDupInferred;
 		}
 
-		void toDupKeyPrefix(ByteBuffer bb, long subj, long pred, long obj, long context) {
+		@Override
+		public void toDupKeyPrefix(ByteBuffer bb, long subj, long pred, long obj, long context) {
 			long s = subj, p = pred, o = obj, c = context;
 			for (int i = 0; i < 2; i++) {
 				char f = fieldSeq[i];
@@ -1708,6 +1760,122 @@ class TripleStore implements Closeable {
 		void destroy(long txn) {
 			mdb_drop(txn, dbiExplicit, true);
 			mdb_drop(txn, dbiInferred, true);
+		}
+	}
+
+	class SubjectPredicateIndex implements DupIndex {
+
+		private final char[] fieldSeq = new char[] { 's', 'p', 'o', 'c' };
+		private final int dbiDupExplicit;
+		private final int dbiDupInferred;
+
+		SubjectPredicateIndex() throws IOException {
+			int flags = MDB_CREATE | org.lwjgl.util.lmdb.LMDB.MDB_DUPSORT
+					| org.lwjgl.util.lmdb.LMDB.MDB_DUPFIXED;
+			dbiDupExplicit = openDatabase(env, "sp-dup", flags, null);
+			dbiDupInferred = openDatabase(env, "sp-dup-inf", flags, null);
+		}
+
+		@Override
+		public char[] getFieldSeq() {
+			return fieldSeq;
+		}
+
+		@Override
+		public int getDupDB(boolean explicit) {
+			return explicit ? dbiDupExplicit : dbiDupInferred;
+		}
+
+		@Override
+		public void toDupKeyPrefix(ByteBuffer bb, long subj, long pred, long obj, long context) {
+			Varint.writeUnsigned(bb, subj);
+			Varint.writeUnsigned(bb, pred);
+		}
+
+		void toDupValue(ByteBuffer bb, long subj, long pred, long obj, long context) {
+			bb.putLong(obj);
+			bb.putLong(context);
+		}
+
+		@Override
+		public int getPatternScore(long subj, long pred, long obj, long context) {
+			int score = 0;
+			if (subj >= 0) {
+				score++;
+			} else {
+				return score;
+			}
+			if (pred >= 0) {
+				score++;
+			} else {
+				return score;
+			}
+			if (obj >= 0) {
+				score++;
+			} else {
+				return score;
+			}
+			if (context >= 0) {
+				score++;
+			}
+			return score;
+		}
+
+		void put(long txn, long subj, long pred, long obj, long context, boolean explicit, MemoryStack stack)
+				throws IOException {
+			int frame = stack.getPointer();
+			try {
+				ByteBuffer dupKeyBuf = stack.malloc(MAX_KEY_LENGTH);
+				ByteBuffer dupValBuf = stack.malloc(Long.BYTES * 2);
+				dupKeyBuf.clear();
+				toDupKeyPrefix(dupKeyBuf, subj, pred, obj, context);
+				dupKeyBuf.flip();
+				dupValBuf.clear();
+				writeLongLittleEndian(dupValBuf, obj);
+				writeLongLittleEndian(dupValBuf, context);
+				dupValBuf.flip();
+				MDBVal dupKeyVal = MDBVal.malloc(stack);
+				MDBVal dupDataVal = MDBVal.malloc(stack);
+				dupKeyVal.mv_data(dupKeyBuf);
+				dupDataVal.mv_data(dupValBuf);
+				E(mdb_put(txn, getDupDB(explicit), dupKeyVal, dupDataVal, 0));
+			} finally {
+				stack.setPointer(frame);
+			}
+		}
+
+		void delete(long txn, long subj, long pred, long obj, long context, boolean explicit, MemoryStack stack)
+				throws IOException {
+			int frame = stack.getPointer();
+			try {
+				ByteBuffer dupKeyBuf = stack.malloc(MAX_KEY_LENGTH);
+				ByteBuffer dupValBuf = stack.malloc(Long.BYTES * 2);
+				dupKeyBuf.clear();
+				toDupKeyPrefix(dupKeyBuf, subj, pred, obj, context);
+				dupKeyBuf.flip();
+				dupValBuf.clear();
+				writeLongLittleEndian(dupValBuf, obj);
+				writeLongLittleEndian(dupValBuf, context);
+				dupValBuf.flip();
+				MDBVal dupKeyVal = MDBVal.malloc(stack);
+				MDBVal dupDataVal = MDBVal.malloc(stack);
+				dupKeyVal.mv_data(dupKeyBuf);
+				dupDataVal.mv_data(dupValBuf);
+				E(mdb_del(txn, getDupDB(explicit), dupKeyVal, dupDataVal));
+			} finally {
+				stack.setPointer(frame);
+			}
+		}
+
+		void close() {
+			mdb_dbi_close(env, dbiDupExplicit);
+			mdb_dbi_close(env, dbiDupInferred);
+		}
+
+		private void writeLongLittleEndian(ByteBuffer buffer, long value) {
+			for (int i = 0; i < Long.BYTES; i++) {
+				buffer.put((byte) ((value >> (i * 8)) & 0xFF));
+			}
 		}
 	}
 
