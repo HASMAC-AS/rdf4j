@@ -857,7 +857,7 @@ class TripleStore implements Closeable {
 						if (rc != MDB_SUCCESS || mdb_cmp(txn, dbi, keyData, maxKey) >= 0) {
 							break;
 						} else {
-							Varint.readListUnsigned(keyData.mv_data(), s.minValues);
+							Varint.readQuadUnsigned(keyData.mv_data(), s.minValues);
 						}
 
 						// set cursor to max key
@@ -871,7 +871,7 @@ class TripleStore implements Closeable {
 							rc = mdb_cursor_get(cursor, keyData, valueData, MDB_PREV);
 						}
 						if (rc == MDB_SUCCESS) {
-							Varint.readListUnsigned(keyData.mv_data(), s.maxValues);
+							Varint.readQuadUnsigned(keyData.mv_data(), s.maxValues);
 							// this is required to correctly estimate the range size at a later point
 							s.startValues[s.MAX_BUCKETS] = s.maxValues;
 						} else {
@@ -885,7 +885,7 @@ class TripleStore implements Closeable {
 							if (bucket != 0) {
 								bucketStart((double) bucket / s.MAX_BUCKETS, s.minValues, s.maxValues, s.values);
 								keyBuf.clear();
-								Varint.writeListUnsigned(keyBuf, s.values);
+								Varint.writeQuadUnsigned(keyBuf, s.values);
 								keyBuf.flip();
 							}
 							// this is the min key for the first iteration
@@ -902,7 +902,7 @@ class TripleStore implements Closeable {
 									currentSamplesCount++;
 
 									System.arraycopy(s.values, 0, s.lastValues[bucket], 0, s.values.length);
-									Varint.readListUnsigned(keyData.mv_data(), s.values);
+									Varint.readQuadUnsigned(keyData.mv_data(), s.values);
 
 									if (currentSamplesCount == 1) {
 										Arrays.fill(s.counts, 1);
