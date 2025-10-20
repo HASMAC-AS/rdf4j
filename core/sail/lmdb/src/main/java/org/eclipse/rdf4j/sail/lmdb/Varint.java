@@ -43,6 +43,9 @@ public final class Varint {
 
 	static final byte[] ALL_ZERO_QUAD = new byte[] { 0, 0, 0, 0 };
 
+	private static final int[] BASE_LENGTH_BY_TIER = { 1, 2, 3, 1 };
+	private static final int[] BASE_EXTRA_BY_TIER = { 0, 1, 2, 0 };
+
 	private Varint() {
 	}
 
@@ -132,49 +135,49 @@ public final class Varint {
 			return;
 		}
 
-		if (value <= 240) {
-			bb.put((byte) value);
-		} else if (value <= 2287) {
-			// header: 241..248, then 1 payload byte
-			// Using bit ops instead of div/mod and putShort to batch the two bytes.
-			long v = value - 240; // 1..2047
-			final ByteOrder prev = bb.order();
-			if (prev != ByteOrder.BIG_ENDIAN) {
-				bb.order(ByteOrder.BIG_ENDIAN);
-			}
-			try {
-				int hi = (int) (v >>> 8) + 241; // 241..248
-				int lo = (int) (v & 0xFF); // 0..255
-				bb.putShort((short) ((hi << 8) | lo));
-			} finally {
-				if (prev != ByteOrder.BIG_ENDIAN) {
-					bb.order(prev);
-				}
-			}
-		} else if (value <= 67823) {
-			// header 249, then 2 payload bytes (value - 2288), big-endian
-			long v = value - 2288; // 0..65535
-			bb.put((byte) 249);
-			final ByteOrder prev = bb.order();
-			if (prev != ByteOrder.BIG_ENDIAN) {
-				bb.order(ByteOrder.BIG_ENDIAN);
-			}
-			try {
-				bb.putShort((short) v);
-			} finally {
-				if (prev != ByteOrder.BIG_ENDIAN) {
-					bb.order(prev);
-				}
-			}
-		} else {
-			int bytes = descriptor(value) + 1; // 3..8
-			bb.put((byte) (250 + (bytes - 3))); // header 250..255
-			writeSignificantBits(bb, value, bytes); // payload (batched)
+		final int tier = classifyUnsigned(value);
+		final int descriptorBytes = descriptor(value) + 1; // 1..8
+		final int isTier3 = 1 ^ ((tier - 3) >>> 31);
+		final long diffTier1 = value - 240;
+		final long diffTier2 = value - 2288;
+
+		int header = 0;
+		header |= maskEq(tier, 0) & (int) value;
+		header |= maskEq(tier, 1) & (241 + (int) (diffTier1 >>> 8));
+		header |= maskEq(tier, 2) & 249;
+		header |= maskEq(tier, 3) & (250 + (descriptorBytes - 3));
+		bb.put((byte) header);
+
+		final int extra = BASE_EXTRA_BY_TIER[tier] + isTier3 * descriptorBytes;
+		if (extra == 0) {
+			return;
 		}
+
+		if (extra == 1) {
+			bb.put((byte) diffTier1);
+			return;
+		}
+
+		if (extra == 2) {
+			final ByteOrder prev = bb.order();
+			if (prev != ByteOrder.BIG_ENDIAN) {
+				bb.order(ByteOrder.BIG_ENDIAN);
+			}
+			try {
+				bb.putShort((short) diffTier2);
+			} finally {
+				if (prev != ByteOrder.BIG_ENDIAN) {
+					bb.order(prev);
+				}
+			}
+			return;
+		}
+
+		writeSignificantBits(bb, value, descriptorBytes); // payload (batched)
 	}
 
 	// Writes the top `bytes` significant bytes of `value` in big-endian order.
-// Uses putLong/putInt/putShort to batch writes and a single leading byte if needed.
+	// Uses putLong/putInt/putShort to batch writes and a single leading byte if needed.
 	private static void writeSignificantBits(ByteBuffer bb, long value, int bytes) {
 		final ByteOrder prev = bb.order();
 		if (prev != ByteOrder.BIG_ENDIAN) {
@@ -221,16 +224,23 @@ public final class Varint {
 	 * @return length in bytes
 	 */
 	public static int calcLengthUnsigned(long value) {
-		if (value <= 240) {
-			return 1;
-		} else if (value <= 2287) {
-			return 2;
-		} else if (value <= 67823) {
-			return 3;
-		} else {
-			int bytes = descriptor(value) + 1;
-			return 1 + bytes;
-		}
+		int tier = classifyUnsigned(value);
+		int descriptorBytes = descriptor(value) + 1;
+		int isTier3 = 1 ^ ((tier - 3) >>> 31);
+		return BASE_LENGTH_BY_TIER[tier] + isTier3 * descriptorBytes;
+	}
+
+	static int classifyUnsigned(long value) {
+		int ge241 = (int) ((((value - 241L) >>> 63) ^ 1L) & 1L);
+		int ge2288 = (int) ((((value - 2288L) >>> 63) ^ 1L) & 1L);
+		int ge67824 = (int) ((((value - 67824L) >>> 63) ^ 1L) & 1L);
+		return ge241 + ge2288 + ge67824;
+	}
+
+	private static int maskEq(int x, int y) {
+		int diff = x ^ y;
+		int same = ((diff | -diff) >>> 31) ^ 1;
+		return -same;
 	}
 
 	/**
@@ -272,58 +282,54 @@ public final class Varint {
 	 * @see #writeUnsigned(ByteBuffer, long)
 	 */
 	public static long readUnsigned(ByteBuffer bb) throws IllegalArgumentException {
-		final int a0 = bb.get() & 0xFF; // lead byte, unsigned
+		final int a0 = bb.get() & 0xFF;
+		final int extra = VARINT_EXTRA_BYTES[a0];
+		final long base = VARINT_BASE_VALUES[a0];
 
-		if (a0 <= 240) {
-			return a0;
+		if (extra == 0) {
+			return base;
 		}
 
-		final int extra = VARINT_EXTRA_BYTES[a0]; // 0..8 additional bytes
-
-		switch (extra) {
-		case 1: {
-			// 1 extra byte; 241..248
-			final int a1 = bb.get() & 0xFF;
-			// 240 + 256*(a0-241) + a1
-			return 240L + ((long) (a0 - 241) << 8) + a1;
+		if (extra == 1) {
+			return base + (bb.get() & 0xFFL);
 		}
 
-		case 2: {
-			// 2 extra bytes; lead byte == 249
+		if (extra == 2) {
 			final int a1 = bb.get() & 0xFF;
 			final int a2 = bb.get() & 0xFF;
-			// 2288 + 256*a1 + a2
-			return 2288L + ((long) a1 << 8) + a2;
+			return base + ((long) a1 << 8) + a2;
 		}
 
-		case 3:
-		case 4:
-		case 5:
-		case 6:
-		case 7:
-		case 8:
-			return readSignificantBitsDirect(bb, extra);
-		// 3..8 extra bytes; 250..255
-		default:
-			throw new IllegalArgumentException("Bytes is higher than 8: " + extra);
-
+		if (extra >= 3 && extra <= 8) {
+			return base + readSignificantBits(bb, extra);
 		}
+
+		throw new IllegalArgumentException("Bytes is higher than 8: " + extra);
 	}
 
 	public static void skipUnsigned(ByteBuffer bb) throws IllegalArgumentException {
 		final int a0 = bb.get() & 0xFF; // lead byte, unsigned
-
-		if (a0 <= 240) {
-			return;
-		}
-
-		final int extra = VARINT_EXTRA_BYTES[a0]; // 0..8 additional bytes
-		bb.position(bb.position() + extra);
+		bb.position(bb.position() + VARINT_EXTRA_BYTES[a0]);
 
 	}
 
+	/** Lookup: lead byte (0..255) → additive base before reading payload. */
+	private static final long[] VARINT_BASE_VALUES = buildVarintBaseValues();
+
 	/** Lookup: lead byte (0..255) → number of additional bytes (0..8). */
 	private static final byte[] VARINT_EXTRA_BYTES = buildVarintExtraBytes();
+
+	private static long[] buildVarintBaseValues() {
+		long[] base = new long[256];
+		for (int i = 0; i <= 240; i++) {
+			base[i] = i;
+		}
+		for (int i = 241; i <= 248; i++) {
+			base[i] = 240L + ((long) (i - 241) << 8);
+		}
+		base[249] = 2288L;
+		return base;
+	}
 
 	private static byte[] buildVarintExtraBytes() {
 		final byte[] t = new byte[256];
@@ -351,20 +357,28 @@ public final class Varint {
 
 	public static long readUnsignedHeap(ByteBuffer bb) throws IllegalArgumentException {
 		int a0 = bb.get() & 0xFF;
+		int extra = VARINT_EXTRA_BYTES[a0];
+		long base = VARINT_BASE_VALUES[a0];
 
-		if (a0 <= 240) {
-			return a0;
-		} else if (a0 <= 248) {
-			int a1 = bb.get() & 0xFF;
-			return 240 + 256 * (a0 - 241) + a1;
-		} else if (a0 == 249) {
+		if (extra == 0) {
+			return base;
+		}
+
+		if (extra == 1) {
+			return base + (bb.get() & 0xFFL);
+		}
+
+		if (extra == 2) {
 			int a1 = bb.get() & 0xFF;
 			int a2 = bb.get() & 0xFF;
-			return 2288 + 256 * a1 + a2;
-		} else {
-			int bytes = a0 - 250 + 3;
-			return readSignificantBitsHeap(bb, bytes);
+			return base + ((long) a1 << 8) + a2;
 		}
+
+		if (extra >= 3 && extra <= 8) {
+			return base + readSignificantBitsHeap(bb, extra);
+		}
+
+		throw new IllegalArgumentException("Bytes is higher than 8: " + extra);
 	}
 
 	/**
@@ -378,19 +392,29 @@ public final class Varint {
 	 */
 	public static long readUnsigned(ByteBuffer bb, int pos) throws IllegalArgumentException {
 		int a0 = bb.get(pos) & 0xFF;
-		if (a0 <= 240) {
-			return a0;
-		} else if (a0 <= 248) {
+		int extra = VARINT_EXTRA_BYTES[a0];
+		long base = VARINT_BASE_VALUES[a0];
+
+		if (extra == 0) {
+			return base;
+		}
+
+		if (extra == 1) {
 			int a1 = bb.get(pos + 1) & 0xFF;
-			return 240 + 256 * (a0 - 241) + a1;
-		} else if (a0 == 249) {
+			return base + a1;
+		}
+
+		if (extra == 2) {
 			int a1 = bb.get(pos + 1) & 0xFF;
 			int a2 = bb.get(pos + 2) & 0xFF;
-			return 2288 + 256 * a1 + a2;
-		} else {
-			int bytes = a0 - 250 + 3;
-			return readSignificantBits(bb, pos + 1, bytes);
+			return base + ((long) a1 << 8) + a2;
 		}
+
+		if (extra >= 3 && extra <= 8) {
+			return base + readSignificantBits(bb, pos + 1, extra);
+		}
+
+		throw new IllegalArgumentException("Bytes is higher than 8: " + extra);
 	}
 
 	private static final int[] FIRST_TO_LENGTH = buildFirstToLength();
@@ -446,23 +470,8 @@ public final class Varint {
 	 * @param values array with values to write
 	 */
 	public static void writeListUnsigned(final ByteBuffer bb, final long[] values) {
-		// TODO: Optimise for quads and also call writeUnsigned
-		for (int i = 0; i < values.length; i++) {
-			final long value = values[i];
-			if (value <= 240) {
-				bb.put((byte) value);
-			} else if (value <= 2287) {
-				bb.put((byte) ((value - 240) / 256 + 241));
-				bb.put((byte) ((value - 240) % 256));
-			} else if (value <= 67823) {
-				bb.put((byte) 249);
-				bb.put((byte) ((value - 2288) / 256));
-				bb.put((byte) ((value - 2288) % 256));
-			} else {
-				int bytes = descriptor(value) + 1;
-				bb.put((byte) (250 + (bytes - 3)));
-				writeSignificantBits(bb, value, bytes);
-			}
+		for (long value : values) {
+			writeUnsigned(bb, value);
 		}
 	}
 

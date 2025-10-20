@@ -12,6 +12,7 @@ package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -147,5 +148,34 @@ public class VarintTest {
 		assertEquals("Expected three byte encoding", 3, bb.remaining());
 		long decoded = Varint.readUnsigned(bb, 0);
 		assertEquals("Encoded and decoded value using positional read should match", value, decoded);
+	}
+
+	@Test
+	public void testUnsignedClassificationBoundaries() {
+		long[] checkpoints = new long[] {
+				0L, 1L, 240L, 241L, 248L, 2287L, 2288L, 67823L, 67824L, 1L << 24,
+				(1L << 32) - 1, 1L << 32, (1L << 40) - 1, 1L << 40,
+				(1L << 48) - 1, 1L << 48, (1L << 56) - 1, 1L << 56
+		};
+		for (long value : checkpoints) {
+			int length = Varint.calcLengthUnsigned(value);
+			int tier = Varint.classifyUnsigned(value);
+			switch (tier) {
+			case 0:
+				assertEquals("Tier 0 values must encode to a single byte", 1, length);
+				break;
+			case 1:
+				assertEquals("Tier 1 values must encode to two bytes", 2, length);
+				break;
+			case 2:
+				assertEquals("Tier 2 values must encode to three bytes", 3, length);
+				break;
+			case 3:
+				assertTrue("Tier 3 values must encode to four or more bytes", length >= 4 && length <= 9);
+				break;
+			default:
+				throw new AssertionError("Unexpected tier: " + tier);
+			}
+		}
 	}
 }
