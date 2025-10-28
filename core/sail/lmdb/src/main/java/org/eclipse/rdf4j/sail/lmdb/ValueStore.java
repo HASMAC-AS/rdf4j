@@ -1271,12 +1271,6 @@ public class ValueStore extends AbstractValueFactory {
 		return getId(value, true);
 	}
 
-	public void refreshReadTxn() {
-		ReadTxn txn = threadLocalReadTxn.get();
-		txn.close();
-		threadLocalReadTxn.remove();
-	}
-
 	/**
 	 * Computes a hash code for the supplied data.
 	 *
