@@ -386,6 +386,9 @@ class LmdbSailStore implements SailStore {
 			throw e instanceof SailException ? (SailException) e : new SailException(e);
 		} finally {
 			tripleStoreException = null;
+			// Reset transaction-started flag after rollback so subsequent reads don't
+			// assume pending uncommitted changes and disable LMDB ID join optimizations.
+			storeTxnStarted.set(false);
 			sinkStoreAccessLock.unlock();
 		}
 	}
@@ -643,7 +646,7 @@ class LmdbSailStore implements SailStore {
 
 		@Override
 		public LmdbSailDataset dataset(IsolationLevel level) throws SailException {
-			return new LmdbSailDataset(explicit);
+			return new LmdbSailDataset(explicit, level);
 		}
 
 	}
@@ -1105,10 +1108,12 @@ class LmdbSailStore implements SailStore {
 	private final class LmdbSailDataset implements SailDataset, LmdbEvaluationDataset {
 
 		private final boolean explicit;
+		private final IsolationLevel isolationLevel;
 		private final Txn txn;
 
-		public LmdbSailDataset(boolean explicit) throws SailException {
+		public LmdbSailDataset(boolean explicit, IsolationLevel isolationLevel) throws SailException {
 			this.explicit = explicit;
+			this.isolationLevel = isolationLevel;
 			try {
 				this.txn = tripleStore.getTxnManager().createReadTxn();
 				LmdbEvaluationStrategy.setCurrentDataset(this);
@@ -1121,6 +1126,7 @@ class LmdbSailStore implements SailStore {
 		public void close() {
 			try {
 				// close the associated txn
+				System.out.println("DEBUG dataset close txn=" + txn.get());
 				txn.close();
 			} finally {
 				LmdbEvaluationStrategy.clearCurrentDataset();
@@ -1406,9 +1412,6 @@ class LmdbSailStore implements SailStore {
 				long predQuery = selectQueryId(patternIds[TripleStore.PRED_IDX], binding, predIndex);
 				long objQuery = selectQueryId(patternIds[TripleStore.OBJ_IDX], binding, objIndex);
 				long ctxQuery = selectQueryId(patternIds[TripleStore.CONTEXT_IDX], binding, ctxIndex);
-				System.out
-						.println("DEBUG getRecordIterator(long[]) s=" + subjQuery + " p=" + predQuery + " o=" + objQuery
-								+ " c=" + ctxQuery);
 
 				RecordIterator base = tripleStore.getTriples(txn, subjQuery, predQuery, objQuery, ctxQuery, explicit);
 
@@ -1560,6 +1563,11 @@ class LmdbSailStore implements SailStore {
 		}
 
 		@Override
+		public IsolationLevel getIsolationLevel() {
+			return isolationLevel;
+		}
+
+		@Override
 		public boolean hasTransactionChanges() {
 			// storeTxnStarted is flipped to true when a writer begins and only cleared
 			// after commit/rollback, so a true value indicates pending uncommitted changes.
@@ -1690,7 +1698,6 @@ class LmdbSailStore implements SailStore {
 					return false;
 				}
 				long id = resolveId(ctx);
-				System.out.println("DEBUG populateContext value=" + ctx + " id=" + id);
 				if (id == LmdbValue.UNKNOWN_ID) {
 					return false;
 				}
@@ -1800,7 +1807,6 @@ class LmdbSailStore implements SailStore {
 				return INVALID_ID;
 			}
 			long id = resolveId(ctx);
-			System.out.println("DEBUG resolveContextWithBindings var=" + varName + " id=" + id + " value=" + ctx);
 			if (id == LmdbValue.UNKNOWN_ID) {
 				return INVALID_ID;
 			}
