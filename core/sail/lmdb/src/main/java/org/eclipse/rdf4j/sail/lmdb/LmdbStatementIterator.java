@@ -26,7 +26,7 @@ import org.eclipse.rdf4j.sail.SailException;
  */
 class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 
-	private static final int DEFAULT_BATCH_SIZE = 64;
+	private static final int DEFAULT_BATCH_SIZE = 16;
 
 	/*-----------*
 	 * Variables *
