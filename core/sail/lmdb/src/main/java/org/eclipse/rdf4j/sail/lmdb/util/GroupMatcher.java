@@ -14,411 +14,118 @@ package org.eclipse.rdf4j.sail.lmdb.util;
 import static org.eclipse.rdf4j.sail.lmdb.Varint.firstToLength;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /**
- * A matcher for partial equality tests of varint lists.
+ * A matcher for partial equality tests of varint lists supporting both heap and direct buffers.
  */
-public class GroupMatcher {
+public final class GroupMatcher {
 
-	public static final Bytes.RegionComparator NULL_REGION_COMPARATOR = (a, b) -> true;
-	private final int length0;
-	private final int length1;
-	private final int length2;
-	private final int length3;
-	private final Bytes.RegionComparator cmp0;
-	private final Bytes.RegionComparator cmp1;
-	private final Bytes.RegionComparator cmp2;
-	private final Bytes.RegionComparator cmp3;
-	private final byte firstByte0;
-	private final byte firstByte1;
-	private final byte firstByte2;
-	private final byte firstByte3;
-	private final MatchFn matcher;
+	private static final int FIELD_COUNT = 4;
+
+	private final byte[] expected;
+	private final Field[] fields;
+	private final boolean requiresMatch;
 
 	public GroupMatcher(byte[] valueArray, boolean[] shouldMatch) {
-		assert shouldMatch.length == 4;
-
-		int baseOffset = 0;
-
-		// Loop is unrolled for performance. Do not change back to a loop, do not extract into method, unless you
-		// benchmark with QueryBenchmark first!
-		{
-			byte fb = valueArray[0];
-			this.firstByte0 = fb;
-			int len = firstToLength(fb);
-			this.length0 = len;
-			if (shouldMatch[0]) {
-				this.cmp0 = Bytes.capturedComparator(valueArray, 0, len);
-			} else {
-				this.cmp0 = NULL_REGION_COMPARATOR;
-				;
-			}
-
-			baseOffset += len;
-		}
-		{
-
-			byte fb = valueArray[baseOffset];
-			this.firstByte1 = fb;
-			int len = firstToLength(fb);
-			this.length1 = len;
-
-			if (shouldMatch[1]) {
-				this.cmp1 = Bytes.capturedComparator(valueArray, baseOffset, len);
-			} else {
-				this.cmp1 = NULL_REGION_COMPARATOR;
-			}
-
-			baseOffset += len;
-		}
-		{
-			byte fb = valueArray[baseOffset];
-			this.firstByte2 = fb;
-			int len = firstToLength(fb);
-			this.length2 = len;
-			if (shouldMatch[2]) {
-				this.cmp2 = Bytes.capturedComparator(valueArray, baseOffset, len);
-			} else {
-				this.cmp2 = NULL_REGION_COMPARATOR;
-			}
-
-			baseOffset += len;
-		}
-		{
-			byte fb = valueArray[baseOffset];
-			this.firstByte3 = fb;
-			int len = firstToLength(fb);
-			this.length3 = len;
-
-			if (shouldMatch[3]) {
-				this.cmp3 = Bytes.capturedComparator(valueArray, baseOffset, len);
-			} else {
-				this.cmp3 = NULL_REGION_COMPARATOR;
-			}
+		Objects.requireNonNull(valueArray, "valueArray");
+		Objects.requireNonNull(shouldMatch, "shouldMatch");
+		if (shouldMatch.length != FIELD_COUNT) {
+			throw new IllegalArgumentException("GroupMatcher expects exactly " + FIELD_COUNT + " match flags");
 		}
 
-		this.matcher = selectMatcher(shouldMatch);
+		this.expected = valueArray;
+		this.fields = new Field[FIELD_COUNT];
 
+		boolean any = false;
+		int offset = 0;
+		for (int i = 0; i < FIELD_COUNT; i++) {
+			if (offset >= valueArray.length) {
+				throw new IllegalArgumentException("valueArray shorter than expected for field " + i);
+			}
+			byte first = valueArray[offset];
+			int length = firstToLength(first);
+			if (offset + length > valueArray.length) {
+				throw new IllegalArgumentException("valueArray truncated while reading field " + i);
+			}
+			fields[i] = new Field(offset, length, first, shouldMatch[i]);
+			any |= shouldMatch[i];
+			offset += length;
+		}
+		this.requiresMatch = any;
 	}
 
 	public boolean matches(ByteBuffer other) {
-		return matcher.matches(other);
+		Objects.requireNonNull(other, "other");
+		if (!requiresMatch) {
+			return true;
+		}
+		ByteBuffer slice = other.slice();
+		return matches(slice.remaining(), slice::get);
 	}
 
-	@FunctionalInterface
-	private interface MatchFn {
-		boolean matches(ByteBuffer other);
+	public boolean matches(DirectSlice slice) {
+		Objects.requireNonNull(slice, "slice");
+		if (!requiresMatch) {
+			return true;
+		}
+		return matches(slice.length(), slice::get);
 	}
 
-	private MatchFn selectMatcher(boolean[] shouldMatch) {
-		byte mask = 0;
-		if (shouldMatch[0]) {
-			mask |= 0b0001;
-		}
-		if (shouldMatch[1]) {
-			mask |= 0b0010;
-		}
-		if (shouldMatch[2]) {
-			mask |= 0b0100;
-		}
-		if (shouldMatch[3]) {
-			mask |= 0b1000;
-		}
+	private boolean matches(int totalLength, ByteAccessor accessor) {
+		int offset = 0;
+		int diff = 0;
 
-		switch (mask) {
-		case 0b0000:
-			return this::match0000;
-		case 0b0001:
-			return this::match0001;
-		case 0b0010:
-			return this::match0010;
-		case 0b0011:
-			return this::match0011;
-		case 0b0100:
-			return this::match0100;
-		case 0b0101:
-			return this::match0101;
-		case 0b0110:
-			return this::match0110;
-		case 0b0111:
-			return this::match0111;
-		case 0b1000:
-			return this::match1000;
-		case 0b1001:
-			return this::match1001;
-		case 0b1010:
-			return this::match1010;
-		case 0b1011:
-			return this::match1011;
-		case 0b1100:
-			return this::match1100;
-		case 0b1101:
-			return this::match1101;
-		case 0b1110:
-			return this::match1110;
-		case 0b1111:
-			return this::match1111;
-		default:
-			throw new IllegalStateException("Unsupported matcher mask: " + mask);
-		}
-	}
-
-	private boolean match0000(ByteBuffer other) {
-		return true;
-	}
-
-	private boolean match0001(ByteBuffer other) {
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			return length0 == 1 || cmp0.equals(otherFirst0, other);
-		}
-		return false;
-	}
-
-	private boolean match0010(ByteBuffer other) {
-
-		skipAhead(other);
-
-		byte otherFirst1 = other.get();
-		if (firstByte1 == otherFirst1) {
-			return length1 == 1 || cmp1.equals(otherFirst1, other);
-		}
-		return false;
-	}
-
-	private boolean match0011(ByteBuffer other) {
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				byte otherFirst1 = other.get();
-				if (firstByte1 == otherFirst1) {
-					return length1 == 1 || cmp1.equals(otherFirst1, other);
-				}
+		for (Field field : fields) {
+			if (offset >= totalLength) {
+				return false;
 			}
-		}
 
-		return false;
-	}
-
-	private boolean match0100(ByteBuffer other) {
-
-		skipAhead(other);
-		skipAhead(other);
-
-		byte otherFirst2 = other.get();
-		if (firstByte2 == otherFirst2) {
-			return length2 == 1 || cmp2.equals(otherFirst2, other);
-		}
-		return false;
-	}
-
-	private boolean match0101(ByteBuffer other) {
-
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				skipAhead(other);
-
-				byte otherFirst2 = other.get();
-				if (firstByte2 == otherFirst2) {
-					return length2 == 1 || cmp2.equals(otherFirst2, other);
-				}
+			byte first = accessor.get(offset);
+			int actualLength = firstToLength(first);
+			if (actualLength <= 0 || offset + actualLength > totalLength) {
+				return false;
 			}
-		}
-		return false;
-	}
 
-	private boolean match0110(ByteBuffer other) {
-
-		skipAhead(other);
-
-		byte otherFirst1 = other.get();
-		if (firstByte1 == otherFirst1) {
-			if (length1 == 1 || cmp1.equals(otherFirst1, other)) {
-				byte otherFirst2 = other.get();
-				if (firstByte2 == otherFirst2) {
-					return length2 == 1 || cmp2.equals(otherFirst2, other);
-				}
+			if (field.shouldMatch) {
+				diff |= compareField(field, accessor, offset, first, actualLength);
 			}
+
+			offset += actualLength;
 		}
-		return false;
+
+		return diff == 0;
 	}
 
-	private void skipAhead(ByteBuffer other) {
-		int i = firstToLength(other.get()) - 1;
-		assert i >= 0;
-		if (i > 0) {
-			other.position(i + other.position());
+	private int compareField(Field field, ByteAccessor accessor, int offset, byte firstByte, int actualLength) {
+		int diff = (firstByte ^ field.firstByte) & 0xFF;
+		diff |= field.length ^ actualLength;
+
+		int limit = Math.min(field.length, actualLength);
+		for (int i = 1; i < limit; i++) {
+			int expectedByte = expected[field.offset + i] & 0xFF;
+			int candidateByte = accessor.get(offset + i) & 0xFF;
+			diff |= expectedByte ^ candidateByte;
 		}
+
+		return diff;
 	}
 
-	private boolean match0111(ByteBuffer other) {
-
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				byte otherFirst1 = other.get();
-				if (firstByte1 == otherFirst1) {
-					if (length1 == 1 || cmp1.equals(otherFirst1, other)) {
-						byte otherFirst2 = other.get();
-						if (firstByte2 == otherFirst2) {
-							return length2 == 1 || cmp2.equals(otherFirst2, other);
-						}
-					}
-				}
-			}
-		}
-		return false;
+	private interface ByteAccessor {
+		byte get(int index);
 	}
 
-	private boolean match1000(ByteBuffer other) {
+	private static final class Field {
+		final int offset;
+		final int length;
+		final byte firstByte;
+		final boolean shouldMatch;
 
-		skipAhead(other);
-		skipAhead(other);
-		skipAhead(other);
-
-		byte otherFirst3 = other.get();
-		if (firstByte3 == otherFirst3) {
-			return length3 == 1 || cmp3.equals(otherFirst3, other);
+		Field(int offset, int length, byte firstByte, boolean shouldMatch) {
+			this.offset = offset;
+			this.length = length;
+			this.firstByte = firstByte;
+			this.shouldMatch = shouldMatch;
 		}
-		return false;
 	}
-
-	private boolean match1001(ByteBuffer other) {
-
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				skipAhead(other);
-				skipAhead(other);
-
-				byte otherFirst3 = other.get();
-				if (firstByte3 == otherFirst3) {
-					return length3 == 1 || cmp3.equals(otherFirst3, other);
-				}
-			}
-		}
-		return false;
-	}
-
-	private boolean match1010(ByteBuffer other) {
-
-		skipAhead(other);
-		byte otherFirst1 = other.get();
-		if (firstByte1 == otherFirst1) {
-			if (length1 == 1 || cmp1.equals(otherFirst1, other)) {
-				skipAhead(other);
-
-				byte otherFirst3 = other.get();
-				if (firstByte3 == otherFirst3) {
-					return length3 == 1 || cmp3.equals(otherFirst3, other);
-				}
-			}
-		}
-		return false;
-	}
-
-	private boolean match1011(ByteBuffer other) {
-
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				byte otherFirst1 = other.get();
-				if (firstByte1 == otherFirst1) {
-					if (length1 == 1 || cmp1.equals(otherFirst1, other)) {
-						skipAhead(other);
-
-						byte otherFirst3 = other.get();
-						if (firstByte3 == otherFirst3) {
-							return length3 == 1 || cmp3.equals(otherFirst3, other);
-						}
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	private boolean match1100(ByteBuffer other) {
-
-		skipAhead(other);
-		skipAhead(other);
-
-		byte otherFirst2 = other.get();
-		if (firstByte2 == otherFirst2) {
-			if (length2 == 1 || cmp2.equals(otherFirst2, other)) {
-				byte otherFirst3 = other.get();
-				if (firstByte3 == otherFirst3) {
-					return length3 == 1 || cmp3.equals(otherFirst3, other);
-				}
-			}
-		}
-		return false;
-	}
-
-	private boolean match1101(ByteBuffer other) {
-
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				skipAhead(other);
-
-				byte otherFirst2 = other.get();
-				if (firstByte2 == otherFirst2) {
-					if (length2 == 1 || cmp2.equals(otherFirst2, other)) {
-						byte otherFirst3 = other.get();
-						if (firstByte3 == otherFirst3) {
-							return length3 == 1 || cmp3.equals(otherFirst3, other);
-						}
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	private boolean match1110(ByteBuffer other) {
-
-		skipAhead(other);
-
-		byte otherFirst1 = other.get();
-		if (firstByte1 == otherFirst1) {
-			if (length1 == 1 || cmp1.equals(otherFirst1, other)) {
-				byte otherFirst2 = other.get();
-				if (firstByte2 == otherFirst2) {
-					if (length2 == 1 || cmp2.equals(otherFirst2, other)) {
-						byte otherFirst3 = other.get();
-						if (firstByte3 == otherFirst3) {
-							return length3 == 1 || cmp3.equals(otherFirst3, other);
-						}
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	private boolean match1111(ByteBuffer other) {
-		byte otherFirst0 = other.get();
-		if (firstByte0 == otherFirst0) {
-			if (length0 == 1 || cmp0.equals(otherFirst0, other)) {
-				byte otherFirst1 = other.get();
-				if (firstByte1 == otherFirst1) {
-					if (length1 == 1 || cmp1.equals(otherFirst1, other)) {
-						byte otherFirst2 = other.get();
-						if (firstByte2 == otherFirst2) {
-							if (length2 == 1 || cmp2.equals(otherFirst2, other)) {
-								byte otherFirst3 = other.get();
-								if (firstByte3 == otherFirst3) {
-									return length3 == 1 || cmp3.equals(otherFirst3, other);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return false;
-	}
-
 }
