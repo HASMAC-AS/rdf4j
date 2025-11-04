@@ -1398,26 +1398,24 @@ class TripleStore implements Closeable {
 		}
 
 		void keyToQuad(ByteBuffer key, long[] originalQuad, long[] quad) {
-			// directly use index map to read values in to correct positions
-			if (originalQuad[indexMap[0]] != -1) {
-				Varint.skipUnsigned(key);
-			} else {
-				quad[indexMap[0]] = Varint.readUnsigned(key);
-			}
-			if (originalQuad[indexMap[1]] != -1) {
-				Varint.skipUnsigned(key);
-			} else {
-				quad[indexMap[1]] = Varint.readUnsigned(key);
-			}
-			if (originalQuad[indexMap[2]] != -1) {
-				Varint.skipUnsigned(key);
-			} else {
-				quad[indexMap[2]] = Varint.readUnsigned(key);
-			}
-			if (originalQuad[indexMap[3]] != -1) {
-				Varint.skipUnsigned(key);
-			} else {
-				quad[indexMap[3]] = Varint.readUnsigned(key);
+			keyToQuad(key, originalQuad, quad, 0);
+		}
+
+		void keyToQuad(ByteBuffer key, long[] originalQuad, long[] target, int offset) {
+			int position = 0;
+
+			for (int i = 0; i < 4; i++) {
+				int componentIndex = indexMap[i];
+				int length = Varint.firstToLength(key.get(position));
+
+				long boundValue = originalQuad[componentIndex];
+				if (boundValue != -1) {
+					target[offset + componentIndex] = boundValue;
+				} else {
+					target[offset + componentIndex] = Varint.readUnsigned(key, position);
+				}
+
+				position += length;
 			}
 		}
 

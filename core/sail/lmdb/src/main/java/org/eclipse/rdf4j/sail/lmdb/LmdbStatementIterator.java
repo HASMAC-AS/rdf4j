@@ -26,6 +26,8 @@ import org.eclipse.rdf4j.sail.SailException;
  */
 class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 
+	private static final int DEFAULT_BATCH_SIZE = 64;
+
 	/*-----------*
 	 * Variables *
 	 *-----------*/
@@ -34,6 +36,11 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 
 	private final ValueStore valueStore;
 	private Statement nextElement;
+	private final Statement[] statementBatch;
+	private final long[] quadBatch;
+	private final Value[] valueBatch;
+	private int batchIndex;
+	private int batchCount;
 
 	/*--------------*
 	 * Constructors *
@@ -45,6 +52,9 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 	public LmdbStatementIterator(RecordIterator recordIt, ValueStore valueStore) {
 		this.recordIt = recordIt;
 		this.valueStore = valueStore;
+		this.statementBatch = new Statement[DEFAULT_BATCH_SIZE];
+		this.quadBatch = new long[DEFAULT_BATCH_SIZE * 4];
+		this.valueBatch = new Value[DEFAULT_BATCH_SIZE * 4];
 	}
 
 	/*---------*
@@ -53,27 +63,17 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 
 	public Statement getNextElement() throws SailException {
 		try {
-			long[] quad = recordIt.next();
-			if (quad == null) {
-				return null;
+			if (batchIndex >= batchCount) {
+				batchCount = fillStatementBatch(statementBatch, 0, statementBatch.length);
+				batchIndex = 0;
+				if (batchCount <= 0) {
+					return null;
+				}
 			}
-
-			long subjID = quad[TripleStore.SUBJ_IDX];
-			Resource subj = (Resource) valueStore.getLazyValue(subjID);
-
-			long predID = quad[TripleStore.PRED_IDX];
-			IRI pred = (IRI) valueStore.getLazyValue(predID);
-
-			long objID = quad[TripleStore.OBJ_IDX];
-			Value obj = valueStore.getLazyValue(objID);
-
-			Resource context = null;
-			long contextID = quad[TripleStore.CONTEXT_IDX];
-			if (contextID != 0) {
-				context = (Resource) valueStore.getLazyValue(contextID);
-			}
-
-			return valueStore.createStatement(subj, pred, obj, context);
+			Statement result = statementBatch[batchIndex];
+			statementBatch[batchIndex] = null;
+			batchIndex++;
+			return result;
 		} catch (IOException e) {
 			throw causeIOException(e);
 		}
@@ -134,5 +134,50 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 	@Override
 	public void remove() {
 		throw new UnsupportedOperationException();
+	}
+
+	private int fillStatementBatch(Statement[] statements, int offset, int maxStatements) throws IOException {
+		if (maxStatements <= 0) {
+			return 0;
+		}
+
+		if (offset < 0 || offset > statements.length) {
+			throw new IllegalArgumentException("Offset outside of statements array");
+		}
+
+		int capacity = Math.min(maxStatements, quadBatch.length / 4);
+		capacity = Math.min(capacity, statements.length - offset);
+		if (capacity <= 0) {
+			return 0;
+		}
+
+		int count = recordIt.fillBatch(quadBatch, 0, capacity);
+		if (count <= 0) {
+			return count;
+		}
+
+		int resolved = valueStore.bulkGetLazyValues(quadBatch, 0, count * 4, valueBatch);
+		if (resolved != count * 4) {
+			throw new IOException("Failed to resolve all values for the requested statements batch");
+		}
+
+		for (int i = 0; i < count; i++) {
+			int base = i * 4;
+			Resource subj = (Resource) valueBatch[base];
+			IRI pred = (IRI) valueBatch[base + 1];
+			Value obj = valueBatch[base + 2];
+			Resource context = null;
+			long contextId = quadBatch[base + 3];
+			if (contextId != 0) {
+				context = (Resource) valueBatch[base + 3];
+			}
+			statements[offset + i] = valueStore.createStatement(subj, pred, obj, context);
+
+			valueBatch[base] = null;
+			valueBatch[base + 1] = null;
+			valueBatch[base + 2] = null;
+			valueBatch[base + 3] = null;
+		}
+		return count;
 	}
 }

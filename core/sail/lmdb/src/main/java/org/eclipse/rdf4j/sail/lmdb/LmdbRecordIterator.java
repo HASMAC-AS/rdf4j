@@ -148,72 +148,114 @@ class LmdbRecordIterator implements RecordIterator {
 			throw new SailException(e);
 		}
 		try {
-			if (closed) {
-				log.debug("Calling next() on an LmdbRecordIterator that is already closed, returning null");
+			if (!prepareNextRecord()) {
 				return null;
 			}
-
-			if (txnRefVersion != txnRef.version()) {
-				// TODO: None of the tests in the LMDB Store cover this case!
-				// cursor must be renewed
-				mdb_cursor_renew(txn, cursor);
-				if (fetchNext) {
-					// cursor must be positioned on last item, reuse minKeyBuf if available
-					if (minKeyBuf == null) {
-						minKeyBuf = pool.getKeyBuffer();
-					}
-					minKeyBuf.clear();
-					index.toKey(minKeyBuf, quad[0], quad[1], quad[2], quad[3]);
-					minKeyBuf.flip();
-					keyData.mv_data(minKeyBuf);
-					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET);
-					if (lastResult != MDB_SUCCESS) {
-						// use MDB_SET_RANGE if key was deleted
-						lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET_RANGE);
-					}
-					if (lastResult != MDB_SUCCESS) {
-						closeInternal(false);
-						return null;
-					}
-				}
-				// update version of txn ref
-				this.txnRefVersion = txnRef.version();
-			}
-
-			if (fetchNext) {
-				lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
-				fetchNext = false;
-			} else {
-				if (minKeyBuf != null) {
-					// set cursor to min key
-					keyData.mv_data(minKeyBuf);
-					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET_RANGE);
-				} else {
-					// set cursor to first item
-					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
-				}
-			}
-
-			while (lastResult == MDB_SUCCESS) {
-				// if (maxKey != null && TripleStore.COMPARATOR.compare(keyData.mv_data(), maxKey.mv_data()) > 0) {
-				if (maxKey != null && mdb_cmp(txn, dbi, keyData, maxKey) > 0) {
-					lastResult = MDB_NOTFOUND;
-				} else if (matches()) {
-					// value doesn't match search key/mask, fetch next value
-					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
-				} else {
-					// Matching value found
-					index.keyToQuad(keyData.mv_data(), originalQuad, quad);
-					// fetch next value
-					fetchNext = true;
-					return quad;
-				}
-			}
-			closeInternal(false);
-			return null;
+			index.keyToQuad(keyData.mv_data(), originalQuad, quad);
+			fetchNext = true;
+			return quad;
 		} finally {
 			txnLockManager.unlockRead(readStamp);
 		}
+	}
+
+	@Override
+	public int fillBatch(long[] target, int quadOffset, int maxQuads) {
+		if (maxQuads <= 0) {
+			return 0;
+		}
+
+		int remaining = target.length - quadOffset;
+		if (remaining < 4) {
+			return 0;
+		}
+
+		int capacity = Math.min(maxQuads, remaining / 4);
+		if (capacity <= 0) {
+			return 0;
+		}
+
+		long readStamp;
+		try {
+			readStamp = txnLockManager.readLock();
+		} catch (InterruptedException e) {
+			throw new SailException(e);
+		}
+		try {
+			if (closed) {
+				log.debug("Calling fillBatch() on an LmdbRecordIterator that is already closed, returning 0");
+				return 0;
+			}
+			int loaded = 0;
+			int offset = quadOffset;
+			while (loaded < capacity && prepareNextRecord()) {
+				index.keyToQuad(keyData.mv_data(), originalQuad, target, offset);
+				quad[0] = target[offset];
+				quad[1] = target[offset + 1];
+				quad[2] = target[offset + 2];
+				quad[3] = target[offset + 3];
+				fetchNext = true;
+				loaded++;
+				offset += 4;
+			}
+			return loaded;
+		} finally {
+			txnLockManager.unlockRead(readStamp);
+		}
+	}
+
+	private boolean prepareNextRecord() {
+		if (closed) {
+			log.debug("Calling next()/fillBatch() on an LmdbRecordIterator that is already closed, returning null/0");
+			return false;
+		}
+
+		if (txnRefVersion != txnRef.version()) {
+			mdb_cursor_renew(txn, cursor);
+			if (fetchNext) {
+				if (minKeyBuf == null) {
+					minKeyBuf = pool.getKeyBuffer();
+				}
+				minKeyBuf.clear();
+				index.toKey(minKeyBuf, quad[0], quad[1], quad[2], quad[3]);
+				minKeyBuf.flip();
+				keyData.mv_data(minKeyBuf);
+				lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET);
+				if (lastResult != MDB_SUCCESS) {
+					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET_RANGE);
+				}
+				if (lastResult != MDB_SUCCESS) {
+					closeInternal(false);
+					return false;
+				}
+			}
+			txnRefVersion = txnRef.version();
+		}
+
+		if (fetchNext) {
+			lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
+			fetchNext = false;
+		} else {
+			if (minKeyBuf != null) {
+				keyData.mv_data(minKeyBuf);
+				lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET_RANGE);
+			} else {
+				lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
+			}
+		}
+
+		while (lastResult == MDB_SUCCESS) {
+			if (maxKey != null && mdb_cmp(txn, dbi, keyData, maxKey) > 0) {
+				lastResult = MDB_NOTFOUND;
+			} else if (matches()) {
+				lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
+			} else {
+				return true;
+			}
+		}
+
+		closeInternal(false);
+		return false;
 	}
 
 	private boolean matches() {
