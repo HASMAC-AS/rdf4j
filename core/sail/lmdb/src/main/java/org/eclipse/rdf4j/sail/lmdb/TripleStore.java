@@ -79,6 +79,7 @@ import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
@@ -404,7 +405,7 @@ class TripleStore implements Closeable {
 						RecordIterator[] sourceIter = { null };
 						try {
 							sourceIter[0] = new LmdbRecordIterator(sourceIndex, false, -1, -1, -1, -1,
-									explicit, txnManager.createTxn(txn), Collections.emptyList());
+									explicit, txnManager.createTxn(txn), null);
 
 							RecordIterator it = sourceIter[0];
 							long[] quad;
@@ -507,8 +508,7 @@ class TripleStore implements Closeable {
 		for (TripleIndex index : indexes) {
 			if (index.getFieldSeq()[0] == 'c') {
 				// found a context-first index
-				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false,
-						Collections.emptyList());
+				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false, null);
 			}
 		}
 		return null;
@@ -520,7 +520,8 @@ class TripleStore implements Closeable {
 		// System.out.println("get triples: " + Arrays.asList(subj, pred, obj,context));
 		int bestScore = index.getPatternScore(subj, pred, obj, context);
 		boolean doRangeSearch = bestScore > 0;
-		List<String> recommendedIndexes = computeRecommendedIndexes(subj, pred, obj, context, index, bestScore);
+		Supplier<List<String>> recommendedIndexes = () -> computeRecommendedIndexes(subj, pred, obj, context,
+				index, bestScore);
 		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch,
 				recommendedIndexes);
 	}
@@ -535,8 +536,8 @@ class TripleStore implements Closeable {
 	}
 
 	private RecordIterator getTriplesUsingIndex(Txn txn, long subj, long pred, long obj, long context,
-			boolean explicit, TripleIndex index, boolean rangeSearch, List<String> recommendedIndexes)
-			throws IOException {
+			boolean explicit, TripleIndex index, boolean rangeSearch,
+			Supplier<List<String>> recommendedIndexes) throws IOException {
 		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn,
 				recommendedIndexes);
 	}

@@ -39,9 +39,7 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> implem
 	private final ValueStore valueStore;
 	private Statement nextElement;
 
-	private final String indexName;
-
-	private final String recommendedIndexes;
+	private volatile String cachedIndexName;
 
 	/*--------------*
 	 * Constructors *
@@ -53,16 +51,6 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> implem
 	public LmdbStatementIterator(RecordIterator recordIt, ValueStore valueStore) {
 		this.recordIt = recordIt;
 		this.valueStore = valueStore;
-		String iteratorIndexName = recordIt.getIndexName();
-		this.indexName = iteratorIndexName;
-		List<String> recommendations = recordIt.getRecommendedIndexes();
-		if (recommendations != null && !recommendations.isEmpty()) {
-			this.recommendedIndexes = recommendations.stream()
-					.map(s -> s.toLowerCase(Locale.ROOT))
-					.collect(Collectors.joining(", "));
-		} else {
-			this.recommendedIndexes = null;
-		}
 	}
 
 	/*---------*
@@ -156,12 +144,28 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> implem
 
 	@Override
 	public String getIndexName() {
-		if (indexName == null || indexName.isEmpty()) {
-			return indexName;
+		String cached = cachedIndexName;
+		if (cached != null) {
+			return cached;
 		}
-		if (recommendedIndexes == null || recommendedIndexes.isEmpty()) {
-			return indexName;
+
+		String iteratorIndexName = recordIt.getIndexName();
+		if (iteratorIndexName == null || iteratorIndexName.isEmpty()) {
+			cachedIndexName = iteratorIndexName;
+			return iteratorIndexName;
 		}
-		return indexName + "] [recommended indexes: " + recommendedIndexes;
+
+		List<String> recommendations = recordIt.getRecommendedIndexes();
+		if (recommendations == null || recommendations.isEmpty()) {
+			cachedIndexName = iteratorIndexName;
+			return iteratorIndexName;
+		}
+
+		String formattedRecommendations = recommendations.stream()
+				.map(s -> s.toLowerCase(Locale.ROOT))
+				.collect(Collectors.joining(", "));
+		String formatted = iteratorIndexName + "] [recommended indexes: " + formattedRecommendations;
+		cachedIndexName = formatted;
+		return formatted;
 	}
 }

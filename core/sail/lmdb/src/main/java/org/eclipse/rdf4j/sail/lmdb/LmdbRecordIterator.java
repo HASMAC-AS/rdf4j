@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
 import org.eclipse.rdf4j.sail.SailException;
@@ -49,7 +50,8 @@ class LmdbRecordIterator implements RecordIterator {
 
 	private final String indexName;
 
-	private final List<String> recommendedIndexes;
+	private final Supplier<List<String>> recommendedIndexesSupplier;
+	private volatile List<String> recommendedIndexes;
 
 	private final long subj;
 	private final long pred;
@@ -93,7 +95,8 @@ class LmdbRecordIterator implements RecordIterator {
 	private final Thread ownerThread = Thread.currentThread();
 
 	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
-			long context, boolean explicit, Txn txnRef, List<String> recommendedIndexes) throws IOException {
+			long context, boolean explicit, Txn txnRef, Supplier<List<String>> recommendedIndexesSupplier)
+			throws IOException {
 		this.subj = subj;
 		this.pred = pred;
 		this.obj = obj;
@@ -105,8 +108,7 @@ class LmdbRecordIterator implements RecordIterator {
 		this.valueData = pool.getVal();
 		this.index = index;
 		this.indexName = new String(index.getFieldSeq());
-		this.recommendedIndexes = recommendedIndexes == null ? Collections.emptyList()
-				: List.copyOf(recommendedIndexes);
+		this.recommendedIndexesSupplier = recommendedIndexesSupplier;
 		if (rangeSearch) {
 			minKeyBuf = pool.getKeyBuffer();
 			index.getMinKey(minKeyBuf, subj, pred, obj, context);
@@ -156,7 +158,25 @@ class LmdbRecordIterator implements RecordIterator {
 
 	@Override
 	public List<String> getRecommendedIndexes() {
-		return recommendedIndexes;
+		List<String> current = recommendedIndexes;
+		if (current != null) {
+			return current;
+		}
+
+		List<String> computed;
+		if (recommendedIndexesSupplier == null) {
+			computed = Collections.emptyList();
+		} else {
+			computed = recommendedIndexesSupplier.get();
+			if (computed == null || computed.isEmpty()) {
+				computed = Collections.emptyList();
+			} else {
+				computed = List.copyOf(computed);
+			}
+		}
+
+		recommendedIndexes = computed;
+		return computed;
 	}
 
 	@Override

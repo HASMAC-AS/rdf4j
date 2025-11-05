@@ -75,7 +75,7 @@ class TripleStoreIndexRecommendationTest {
 		BoundPattern ocBound = new BoundPattern(LmdbValue.UNKNOWN_ID, LmdbValue.UNKNOWN_ID, 1L, 1L);
 		Path storeDir = Files.createTempDirectory(tempDir, "freq-");
 
-		try (TripleStore tripleStore = createTripleStore(storeDir, List.of("SPOC", "PSOC", "OPSC"));
+		try (TripleStore tripleStore = createTripleStore(storeDir, List.of("SPOC", "PSOC", "CSPO"));
 				Txn txn = tripleStore.getTxnManager().createReadTxn();
 				RecordIterator iterator = tripleStore.getTriples(txn, ocBound.subj(), ocBound.pred(),
 						ocBound.obj(), ocBound.context(), true)) {
@@ -83,6 +83,22 @@ class TripleStoreIndexRecommendationTest {
 			assertThat(recommendations)
 					.containsExactly("OCPS", "COPS", "COSP", "OCSP");
 		}
+	}
+
+	@Test
+	void recommendationsNotComputedDuringIterationUnlessRequested() throws Exception {
+		BoundPattern objBound = new BoundPattern(LmdbValue.UNKNOWN_ID, LmdbValue.UNKNOWN_ID, 1L,
+				LmdbValue.UNKNOWN_ID);
+		Path storeDir = Files.createTempDirectory(tempDir, "lazy-");
+
+		try (TripleStore tripleStore = createTripleStore(storeDir, List.of("SPOC", "PSOC", "CSPO"));
+				Txn txn = tripleStore.getTxnManager().createReadTxn();
+				RecordIterator iterator = tripleStore.getTriples(txn, objBound.subj(), objBound.pred(),
+						objBound.obj(), objBound.context(), true)) {
+			iterator.next();
+		}
+
+		assertThat(recommendationCounters).isEmpty();
 	}
 
 	private boolean matchesAnyPrefix(String index, List<String> prefixes) {
