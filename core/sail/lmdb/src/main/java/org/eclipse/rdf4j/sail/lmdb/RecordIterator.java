@@ -11,6 +11,8 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.Closeable;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * An iterator that iterates over records, for example those in a key-value database.
@@ -23,6 +25,14 @@ interface RecordIterator extends Closeable {
 	 * @return A record that or <tt>null</tt> if all records have been returned.
 	 */
 	long[] next();
+
+	default String getIndexName() {
+		return null;
+	}
+
+	default List<String> getRecommendedIndexes() {
+		return Collections.emptyList();
+	}
 
 	/**
 	 * Closes the iterator, freeing any resources that it uses. Once closed, the iterator will not return any more

@@ -24,6 +24,8 @@ import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_renew;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
 
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
 import org.eclipse.rdf4j.sail.SailException;
@@ -44,6 +46,10 @@ class LmdbRecordIterator implements RecordIterator {
 	private final Pool pool;
 
 	private final TripleIndex index;
+
+	private final String indexName;
+
+	private final List<String> recommendedIndexes;
 
 	private final long subj;
 	private final long pred;
@@ -87,7 +93,7 @@ class LmdbRecordIterator implements RecordIterator {
 	private final Thread ownerThread = Thread.currentThread();
 
 	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
-			long context, boolean explicit, Txn txnRef) throws IOException {
+			long context, boolean explicit, Txn txnRef, List<String> recommendedIndexes) throws IOException {
 		this.subj = subj;
 		this.pred = pred;
 		this.obj = obj;
@@ -98,6 +104,9 @@ class LmdbRecordIterator implements RecordIterator {
 		this.keyData = pool.getVal();
 		this.valueData = pool.getVal();
 		this.index = index;
+		this.indexName = new String(index.getFieldSeq());
+		this.recommendedIndexes = recommendedIndexes == null ? Collections.emptyList()
+				: List.copyOf(recommendedIndexes);
 		if (rangeSearch) {
 			minKeyBuf = pool.getKeyBuffer();
 			index.getMinKey(minKeyBuf, subj, pred, obj, context);
@@ -125,6 +134,7 @@ class LmdbRecordIterator implements RecordIterator {
 		} catch (InterruptedException e) {
 			throw new SailException(e);
 		}
+
 		try {
 			this.txnRefVersion = txnRef.version();
 			this.txn = txnRef.get();
@@ -137,6 +147,16 @@ class LmdbRecordIterator implements RecordIterator {
 		} finally {
 			txnLockManager.unlockRead(readStamp);
 		}
+	}
+
+	@Override
+	public String getIndexName() {
+		return indexName;
+	}
+
+	@Override
+	public List<String> getRecommendedIndexes() {
+		return recommendedIndexes;
 	}
 
 	@Override

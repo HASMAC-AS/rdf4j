@@ -11,9 +11,13 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.common.iteration.AbstractCloseableIteration;
+import org.eclipse.rdf4j.common.iteration.IndexReportingIterator;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
@@ -24,7 +28,7 @@ import org.eclipse.rdf4j.sail.SailException;
  * A statement iterator that wraps a RecordIterator containing statement records and translates these records to
  * {@link Statement} objects.
  */
-class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
+class LmdbStatementIterator extends AbstractCloseableIteration<Statement> implements IndexReportingIterator {
 
 	/*-----------*
 	 * Variables *
@@ -34,6 +38,10 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 
 	private final ValueStore valueStore;
 	private Statement nextElement;
+
+	private final String indexName;
+
+	private final String recommendedIndexes;
 
 	/*--------------*
 	 * Constructors *
@@ -45,6 +53,16 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 	public LmdbStatementIterator(RecordIterator recordIt, ValueStore valueStore) {
 		this.recordIt = recordIt;
 		this.valueStore = valueStore;
+		String iteratorIndexName = recordIt.getIndexName();
+		this.indexName = iteratorIndexName;
+		List<String> recommendations = recordIt.getRecommendedIndexes();
+		if (recommendations != null && !recommendations.isEmpty()) {
+			this.recommendedIndexes = recommendations.stream()
+					.map(s -> s.toLowerCase(Locale.ROOT))
+					.collect(Collectors.joining(", "));
+		} else {
+			this.recommendedIndexes = null;
+		}
 	}
 
 	/*---------*
@@ -134,5 +152,16 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 	@Override
 	public void remove() {
 		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public String getIndexName() {
+		if (indexName == null || indexName.isEmpty()) {
+			return indexName;
+		}
+		if (recommendedIndexes == null || recommendedIndexes.isEmpty()) {
+			return indexName;
+		}
+		return indexName + "] [recommended indexes: " + recommendedIndexes;
 	}
 }
