@@ -20,13 +20,11 @@ class RangeIterator implements RecordIterator, NodeListener {
 
 	private final BTree tree;
 
-	private final byte[] searchKey;
-
-	private final byte[] searchMask;
-
 	private final byte[] minValue;
 
 	private final byte[] maxValue;
+
+	private final ValueMatcher valueMatcher;
 
 	private volatile boolean started;
 
@@ -50,10 +48,9 @@ class RangeIterator implements RecordIterator, NodeListener {
 
 	public RangeIterator(BTree tree, byte[] searchKey, byte[] searchMask, byte[] minValue, byte[] maxValue) {
 		this.tree = tree;
-		this.searchKey = searchKey;
-		this.searchMask = searchMask;
 		this.minValue = minValue;
 		this.maxValue = maxValue;
+		this.valueMatcher = ValueMatcher.create(searchKey, searchMask);
 		this.started = false;
 	}
 
@@ -73,7 +70,7 @@ class RangeIterator implements RecordIterator, NodeListener {
 					close();
 					value = null;
 					break;
-				} else if (searchKey != null && !ByteArrayUtil.matchesPattern(value, searchMask, searchKey)) {
+				} else if (!valueMatcher.matches(value)) {
 					// Value doesn't match search key/mask
 					value = findNext(false);
 					continue;
@@ -428,5 +425,260 @@ class RangeIterator implements RecordIterator, NodeListener {
 		return "RangeIterator{" +
 				"tree=" + tree +
 				'}';
+	}
+
+	static final class ValueMatcher {
+
+		private static final int RECORD_LENGTH = 17;
+
+		private static final int SUBJECT_OFFSET = 0;
+
+		private static final int PREDICATE_OFFSET = 4;
+
+		private static final int OBJECT_OFFSET = 8;
+
+		private static final int CONTEXT_OFFSET = 12;
+
+		private static final int FLAG_OFFSET = 16;
+
+		private static final int SUBJECT_BIT = 0b0001;
+
+		private static final int PREDICATE_BIT = 0b0010;
+
+		private static final int OBJECT_BIT = 0b0100;
+
+		private static final int CONTEXT_BIT = 0b1000;
+
+		private static final ValueMatcher MATCH_ALL = new ValueMatcher(value -> true);
+
+		private final MatchFn matcher;
+
+		private final int subject;
+
+		private final int predicate;
+
+		private final int object;
+
+		private final int context;
+
+		private final int flagMask;
+
+		private final int flagValue;
+
+		private ValueMatcher(MatchFn matcher) {
+			this.matcher = matcher;
+			this.subject = 0;
+			this.predicate = 0;
+			this.object = 0;
+			this.context = 0;
+			this.flagMask = 0;
+			this.flagValue = 0;
+		}
+
+		private ValueMatcher(boolean matchSubject, boolean matchPredicate, boolean matchObject, boolean matchContext,
+				int subject, int predicate, int object, int context, int flagMask, int flagValue) {
+			this.subject = subject;
+			this.predicate = predicate;
+			this.object = object;
+			this.context = context;
+			this.flagMask = flagMask;
+			this.flagValue = flagValue;
+			this.matcher = selectMatchFn(matchSubject, matchPredicate, matchObject, matchContext);
+		}
+
+		static ValueMatcher create(byte[] searchKey, byte[] searchMask) {
+			if (searchKey == null || searchMask == null) {
+				return MATCH_ALL;
+			}
+			if (searchKey.length != RECORD_LENGTH || searchMask.length != RECORD_LENGTH) {
+				return new ValueMatcher(value -> ByteArrayUtil.matchesPattern(value, searchMask, searchKey));
+			}
+
+			boolean matchSubject = hasMask(searchMask, SUBJECT_OFFSET);
+			boolean matchPredicate = hasMask(searchMask, PREDICATE_OFFSET);
+			boolean matchObject = hasMask(searchMask, OBJECT_OFFSET);
+			boolean matchContext = hasMask(searchMask, CONTEXT_OFFSET);
+
+			if ((matchSubject && !isFullMask(searchMask, SUBJECT_OFFSET))
+					|| (matchPredicate && !isFullMask(searchMask, PREDICATE_OFFSET))
+					|| (matchObject && !isFullMask(searchMask, OBJECT_OFFSET))
+					|| (matchContext && !isFullMask(searchMask, CONTEXT_OFFSET))) {
+				return new ValueMatcher(value -> ByteArrayUtil.matchesPattern(value, searchMask, searchKey));
+			}
+
+			int flagMask = Byte.toUnsignedInt(searchMask[FLAG_OFFSET]);
+			int flagValue = Byte.toUnsignedInt(searchKey[FLAG_OFFSET]);
+
+			if (!matchSubject && !matchPredicate && !matchObject && !matchContext && flagMask == 0) {
+				return MATCH_ALL;
+			}
+
+			return new ValueMatcher(matchSubject, matchPredicate, matchObject, matchContext,
+					ByteArrayUtil.getInt(searchKey, SUBJECT_OFFSET),
+					ByteArrayUtil.getInt(searchKey, PREDICATE_OFFSET),
+					ByteArrayUtil.getInt(searchKey, OBJECT_OFFSET),
+					ByteArrayUtil.getInt(searchKey, CONTEXT_OFFSET),
+					flagMask, flagValue);
+		}
+
+		boolean matches(byte[] value) {
+			return matcher.matches(value);
+		}
+
+		private MatchFn selectMatchFn(boolean matchSubject, boolean matchPredicate, boolean matchObject,
+				boolean matchContext) {
+			int mask = 0;
+			if (matchSubject) {
+				mask |= SUBJECT_BIT;
+			}
+			if (matchPredicate) {
+				mask |= PREDICATE_BIT;
+			}
+			if (matchObject) {
+				mask |= OBJECT_BIT;
+			}
+			if (matchContext) {
+				mask |= CONTEXT_BIT;
+			}
+
+			switch (mask) {
+			case 0:
+				return this::matchNone;
+			case SUBJECT_BIT:
+				return this::matchS;
+			case PREDICATE_BIT:
+				return this::matchP;
+			case SUBJECT_BIT | PREDICATE_BIT:
+				return this::matchSP;
+			case OBJECT_BIT:
+				return this::matchO;
+			case SUBJECT_BIT | OBJECT_BIT:
+				return this::matchSO;
+			case PREDICATE_BIT | OBJECT_BIT:
+				return this::matchPO;
+			case SUBJECT_BIT | PREDICATE_BIT | OBJECT_BIT:
+				return this::matchSPO;
+			case CONTEXT_BIT:
+				return this::matchC;
+			case SUBJECT_BIT | CONTEXT_BIT:
+				return this::matchSC;
+			case PREDICATE_BIT | CONTEXT_BIT:
+				return this::matchPC;
+			case SUBJECT_BIT | PREDICATE_BIT | CONTEXT_BIT:
+				return this::matchSPC;
+			case OBJECT_BIT | CONTEXT_BIT:
+				return this::matchOC;
+			case SUBJECT_BIT | OBJECT_BIT | CONTEXT_BIT:
+				return this::matchSOC;
+			case PREDICATE_BIT | OBJECT_BIT | CONTEXT_BIT:
+				return this::matchPOC;
+			case SUBJECT_BIT | PREDICATE_BIT | OBJECT_BIT | CONTEXT_BIT:
+				return this::matchSPOC;
+			default:
+				throw new IllegalStateException("Unsupported matcher mask: " + mask);
+			}
+		}
+
+		private boolean matchNone(byte[] value) {
+			return flagsMatch(value);
+		}
+
+		private boolean matchS(byte[] value) {
+			return subjectMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchP(byte[] value) {
+			return predicateMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSP(byte[] value) {
+			return subjectMatches(value) && predicateMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchO(byte[] value) {
+			return objectMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSO(byte[] value) {
+			return subjectMatches(value) && objectMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchPO(byte[] value) {
+			return predicateMatches(value) && objectMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSPO(byte[] value) {
+			return subjectMatches(value) && predicateMatches(value) && objectMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchC(byte[] value) {
+			return contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSC(byte[] value) {
+			return subjectMatches(value) && contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchPC(byte[] value) {
+			return predicateMatches(value) && contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSPC(byte[] value) {
+			return subjectMatches(value) && predicateMatches(value) && contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchOC(byte[] value) {
+			return objectMatches(value) && contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSOC(byte[] value) {
+			return subjectMatches(value) && objectMatches(value) && contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchPOC(byte[] value) {
+			return predicateMatches(value) && objectMatches(value) && contextMatches(value) && flagsMatch(value);
+		}
+
+		private boolean matchSPOC(byte[] value) {
+			return subjectMatches(value) && predicateMatches(value) && objectMatches(value) && contextMatches(value)
+					&& flagsMatch(value);
+		}
+
+		private boolean subjectMatches(byte[] value) {
+			return ByteArrayUtil.getInt(value, SUBJECT_OFFSET) == subject;
+		}
+
+		private boolean predicateMatches(byte[] value) {
+			return ByteArrayUtil.getInt(value, PREDICATE_OFFSET) == predicate;
+		}
+
+		private boolean objectMatches(byte[] value) {
+			return ByteArrayUtil.getInt(value, OBJECT_OFFSET) == object;
+		}
+
+		private boolean contextMatches(byte[] value) {
+			return ByteArrayUtil.getInt(value, CONTEXT_OFFSET) == context;
+		}
+
+		private boolean flagsMatch(byte[] value) {
+			if (flagMask == 0) {
+				return true;
+			}
+			int candidate = Byte.toUnsignedInt(value[FLAG_OFFSET]);
+			return ((candidate ^ flagValue) & flagMask) == 0;
+		}
+
+		private static boolean hasMask(byte[] mask, int offset) {
+			return ByteArrayUtil.getInt(mask, offset) != 0;
+		}
+
+		private static boolean isFullMask(byte[] mask, int offset) {
+			return ByteArrayUtil.getInt(mask, offset) == -1;
+		}
+
+		@FunctionalInterface
+		private interface MatchFn {
+			boolean matches(byte[] value);
+		}
 	}
 }
