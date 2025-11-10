@@ -15,9 +15,11 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -197,6 +199,22 @@ public final class NioFile implements Closeable {
 				reopen(e);
 			}
 		}
+	}
+
+	public MappedByteBuffer map(MapMode mapMode, long position, long size) throws IOException {
+		while (true) {
+			try {
+				return fc.map(mapMode, position, size);
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	public MappedByteBuffer mapReadOnly(long position, long size) throws IOException {
+		return map(MapMode.READ_ONLY, position, size);
 	}
 
 	/**

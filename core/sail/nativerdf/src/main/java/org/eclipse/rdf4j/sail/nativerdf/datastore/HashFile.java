@@ -13,9 +13,9 @@ package org.eclipse.rdf4j.sail.nativerdf.datastore;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -317,20 +317,9 @@ public class HashFile implements Closeable {
 	 * Utility methods *
 	 *-----------------*/
 
-	private RandomAccessFile createEmptyFile(File file) throws IOException {
-		// Make sure the file exists
-		if (!file.exists()) {
-			boolean created = file.createNewFile();
-			if (!created) {
-				throw new IOException("Failed to create file " + file);
-			}
-		}
-
-		// Open the file in read-write mode and make sure the file is empty
-		RandomAccessFile raf = new RandomAccessFile(file, "rw");
-		raf.setLength(0L);
-
-		return raf;
+	private FileChannel createEmptyFile(File file) throws IOException {
+		return FileChannel.open(file.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ,
+				StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 
 	/**
@@ -405,8 +394,7 @@ public class HashFile implements Closeable {
 
 		// Move any overflow buckets out of the way to a temporary file
 		File tmpFile = new File(getFile().getParentFile(), "rehash_" + getFile().getName());
-		try (RandomAccessFile tmpRaf = createEmptyFile(tmpFile)) {
-			FileChannel tmpChannel = tmpRaf.getChannel();
+		try (FileChannel tmpChannel = createEmptyFile(tmpFile)) {
 			// Transfer the overflow buckets to the temp file
 			// FIXME: work around java bug 6431344:
 			// "FileChannel.transferTo() doesn't work if address space runs out"
@@ -531,13 +519,12 @@ public class HashFile implements Closeable {
 
 		private IDIterator(int hash) throws IOException {
 			queryHash = hash;
-			bucketBuffer = ByteBuffer.allocate(recordSize);
 
 			structureLock.readLock().lock();
 			try {
-				// Read initial bucket
+				// Map initial bucket
 				long bucketOffset = getBucketOffset(hash);
-				nioFile.read(bucketBuffer, bucketOffset);
+				bucketBuffer = nioFile.mapReadOnly(bucketOffset, recordSize);
 
 				slotNo = -1;
 			} catch (IOException | RuntimeException e) {
@@ -577,9 +564,8 @@ public class HashFile implements Closeable {
 					break;
 				} else {
 					// Continue with overflow bucket
-					bucketBuffer.clear();
 					long bucketOffset = getOverflowBucketOffset(overflowID);
-					nioFile.read(bucketBuffer, bucketOffset);
+					bucketBuffer = nioFile.mapReadOnly(bucketOffset, recordSize);
 					slotNo = -1;
 				}
 			}
