@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -1275,9 +1276,12 @@ class TripleStore implements Closeable {
 	private static class TripleComparator implements RecordComparator {
 
 		private final char[] fieldSeq;
+		private final CompareStrategy compareStrategy;
 
 		public TripleComparator(String fieldSeq) {
-			this.fieldSeq = fieldSeq.toCharArray();
+			String normalized = normalizeFieldSequence(fieldSeq);
+			this.fieldSeq = normalized.toCharArray();
+			this.compareStrategy = FieldOrder.strategyFor(normalized);
 		}
 
 		public char[] getFieldSeq() {
@@ -1286,35 +1290,186 @@ class TripleStore implements Closeable {
 
 		@Override
 		public final int compareBTreeValues(byte[] key, byte[] data, int offset, int length) {
-			for (char field : fieldSeq) {
-				int fieldIdx;
+			return compareStrategy.compare(key, data, offset);
+		}
 
-				switch (field) {
-				case 's':
-					fieldIdx = SUBJ_IDX;
-					break;
-				case 'p':
-					fieldIdx = PRED_IDX;
-					break;
-				case 'o':
-					fieldIdx = OBJ_IDX;
-					break;
-				case 'c':
-					fieldIdx = CONTEXT_IDX;
-					break;
-				default:
-					throw new IllegalArgumentException(
-							"invalid character '" + field + "' in field sequence: " + new String(fieldSeq));
-				}
+		@FunctionalInterface
+		private interface CompareStrategy {
+			int compare(byte[] key, byte[] data, int offset);
+		}
 
-				int diff = ByteArrayUtil.compareRegion(key, fieldIdx, data, offset + fieldIdx, 4);
+		private enum FieldOrder {
+			SPOC("spoc", TripleComparator::compareSPOC),
+			SPCO("spco", TripleComparator::compareSPCO),
+			SOPC("sopc", TripleComparator::compareSOPC),
+			SOCP("socp", TripleComparator::compareSOCP),
+			SCPO("scpo", TripleComparator::compareSCPO),
+			SCOP("scop", TripleComparator::compareSCOP),
+			PSOC("psoc", TripleComparator::comparePSOC),
+			PSCO("psco", TripleComparator::comparePSCO),
+			POSC("posc", TripleComparator::comparePOSC),
+			POCS("pocs", TripleComparator::comparePOCS),
+			PCSO("pcso", TripleComparator::comparePCSO),
+			PCOS("pcos", TripleComparator::comparePCOS),
+			OSPC("ospc", TripleComparator::compareOSPC),
+			OSCP("oscp", TripleComparator::compareOSCP),
+			OPSC("opsc", TripleComparator::compareOPSC),
+			OPCS("opcs", TripleComparator::compareOPCS),
+			OCSP("ocsp", TripleComparator::compareOCSP),
+			OCPS("ocps", TripleComparator::compareOCPS),
+			CSPO("cspo", TripleComparator::compareCSPO),
+			CSOP("csop", TripleComparator::compareCSOP),
+			CPSO("cpso", TripleComparator::compareCPSO),
+			CPOS("cpos", TripleComparator::compareCPOS),
+			COSP("cosp", TripleComparator::compareCOSP),
+			COPS("cops", TripleComparator::compareCOPS);
 
-				if (diff != 0) {
-					return diff;
-				}
+			private final String sequence;
+			private final CompareStrategy strategy;
+
+			FieldOrder(String sequence, CompareStrategy strategy) {
+				this.sequence = sequence;
+				this.strategy = strategy;
 			}
 
-			return 0;
+			static CompareStrategy strategyFor(String sequence) {
+				for (FieldOrder value : values()) {
+					if (value.sequence.equals(sequence)) {
+						return value.strategy;
+					}
+				}
+				throw new IllegalArgumentException(
+						"Invalid triple index order '" + sequence + "'. Expected a permutation of 'spoc'.");
+			}
+		}
+
+		private static String normalizeFieldSequence(String fieldSeq) {
+			if (fieldSeq == null) {
+				throw new IllegalArgumentException("Field sequence must not be null");
+			}
+			String normalized = fieldSeq.trim().toLowerCase(Locale.ROOT);
+			if (normalized.length() != 4) {
+				throw new IllegalArgumentException(
+						"Field sequence '" + fieldSeq + "' must be four characters long (permutation of 'spoc').");
+			}
+			return normalized;
+		}
+
+		private static int compareSPOC(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, SUBJ_IDX, PRED_IDX, OBJ_IDX, CONTEXT_IDX);
+		}
+
+		private static int compareSPCO(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, SUBJ_IDX, PRED_IDX, CONTEXT_IDX, OBJ_IDX);
+		}
+
+		private static int compareSOPC(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, SUBJ_IDX, OBJ_IDX, PRED_IDX, CONTEXT_IDX);
+		}
+
+		private static int compareSOCP(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, SUBJ_IDX, OBJ_IDX, CONTEXT_IDX, PRED_IDX);
+		}
+
+		private static int compareSCPO(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, SUBJ_IDX, CONTEXT_IDX, PRED_IDX, OBJ_IDX);
+		}
+
+		private static int compareSCOP(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, SUBJ_IDX, CONTEXT_IDX, OBJ_IDX, PRED_IDX);
+		}
+
+		private static int comparePSOC(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, PRED_IDX, SUBJ_IDX, OBJ_IDX, CONTEXT_IDX);
+		}
+
+		private static int comparePSCO(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, PRED_IDX, SUBJ_IDX, CONTEXT_IDX, OBJ_IDX);
+		}
+
+		private static int comparePOSC(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, PRED_IDX, OBJ_IDX, SUBJ_IDX, CONTEXT_IDX);
+		}
+
+		private static int comparePOCS(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, PRED_IDX, OBJ_IDX, CONTEXT_IDX, SUBJ_IDX);
+		}
+
+		private static int comparePCSO(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, PRED_IDX, CONTEXT_IDX, SUBJ_IDX, OBJ_IDX);
+		}
+
+		private static int comparePCOS(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, PRED_IDX, CONTEXT_IDX, OBJ_IDX, SUBJ_IDX);
+		}
+
+		private static int compareOSPC(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, OBJ_IDX, SUBJ_IDX, PRED_IDX, CONTEXT_IDX);
+		}
+
+		private static int compareOSCP(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, OBJ_IDX, SUBJ_IDX, CONTEXT_IDX, PRED_IDX);
+		}
+
+		private static int compareOPSC(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, OBJ_IDX, PRED_IDX, SUBJ_IDX, CONTEXT_IDX);
+		}
+
+		private static int compareOPCS(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, OBJ_IDX, PRED_IDX, CONTEXT_IDX, SUBJ_IDX);
+		}
+
+		private static int compareOCSP(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, OBJ_IDX, CONTEXT_IDX, SUBJ_IDX, PRED_IDX);
+		}
+
+		private static int compareOCPS(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, OBJ_IDX, CONTEXT_IDX, PRED_IDX, SUBJ_IDX);
+		}
+
+		private static int compareCSPO(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, CONTEXT_IDX, SUBJ_IDX, PRED_IDX, OBJ_IDX);
+		}
+
+		private static int compareCSOP(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, CONTEXT_IDX, SUBJ_IDX, OBJ_IDX, PRED_IDX);
+		}
+
+		private static int compareCPSO(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, CONTEXT_IDX, PRED_IDX, SUBJ_IDX, OBJ_IDX);
+		}
+
+		private static int compareCPOS(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, CONTEXT_IDX, PRED_IDX, OBJ_IDX, SUBJ_IDX);
+		}
+
+		private static int compareCOSP(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, CONTEXT_IDX, OBJ_IDX, SUBJ_IDX, PRED_IDX);
+		}
+
+		private static int compareCOPS(byte[] key, byte[] data, int offset) {
+			return compareFields(key, data, offset, CONTEXT_IDX, OBJ_IDX, PRED_IDX, SUBJ_IDX);
+		}
+
+		private static int compareFields(byte[] key, byte[] data, int offset, int first, int second, int third,
+				int fourth) {
+			int diff = compareField(key, data, offset, first);
+			if (diff != 0) {
+				return diff;
+			}
+			diff = compareField(key, data, offset, second);
+			if (diff != 0) {
+				return diff;
+			}
+			diff = compareField(key, data, offset, third);
+			if (diff != 0) {
+				return diff;
+			}
+			return compareField(key, data, offset, fourth);
+		}
+
+		private static int compareField(byte[] key, byte[] data, int offset, int fieldIdx) {
+			return ByteArrayUtil.compareRegion(key, fieldIdx, data, offset + fieldIdx, 4);
 		}
 	}
 
