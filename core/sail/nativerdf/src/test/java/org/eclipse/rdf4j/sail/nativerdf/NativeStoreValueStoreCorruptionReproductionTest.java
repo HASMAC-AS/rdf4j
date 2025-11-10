@@ -25,6 +25,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.RepositoryResult;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +43,6 @@ import org.slf4j.LoggerFactory;
 public class NativeStoreValueStoreCorruptionReproductionTest {
 
 	private static final Logger logger = LoggerFactory.getLogger(NativeStoreValueStoreCorruptionReproductionTest.class);
-	private static final String REPOSITORY_DEBUG_PROPERTY = "org.eclipse.rdf4j.repository.debug";
 	private static final long CORRUPTION_OFFSET = 174;
 
 	@TempDir
@@ -85,7 +85,8 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 		}
 
 		File valuesFile = new File(dataDir, "values.dat");
-		logger.info("After dataset load values.dat exists={} length={} bytes", valuesFile.exists(), valuesFile.length());
+		logger.info("After dataset load values.dat exists={} length={} bytes", valuesFile.exists(),
+				valuesFile.length());
 	}
 
 	@AfterEach
@@ -96,10 +97,8 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 
 	@Test
 	public void corruptValuesDatInvalidTypeShouldBreakReads() throws IOException {
-		String previousDebugProperty = System.getProperty(REPOSITORY_DEBUG_PROPERTY);
-		System.setProperty(REPOSITORY_DEBUG_PROPERTY, "true");
-		logger.info("Enabled '{}' system property for extra diagnostics (previous value: {})",
-				REPOSITORY_DEBUG_PROPERTY, previousDebugProperty);
+		String repositoryDebugPropertyValue = System.getProperty("org.eclipse.rdf4j.repository.debug");
+		logger.info("'org.eclipse.rdf4j.repository.debug' system property currently {}", repositoryDebugPropertyValue);
 
 		// Disable soft-fail to surface corruption as an exception
 		NativeStore.SOFT_FAIL_ON_CORRUPT_DATA_AND_REPAIR_INDEXES = false;
@@ -127,22 +126,16 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 		try (RepositoryConnection conn = repo.getConnection()) {
 			RepositoryException repositoryException = assertThrows(RepositoryException.class, () -> {
 				logger.info("Requesting statements with explicit iteration to surface corruption");
-				conn.getStatements(null, null, null, false).forEachRemaining(s -> {
-					// Force materialization of all statements
-				});
+				try (RepositoryResult<Statement> statements = conn.getStatements(null, null, null, false)) {
+					statements.forEachRemaining(stmt -> {
+						stmt.toString();
+					});
+				}
 			});
 			logger.info("Captured RepositoryException message='{}' type={} cause={}", repositoryException.getMessage(),
 					repositoryException.getClass().getName(),
 					repositoryException.getCause() != null ? repositoryException.getCause().getClass().getName()
 							: "null");
-		} finally {
-			if (previousDebugProperty == null) {
-				System.clearProperty(REPOSITORY_DEBUG_PROPERTY);
-				logger.info("Cleared '{}' system property", REPOSITORY_DEBUG_PROPERTY);
-			} else {
-				System.setProperty(REPOSITORY_DEBUG_PROPERTY, previousDebugProperty);
-				logger.info("Restored '{}' system property to {}", REPOSITORY_DEBUG_PROPERTY, previousDebugProperty);
-			}
 		}
 	}
 
