@@ -15,10 +15,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.lang.management.ManagementFactory;
+import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.StandardOpenOption;
 import java.security.AccessControlException;
 
 import org.eclipse.rdf4j.common.concurrent.locks.Lock;
@@ -91,17 +92,22 @@ public class DirectoryLockManager implements LockManager {
 			File infoFile = new File(lockDir, INFO_FILE_NAME);
 			File lockedFile = new File(lockDir, LOCK_FILE_NAME);
 
-			RandomAccessFile raf = new RandomAccessFile(lockedFile, "rw");
+			FileChannel channel = null;
 			try {
-				FileLock fileLock = raf.getChannel().lock();
-				lock = createLock(raf, fileLock);
+				channel = FileChannel.open(lockedFile.toPath(), StandardOpenOption.CREATE,
+						StandardOpenOption.READ, StandardOpenOption.WRITE);
+				FileLock fileLock = channel.lock();
+				lock = createLock(channel, fileLock);
 				sign(infoFile);
 			} catch (IOException e) {
 				if (lock != null) {
-					// Also closes raf
 					lock.release();
-				} else {
-					raf.close();
+				} else if (channel != null && channel.isOpen()) {
+					try {
+						channel.close();
+					} catch (IOException closeException) {
+						e.addSuppressed(closeException);
+					}
 				}
 				throw e;
 			}
@@ -161,8 +167,9 @@ public class DirectoryLockManager implements LockManager {
 			boolean revokeLock = false;
 
 			File lockedFile = new File(lockDir, LOCK_FILE_NAME);
-			try (RandomAccessFile raf = new RandomAccessFile(lockedFile, "rw")) {
-				FileLock fileLock = raf.getChannel().tryLock();
+			try (FileChannel channel = FileChannel.open(lockedFile.toPath(), StandardOpenOption.CREATE,
+					StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+				FileLock fileLock = channel.tryLock();
 
 				if (fileLock != null) {
 					logger.warn("Removing invalid lock {}", getLockedBy());
@@ -194,7 +201,7 @@ public class DirectoryLockManager implements LockManager {
 		}
 	}
 
-	private Lock createLock(final RandomAccessFile raf, final FileLock fileLock) {
+	private Lock createLock(final FileChannel channel, final FileLock fileLock) {
 		return new Lock() {
 
 			private Thread hook;
@@ -231,12 +238,19 @@ public class DirectoryLockManager implements LockManager {
 
 			synchronized void delete() {
 				try {
-					if (raf.getChannel().isOpen()) {
+					if (fileLock.isValid()) {
 						fileLock.release();
-						raf.close();
 					}
 				} catch (IOException e) {
 					logger.warn(e.toString(), e);
+				} finally {
+					try {
+						if (channel.isOpen()) {
+							channel.close();
+						}
+					} catch (IOException e) {
+						logger.warn(e.toString(), e);
+					}
 				}
 
 				revokeLock();
