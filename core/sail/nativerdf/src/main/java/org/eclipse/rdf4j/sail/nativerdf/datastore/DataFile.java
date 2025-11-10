@@ -16,7 +16,11 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
@@ -57,6 +61,7 @@ public class DataFile implements Closeable {
 	public static final String LARGE_READ_THRESHOLD_PROPERTY = "org.eclipse.rdf4j.sail.nativerdf.datastore.DataFile.largeReadThresholdBytes";
 	public static final int LARGE_READ_THRESHOLD = getConfiguredLargeReadThreshold();
 	private static final int SOFT_FAIL_CAP_BYTES = 32 * 1024 * 1024; // 32MB
+	private static final int READ_ONLY_MAP_SEGMENT_SIZE = 128 * 1024 * 1024; // 128MB per mapping segment
 
 	/*-----------*
 	 * Variables *
@@ -71,6 +76,9 @@ public class DataFile implements Closeable {
 
 	// 4KB write buffer that is flushed on sync, close and any read operations
 	private final ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
+
+	private final Object readMapLock = new Object();
+	private volatile ReadOnlyMapping readOnlyMapping = ReadOnlyMapping.EMPTY;
 
 	/*--------------*
 	 * Constructors *
@@ -209,10 +217,6 @@ public class DataFile implements Closeable {
 		return buffer.capacity() - buffer.position();
 	}
 
-	// This variable is used for predicting the number of bytes to read in getData(long offset). This helps us to only
-	// need to execute a single IO read instead of first one read to find the length and then one read to read the data.
-	int dataLengthApproximateAverage = 25;
-
 	/**
 	 * Gets the data that is stored at the specified offset.
 	 *
@@ -229,13 +233,14 @@ public class DataFile implements Closeable {
 			return new byte[0];
 		}
 
-		// Map twice the average length because multiple small I/O operations are slower than one larger mapping,
-		// provided the region stays within reasonable bounds.
-		int predictedLength = (dataLengthApproximateAverage * 2) + 4;
-		int initialSize = (int) Math.min(Math.max(4, predictedLength), Math.min(Integer.MAX_VALUE, available));
+		long headerEnd = offset + Integer.BYTES;
+		if (headerEnd < offset) {
+			throw new IOException("Corrupt data record at offset " + offset + ". Data length overflow.");
+		}
 
-		ByteBuffer initial = nioFile.mapReadOnly(offset, initialSize);
-		int declaredLength = initial.getInt();
+		ensureMappingIncludes(headerEnd);
+		ReadOnlyMapping mapping = readOnlyMapping;
+		int declaredLength = readInt(mapping, offset);
 
 		// Validate and possibly reduce the length before allocating a large array
 		int dataLength = guardedDataLength(declaredLength);
@@ -245,53 +250,31 @@ public class DataFile implements Closeable {
 		}
 
 		try {
-			int headerRemaining = initial.remaining();
-
-			// We have either managed to map enough data and can return the required subset of the data, or we have
-			// mapped too little and need to acquire the remainder of the payload.
-			if (dataLength <= headerRemaining) {
-				// adjust the approximate average with 1 part actual length and 99 parts previous average up to a
-				// sensible max of 200
-				dataLengthApproximateAverage = (int) Math.max(0, Math.min(200,
-						((dataLengthApproximateAverage / 100.0) * 99) + (dataLength / 100.0)));
-
-				int limit = dataLength + 4;
-				if (limit < 0 || limit > initialSize) {
-					throw new IOException("Corrupt data record at offset " + offset + ". Data length: " + dataLength);
-				}
-
-				byte[] result = new byte[dataLength];
-				if (dataLength > 0) {
-					initial.get(result, 0, dataLength);
-				}
-				return result;
-
-			} else {
-
-				// adjust the approximate average, but favour the actual dataLength since misses are costly
-				dataLengthApproximateAverage = Math.max(0,
-						Math.min(200, (dataLengthApproximateAverage + dataLength) / 2));
-
-				byte[] result = new byte[dataLength];
-				int prefix = Math.min(headerRemaining, dataLength);
-				if (prefix > 0) {
-					initial.get(result, 0, prefix);
-				}
-
-				int remaining = dataLength - prefix;
-				if (remaining > 0) {
-					long payloadOffset = offset + 4L + prefix;
-					long payloadAvailableLong = Math.max(0, nioFileSize - payloadOffset);
-					int payloadAvailable = (int) Math.min(Integer.MAX_VALUE, payloadAvailableLong);
-					int toMap = Math.min(remaining, payloadAvailable);
-					if (toMap > 0) {
-						ByteBuffer payload = nioFile.mapReadOnly(payloadOffset, toMap);
-						payload.get(result, prefix, toMap);
-					}
-				}
-
+			byte[] result = new byte[dataLength];
+			if (dataLength == 0) {
 				return result;
 			}
+
+			long payloadOffset = offset + Integer.BYTES;
+			if (payloadOffset < offset) {
+				throw new IOException("Corrupt data record at offset " + offset + ". Data length overflow.");
+			}
+
+			long payloadAvailableLong = Math.max(0, nioFileSize - payloadOffset);
+			int payloadAvailable = (int) Math.min(Integer.MAX_VALUE, payloadAvailableLong);
+			int toRead = Math.min(dataLength, payloadAvailable);
+
+			if (toRead > 0) {
+				long payloadEnd = payloadOffset + toRead;
+				if (payloadEnd < payloadOffset) {
+					throw new IOException("Corrupt data record at offset " + offset + ". Data length overflow.");
+				}
+				ensureMappingIncludes(payloadEnd);
+				mapping = readOnlyMapping;
+				readFully(mapping, payloadOffset, result, 0, toRead);
+			}
+
+			return result;
 		} catch (OutOfMemoryError e) {
 			if (dataLength > LARGE_READ_THRESHOLD) {
 				logger.error(
@@ -300,6 +283,88 @@ public class DataFile implements Closeable {
 			throw e;
 		}
 
+	}
+
+	private void ensureMappingIncludes(long endExclusive) throws IOException {
+		if (endExclusive <= 0) {
+			return;
+		}
+
+		ReadOnlyMapping current = readOnlyMapping;
+		if (current.contains(endExclusive)) {
+			return;
+		}
+
+		synchronized (readMapLock) {
+			current = readOnlyMapping;
+			if (current.contains(endExclusive)) {
+				return;
+			}
+
+			long targetSize = Math.min(nioFileSize, Long.MAX_VALUE);
+			if (targetSize <= current.mappedSize) {
+				return;
+			}
+
+			List<MappingSegment> additions = new ArrayList<>();
+			long position = current.mappedSize;
+			while (position < targetSize) {
+				long remaining = targetSize - position;
+				int chunkSize = (int) Math.min(remaining, READ_ONLY_MAP_SEGMENT_SIZE);
+				if (chunkSize <= 0) {
+					break;
+				}
+				MappedByteBuffer buffer = nioFile.mapReadOnly(position, chunkSize);
+				buffer.order(ByteOrder.BIG_ENDIAN);
+				additions.add(new MappingSegment(position, position + chunkSize, buffer));
+				position += chunkSize;
+			}
+
+			if (!additions.isEmpty()) {
+				readOnlyMapping = current.append(additions, position);
+			}
+		}
+	}
+
+	private int readInt(ReadOnlyMapping mapping, long offset) throws IOException {
+		MappingSegment segment = mapping.segmentFor(offset);
+		ByteBuffer duplicate = segment.buffer.duplicate();
+		int withinSegment = (int) (offset - segment.start);
+		if (withinSegment <= duplicate.limit() - Integer.BYTES) {
+			duplicate.position(withinSegment);
+			return duplicate.getInt();
+		}
+		byte[] header = new byte[Integer.BYTES];
+		readFully(mapping, offset, header, 0, Integer.BYTES);
+		return ByteBuffer.wrap(header).getInt();
+	}
+
+	private void readFully(ReadOnlyMapping mapping, long offset, byte[] target, int targetOffset, int length)
+			throws IOException {
+		if (length <= 0) {
+			return;
+		}
+
+		int remaining = length;
+		long position = offset;
+		int destPos = targetOffset;
+
+		while (remaining > 0) {
+			MappingSegment segment = mapping.segmentFor(position);
+			ByteBuffer duplicate = segment.buffer.duplicate();
+			int withinSegment = (int) (position - segment.start);
+			duplicate.position(withinSegment);
+
+			int chunk = Math.min(remaining, duplicate.remaining());
+			if (chunk <= 0) {
+				throw new IOException("Unable to read mapped bytes at offset " + position);
+			}
+
+			duplicate.get(target, destPos, chunk);
+			remaining -= chunk;
+			destPos += chunk;
+			position += chunk;
+		}
 	}
 
 	/**
@@ -399,6 +464,67 @@ public class DataFile implements Closeable {
 		return Math.toIntExact(Math.min(threshold, Integer.MAX_VALUE));
 	}
 
+	private static final class ReadOnlyMapping {
+
+		private static final ReadOnlyMapping EMPTY = new ReadOnlyMapping(new MappingSegment[0], 0);
+
+		private final MappingSegment[] segments;
+		private final long mappedSize;
+
+		private ReadOnlyMapping(MappingSegment[] segments, long mappedSize) {
+			this.segments = segments;
+			this.mappedSize = mappedSize;
+		}
+
+		boolean contains(long endExclusive) {
+			return endExclusive <= mappedSize;
+		}
+
+		ReadOnlyMapping append(List<MappingSegment> additions, long newMappedSize) {
+			if (additions.isEmpty()) {
+				return this;
+			}
+			MappingSegment[] merged = Arrays.copyOf(segments, segments.length + additions.size());
+			for (int i = 0; i < additions.size(); i++) {
+				merged[segments.length + i] = additions.get(i);
+			}
+			return new ReadOnlyMapping(merged, newMappedSize);
+		}
+
+		MappingSegment segmentFor(long offset) {
+			if (segments.length == 0) {
+				throw new IllegalStateException("No mapped segments available for offset " + offset);
+			}
+			int low = 0;
+			int high = segments.length - 1;
+			while (low <= high) {
+				int mid = (low + high) >>> 1;
+				MappingSegment segment = segments[mid];
+				if (offset < segment.start) {
+					high = mid - 1;
+				} else if (offset >= segment.end) {
+					low = mid + 1;
+				} else {
+					return segment;
+				}
+			}
+			throw new IllegalArgumentException("Offset " + offset + " outside mapped region [0, " + mappedSize + ")");
+		}
+	}
+
+	private static final class MappingSegment {
+
+		private final long start;
+		private final long end;
+		private final MappedByteBuffer buffer;
+
+		private MappingSegment(long start, long end, MappedByteBuffer buffer) {
+			this.start = start;
+			this.end = end;
+			this.buffer = buffer;
+		}
+	}
+
 	/**
 	 * Discards all stored data.
 	 *
@@ -408,6 +534,7 @@ public class DataFile implements Closeable {
 		nioFile.truncate(HEADER_LENGTH);
 		nioFileSize = HEADER_LENGTH;
 		buffer.clear();
+		readOnlyMapping = ReadOnlyMapping.EMPTY;
 	}
 
 	/**
@@ -436,6 +563,7 @@ public class DataFile implements Closeable {
 	synchronized public void close() throws IOException {
 		flush();
 		nioFile.force(true);
+		readOnlyMapping = ReadOnlyMapping.EMPTY;
 		nioFile.close();
 	}
 

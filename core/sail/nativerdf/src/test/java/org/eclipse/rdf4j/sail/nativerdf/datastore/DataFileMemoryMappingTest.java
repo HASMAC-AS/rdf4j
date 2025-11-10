@@ -46,6 +46,30 @@ class DataFileMemoryMappingTest {
 		}
 	}
 
+	@Test
+	void repeatedReadsDoNotTriggerAdditionalMappings() throws Exception {
+		File dataPath = new File(tempDir, "values.dat");
+
+		try (DataFile dataFile = new DataFile(dataPath)) {
+			long offset = dataFile.storeData("world".getBytes(StandardCharsets.UTF_8));
+			dataFile.sync();
+
+			CountingFileChannel counting = wrapWithCountingChannel(dataFile);
+
+			byte[] firstRead = dataFile.getData(offset);
+			int mapsAfterFirstRead = counting.getMapCount();
+
+			byte[] secondRead = dataFile.getData(offset);
+			int mapsAfterSecondRead = counting.getMapCount();
+
+			assertThat(new String(firstRead, StandardCharsets.UTF_8)).isEqualTo("world");
+			assertThat(new String(secondRead, StandardCharsets.UTF_8)).isEqualTo("world");
+			assertThat(mapsAfterSecondRead)
+					.as("subsequent reads should reuse existing memory mapping")
+					.isEqualTo(mapsAfterFirstRead);
+		}
+	}
+
 	private static CountingFileChannel wrapWithCountingChannel(DataFile dataFile)
 			throws NoSuchFieldException, IllegalAccessException {
 		Field nioFileField = DataFile.class.getDeclaredField("nioFile");

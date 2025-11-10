@@ -461,13 +461,7 @@ class Node {
 
 	public void read() throws IOException {
 		long offset = tree.nodeID2offset(id);
-		ByteBuffer mapped = tree.nioFile.mapReadOnly(offset, tree.nodeSize);
-
-		if (mapped.remaining() < tree.nodeSize) {
-			throw new IOException("Corrupt node at offset " + offset + " in " + tree.getFile());
-		}
-
-		mapped.get(data, 0, tree.nodeSize);
+		tree.readNodeBytes(offset, data, tree.nodeSize);
 
 		valueCount = ByteArrayUtil.getInt(data, 0);
 	}

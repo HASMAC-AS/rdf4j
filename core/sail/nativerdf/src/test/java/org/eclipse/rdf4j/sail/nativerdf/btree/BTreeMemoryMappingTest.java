@@ -49,6 +49,34 @@ class BTreeMemoryMappingTest {
 		}
 	}
 
+	@Test
+	void repeatedNodeReadsReuseExistingMapping() throws Exception {
+		byte[] value = ByteBuffer.allocate(8).putLong(99L).array();
+
+		File dataDir = new File(tempDir, "btree-reuse");
+		assertThat(dataDir.mkdirs() || dataDir.isDirectory()).isTrue();
+
+		try (BTree tree = new BTree(dataDir, "values", 4096, value.length)) {
+			tree.insert(value);
+		}
+
+		try (BTree tree = new BTree(dataDir, "values", 4096, value.length)) {
+			CountingFileChannel counting = wrapWithCountingChannel(tree);
+			int rootNodeID = getRootNodeId(tree);
+			Node node = new Node(rootNodeID, tree);
+
+			node.read();
+			int mapsAfterFirst = counting.getMapCount();
+
+			node.read();
+			int mapsAfterSecond = counting.getMapCount();
+
+			assertThat(mapsAfterSecond)
+					.as("subsequent node reads should reuse the existing memory mapping")
+					.isEqualTo(mapsAfterFirst);
+		}
+	}
+
 	private static CountingFileChannel wrapWithCountingChannel(BTree tree)
 			throws NoSuchFieldException, IllegalAccessException {
 		Field nioFileField = BTree.class.getDeclaredField("nioFile");
@@ -61,5 +89,12 @@ class BTreeMemoryMappingTest {
 		CountingFileChannel counting = new CountingFileChannel(delegate);
 		fcField.set(nioFile, counting);
 		return counting;
+	}
+
+	private static int getRootNodeId(BTree tree) throws NoSuchFieldException, IllegalAccessException {
+		Field rootField = BTree.class.getDeclaredField("rootNodeID");
+		rootField.setAccessible(true);
+
+		return rootField.getInt(tree);
 	}
 }

@@ -26,6 +26,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * File wrapper that protects against concurrent file closing events due to e.g. {@link Thread#interrupt() thread
@@ -48,6 +49,7 @@ public final class NioFile implements Closeable {
 	private final Set<StandardOpenOption> openOptions;
 
 	private volatile FileChannel fc;
+	private final AtomicLong cachedSize = new AtomicLong(-1);
 
 	/**
 	 * Disable strict guards via system property to maintain legacy behavior without additional exceptions. Property:
@@ -135,6 +137,7 @@ public final class NioFile implements Closeable {
 	@Override
 	public synchronized void close() throws IOException {
 		explictlyClosed = true;
+		invalidateCachedSize();
 		fc.close();
 	}
 
@@ -192,6 +195,8 @@ public final class NioFile implements Closeable {
 		while (true) {
 			try {
 				fc.truncate(size);
+				long actual = queryFileChannelSize();
+				cachedSize.set(actual);
 				return;
 			} catch (ClosedByInterruptException e) {
 				throw e;
@@ -224,15 +229,15 @@ public final class NioFile implements Closeable {
 	 * @throws IOException
 	 */
 	public long size() throws IOException {
-		while (true) {
-			try {
-				return fc.size();
-			} catch (ClosedByInterruptException e) {
-				throw e;
-			} catch (ClosedChannelException e) {
-				reopen(e);
-			}
+		long cached = cachedSize.get();
+		if (cached >= 0) {
+			return cached;
 		}
+		long actual = queryFileChannelSize();
+		if (cachedSize.get() < 0) {
+			cachedSize.compareAndSet(-1, actual);
+		}
+		return actual;
 	}
 
 	/**
@@ -266,6 +271,7 @@ public final class NioFile implements Closeable {
 	 */
 	public int write(ByteBuffer buf, long offset) throws IOException {
 		final int startPosition = buf.position();
+		ensureCachedSizeInitialized();
 		while (true) {
 			try {
 				// Ensure the entire buffer is written, even if the underlying channel performs a partial write
@@ -278,7 +284,9 @@ public final class NioFile implements Closeable {
 						continue;
 					}
 				}
-				return buf.position() - startPosition;
+				int written = buf.position() - startPosition;
+				updateCachedSizeAfterWrite(offset, written);
+				return written;
 			} catch (ClosedByInterruptException e) {
 				throw e;
 			} catch (ClosedChannelException e) {
@@ -440,5 +448,50 @@ public final class NioFile implements Closeable {
 			throw new EOFException("Unexpected EOF in readInt: read " + read);
 		}
 		return buf.getInt(0);
+	}
+
+	private void ensureCachedSizeInitialized() throws IOException {
+		if (cachedSize.get() >= 0) {
+			return;
+		}
+		long actual = queryFileChannelSize();
+		cachedSize.compareAndSet(-1, actual);
+	}
+
+	private long queryFileChannelSize() throws IOException {
+		while (true) {
+			try {
+				return fc.size();
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private void updateCachedSizeAfterWrite(long offset, int bytesWritten) {
+		if (bytesWritten <= 0) {
+			return;
+		}
+		long end = offset + (long) bytesWritten;
+		if (end < 0) {
+			invalidateCachedSize();
+			return;
+		}
+		while (true) {
+			long current = cachedSize.get();
+			if (current >= 0 && current >= end) {
+				return;
+			}
+			long next = current < 0 ? end : Math.max(current, end);
+			if (cachedSize.compareAndSet(current, next)) {
+				return;
+			}
+		}
+	}
+
+	private void invalidateCachedSize() {
+		cachedSize.set(-1);
 	}
 }
