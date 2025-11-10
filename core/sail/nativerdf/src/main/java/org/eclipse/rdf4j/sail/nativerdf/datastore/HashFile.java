@@ -15,7 +15,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -55,6 +57,8 @@ public class HashFile implements Closeable {
 
 	private static final int INIT_BUCKET_SIZE = 8;
 
+	private static final int FORCE_CHUNK_BUCKETS = 1024;
+
 	/*-----------*
 	 * Variables *
 	 *-----------*/
@@ -78,10 +82,14 @@ public class HashFile implements Closeable {
 	// recordSize = ITEM_SIZE * bucketSize + 4
 	private final int recordSize;
 
+	private final byte[] emptyBucketTemplate;
+
 	// first prime > 5MB
 	private final BitSet poorMansBloomFilter;
 
 	boolean loadedHashFileFromDisk = false;
+
+	private volatile boolean tableDirty;
 
 	/**
 	 * A read/write lock that is used to prevent structural changes to the hash file while readers are active in order
@@ -116,6 +124,7 @@ public class HashFile implements Closeable {
 				bucketSize = INIT_BUCKET_SIZE;
 				itemCount = 0;
 				recordSize = ITEM_SIZE * bucketSize + 4;
+				emptyBucketTemplate = new byte[recordSize];
 
 				// Initialize the file by writing <_bucketCount> empty buckets
 				writeEmptyBuckets(HEADER_LENGTH, bucketCount);
@@ -149,6 +158,7 @@ public class HashFile implements Closeable {
 				}
 
 				recordSize = ITEM_SIZE * bucketSize + 4;
+				emptyBucketTemplate = new byte[recordSize];
 				loadedHashFileFromDisk = itemCount > 0;
 			}
 
@@ -223,48 +233,36 @@ public class HashFile implements Closeable {
 	}
 
 	private void storeID(long bucketOffset, int hash, int id) throws IOException {
-		ByteBuffer bucket = ByteBuffer.allocate(recordSize);
+		MappedByteBuffer bucket = mapBucket(bucketOffset);
 
 		while (true) {
-			nioFile.read(bucket, bucketOffset);
-
-			// Find first empty slot in bucket
 			int slotID = findEmptySlotInBucket(bucket);
 
 			if (slotID >= 0) {
-				// Empty slot found, store dataOffset in it
-
-				ByteBuffer diff = ByteBuffer.allocate(8);
-				diff.putInt(hash);
-				diff.putInt(id);
-				diff.rewind();
-
-				nioFile.write(diff, bucketOffset + ITEM_SIZE * slotID);
-				break;
-			} else {
-				// No empty slot found, check if bucket has an overflow bucket
-				int overflowID = bucket.getInt(ITEM_SIZE * bucketSize);
-
-				if (overflowID == 0) {
-					// No overflow bucket yet, create one
-					overflowID = createOverflowBucket();
-
-					// Link overflow bucket to current bucket
-					bucket.putInt(ITEM_SIZE * bucketSize, overflowID);
-					bucket.rewind();
-					nioFile.write(bucket, bucketOffset);
-				}
-
-				// Continue searching for an empty slot in the overflow bucket
-				bucketOffset = getOverflowBucketOffset(overflowID);
-				bucket.clear();
+				bucket.putInt(ITEM_SIZE * slotID, hash);
+				bucket.putInt(ITEM_SIZE * slotID + 4, id);
+				tableDirty = true;
+				return;
 			}
+
+			int overflowID = bucket.getInt(ITEM_SIZE * bucketSize);
+
+			if (overflowID == 0) {
+				overflowID = createOverflowBucket();
+				bucket.putInt(ITEM_SIZE * bucketSize, overflowID);
+				tableDirty = true;
+			}
+
+			bucketOffset = getOverflowBucketOffset(overflowID);
+			bucket = mapBucket(bucketOffset);
 		}
 	}
 
 	public void clear() throws IOException {
 		structureLock.writeLock().lock();
-		poorMansBloomFilter.clear();
+		if (poorMansBloomFilter != null) {
+			poorMansBloomFilter.clear();
+		}
 		try {
 			// Truncate the file to remove any overflow buffers
 			nioFile.truncate(HEADER_LENGTH + (long) bucketCount * recordSize);
@@ -273,6 +271,7 @@ public class HashFile implements Closeable {
 			writeEmptyBuckets(HEADER_LENGTH, bucketCount);
 
 			itemCount = 0;
+			tableDirty = true;
 		} finally {
 			structureLock.writeLock().unlock();
 		}
@@ -291,12 +290,16 @@ public class HashFile implements Closeable {
 		}
 
 		if (forceSync) {
+			forceMappedBuckets();
 			nioFile.force(false);
 		}
 	}
 
 	public void sync(boolean force) throws IOException {
 		sync();
+		if (force) {
+			forceMappedBuckets();
+		}
 		// Always honor explicit requests to force metadata to disk while preserving data durability for sync(false)
 		nioFile.force(force);
 	}
@@ -376,12 +379,61 @@ public class HashFile implements Closeable {
 	}
 
 	private void writeEmptyBuckets(long fileOffset, int bucketCount) throws IOException {
-		ByteBuffer emptyBucket = ByteBuffer.allocate(recordSize);
+		if (bucketCount <= 0) {
+			return;
+		}
+
+		long requiredSize = fileOffset + (long) bucketCount * recordSize;
+		if (nioFile.size() < requiredSize) {
+			nioFile.truncate(requiredSize);
+		}
 
 		for (int i = 0; i < bucketCount; i++) {
-			nioFile.write(emptyBucket, fileOffset + i * (long) recordSize);
-			emptyBucket.rewind();
+			long bucketOffset = fileOffset + (long) i * recordSize;
+			MappedByteBuffer bucket = nioFile.map(MapMode.READ_WRITE, bucketOffset, recordSize);
+			bucket.position(0);
+			bucket.put(emptyBucketTemplate);
 		}
+
+		tableDirty = true;
+	}
+
+	private MappedByteBuffer mapBucket(long bucketOffset) throws IOException {
+		return nioFile.map(MapMode.READ_WRITE, bucketOffset, recordSize);
+	}
+
+	private void forceMappedBuckets() throws IOException {
+		if (!tableDirty) {
+			return;
+		}
+
+		long tableSize = HEADER_LENGTH + (long) bucketCount * recordSize;
+		long currentSize = Math.min(tableSize, nioFile.size());
+		if (currentSize <= HEADER_LENGTH) {
+			tableDirty = false;
+			return;
+		}
+
+		long offset = HEADER_LENGTH;
+		long maxChunkBytes = (long) recordSize * FORCE_CHUNK_BUCKETS;
+		if (maxChunkBytes <= 0) {
+			maxChunkBytes = Integer.MAX_VALUE;
+		}
+
+		while (offset < currentSize) {
+			long remaining = currentSize - offset;
+			long chunkBytes = Math.min(remaining, maxChunkBytes);
+			chunkBytes = Math.min(chunkBytes, Integer.MAX_VALUE);
+			if (chunkBytes <= 0) {
+				break;
+			}
+
+			MappedByteBuffer mappedRegion = nioFile.map(MapMode.READ_WRITE, offset, chunkBytes);
+			mappedRegion.force();
+			offset += chunkBytes;
+		}
+
+		tableDirty = false;
 	}
 
 	private int findEmptySlotInBucket(ByteBuffer bucket) {
@@ -403,103 +455,67 @@ public class HashFile implements Closeable {
 		long newTableSize = HEADER_LENGTH + (long) bucketCount * recordSize * 2;
 		long oldFileSize = nioFile.size(); // includes overflow buckets
 
-		// Move any overflow buckets out of the way to a temporary file
 		File tmpFile = new File(getFile().getParentFile(), "rehash_" + getFile().getName());
 		try (RandomAccessFile tmpRaf = createEmptyFile(tmpFile)) {
 			FileChannel tmpChannel = tmpRaf.getChannel();
-			// Transfer the overflow buckets to the temp file
-			// FIXME: work around java bug 6431344:
-			// "FileChannel.transferTo() doesn't work if address space runs out"
 			nioFile.transferTo(oldTableSize, oldFileSize - oldTableSize, tmpChannel);
-			// Increase hash table by factor 2
+
 			writeEmptyBuckets(oldTableSize, bucketCount);
 			bucketCount *= 2;
-			// Discard any remaining overflow buffers
 			nioFile.truncate(newTableSize);
-			ByteBuffer bucket = ByteBuffer.allocate(recordSize);
-			ByteBuffer newBucket = ByteBuffer.allocate(recordSize);
-			// Rehash items in non-overflow buckets, half of these will move to a
-			// new location, but none of them will trigger the creation of new overflow
-			// buckets. Any (now deprecated) references to overflow buckets are
-			// removed too.
 
-			// All items that are moved to a new location end up in one and the same
-			// new and empty bucket. All items are divided between the old and the
-			// new bucket and the changes to the buckets are written to disk only once.
 			for (long bucketOffset = HEADER_LENGTH; bucketOffset < oldTableSize; bucketOffset += recordSize) {
-				nioFile.read(bucket, bucketOffset);
-
+				MappedByteBuffer bucket = mapBucket(bucketOffset);
 				boolean bucketChanged = false;
-				long newBucketOffset = 0L;
 
 				for (int slotNo = 0; slotNo < bucketSize; slotNo++) {
 					int id = bucket.getInt(ITEM_SIZE * slotNo + 4);
 
 					if (id != 0) {
-						// Slot is not empty
 						int hash = bucket.getInt(ITEM_SIZE * slotNo);
 						long newOffset = getBucketOffset(hash);
 
 						if (newOffset != bucketOffset) {
-							// Move this item to new bucket...
-							newBucket.putInt(hash);
-							newBucket.putInt(id);
-
-							// ...and remove it from the current bucket
 							bucket.putInt(ITEM_SIZE * slotNo, 0);
 							bucket.putInt(ITEM_SIZE * slotNo + 4, 0);
-
 							bucketChanged = true;
-							newBucketOffset = newOffset;
+
+							storeID(newOffset, hash, id);
 						}
 					}
 				}
 
-				if (bucketChanged) {
-					// Some of the items were moved to the new bucket, write it to
-					// the file
-					newBucket.flip();
-					nioFile.write(newBucket, newBucketOffset);
-					newBucket.clear();
-				}
-
-				// Reset overflow ID in the old bucket to 0 if necessary
 				if (bucket.getInt(ITEM_SIZE * bucketSize) != 0) {
 					bucket.putInt(ITEM_SIZE * bucketSize, 0);
 					bucketChanged = true;
 				}
 
 				if (bucketChanged) {
-					// Some of the items were moved to the new bucket or the
-					// overflow ID has been reset; write the bucket back to the file
-					bucket.rewind();
-					nioFile.write(bucket, bucketOffset);
+					tableDirty = true;
 				}
+			}
 
-				bucket.clear();
-			} // Rehash items in overflow buckets. This might trigger the creation of
-				// new overflow buckets so we can't optimize this in the same way as we
-				// rehash the normal buckets.
+			ByteBuffer overflowBucket = ByteBuffer.allocate(recordSize);
 			long tmpFileSize = tmpChannel.size();
 			for (long bucketOffset = 0L; bucketOffset < tmpFileSize; bucketOffset += recordSize) {
-				tmpChannel.read(bucket, bucketOffset);
+				overflowBucket.clear();
+				int read = tmpChannel.read(overflowBucket, bucketOffset);
+				if (read <= 0) {
+					continue;
+				}
+				overflowBucket.position(0);
 
 				for (int slotNo = 0; slotNo < bucketSize; slotNo++) {
-					int id = bucket.getInt(ITEM_SIZE * slotNo + 4);
+					int id = overflowBucket.getInt(ITEM_SIZE * slotNo + 4);
 
 					if (id != 0) {
-						// Slot is not empty
-						int hash = bucket.getInt(ITEM_SIZE * slotNo);
+						int hash = overflowBucket.getInt(ITEM_SIZE * slotNo);
 						long newBucketOffset = getBucketOffset(hash);
 
-						// Copy this item to its new location
 						storeID(newBucketOffset, hash, id);
 					}
 				}
-
-				bucket.clear();
 			}
-			// Discard the temp file
 		}
 		tmpFile.delete();
 		sync(true);
@@ -525,19 +541,17 @@ public class HashFile implements Closeable {
 
 		private final int queryHash;
 
-		private ByteBuffer bucketBuffer;
+		private MappedByteBuffer bucketBuffer;
 
 		private int slotNo;
 
 		private IDIterator(int hash) throws IOException {
 			queryHash = hash;
-			bucketBuffer = ByteBuffer.allocate(recordSize);
-
 			structureLock.readLock().lock();
 			try {
 				// Read initial bucket
 				long bucketOffset = getBucketOffset(hash);
-				nioFile.read(bucketBuffer, bucketOffset);
+				bucketBuffer = mapBucket(bucketOffset);
 
 				slotNo = -1;
 			} catch (IOException | RuntimeException e) {
@@ -577,9 +591,8 @@ public class HashFile implements Closeable {
 					break;
 				} else {
 					// Continue with overflow bucket
-					bucketBuffer.clear();
 					long bucketOffset = getOverflowBucketOffset(overflowID);
-					nioFile.read(bucketBuffer, bucketOffset);
+					bucketBuffer = mapBucket(bucketOffset);
 					slotNo = -1;
 				}
 			}
