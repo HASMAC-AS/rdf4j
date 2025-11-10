@@ -224,53 +224,73 @@ public class DataFile implements Closeable {
 		assert offset > 0 : "offset must be larger than 0, is: " + offset;
 		flush();
 
-		// Read in twice the average length because multiple small read operations take more time than one single larger
-		// operation even if that larger operation is unnecessarily large (within sensible limits).
-		byte[] data = new byte[(dataLengthApproximateAverage * 2) + 4];
-		ByteBuffer buf = ByteBuffer.wrap(data);
-		nioFile.read(buf, offset);
+		long available = Math.max(0, nioFileSize - offset);
+		if (available < 4) {
+			return new byte[0];
+		}
 
-		int dataLength = (data[0] << 24) & 0xff000000 |
-				(data[1] << 16) & 0x00ff0000 |
-				(data[2] << 8) & 0x0000ff00 |
-				(data[3]) & 0x000000ff;
+		// Map twice the average length because multiple small I/O operations are slower than one larger mapping,
+		// provided the region stays within reasonable bounds.
+		int predictedLength = (dataLengthApproximateAverage * 2) + 4;
+		int initialSize = (int) Math.min(Math.max(4, predictedLength), Math.min(Integer.MAX_VALUE, available));
+
+		ByteBuffer initial = nioFile.mapReadOnly(offset, initialSize);
+		int declaredLength = initial.getInt();
 
 		// Validate and possibly reduce the length before allocating a large array
-		dataLength = guardedDataLength(dataLength);
+		int dataLength = guardedDataLength(declaredLength);
+
+		if (dataLength < 0) {
+			throw new IOException("Corrupt data record at offset " + offset + ". Data length: " + dataLength);
+		}
 
 		try {
+			int headerRemaining = initial.remaining();
 
-			// We have either managed to read enough data and can return the required subset of the data, or we have
-			// read
-			// too little so we need to execute another read to get the correct data.
-			if (dataLength <= data.length - 4) {
-
+			// We have either managed to map enough data and can return the required subset of the data, or we have
+			// mapped too little and need to acquire the remainder of the payload.
+			if (dataLength <= headerRemaining) {
 				// adjust the approximate average with 1 part actual length and 99 parts previous average up to a
-				// sensible
-				// max of 200
+				// sensible max of 200
 				dataLengthApproximateAverage = (int) Math.max(0, Math.min(200,
 						((dataLengthApproximateAverage / 100.0) * 99) + (dataLength / 100.0)));
 
-				int i = dataLength + 4;
-				if (i < 0 || i > data.length) {
+				int limit = dataLength + 4;
+				if (limit < 0 || limit > initialSize) {
 					throw new IOException("Corrupt data record at offset " + offset + ". Data length: " + dataLength);
 				}
 
-				return Arrays.copyOfRange(data, 4, i);
+				byte[] result = new byte[dataLength];
+				if (dataLength > 0) {
+					initial.get(result, 0, dataLength);
+				}
+				return result;
 
 			} else {
 
-				// adjust the approximate average, but favour the actual dataLength since dataLength predictions misses
-				// are costly
+				// adjust the approximate average, but favour the actual dataLength since misses are costly
 				dataLengthApproximateAverage = Math.max(0,
 						Math.min(200, (dataLengthApproximateAverage + dataLength) / 2));
 
-				// we didn't read enough data so we need to execute a new read
-				data = new byte[dataLength];
-				buf = ByteBuffer.wrap(data);
-				nioFile.read(buf, offset + 4L);
+				byte[] result = new byte[dataLength];
+				int prefix = Math.min(headerRemaining, dataLength);
+				if (prefix > 0) {
+					initial.get(result, 0, prefix);
+				}
 
-				return data;
+				int remaining = dataLength - prefix;
+				if (remaining > 0) {
+					long payloadOffset = offset + 4L + prefix;
+					long payloadAvailableLong = Math.max(0, nioFileSize - payloadOffset);
+					int payloadAvailable = (int) Math.min(Integer.MAX_VALUE, payloadAvailableLong);
+					int toMap = Math.min(remaining, payloadAvailable);
+					if (toMap > 0) {
+						ByteBuffer payload = nioFile.mapReadOnly(payloadOffset, toMap);
+						payload.get(result, prefix, toMap);
+					}
+				}
+
+				return result;
 			}
 		} catch (OutOfMemoryError e) {
 			if (dataLength > LARGE_READ_THRESHOLD) {

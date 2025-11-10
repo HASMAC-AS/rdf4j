@@ -460,14 +460,14 @@ class Node {
 	}
 
 	public void read() throws IOException {
-		ByteBuffer buf = ByteBuffer.wrap(data);
+		long offset = tree.nodeID2offset(id);
+		ByteBuffer mapped = tree.nioFile.mapReadOnly(offset, tree.nodeSize);
 
-		// Don't fill the spare slot in data:
-		buf.limit(tree.nodeSize);
+		if (mapped.remaining() < tree.nodeSize) {
+			throw new IOException("Corrupt node at offset " + offset + " in " + tree.getFile());
+		}
 
-		int bytesRead = tree.nioFile.read(buf, tree.nodeID2offset(id));
-		assert bytesRead == tree.nodeSize : "Read operation didn't read the entire node (" + bytesRead + " of "
-				+ tree.nodeSize + " bytes)";
+		mapped.get(data, 0, tree.nodeSize);
 
 		valueCount = ByteArrayUtil.getInt(data, 0);
 	}
