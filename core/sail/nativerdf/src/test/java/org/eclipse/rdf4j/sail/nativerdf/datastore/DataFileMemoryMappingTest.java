@@ -13,12 +13,14 @@ package org.eclipse.rdf4j.sail.nativerdf.datastore;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 
 import org.eclipse.rdf4j.common.io.NioFile;
 import org.eclipse.rdf4j.sail.nativerdf.testutil.CountingFileChannel;
+import org.eclipse.rdf4j.sail.nativerdf.testutil.CountingFileChannel.MapRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -70,6 +72,31 @@ class DataFileMemoryMappingTest {
 		}
 	}
 
+	@Test
+	void smallReadDoesNotMapEntireLargeFile() throws Exception {
+		File dataPath = new File(tempDir, "values-large.dat");
+
+		try (DataFile dataFile = new DataFile(dataPath)) {
+			long offset = dataFile.storeData("tiny".getBytes(StandardCharsets.UTF_8));
+			dataFile.sync();
+
+			long segmentSize = readOnlySegmentSize();
+			long inflatedSize = segmentSize * 4L;
+			expandFileTo(dataPath, inflatedSize);
+			setNioFileSize(dataFile, inflatedSize);
+
+			CountingFileChannel counting = wrapWithCountingChannel(dataFile);
+
+			byte[] result = dataFile.getData(offset);
+
+			assertThat(new String(result, StandardCharsets.UTF_8)).isEqualTo("tiny");
+			assertThat(counting.getMapRequests()).isNotEmpty();
+			assertThat(totalMappedBytes(counting))
+					.as("should not map the entire %d-byte file", inflatedSize)
+					.isLessThan(inflatedSize);
+		}
+	}
+
 	private static CountingFileChannel wrapWithCountingChannel(DataFile dataFile)
 			throws NoSuchFieldException, IllegalAccessException {
 		Field nioFileField = DataFile.class.getDeclaredField("nioFile");
@@ -82,5 +109,28 @@ class DataFileMemoryMappingTest {
 		CountingFileChannel counting = new CountingFileChannel(delegate);
 		fcField.set(nioFile, counting);
 		return counting;
+	}
+
+	private static long totalMappedBytes(CountingFileChannel counting) {
+		return counting.getMapRequests().stream().mapToLong(MapRequest::getSize).sum();
+	}
+
+	private static long readOnlySegmentSize() throws NoSuchFieldException, IllegalAccessException {
+		Field field = DataFile.class.getDeclaredField("READ_ONLY_MAP_SEGMENT_SIZE");
+		field.setAccessible(true);
+		return field.getInt(null);
+	}
+
+	private static void setNioFileSize(DataFile dataFile, long size)
+			throws NoSuchFieldException, IllegalAccessException {
+		Field sizeField = DataFile.class.getDeclaredField("nioFileSize");
+		sizeField.setAccessible(true);
+		sizeField.setLong(dataFile, size);
+	}
+
+	private static void expandFileTo(File path, long size) throws Exception {
+		try (RandomAccessFile raf = new RandomAccessFile(path, "rw")) {
+			raf.setLength(size);
+		}
 	}
 }

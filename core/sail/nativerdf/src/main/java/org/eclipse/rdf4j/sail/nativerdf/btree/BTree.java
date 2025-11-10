@@ -1124,7 +1124,7 @@ public class BTree implements Closeable {
 				return;
 			}
 
-			long targetSize = fileSize;
+			long targetSize = Math.min(fileSize, roundUpToSegmentBoundary(endExclusive));
 			if (targetSize <= current.mappedSize) {
 				return;
 			}
@@ -1147,6 +1147,24 @@ public class BTree implements Closeable {
 				readOnlyMapping = current.append(additions, position);
 			}
 		}
+	}
+
+	private static long roundUpToSegmentBoundary(long endExclusive) {
+		if (endExclusive <= 0) {
+			return 0;
+		}
+
+		long segmentSize = READ_ONLY_MAP_SEGMENT_SIZE;
+		long remainder = endExclusive % segmentSize;
+		if (remainder == 0) {
+			return endExclusive;
+		}
+
+		long delta = segmentSize - remainder;
+		if (endExclusive > Long.MAX_VALUE - delta) {
+			return Long.MAX_VALUE;
+		}
+		return endExclusive + delta;
 	}
 
 	private void readFully(ReadOnlyMapping mapping, long offset, byte[] target, int targetOffset, int length)

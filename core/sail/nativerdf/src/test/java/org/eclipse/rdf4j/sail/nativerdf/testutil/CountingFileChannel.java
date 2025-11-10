@@ -17,7 +17,10 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -27,6 +30,7 @@ public final class CountingFileChannel extends FileChannel {
 
 	private final FileChannel delegate;
 	private final AtomicInteger mapCount = new AtomicInteger();
+	private final List<MapRequest> mapRequests = new CopyOnWriteArrayList<>();
 
 	public CountingFileChannel(FileChannel delegate) {
 		this.delegate = Objects.requireNonNull(delegate, "delegate");
@@ -39,7 +43,12 @@ public final class CountingFileChannel extends FileChannel {
 	@Override
 	public MappedByteBuffer map(MapMode mode, long position, long size) throws IOException {
 		mapCount.incrementAndGet();
+		mapRequests.add(new MapRequest(mode, position, size));
 		return delegate.map(mode, position, size);
+	}
+
+	public List<MapRequest> getMapRequests() {
+		return Collections.unmodifiableList(mapRequests);
 	}
 
 	@Override
@@ -122,5 +131,29 @@ public final class CountingFileChannel extends FileChannel {
 	@Override
 	protected void implCloseChannel() throws IOException {
 		delegate.close();
+	}
+
+	public static final class MapRequest {
+		private final MapMode mode;
+		private final long position;
+		private final long size;
+
+		private MapRequest(MapMode mode, long position, long size) {
+			this.mode = mode;
+			this.position = position;
+			this.size = size;
+		}
+
+		public MapMode getMode() {
+			return mode;
+		}
+
+		public long getPosition() {
+			return position;
+		}
+
+		public long getSize() {
+			return size;
+		}
 	}
 }

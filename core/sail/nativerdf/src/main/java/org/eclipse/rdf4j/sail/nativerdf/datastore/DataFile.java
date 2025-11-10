@@ -301,7 +301,7 @@ public class DataFile implements Closeable {
 				return;
 			}
 
-			long targetSize = Math.min(nioFileSize, Long.MAX_VALUE);
+			long targetSize = Math.min(nioFileSize, roundUpToSegmentBoundary(endExclusive));
 			if (targetSize <= current.mappedSize) {
 				return;
 			}
@@ -324,6 +324,24 @@ public class DataFile implements Closeable {
 				readOnlyMapping = current.append(additions, position);
 			}
 		}
+	}
+
+	private static long roundUpToSegmentBoundary(long endExclusive) {
+		if (endExclusive <= 0) {
+			return 0;
+		}
+
+		long segmentSize = READ_ONLY_MAP_SEGMENT_SIZE;
+		long remainder = endExclusive % segmentSize;
+		if (remainder == 0) {
+			return endExclusive;
+		}
+
+		long delta = segmentSize - remainder;
+		if (endExclusive > Long.MAX_VALUE - delta) {
+			return Long.MAX_VALUE;
+		}
+		return endExclusive + delta;
 	}
 
 	private int readInt(ReadOnlyMapping mapping, long offset) throws IOException {
