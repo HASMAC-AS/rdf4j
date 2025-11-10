@@ -141,15 +141,11 @@ public class ValueStorePartialWriteCorruptionTest {
 			dfField.setAccessible(true);
 			Object dataFile = dfField.get(ds);
 
-			Field nioField = dataFile.getClass().getDeclaredField("nioFile");
-			nioField.setAccessible(true);
-			Object nioFile = nioField.get(dataFile);
+			Field channelField = dataFile.getClass().getDeclaredField("fileChannel");
+			channelField.setAccessible(true);
+			FileChannel original = (FileChannel) channelField.get(dataFile);
 
-			Field fcField = nioFile.getClass().getDeclaredField("fc");
-			fcField.setAccessible(true);
-			FileChannel original = (FileChannel) fcField.get(nioFile);
-
-			fcField.set(nioFile, new ChoppyFileChannel(original, partialWriteFrequency));
+			channelField.set(dataFile, new ChoppyFileChannel(original, partialWriteFrequency));
 		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}

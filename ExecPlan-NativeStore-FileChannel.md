@@ -15,6 +15,8 @@ NativeStore currently relies on `RandomAccessFile` in its hashing data structure
 - [x] (2025-11-10 17:52Z) Update implementation to satisfy tests and ensure all resources use `FileChannel`.
 - [x] (2025-11-10 17:53Z) Run targeted Maven test suites and formatting checks.
 - [x] (2025-11-10 17:54Z) Document outcomes, clean up plan, and finalize.
+- [x] (2025-11-10 18:05Z) Introduce FileChannel guard rails for DataFile/IDFile and port their channel helpers away from NioFile.
+- [x] (2025-11-10 18:19Z) Run the full `core/sail/nativerdf` module tests to ensure the broader NativeStore suite remains stable.
 
 ## Surprises & Discoveries
 
@@ -37,6 +39,8 @@ NativeStore currently relies on `RandomAccessFile` in its hashing data structure
   the previous durability semantics intact.
 - Guard-rail tests in `core/sail/nativerdf` and `core/sail/api` fail against the legacy code and pass after the migration,
   proving the refactor.
+- DataFile and IDFile reopen their channels via `FileChannel`, maintain cached sizes, and expose regression tests that exercise
+  recovery paths when channels are closed mid-operation.
 
 ## Context and Orientation
 
@@ -49,7 +53,11 @@ NativeStore lives under `core/sail/nativerdf`. Hash indexing lives in `core/sail
 3. Modify `HashFile` to replace the `RandomAccessFile` usage with `FileChannel.open(...)` and adjust related logic (`createEmptyFile`, rehash temp file handling) to work with the new channel. Ensure all paths close channels and preserve truncation behavior.
 4. Refactor `DirectoryLockManager` to open `FileChannel` instances using NIO options (read, write, create), adjust lock acquisition/release to work directly with channels, and update cleanup code accordingly.
 5. Run targeted Maven tests for the affected modules, followed by any required formatting checks.
-6. Update this plan's living sections with progress, discoveries, and outcomes.
+6. Extend the regression harness with DataFile/IDFile guard rails that verify FileChannel usage, reopen semantics, and recovery
+   helpers.
+7. Port DataFile/IDFile off `NioFile`, ensuring buffer flushes, cached sizes, and reopen loops use direct `FileChannel` calls.
+8. Re-run module-level Maven tests (`mvn -pl core/sail/nativerdf test`) and update this plan's living sections with the latest
+   evidence.
 
 ## Concrete Steps
 
@@ -64,6 +72,7 @@ NativeStore lives under `core/sail/nativerdf`. Hash indexing lives in `core/sail
 
 - The new HashFile reflection test fails before the migration and passes afterwards, showing that rehash temp files now use `FileChannel`.
 - The new DirectoryLockManager reflection test fails before the migration and passes afterwards, demonstrating lock management no longer depends on `RandomAccessFile`.
+- DataFile/IDFile guard tests confirm FileChannel usage, reopen recovery, and header validation across the migration.
 - Targeted Maven test runs complete successfully post-change.
 
 ## Idempotence and Recovery
