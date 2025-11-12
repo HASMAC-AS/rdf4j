@@ -17,6 +17,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1453,23 +1456,38 @@ class TripleStore implements Closeable {
 
 		private static int compareFields(byte[] key, byte[] data, int offset, int first, int second, int third,
 				int fourth) {
-			int diff = compareField(key, data, offset, first);
+			int diff = compareFieldLength4(key, data, offset, first);
 			if (diff != 0) {
 				return diff;
 			}
-			diff = compareField(key, data, offset, second);
+			diff = compareFieldLength4(key, data, offset, second);
 			if (diff != 0) {
 				return diff;
 			}
-			diff = compareField(key, data, offset, third);
+			diff = compareFieldLength4(key, data, offset, third);
 			if (diff != 0) {
 				return diff;
 			}
-			return compareField(key, data, offset, fourth);
+			return compareFieldLength4(key, data, offset, fourth);
 		}
 
-		private static int compareField(byte[] key, byte[] data, int offset, int fieldIdx) {
-			return ByteArrayUtil.compareRegion(key, fieldIdx, data, offset + fieldIdx, 4);
+		private static final VarHandle INT_BE = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
+
+		public static int compareFieldLength4(byte[] key, byte[] data, int offset, int fieldIdx) {
+			final int a = (int) INT_BE.get(key, fieldIdx);
+			final int b = (int) INT_BE.get(data, offset + fieldIdx);
+
+			final int x = a ^ b; // mask of differing bits
+			if (x == 0)
+				return 0; // all 4 bytes equal
+
+			// Find the first differing *byte* from the left (k .. k+3).
+			// With a big‑endian view, the first byte lives in bits 31..24, etc.
+			final int byteIndex = Integer.numberOfLeadingZeros(x) >>> 3; // 0..3 equal-leading-byte count
+			final int shift = 24 - (byteIndex << 3);
+
+			// Extract that byte from each int (as unsigned) and return their difference.
+			return ((a >>> shift) & 0xFF) - ((b >>> shift) & 0xFF);
 		}
 	}
 
