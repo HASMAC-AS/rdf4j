@@ -1454,21 +1454,53 @@ class TripleStore implements Closeable {
 			return compareFields(key, data, offset, CONTEXT_IDX, OBJ_IDX, PRED_IDX, SUBJ_IDX);
 		}
 
-		private static int compareFields(byte[] key, byte[] data, int offset, int first, int second, int third,
-				int fourth) {
-			int diff = compareFieldLength4(key, data, offset, first);
-			if (diff != 0) {
-				return diff;
-			}
-			diff = compareFieldLength4(key, data, offset, second);
-			if (diff != 0) {
-				return diff;
-			}
-			diff = compareFieldLength4(key, data, offset, third);
-			if (diff != 0) {
-				return diff;
-			}
-			return compareFieldLength4(key, data, offset, fourth);
+		/**
+		 * Lexicographically compares four 4-byte fields drawn from 'key' and 'data'
+		 * at indices (first, second, third, fourth), where the data side is offset by 'offset'.
+		 * Bytes are treated as unsigned, and the return value is the (unsigned) difference
+		 * of the first mismatching bytes, or 0 if all four fields are equal.
+		 */
+		static int compareFields(byte[] key, byte[] data, int offset,
+								 int first, int second, int third, int fourth) {
+
+			// Field 1
+			int a = (int) INT_BE.get(key, first);
+			int b = (int) INT_BE.get(data, offset + first);
+			int x = a ^ b;
+			if (x != 0) return diffFromXorInt(a, b, x);
+
+			// Field 2
+			a = (int) INT_BE.get(key, second);
+			b = (int) INT_BE.get(data, offset + second);
+			x = a ^ b;
+			if (x != 0) return diffFromXorInt(a, b, x);
+
+			// Field 3
+			a = (int) INT_BE.get(key, third);
+			b = (int) INT_BE.get(data, offset + third);
+			x = a ^ b;
+			if (x != 0) return diffFromXorInt(a, b, x);
+
+			// Field 4
+			a = (int) INT_BE.get(key, fourth);
+			b = (int) INT_BE.get(data, offset + fourth);
+			x = a ^ b;
+			if (x != 0) return diffFromXorInt(a, b, x);
+
+			return 0;
+		}
+
+		/**
+		 * Given two big-endian-packed ints and their XOR (non-zero),
+		 * return the (unsigned) difference of the first mismatching bytes.
+		 *
+		 * Trick: the first differing byte’s position is the number of leading zeros of x,
+		 * rounded down to a multiple of 8. Left-shift both ints by that many bits so the
+		 * mismatching byte moves into the top byte, then extract it.
+		 */
+		private static int diffFromXorInt(int a, int b, int x) {
+			int n = Integer.numberOfLeadingZeros(x) & ~7; // 0,8,16,24
+			return ((a << n) >>> 24) - ((b << n) >>> 24);
 		}
 
 		private static final VarHandle INT_BE = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
