@@ -238,8 +238,7 @@ public class DataFile implements Closeable {
 			throw new IOException("Corrupt data record at offset " + offset + ". Data length overflow.");
 		}
 
-		ensureMappingIncludes(headerEnd);
-		ReadOnlyMapping mapping = readOnlyMapping;
+		ReadOnlyMapping mapping = ensureMappingIncludes(offset, headerEnd);
 		int declaredLength = readInt(mapping, offset);
 
 		// Validate and possibly reduce the length before allocating a large array
@@ -269,9 +268,8 @@ public class DataFile implements Closeable {
 				if (payloadEnd < payloadOffset) {
 					throw new IOException("Corrupt data record at offset " + offset + ". Data length overflow.");
 				}
-				ensureMappingIncludes(payloadEnd);
-				mapping = readOnlyMapping;
-				readFully(mapping, payloadOffset, result, 0, toRead);
+				ReadOnlyMapping payloadMapping = ensureMappingIncludes(payloadOffset, payloadEnd);
+				readFully(payloadMapping, payloadOffset, result, 0, toRead);
 			}
 
 			return result;
@@ -285,45 +283,81 @@ public class DataFile implements Closeable {
 
 	}
 
-	private void ensureMappingIncludes(long endExclusive) throws IOException {
+	private ReadOnlyMapping ensureMappingIncludes(long startInclusive, long endExclusive) throws IOException {
 		if (endExclusive <= 0) {
-			return;
+			return readOnlyMapping;
 		}
 
 		ReadOnlyMapping current = readOnlyMapping;
-		if (current.contains(endExclusive)) {
-			return;
+		if (current.contains(startInclusive, endExclusive)) {
+			return current;
 		}
 
 		synchronized (readMapLock) {
 			current = readOnlyMapping;
-			if (current.contains(endExclusive)) {
-				return;
+			if (current.contains(startInclusive, endExclusive)) {
+				return current;
 			}
 
-			long targetSize = Math.min(nioFileSize, roundUpToSegmentBoundary(endExclusive));
-			if (targetSize <= current.mappedSize) {
-				return;
+			long regionStart = Math.max(0, roundDownToSegmentBoundary(startInclusive));
+			long regionEnd = Math.min(nioFileSize, roundUpToSegmentBoundary(endExclusive));
+			if (regionEnd <= regionStart) {
+				return current;
 			}
 
-			List<MappingSegment> additions = new ArrayList<>();
-			long position = current.mappedSize;
-			while (position < targetSize) {
-				long remaining = targetSize - position;
-				int chunkSize = (int) Math.min(remaining, READ_ONLY_MAP_SEGMENT_SIZE);
-				if (chunkSize <= 0) {
-					break;
-				}
-				MappedByteBuffer buffer = nioFile.mapReadOnly(position, chunkSize);
-				buffer.order(ByteOrder.BIG_ENDIAN);
-				additions.add(new MappingSegment(position, position + chunkSize, buffer));
-				position += chunkSize;
+			if (current.canExtendAtEnd(regionStart)) {
+				ReadOnlyMapping extended = appendSegments(current, regionEnd);
+				readOnlyMapping = extended;
+				return extended;
 			}
 
-			if (!additions.isEmpty()) {
-				readOnlyMapping = current.append(additions, position);
-			}
+			ReadOnlyMapping replacement = mapRegion(regionStart, regionEnd);
+			readOnlyMapping = replacement;
+			return replacement;
 		}
+	}
+
+	private ReadOnlyMapping appendSegments(ReadOnlyMapping current, long targetEnd) throws IOException {
+		long position = current.mappedEnd;
+		if (position >= targetEnd) {
+			return current;
+		}
+
+		List<MappingSegment> additions = new ArrayList<>();
+		while (position < targetEnd) {
+			long remaining = targetEnd - position;
+			int chunkSize = (int) Math.min(remaining, READ_ONLY_MAP_SEGMENT_SIZE);
+			if (chunkSize <= 0) {
+				break;
+			}
+			MappedByteBuffer buffer = nioFile.mapReadOnly(position, chunkSize);
+			buffer.order(ByteOrder.BIG_ENDIAN);
+			additions.add(new MappingSegment(position, position + chunkSize, buffer));
+			position += chunkSize;
+		}
+
+		if (additions.isEmpty()) {
+			return current;
+		}
+
+		return current.append(additions, position);
+	}
+
+	private ReadOnlyMapping mapRegion(long regionStart, long regionEnd) throws IOException {
+		List<MappingSegment> segments = new ArrayList<>();
+		long position = regionStart;
+		while (position < regionEnd) {
+			long remaining = regionEnd - position;
+			int chunkSize = (int) Math.min(remaining, READ_ONLY_MAP_SEGMENT_SIZE);
+			if (chunkSize <= 0) {
+				break;
+			}
+			MappedByteBuffer buffer = nioFile.mapReadOnly(position, chunkSize);
+			buffer.order(ByteOrder.BIG_ENDIAN);
+			segments.add(new MappingSegment(position, position + chunkSize, buffer));
+			position += chunkSize;
+		}
+		return ReadOnlyMapping.fromSegments(segments, regionStart, position);
 	}
 
 	private static long roundUpToSegmentBoundary(long endExclusive) {
@@ -342,6 +376,14 @@ public class DataFile implements Closeable {
 			return Long.MAX_VALUE;
 		}
 		return endExclusive + delta;
+	}
+
+	private static long roundDownToSegmentBoundary(long startInclusive) {
+		if (startInclusive <= 0) {
+			return 0;
+		}
+		long segmentSize = READ_ONLY_MAP_SEGMENT_SIZE;
+		return startInclusive - (startInclusive % segmentSize);
 	}
 
 	private int readInt(ReadOnlyMapping mapping, long offset) throws IOException {
@@ -484,21 +526,35 @@ public class DataFile implements Closeable {
 
 	private static final class ReadOnlyMapping {
 
-		private static final ReadOnlyMapping EMPTY = new ReadOnlyMapping(new MappingSegment[0], 0);
+		private static final ReadOnlyMapping EMPTY = new ReadOnlyMapping(new MappingSegment[0], 0, 0);
 
 		private final MappingSegment[] segments;
-		private final long mappedSize;
+		private final long mappedStart;
+		private final long mappedEnd;
 
-		private ReadOnlyMapping(MappingSegment[] segments, long mappedSize) {
+		private ReadOnlyMapping(MappingSegment[] segments, long mappedStart, long mappedEnd) {
 			this.segments = segments;
-			this.mappedSize = mappedSize;
+			this.mappedStart = mappedStart;
+			this.mappedEnd = mappedEnd;
 		}
 
-		boolean contains(long endExclusive) {
-			return endExclusive <= mappedSize;
+		static ReadOnlyMapping fromSegments(List<MappingSegment> additions, long mappedStart, long mappedEnd) {
+			if (additions.isEmpty()) {
+				return EMPTY;
+			}
+			MappingSegment[] merged = additions.toArray(new MappingSegment[0]);
+			return new ReadOnlyMapping(merged, mappedStart, mappedEnd);
 		}
 
-		ReadOnlyMapping append(List<MappingSegment> additions, long newMappedSize) {
+		boolean contains(long startInclusive, long endExclusive) {
+			return segments.length > 0 && startInclusive >= mappedStart && endExclusive <= mappedEnd;
+		}
+
+		boolean canExtendAtEnd(long regionStart) {
+			return segments.length > 0 && regionStart >= mappedStart && regionStart <= mappedEnd;
+		}
+
+		ReadOnlyMapping append(List<MappingSegment> additions, long newMappedEnd) {
 			if (additions.isEmpty()) {
 				return this;
 			}
@@ -506,7 +562,7 @@ public class DataFile implements Closeable {
 			for (int i = 0; i < additions.size(); i++) {
 				merged[segments.length + i] = additions.get(i);
 			}
-			return new ReadOnlyMapping(merged, newMappedSize);
+			return new ReadOnlyMapping(merged, mappedStart, newMappedEnd);
 		}
 
 		MappingSegment segmentFor(long offset) {
@@ -526,7 +582,8 @@ public class DataFile implements Closeable {
 					return segment;
 				}
 			}
-			throw new IllegalArgumentException("Offset " + offset + " outside mapped region [0, " + mappedSize + ")");
+			throw new IllegalArgumentException(
+					"Offset " + offset + " outside mapped region [" + mappedStart + ", " + mappedEnd + ")");
 		}
 	}
 

@@ -107,6 +107,40 @@ class BTreeMemoryMappingTest {
 		}
 	}
 
+	@Test
+	void highOffsetNodeReadMapsSingleSegment() throws Exception {
+		byte[] value = ByteBuffer.allocate(8).putLong(11L).array();
+
+		File dataDir = new File(tempDir, "btree-high-offset");
+		assertThat(dataDir.mkdirs() || dataDir.isDirectory()).isTrue();
+
+		File btreeFile = new File(dataDir, "values.dat");
+		try (BTree tree = new BTree(dataDir, "values", 4096, value.length)) {
+			tree.insert(value);
+		}
+
+		long segmentSize = readOnlySegmentSize();
+		long expandedSize = segmentSize * 4L;
+		long targetOffset = segmentSize * 3L + 4096;
+		expandFileTo(btreeFile, expandedSize);
+
+		try (BTree tree = new BTree(dataDir, "values", 4096, value.length)) {
+			CountingFileChannel counting = wrapWithCountingChannel(tree);
+			byte[] buffer = new byte[tree.nodeSize];
+			long endExclusive = targetOffset + buffer.length;
+			assertThat(endExclusive).isLessThanOrEqualTo(expandedSize);
+
+			tree.readNodeBytes(targetOffset, buffer, buffer.length);
+
+			assertThat(counting.getMapRequests())
+					.as("should map only the high-offset segment")
+					.hasSize(1);
+			MapRequest request = counting.getMapRequests().get(0);
+			assertThat(request.getPosition()).isEqualTo(alignDown(targetOffset, segmentSize));
+			assertThat(request.getSize()).isLessThanOrEqualTo(segmentSize);
+		}
+	}
+
 	private static CountingFileChannel wrapWithCountingChannel(BTree tree)
 			throws NoSuchFieldException, IllegalAccessException {
 		Field nioFileField = BTree.class.getDeclaredField("nioFile");
@@ -123,6 +157,10 @@ class BTreeMemoryMappingTest {
 
 	private static long totalMappedBytes(CountingFileChannel counting) {
 		return counting.getMapRequests().stream().mapToLong(MapRequest::getSize).sum();
+	}
+
+	private static long alignDown(long value, long segmentSize) {
+		return value - (value % segmentSize);
 	}
 
 	private static long readOnlySegmentSize() throws NoSuchFieldException, IllegalAccessException {

@@ -10,20 +10,50 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.nativerdf;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Locale;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.sail.nativerdf.btree.RecordComparator;
 import org.junit.jupiter.api.Test;
 
 class TripleComparatorTest {
 
+	private static final int RECORD_LENGTH = 16;
+
 	@Test
 	void rejectsUnknownFieldSequence() {
 		assertThatThrownBy(() -> instantiateComparator("zzzz"))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("zzzz");
+	}
+
+	@Test
+	void comparesLikeReferenceImplementation() {
+		for (String order : allFieldOrders()) {
+			RecordComparator comparator = instantiateComparator(order);
+			Random random = new Random(order.hashCode());
+			char[] sequence = order.toCharArray();
+			for (int i = 0; i < 128; i++) {
+				int offset = (i % 3) * 4;
+				byte[] key = randomBytes(random, RECORD_LENGTH);
+				byte[] data = randomBytes(random, offset + RECORD_LENGTH);
+				if (i % 5 == 0) {
+					System.arraycopy(key, 0, data, offset, RECORD_LENGTH);
+				}
+				int actual = comparator.compareBTreeValues(key, data, offset, RECORD_LENGTH);
+				int expected = referenceCompare(key, data, offset, sequence);
+				assertThat(Integer.signum(actual))
+						.as("order=%s iteration=%s", order, i)
+						.isEqualTo(Integer.signum(expected));
+			}
+		}
 	}
 
 	private static RecordComparator instantiateComparator(String fieldSequence) {
@@ -41,5 +71,59 @@ class TripleComparatorTest {
 		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private static Collection<String> allFieldOrders() {
+		try {
+			Class<?> fieldOrderClass = Class
+					.forName("org.eclipse.rdf4j.sail.nativerdf.TripleStore$TripleComparator$FieldOrder");
+			Object[] constants = fieldOrderClass.getEnumConstants();
+			return Arrays.stream(constants)
+					.map(constant -> ((Enum<?>) constant).name().toLowerCase(Locale.ROOT))
+					.collect(Collectors.toList());
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static byte[] randomBytes(Random random, int length) {
+		byte[] bytes = new byte[length];
+		random.nextBytes(bytes);
+		return bytes;
+	}
+
+	private static int referenceCompare(byte[] key, byte[] data, int offset, char[] sequence) {
+		for (char field : sequence) {
+			int base = fieldOffset(field);
+			int keyValue = readInt(key, base);
+			int dataValue = readInt(data, offset + base);
+			int cmp = Integer.compareUnsigned(keyValue, dataValue);
+			if (cmp != 0) {
+				return cmp;
+			}
+		}
+		return 0;
+	}
+
+	private static int fieldOffset(char field) {
+		switch (field) {
+		case 's':
+			return 0;
+		case 'p':
+			return 4;
+		case 'o':
+			return 8;
+		case 'c':
+			return 12;
+		default:
+			throw new IllegalArgumentException("Unknown field: " + field);
+		}
+	}
+
+	private static int readInt(byte[] source, int offset) {
+		return ((source[offset] & 0xFF) << 24)
+				| ((source[offset + 1] & 0xFF) << 16)
+				| ((source[offset + 2] & 0xFF) << 8)
+				| (source[offset + 3] & 0xFF);
 	}
 }

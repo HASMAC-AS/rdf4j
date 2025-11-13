@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 
@@ -97,11 +98,35 @@ class DataFileMemoryMappingTest {
 		}
 	}
 
+	@Test
+	void highOffsetReadMapsSingleSegment() throws Exception {
+		File dataPath = new File(tempDir, "values-high-offset.dat");
+
+		try (DataFile dataFile = new DataFile(dataPath)) {
+			long segmentSize = readOnlySegmentSize();
+			long recordOffset = segmentSize * 3L;
+			byte[] payload = "far-away".getBytes(StandardCharsets.UTF_8);
+
+			writeRecordAt(dataFile, recordOffset, payload);
+			setNioFileSize(dataFile, recordOffset + Integer.BYTES + payload.length);
+
+			CountingFileChannel counting = wrapWithCountingChannel(dataFile);
+
+			byte[] loaded = dataFile.getData(recordOffset);
+
+			assertThat(new String(loaded, StandardCharsets.UTF_8)).isEqualTo("far-away");
+			assertThat(counting.getMapRequests())
+					.as("should map only the segment that covers the record")
+					.hasSize(1);
+			MapRequest request = counting.getMapRequests().get(0);
+			assertThat(request.getPosition()).isEqualTo(alignDown(recordOffset, segmentSize));
+			assertThat(request.getSize()).isLessThanOrEqualTo(segmentSize);
+		}
+	}
+
 	private static CountingFileChannel wrapWithCountingChannel(DataFile dataFile)
 			throws NoSuchFieldException, IllegalAccessException {
-		Field nioFileField = DataFile.class.getDeclaredField("nioFile");
-		nioFileField.setAccessible(true);
-		NioFile nioFile = (NioFile) nioFileField.get(dataFile);
+		NioFile nioFile = getNioFile(dataFile);
 
 		Field fcField = NioFile.class.getDeclaredField("fc");
 		fcField.setAccessible(true);
@@ -132,5 +157,25 @@ class DataFileMemoryMappingTest {
 		try (RandomAccessFile raf = new RandomAccessFile(path, "rw")) {
 			raf.setLength(size);
 		}
+	}
+
+	private static void writeRecordAt(DataFile dataFile, long offset, byte[] payload)
+			throws Exception {
+		NioFile nioFile = getNioFile(dataFile);
+		ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES + payload.length);
+		buffer.putInt(payload.length);
+		buffer.put(payload);
+		buffer.flip();
+		nioFile.write(buffer, offset);
+	}
+
+	private static NioFile getNioFile(DataFile dataFile) throws NoSuchFieldException, IllegalAccessException {
+		Field nioFileField = DataFile.class.getDeclaredField("nioFile");
+		nioFileField.setAccessible(true);
+		return (NioFile) nioFileField.get(dataFile);
+	}
+
+	private static long alignDown(long value, long segmentSize) {
+		return value - (value % segmentSize);
 	}
 }

@@ -1200,7 +1200,8 @@ class TripleStore implements Closeable {
 				}
 			}
 			tripleComparator = new TripleComparator(fieldSeq);
-			btree = new BTree(dir, getFilenamePrefix(fieldSeq), 2048, RECORD_LENGTH, tripleComparator, forceSync);
+			btree = new BTree(dir, getFilenamePrefix(fieldSeq), 2048, RECORD_LENGTH, tripleComparator.compareStrategy,
+					forceSync);
 		}
 
 		private String getFilenamePrefix(String fieldSeq) {
@@ -1279,7 +1280,7 @@ class TripleStore implements Closeable {
 	private static class TripleComparator implements RecordComparator {
 
 		private final char[] fieldSeq;
-		private final CompareStrategy compareStrategy;
+		private final RecordComparator compareStrategy;
 
 		public TripleComparator(String fieldSeq) {
 			String normalized = normalizeFieldSequence(fieldSeq);
@@ -1287,32 +1288,32 @@ class TripleStore implements Closeable {
 			this.compareStrategy = getComparator(normalized);
 		}
 
-		private static final CompareStrategy compareSPOC = TripleComparator::compareSPOC;
-		private static final CompareStrategy compareSPCO = TripleComparator::compareSPCO;
-		private static final CompareStrategy compareSOPC = TripleComparator::compareSOPC;
-		private static final CompareStrategy compareSOCP = TripleComparator::compareSOCP;
-		private static final CompareStrategy compareSCPO = TripleComparator::compareSCPO;
-		private static final CompareStrategy compareSCOP = TripleComparator::compareSCOP;
-		private static final CompareStrategy comparePSOC = TripleComparator::comparePSOC;
-		private static final CompareStrategy comparePSCO = TripleComparator::comparePSCO;
-		private static final CompareStrategy comparePOSC = TripleComparator::comparePOSC;
-		private static final CompareStrategy comparePOCS = TripleComparator::comparePOCS;
-		private static final CompareStrategy comparePCSO = TripleComparator::comparePCSO;
-		private static final CompareStrategy comparePCOS = TripleComparator::comparePCOS;
-		private static final CompareStrategy compareOSPC = TripleComparator::compareOSPC;
-		private static final CompareStrategy compareOSCP = TripleComparator::compareOSCP;
-		private static final CompareStrategy compareOPSC = TripleComparator::compareOPSC;
-		private static final CompareStrategy compareOPCS = TripleComparator::compareOPCS;
-		private static final CompareStrategy compareOCSP = TripleComparator::compareOCSP;
-		private static final CompareStrategy compareOCPS = TripleComparator::compareOCPS;
-		private static final CompareStrategy compareCSPO = TripleComparator::compareCSPO;
-		private static final CompareStrategy compareCSOP = TripleComparator::compareCSOP;
-		private static final CompareStrategy compareCPSO = TripleComparator::compareCPSO;
-		private static final CompareStrategy compareCPOS = TripleComparator::compareCPOS;
-		private static final CompareStrategy compareCOSP = TripleComparator::compareCOSP;
-		private static final CompareStrategy compareCOPS = TripleComparator::compareCOPS;
+		private static final RecordComparator compareSPOC = TripleComparator::compareSPOC;
+		private static final RecordComparator compareSPCO = TripleComparator::compareSPCO;
+		private static final RecordComparator compareSOPC = TripleComparator::compareSOPC;
+		private static final RecordComparator compareSOCP = TripleComparator::compareSOCP;
+		private static final RecordComparator compareSCPO = TripleComparator::compareSCPO;
+		private static final RecordComparator compareSCOP = TripleComparator::compareSCOP;
+		private static final RecordComparator comparePSOC = TripleComparator::comparePSOC;
+		private static final RecordComparator comparePSCO = TripleComparator::comparePSCO;
+		private static final RecordComparator comparePOSC = TripleComparator::comparePOSC;
+		private static final RecordComparator comparePOCS = TripleComparator::comparePOCS;
+		private static final RecordComparator comparePCSO = TripleComparator::comparePCSO;
+		private static final RecordComparator comparePCOS = TripleComparator::comparePCOS;
+		private static final RecordComparator compareOSPC = TripleComparator::compareOSPC;
+		private static final RecordComparator compareOSCP = TripleComparator::compareOSCP;
+		private static final RecordComparator compareOPSC = TripleComparator::compareOPSC;
+		private static final RecordComparator compareOPCS = TripleComparator::compareOPCS;
+		private static final RecordComparator compareOCSP = TripleComparator::compareOCSP;
+		private static final RecordComparator compareOCPS = TripleComparator::compareOCPS;
+		private static final RecordComparator compareCSPO = TripleComparator::compareCSPO;
+		private static final RecordComparator compareCSOP = TripleComparator::compareCSOP;
+		private static final RecordComparator compareCPSO = TripleComparator::compareCPSO;
+		private static final RecordComparator compareCPOS = TripleComparator::compareCPOS;
+		private static final RecordComparator compareCOSP = TripleComparator::compareCOSP;
+		private static final RecordComparator compareCOPS = TripleComparator::compareCOPS;
 
-		private static CompareStrategy getComparator(String order) {
+		private static RecordComparator getComparator(String order) {
 			switch (order) {
 			case "spoc":
 				return compareSPOC;
@@ -1373,12 +1374,7 @@ class TripleStore implements Closeable {
 
 		@Override
 		public final int compareBTreeValues(byte[] key, byte[] data, int offset, int length) {
-			return compareStrategy.compare(key, data, offset);
-		}
-
-		@FunctionalInterface
-		private interface CompareStrategy {
-			int compare(byte[] key, byte[] data, int offset);
+			return compareStrategy.compareBTreeValues(key, data, offset, length);
 		}
 
 		private static String normalizeFieldSequence(String fieldSeq) {
@@ -1393,99 +1389,99 @@ class TripleStore implements Closeable {
 			return normalized;
 		}
 
-		private static int compareSPOC(byte[] key, byte[] data, int offset) {
+		private static int compareSPOC(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, SUBJ_IDX, PRED_IDX, OBJ_IDX, CONTEXT_IDX);
 		}
 
-		private static int compareSPCO(byte[] key, byte[] data, int offset) {
+		private static int compareSPCO(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, SUBJ_IDX, PRED_IDX, CONTEXT_IDX, OBJ_IDX);
 		}
 
-		private static int compareSOPC(byte[] key, byte[] data, int offset) {
+		private static int compareSOPC(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, SUBJ_IDX, OBJ_IDX, PRED_IDX, CONTEXT_IDX);
 		}
 
-		private static int compareSOCP(byte[] key, byte[] data, int offset) {
+		private static int compareSOCP(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, SUBJ_IDX, OBJ_IDX, CONTEXT_IDX, PRED_IDX);
 		}
 
-		private static int compareSCPO(byte[] key, byte[] data, int offset) {
+		private static int compareSCPO(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, SUBJ_IDX, CONTEXT_IDX, PRED_IDX, OBJ_IDX);
 		}
 
-		private static int compareSCOP(byte[] key, byte[] data, int offset) {
+		private static int compareSCOP(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, SUBJ_IDX, CONTEXT_IDX, OBJ_IDX, PRED_IDX);
 		}
 
-		private static int comparePSOC(byte[] key, byte[] data, int offset) {
+		private static int comparePSOC(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, PRED_IDX, SUBJ_IDX, OBJ_IDX, CONTEXT_IDX);
 		}
 
-		private static int comparePSCO(byte[] key, byte[] data, int offset) {
+		private static int comparePSCO(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, PRED_IDX, SUBJ_IDX, CONTEXT_IDX, OBJ_IDX);
 		}
 
-		private static int comparePOSC(byte[] key, byte[] data, int offset) {
+		private static int comparePOSC(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, PRED_IDX, OBJ_IDX, SUBJ_IDX, CONTEXT_IDX);
 		}
 
-		private static int comparePOCS(byte[] key, byte[] data, int offset) {
+		private static int comparePOCS(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, PRED_IDX, OBJ_IDX, CONTEXT_IDX, SUBJ_IDX);
 		}
 
-		private static int comparePCSO(byte[] key, byte[] data, int offset) {
+		private static int comparePCSO(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, PRED_IDX, CONTEXT_IDX, SUBJ_IDX, OBJ_IDX);
 		}
 
-		private static int comparePCOS(byte[] key, byte[] data, int offset) {
+		private static int comparePCOS(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, PRED_IDX, CONTEXT_IDX, OBJ_IDX, SUBJ_IDX);
 		}
 
-		private static int compareOSPC(byte[] key, byte[] data, int offset) {
+		private static int compareOSPC(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, OBJ_IDX, SUBJ_IDX, PRED_IDX, CONTEXT_IDX);
 		}
 
-		private static int compareOSCP(byte[] key, byte[] data, int offset) {
+		private static int compareOSCP(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, OBJ_IDX, SUBJ_IDX, CONTEXT_IDX, PRED_IDX);
 		}
 
-		private static int compareOPSC(byte[] key, byte[] data, int offset) {
+		private static int compareOPSC(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, OBJ_IDX, PRED_IDX, SUBJ_IDX, CONTEXT_IDX);
 		}
 
-		private static int compareOPCS(byte[] key, byte[] data, int offset) {
+		private static int compareOPCS(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, OBJ_IDX, PRED_IDX, CONTEXT_IDX, SUBJ_IDX);
 		}
 
-		private static int compareOCSP(byte[] key, byte[] data, int offset) {
+		private static int compareOCSP(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, OBJ_IDX, CONTEXT_IDX, SUBJ_IDX, PRED_IDX);
 		}
 
-		private static int compareOCPS(byte[] key, byte[] data, int offset) {
+		private static int compareOCPS(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, OBJ_IDX, CONTEXT_IDX, PRED_IDX, SUBJ_IDX);
 		}
 
-		private static int compareCSPO(byte[] key, byte[] data, int offset) {
+		private static int compareCSPO(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, CONTEXT_IDX, SUBJ_IDX, PRED_IDX, OBJ_IDX);
 		}
 
-		private static int compareCSOP(byte[] key, byte[] data, int offset) {
+		private static int compareCSOP(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, CONTEXT_IDX, SUBJ_IDX, OBJ_IDX, PRED_IDX);
 		}
 
-		private static int compareCPSO(byte[] key, byte[] data, int offset) {
+		private static int compareCPSO(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, CONTEXT_IDX, PRED_IDX, SUBJ_IDX, OBJ_IDX);
 		}
 
-		private static int compareCPOS(byte[] key, byte[] data, int offset) {
+		private static int compareCPOS(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, CONTEXT_IDX, PRED_IDX, OBJ_IDX, SUBJ_IDX);
 		}
 
-		private static int compareCOSP(byte[] key, byte[] data, int offset) {
+		private static int compareCOSP(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, CONTEXT_IDX, OBJ_IDX, SUBJ_IDX, PRED_IDX);
 		}
 
-		private static int compareCOPS(byte[] key, byte[] data, int offset) {
+		private static int compareCOPS(byte[] key, byte[] data, int offset, int length) {
 			return compareFields(key, data, offset, CONTEXT_IDX, OBJ_IDX, PRED_IDX, SUBJ_IDX);
 		}
 
