@@ -1284,7 +1284,87 @@ class TripleStore implements Closeable {
 		public TripleComparator(String fieldSeq) {
 			String normalized = normalizeFieldSequence(fieldSeq);
 			this.fieldSeq = normalized.toCharArray();
-			this.compareStrategy = FieldOrder.strategyFor(normalized);
+			this.compareStrategy = getComparator(normalized);
+		}
+
+		private static final CompareStrategy compareSPOC = TripleComparator::compareSPOC;
+		private static final CompareStrategy compareSPCO = TripleComparator::compareSPCO;
+		private static final CompareStrategy compareSOPC = TripleComparator::compareSOPC;
+		private static final CompareStrategy compareSOCP = TripleComparator::compareSOCP;
+		private static final CompareStrategy compareSCPO = TripleComparator::compareSCPO;
+		private static final CompareStrategy compareSCOP = TripleComparator::compareSCOP;
+		private static final CompareStrategy comparePSOC = TripleComparator::comparePSOC;
+		private static final CompareStrategy comparePSCO = TripleComparator::comparePSCO;
+		private static final CompareStrategy comparePOSC = TripleComparator::comparePOSC;
+		private static final CompareStrategy comparePOCS = TripleComparator::comparePOCS;
+		private static final CompareStrategy comparePCSO = TripleComparator::comparePCSO;
+		private static final CompareStrategy comparePCOS = TripleComparator::comparePCOS;
+		private static final CompareStrategy compareOSPC = TripleComparator::compareOSPC;
+		private static final CompareStrategy compareOSCP = TripleComparator::compareOSCP;
+		private static final CompareStrategy compareOPSC = TripleComparator::compareOPSC;
+		private static final CompareStrategy compareOPCS = TripleComparator::compareOPCS;
+		private static final CompareStrategy compareOCSP = TripleComparator::compareOCSP;
+		private static final CompareStrategy compareOCPS = TripleComparator::compareOCPS;
+		private static final CompareStrategy compareCSPO = TripleComparator::compareCSPO;
+		private static final CompareStrategy compareCSOP = TripleComparator::compareCSOP;
+		private static final CompareStrategy compareCPSO = TripleComparator::compareCPSO;
+		private static final CompareStrategy compareCPOS = TripleComparator::compareCPOS;
+		private static final CompareStrategy compareCOSP = TripleComparator::compareCOSP;
+		private static final CompareStrategy compareCOPS = TripleComparator::compareCOPS;
+
+		private static CompareStrategy getComparator(String order) {
+			switch (order) {
+			case "spoc":
+				return compareSPOC;
+			case "spco":
+				return compareSPCO;
+			case "sopc":
+				return compareSOPC;
+			case "socp":
+				return compareSOCP;
+			case "scpo":
+				return compareSCPO;
+			case "scop":
+				return compareSCOP;
+			case "psoc":
+				return comparePSOC;
+			case "psco":
+				return comparePSCO;
+			case "posc":
+				return comparePOSC;
+			case "pocs":
+				return comparePOCS;
+			case "pcso":
+				return comparePCSO;
+			case "pcos":
+				return comparePCOS;
+			case "ospc":
+				return compareOSPC;
+			case "oscp":
+				return compareOSCP;
+			case "opsc":
+				return compareOPSC;
+			case "opcs":
+				return compareOPCS;
+			case "ocsp":
+				return compareOCSP;
+			case "ocps":
+				return compareOCPS;
+			case "cspo":
+				return compareCSPO;
+			case "csop":
+				return compareCSOP;
+			case "cpso":
+				return compareCPSO;
+			case "cpos":
+				return compareCPOS;
+			case "cosp":
+				return compareCOSP;
+			case "cops":
+				return compareCOPS;
+			default:
+				throw new IllegalArgumentException("Unknown field order: " + order);
+			}
 		}
 
 		public char[] getFieldSeq() {
@@ -1299,51 +1379,6 @@ class TripleStore implements Closeable {
 		@FunctionalInterface
 		private interface CompareStrategy {
 			int compare(byte[] key, byte[] data, int offset);
-		}
-
-		private enum FieldOrder {
-			SPOC("spoc", TripleComparator::compareSPOC),
-			SPCO("spco", TripleComparator::compareSPCO),
-			SOPC("sopc", TripleComparator::compareSOPC),
-			SOCP("socp", TripleComparator::compareSOCP),
-			SCPO("scpo", TripleComparator::compareSCPO),
-			SCOP("scop", TripleComparator::compareSCOP),
-			PSOC("psoc", TripleComparator::comparePSOC),
-			PSCO("psco", TripleComparator::comparePSCO),
-			POSC("posc", TripleComparator::comparePOSC),
-			POCS("pocs", TripleComparator::comparePOCS),
-			PCSO("pcso", TripleComparator::comparePCSO),
-			PCOS("pcos", TripleComparator::comparePCOS),
-			OSPC("ospc", TripleComparator::compareOSPC),
-			OSCP("oscp", TripleComparator::compareOSCP),
-			OPSC("opsc", TripleComparator::compareOPSC),
-			OPCS("opcs", TripleComparator::compareOPCS),
-			OCSP("ocsp", TripleComparator::compareOCSP),
-			OCPS("ocps", TripleComparator::compareOCPS),
-			CSPO("cspo", TripleComparator::compareCSPO),
-			CSOP("csop", TripleComparator::compareCSOP),
-			CPSO("cpso", TripleComparator::compareCPSO),
-			CPOS("cpos", TripleComparator::compareCPOS),
-			COSP("cosp", TripleComparator::compareCOSP),
-			COPS("cops", TripleComparator::compareCOPS);
-
-			private final String sequence;
-			private final CompareStrategy strategy;
-
-			FieldOrder(String sequence, CompareStrategy strategy) {
-				this.sequence = sequence;
-				this.strategy = strategy;
-			}
-
-			static CompareStrategy strategyFor(String sequence) {
-				for (FieldOrder value : values()) {
-					if (value.sequence.equals(sequence)) {
-						return value.strategy;
-					}
-				}
-				throw new IllegalArgumentException(
-						"Invalid triple index order '" + sequence + "'. Expected a permutation of 'spoc'.");
-			}
 		}
 
 		private static String normalizeFieldSequence(String fieldSeq) {
