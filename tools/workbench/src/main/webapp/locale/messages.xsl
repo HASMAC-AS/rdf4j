@@ -141,15 +141,17 @@
 		Enter the RDF data you wish to upload
 	</variable>
 	<variable name="upload-text.label">RDF Content</variable>
-	<variable name="upload-url.desc">
-		Location of the RDF data you wish to upload
-	</variable>
-	<variable name="upload-url.label">RDF Data URL</variable>
-	<variable name="value-encoding.desc">
-		Please specify subject, predicate, object and/or context of the
-		statements that should be removed. Empty fields match with any
-		subject, predicate, object or context. URIs, bNodes and literals should
-		be entered using the N-Triples encoding. Example values in
+        <variable name="upload-url.desc">
+                Location of the RDF data you wish to upload
+        </variable>
+        <variable name="upload-url.label">RDF Data URL</variable>
+        <variable name="isolation-level.label">Isolation level</variable>
+        <variable name="isolation-level.default-option">Use repository default</variable>
+        <variable name="value-encoding.desc">
+                Please specify subject, predicate, object and/or context of the
+                statements that should be removed. Empty fields match with any
+                subject, predicate, object or context. URIs, bNodes and literals should
+                be entered using the N-Triples encoding. Example values in
 		N-Triples encoding are:
 	</variable>
 	<variable name="result-limit.label">Results per page</variable>

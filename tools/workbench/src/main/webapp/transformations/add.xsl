@@ -53,10 +53,10 @@
 						<td></td>
 
 					</tr>
-					<tr>
-						<th>
-							<xsl:value-of select="$data-format.label" />
-						</th>
+                                        <tr>
+                                                <th>
+                                                        <xsl:value-of select="$data-format.label" />
+                                                </th>
 						<td>
 							<select id="Content-Type" name="Content-Type"
 								onchange="workbench.add.handleFormatSelection(this.value)">
@@ -68,15 +68,45 @@
 										<xsl:value-of select="substring-after(sparql:literal, ' ')" />
 									</option>
 								</xsl:for-each>
-							</select>
-						</td>
-						<td></td>
-					</tr>
+                                                        </select>
+                                                </td>
+                                                <td></td>
+                                        </tr>
 
-					<tr>
-						<td></td>
-						<td>
-							<input type="radio" id="source-url" name="source" value="url"
+                                        <tr>
+                                                <th>
+                                                        <xsl:value-of select="$isolation-level.label" />
+                                                </th>
+                                                <td>
+                                                        <select id="isolation-level" name="isolation-level">
+                                                                <option value="">
+                                                                        <xsl:if
+                                                                                test="not(string(//sparql:binding[@name='selected-isolation-level']/sparql:literal))">
+                                                                                <xsl:attribute name="selected">selected</xsl:attribute>
+                                                                        </xsl:if>
+                                                                        <xsl:value-of select="$isolation-level.default-option" />
+                                                                </option>
+                                                                <xsl:for-each
+                                                                        select="//sparql:binding[@name='available-isolation-level']">
+                                                                        <xsl:variable name="levelValue"
+                                                                                select="substring-before(sparql:literal, ' ')" />
+                                                                        <option value="{$levelValue}">
+                                                                                <xsl:if
+                                                                                        test="$levelValue = //sparql:binding[@name='selected-isolation-level']/sparql:literal">
+                                                                                        <xsl:attribute name="selected">selected</xsl:attribute>
+                                                                                </xsl:if>
+                                                                                <xsl:value-of select="substring-after(sparql:literal, ' ')" />
+                                                                        </option>
+                                                                </xsl:for-each>
+                                                        </select>
+                                                </td>
+                                                <td></td>
+                                        </tr>
+
+                                        <tr>
+                                                <td></td>
+                                                <td>
+                                                        <input type="radio" id="source-url" name="source" value="url"
 								onchange="workbench.add.enabledInput('url')" />
 							<xsl:value-of select="$upload-url.desc" />
 						</td>
