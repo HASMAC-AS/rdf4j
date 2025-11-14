@@ -13,7 +13,9 @@ package org.eclipse.rdf4j.sail.nativerdf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
@@ -75,15 +77,30 @@ class TripleComparatorTest {
 
 	private static Collection<String> allFieldOrders() {
 		try {
-			Class<?> fieldOrderClass = Class
-					.forName("org.eclipse.rdf4j.sail.nativerdf.TripleStore$TripleComparator$FieldOrder");
-			Object[] constants = fieldOrderClass.getEnumConstants();
-			return Arrays.stream(constants)
-					.map(constant -> ((Enum<?>) constant).name().toLowerCase(Locale.ROOT))
+			Class<?> comparatorClass = Class
+					.forName("org.eclipse.rdf4j.sail.nativerdf.TripleStore$TripleComparator");
+			Class<?> recordComparatorClass = Class
+					.forName("org.eclipse.rdf4j.sail.nativerdf.btree.RecordComparator");
+
+			return Arrays.stream(comparatorClass.getDeclaredFields())
+					.filter(f -> isStaticFinalRecordComparator(f, recordComparatorClass))
+					.map(Field::getName)
+					.map(TripleComparatorTest::orderFromFieldName)
+					.sorted()
 					.collect(Collectors.toList());
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private static boolean isStaticFinalRecordComparator(Field f, Class<?> recordComparatorClass) {
+		int m = f.getModifiers();
+		return Modifier.isStatic(m) && Modifier.isFinal(m) && recordComparatorClass.isAssignableFrom(f.getType());
+	}
+
+	private static String orderFromFieldName(String fieldName) {
+		String base = fieldName.startsWith("compare") ? fieldName.substring("compare".length()) : fieldName;
+		return base.toLowerCase(Locale.ROOT);
 	}
 
 	private static byte[] randomBytes(Random random, int length) {
