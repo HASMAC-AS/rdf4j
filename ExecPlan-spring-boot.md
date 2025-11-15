@@ -17,6 +17,7 @@ E2E tests currently rely on Docker to boot the RDF4J server and workbench inside
 - [x] (2025-11-15 18:38Z) Adapted the E2E runner to build and launch the Boot jar, added dynamic jar discovery, ensured Boot packaging via `spring-boot:repackage`, and verified the background process is stopped on exit despite Playwright’s Chromium download failure (chunk `37393b`).
 - [x] (2025-11-15 19:02Z) Re-ran the updated tests after formatter adjustments and noted the standing Playwright download limitation pending external resolution.
 - [x] (2025-11-15 19:03Z) Finalized verification by running repository formatters, refreshing documentation (including this plan and the retrospective), and organizing evidence for handoff.
+- [x] (2025-11-15 19:45Z) Added the missing EDL headers to the Spring Boot module's Java sources and confirmed `scripts/checkCopyrightPresent.sh` passes cleanly (chunks `6d06c7`, `9b9567`).
 
 ## Surprises & Discoveries
 
