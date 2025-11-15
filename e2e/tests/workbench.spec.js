@@ -57,7 +57,7 @@ test('Upload form lists isolation levels', async ({page}) => {
         {value: 'NONE', text: 'None'},
         {value: 'READ_UNCOMMITTED', text: 'Read Uncommitted'},
         {value: 'READ_COMMITTED', text: 'Read Committed'},
-        {value: 'SNAPSHOT_READ', text: 'Snapshot read'},
+        {value: 'SNAPSHOT_READ', text: 'Snapshot Read'},
         {value: 'SNAPSHOT', text: 'Snapshot'},
         {value: 'SERIALIZABLE', text: 'Serializable'}
     ];
