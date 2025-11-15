@@ -15,6 +15,7 @@ The end goal is to start the RDF4J server and workbench inside a single Spring B
 - [x] (2025-02-14 04:10Z) Prepare Spring XML resource wiring for Boot app (completed 2025-02-14 05:22Z).
 - [x] (2025-11-15 20:19Z) Run e2e Playwright suite & finalize documentation updates (attempted; Playwright browser downloads blocked by HTTP 403, documented in chunk d65d99).
 - [x] (2025-11-15 20:25Z) Compile final verification summary and retrospective updates (completed via repo summary + PR prep).
+- [x] (2025-11-16 03:27Z) Reordered the `tools` reactor so the workbench module builds before `server-boot`, ensuring the Boot module can resolve the workbench-attached classes artifact during a full reactor build.
 
 ## Surprises & Discoveries
 
