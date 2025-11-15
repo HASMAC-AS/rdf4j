@@ -101,3 +101,11 @@ Dependencies should re-use existing artifacts (`rdf4j-http-server-spring`, `rdf4
 Revision 0 (2024-01-29): Initial plan drafted.
 Revision 1 (2025-11-15): Updated progress after adding the module skeleton, captured failing Boot test evidence, and noted the dispatcher mapping gap blocking `/rdf4j-server` endpoints.
 Revision 2 (2025-11-15): Closed out verification tasks, documented formatter execution, added retrospective context, and marked the remaining checklist items complete with timestamps.
+Revision 3 (2025-11-16): Logged the follow-up request to expand `e2e/run.sh` progress output and rerun the embedded Playwright flow despite the Chromium CDN limitation.
+
+### Follow-up Task 2025-11-16 — Expand e2e runner observability
+| Step | Status | Notes |
+| --- | --- | --- |
+| 1. Rehearse current `./e2e/run.sh` output to document baseline evidence. | blocked | Chromium CDN continues to return HTTP 403, preventing a clean baseline capture. |
+| 2. Add detailed progress logging to `e2e/run.sh` while preserving existing behavior. | complete | Instrumented the script with stage-level narration for build, npm install, startup, readiness, Playwright install, and teardown. |
+| 3. Rerun `./e2e/run.sh` and archive output demonstrating the new logging (even if Playwright still fails). | complete | Playwright now installs browsers but the functional tests fail (HTML title mismatch/timeouts); captured the verbose logs and noted manual Ctrl+C to exit the HTML reporter. |
