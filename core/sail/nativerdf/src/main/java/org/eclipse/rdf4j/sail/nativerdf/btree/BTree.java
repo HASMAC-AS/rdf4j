@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,6 +70,8 @@ public class BTree implements Closeable {
 	 */
 	static final int HEADER_LENGTH = 16;
 
+	private static final int READ_ONLY_MAP_SEGMENT_SIZE = 128 * 1024 * 1024; // 128MB
+
 	/*-----------*
 	 * Variables *
 	 *-----------*/
@@ -78,6 +82,9 @@ public class BTree implements Closeable {
 	 * The BTree file, accessed using java.nio-channels.
 	 */
 	final NioFile nioFile;
+
+	private final Object readMapLock = new Object();
+	private volatile ReadOnlyMapping readOnlyMapping = ReadOnlyMapping.EMPTY;
 
 	/**
 	 * Flag indicating whether file writes should be forced to disk using {@link FileChannel#force(boolean)}.
@@ -395,6 +402,7 @@ public class BTree implements Closeable {
 			} finally {
 				try {
 					nodeCache.clear();
+					resetReadOnlyMapping();
 				} finally {
 					try {
 						nioFile.close();
@@ -996,6 +1004,7 @@ public class BTree implements Closeable {
 		try {
 			nodeCache.clear();
 			nioFile.truncate(HEADER_LENGTH);
+			resetReadOnlyMapping();
 
 			if (rootNodeID != 0) {
 				rootNodeID = 0;
@@ -1034,6 +1043,24 @@ public class BTree implements Closeable {
 		return nodeCache.readAndUse(id);
 	}
 
+	void readNodeBytes(long offset, byte[] target, int length) throws IOException {
+		if (length < 0) {
+			throw new IOException("Negative length requested for node read at offset " + offset + " in " + getFile());
+		}
+		long endExclusive = offset + length;
+		if (endExclusive < offset) {
+			throw new IOException("Corrupt node at offset " + offset + " in " + getFile());
+		}
+
+		long fileSize = nioFile.size();
+		if (endExclusive > fileSize) {
+			throw new IOException("Corrupt node at offset " + offset + " in " + getFile());
+		}
+
+		ReadOnlyMapping mapping = ensureMappingIncludes(offset, endExclusive, fileSize);
+		readFully(mapping, offset, target, 0, length);
+	}
+
 	void releaseNode(Node node) throws IOException {
 		// Note: this method is called by Node.release()
 		// This method should not be called directly (to prevent concurrency issues)!!!
@@ -1047,6 +1074,7 @@ public class BTree implements Closeable {
 				if (node.getID() > maxNodeID) {
 					// Shrink file
 					nioFile.truncate(nodeID2offset(maxNodeID) + nodeSize);
+					resetReadOnlyMapping();
 				}
 			}
 		} else {
@@ -1073,6 +1101,222 @@ public class BTree implements Closeable {
 
 	private int offset2nodeID(long offset) {
 		return (int) (offset / blockSize);
+	}
+
+	private ReadOnlyMapping ensureMappingIncludes(long startInclusive, long endExclusive, long fileSize)
+			throws IOException {
+		if (endExclusive <= 0) {
+			return readOnlyMapping;
+		}
+
+		if (endExclusive > fileSize) {
+			throw new IOException("Corrupt node access beyond file length in " + getFile());
+		}
+
+		ReadOnlyMapping current = readOnlyMapping;
+		if (current.contains(startInclusive, endExclusive)) {
+			return current;
+		}
+
+		synchronized (readMapLock) {
+			current = readOnlyMapping;
+			if (current.contains(startInclusive, endExclusive)) {
+				return current;
+			}
+
+			long regionStart = Math.max(0, roundDownToSegmentBoundary(startInclusive));
+			long regionEnd = Math.min(fileSize, roundUpToSegmentBoundary(endExclusive));
+			if (regionEnd <= regionStart) {
+				return current;
+			}
+
+			if (current.canExtendAtEnd(regionStart)) {
+				ReadOnlyMapping extended = appendSegments(current, regionEnd);
+				readOnlyMapping = extended;
+				return extended;
+			}
+
+			ReadOnlyMapping replacement = mapRegion(regionStart, regionEnd);
+			readOnlyMapping = replacement;
+			return replacement;
+		}
+	}
+
+	private ReadOnlyMapping appendSegments(ReadOnlyMapping current, long targetEnd) throws IOException {
+		long position = current.mappedEnd;
+		if (position >= targetEnd) {
+			return current;
+		}
+
+		List<MappingSegment> additions = new ArrayList<>();
+		while (position < targetEnd) {
+			long remaining = targetEnd - position;
+			int chunkSize = (int) Math.min(remaining, READ_ONLY_MAP_SEGMENT_SIZE);
+			if (chunkSize <= 0) {
+				break;
+			}
+			MappedByteBuffer buffer = nioFile.mapReadOnly(position, chunkSize);
+			buffer.order(ByteOrder.BIG_ENDIAN);
+			additions.add(new MappingSegment(position, position + chunkSize, buffer));
+			position += chunkSize;
+		}
+
+		if (additions.isEmpty()) {
+			return current;
+		}
+
+		return current.append(additions, position);
+	}
+
+	private ReadOnlyMapping mapRegion(long regionStart, long regionEnd) throws IOException {
+		List<MappingSegment> segments = new ArrayList<>();
+		long position = regionStart;
+		while (position < regionEnd) {
+			long remaining = regionEnd - position;
+			int chunkSize = (int) Math.min(remaining, READ_ONLY_MAP_SEGMENT_SIZE);
+			if (chunkSize <= 0) {
+				break;
+			}
+			MappedByteBuffer buffer = nioFile.mapReadOnly(position, chunkSize);
+			buffer.order(ByteOrder.BIG_ENDIAN);
+			segments.add(new MappingSegment(position, position + chunkSize, buffer));
+			position += chunkSize;
+		}
+		return ReadOnlyMapping.fromSegments(segments, regionStart, position);
+	}
+
+	private static long roundUpToSegmentBoundary(long endExclusive) {
+		if (endExclusive <= 0) {
+			return 0;
+		}
+
+		long segmentSize = READ_ONLY_MAP_SEGMENT_SIZE;
+		long remainder = endExclusive % segmentSize;
+		if (remainder == 0) {
+			return endExclusive;
+		}
+
+		long delta = segmentSize - remainder;
+		if (endExclusive > Long.MAX_VALUE - delta) {
+			return Long.MAX_VALUE;
+		}
+		return endExclusive + delta;
+	}
+
+	private static long roundDownToSegmentBoundary(long startInclusive) {
+		if (startInclusive <= 0) {
+			return 0;
+		}
+		long segmentSize = READ_ONLY_MAP_SEGMENT_SIZE;
+		return startInclusive - (startInclusive % segmentSize);
+	}
+
+	private void readFully(ReadOnlyMapping mapping, long offset, byte[] target, int targetOffset, int length)
+			throws IOException {
+		if (length <= 0) {
+			return;
+		}
+
+		int remaining = length;
+		long position = offset;
+		int destPos = targetOffset;
+
+		while (remaining > 0) {
+			MappingSegment segment = mapping.segmentFor(position);
+			ByteBuffer duplicate = segment.buffer.duplicate();
+			int withinSegment = (int) (position - segment.start);
+			duplicate.position(withinSegment);
+
+			int chunk = Math.min(remaining, duplicate.remaining());
+			if (chunk <= 0) {
+				throw new IOException("Unable to read mapped bytes at offset " + position + " in " + getFile());
+			}
+
+			duplicate.get(target, destPos, chunk);
+			remaining -= chunk;
+			destPos += chunk;
+			position += chunk;
+		}
+	}
+
+	private void resetReadOnlyMapping() {
+		readOnlyMapping = ReadOnlyMapping.EMPTY;
+	}
+
+	private static final class ReadOnlyMapping {
+
+		private static final ReadOnlyMapping EMPTY = new ReadOnlyMapping(new MappingSegment[0], 0, 0);
+
+		private final MappingSegment[] segments;
+		private final long mappedStart;
+		private final long mappedEnd;
+
+		private ReadOnlyMapping(MappingSegment[] segments, long mappedStart, long mappedEnd) {
+			this.segments = segments;
+			this.mappedStart = mappedStart;
+			this.mappedEnd = mappedEnd;
+		}
+
+		static ReadOnlyMapping fromSegments(List<MappingSegment> additions, long mappedStart, long mappedEnd) {
+			if (additions.isEmpty()) {
+				return EMPTY;
+			}
+			MappingSegment[] merged = additions.toArray(new MappingSegment[0]);
+			return new ReadOnlyMapping(merged, mappedStart, mappedEnd);
+		}
+
+		boolean contains(long startInclusive, long endExclusive) {
+			return segments.length > 0 && startInclusive >= mappedStart && endExclusive <= mappedEnd;
+		}
+
+		boolean canExtendAtEnd(long regionStart) {
+			return segments.length > 0 && regionStart >= mappedStart && regionStart <= mappedEnd;
+		}
+
+		ReadOnlyMapping append(List<MappingSegment> additions, long newMappedEnd) {
+			if (additions.isEmpty()) {
+				return this;
+			}
+			MappingSegment[] merged = Arrays.copyOf(segments, segments.length + additions.size());
+			for (int i = 0; i < additions.size(); i++) {
+				merged[segments.length + i] = additions.get(i);
+			}
+			return new ReadOnlyMapping(merged, mappedStart, newMappedEnd);
+		}
+
+		MappingSegment segmentFor(long offset) {
+			if (segments.length == 0) {
+				throw new IllegalStateException("No mapped segments available for offset " + offset);
+			}
+			int low = 0;
+			int high = segments.length - 1;
+			while (low <= high) {
+				int mid = (low + high) >>> 1;
+				MappingSegment segment = segments[mid];
+				if (offset < segment.start) {
+					high = mid - 1;
+				} else if (offset >= segment.end) {
+					low = mid + 1;
+				} else {
+					return segment;
+				}
+			}
+			throw new IllegalArgumentException(
+					"Offset " + offset + " outside mapped region [" + mappedStart + ", " + mappedEnd + ")");
+		}
+	}
+
+	private static final class MappingSegment {
+
+		private final long start;
+		private final long end;
+		private final MappedByteBuffer buffer;
+
+		private MappingSegment(long start, long end, MappedByteBuffer buffer) {
+			this.start = start;
+			this.end = end;
+			this.buffer = buffer;
+		}
 	}
 
 	public void print(PrintStream out) throws IOException {

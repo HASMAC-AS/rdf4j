@@ -25,12 +25,15 @@ import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.RepositoryResult;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reproduces a corrupt ValueStore by tampering with the values.dat type byte and verifies that reading statements fails
@@ -38,6 +41,9 @@ import org.junit.jupiter.api.parallel.Isolated;
  */
 @Isolated
 public class NativeStoreValueStoreCorruptionReproductionTest {
+
+	private static final Logger logger = LoggerFactory.getLogger(NativeStoreValueStoreCorruptionReproductionTest.class);
+	private static final long CORRUPTION_OFFSET = 174;
 
 	@TempDir
 	File tempFolder;
@@ -54,6 +60,7 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 		dataDir.mkdir();
 		repo = new SailRepository(new NativeStore(dataDir, "spoc,posc"));
 		repo.init();
+		logger.info("Initialized NativeStore in {}", dataDir.getAbsolutePath());
 
 		// Insert the same base dataset used by NativeSailStoreCorruptionTest to ensure stable file layout
 		IRI CTX_1 = F.createIRI("urn:one");
@@ -76,6 +83,10 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 			conn.add(S4, CTX_2);
 			conn.add(S5, CTX_2);
 		}
+
+		File valuesFile = new File(dataDir, "values.dat");
+		logger.info("After dataset load values.dat exists={} length={} bytes", valuesFile.exists(),
+				valuesFile.length());
 	}
 
 	@AfterEach
@@ -86,25 +97,45 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 
 	@Test
 	public void corruptValuesDatInvalidTypeShouldBreakReads() throws IOException {
+		String repositoryDebugPropertyValue = System.getProperty("org.eclipse.rdf4j.repository.debug");
+		logger.info("'org.eclipse.rdf4j.repository.debug' system property currently {}", repositoryDebugPropertyValue);
+
 		// Disable soft-fail to surface corruption as an exception
 		NativeStore.SOFT_FAIL_ON_CORRUPT_DATA_AND_REPAIR_INDEXES = false;
 
 		// Close repo to release files for mutation
+		File valuesFile = new File(dataDir, "values.dat");
+		logger.info("Preparing to corrupt {} (exists={} length={} bytes)", valuesFile.getAbsolutePath(),
+				valuesFile.exists(), valuesFile.length());
 		repo.shutDown();
+		logger.info("Repository shut down to allow direct file mutation");
 
 		// Flip a byte in values.dat at a position that maps to a value type marker
 		// This offset mirrors NativeSailStoreCorruptionTest.testCorruptValuesDatFileInvalidTypeError
-		File valuesFile = new File(dataDir, "values.dat");
-		overwriteByte(valuesFile, 174, 0x0);
+		byte originalByte = peekByte(valuesFile, CORRUPTION_OFFSET);
+		logger.info("Original byte at offset {}: {} (unsigned={})", CORRUPTION_OFFSET, formatByte(originalByte),
+				Byte.toUnsignedInt(originalByte));
+		overwriteByte(valuesFile, CORRUPTION_OFFSET, 0x0);
+		byte mutatedByte = peekByte(valuesFile, CORRUPTION_OFFSET);
+		logger.info("Mutated byte at offset {}: {} (unsigned={})", CORRUPTION_OFFSET, formatByte(mutatedByte),
+				Byte.toUnsignedInt(mutatedByte));
 
 		// Reopen; attempting to read statements should now throw a RepositoryException
 		repo.init();
+		logger.info("Repository re-initialized after corruption; starting statement scan");
 		try (RepositoryConnection conn = repo.getConnection()) {
-			assertThrows(RepositoryException.class, () -> {
-				conn.getStatements(null, null, null, false).forEachRemaining(s -> {
-					// Force materialization of all statements
-				});
+			RepositoryException repositoryException = assertThrows(RepositoryException.class, () -> {
+				logger.info("Requesting statements with explicit iteration to surface corruption");
+				try (RepositoryResult<Statement> statements = conn.getStatements(null, null, null, false)) {
+					statements.forEachRemaining(stmt -> {
+						stmt.toString();
+					});
+				}
 			});
+			logger.info("Captured RepositoryException message='{}' type={} cause={}", repositoryException.getMessage(),
+					repositoryException.getClass().getName(),
+					repositoryException.getCause() != null ? repositoryException.getCause().getClass().getName()
+							: "null");
 		}
 	}
 
@@ -118,5 +149,21 @@ public class NativeStoreValueStoreCorruptionReproductionTest {
 			raf.seek(pos);
 			raf.writeByte(newVal);
 		}
+	}
+
+	private static byte peekByte(File file, long pos) throws IOException {
+		try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+			long fileLength = raf.length();
+			if (pos >= fileLength) {
+				throw new IOException(
+						"Attempt to read outside the existing file bounds: " + pos + " >= " + fileLength);
+			}
+			raf.seek(pos);
+			return raf.readByte();
+		}
+	}
+
+	private static String formatByte(byte value) {
+		return String.format("0x%02X", Byte.toUnsignedInt(value));
 	}
 }
