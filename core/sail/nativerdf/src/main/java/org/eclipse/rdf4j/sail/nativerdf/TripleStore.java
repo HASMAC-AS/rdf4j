@@ -30,6 +30,8 @@ import java.util.StringTokenizer;
 
 import org.eclipse.rdf4j.common.io.ByteArrayUtil;
 import org.eclipse.rdf4j.sail.SailException;
+import org.eclipse.rdf4j.sail.nativerdf.TripleOrderFunctions.CompareFn;
+import org.eclipse.rdf4j.sail.nativerdf.TripleOrderFunctions.PatternScoreFn;
 import org.eclipse.rdf4j.sail.nativerdf.TxnStatusFile.TxnStatus;
 import org.eclipse.rdf4j.sail.nativerdf.btree.BTree;
 import org.eclipse.rdf4j.sail.nativerdf.btree.RecordComparator;
@@ -125,6 +127,9 @@ class TripleStore implements Closeable {
 	 * active) transaction.
 	 */
 	static final byte TOGGLE_EXPLICIT_FLAG = (byte) 0x8; // 0000 1000
+
+	private static final StatementFlagMatcher EXPLICIT_STATEMENT_MATCHER = StatementFlagMatcher.explicitFilter();
+	private static final StatementFlagMatcher IMPLICIT_STATEMENT_MATCHER = StatementFlagMatcher.implicitFilter();
 
 	/*-----------*
 	 * Variables *
@@ -589,11 +594,7 @@ class TripleStore implements Closeable {
 			byte[] result;
 
 			while ((result = wrappedIter.next()) != null) {
-				byte flags = result[TripleStore.FLAG_IDX];
-				boolean explicit = (flags & TripleStore.EXPLICIT_FLAG) != 0;
-				boolean toggled = (flags & TripleStore.TOGGLE_EXPLICIT_FLAG) != 0;
-
-				if (explicit != toggled) {
+				if (EXPLICIT_STATEMENT_MATCHER.matches(result[TripleStore.FLAG_IDX])) {
 					// Statement is either explicit and hasn't been toggled, or vice
 					// versa
 					break;
@@ -627,10 +628,7 @@ class TripleStore implements Closeable {
 			byte[] result;
 
 			while ((result = wrappedIter.next()) != null) {
-				byte flags = result[TripleStore.FLAG_IDX];
-				boolean explicit = (flags & TripleStore.EXPLICIT_FLAG) != 0;
-
-				if (!explicit) {
+				if (IMPLICIT_STATEMENT_MATCHER.matches(result[TripleStore.FLAG_IDX])) {
 					// Statement is implicit
 					break;
 				}
@@ -1181,6 +1179,7 @@ class TripleStore implements Closeable {
 	private class TripleIndex {
 
 		private final TripleComparator tripleComparator;
+		private final PatternScoreFn patternScoreFn;
 
 		private final BTree btree;
 
@@ -1196,6 +1195,7 @@ class TripleStore implements Closeable {
 				}
 			}
 			tripleComparator = new TripleComparator(fieldSeq);
+			patternScoreFn = TripleOrderFunctions.patternScoreFor(tripleComparator.getFieldSeq());
 			btree = new BTree(dir, getFilenamePrefix(fieldSeq), 2048, RECORD_LENGTH, tripleComparator, forceSync);
 		}
 
@@ -1217,45 +1217,7 @@ class TripleStore implements Closeable {
 		 * that the index will perform a sequential scan.
 		 */
 		public int getPatternScore(int subj, int pred, int obj, int context) {
-			int score = 0;
-
-			for (char field : tripleComparator.getFieldSeq()) {
-				switch (field) {
-				case 's':
-					if (subj >= 0) {
-						score++;
-					} else {
-						return score;
-					}
-					break;
-				case 'p':
-					if (pred >= 0) {
-						score++;
-					} else {
-						return score;
-					}
-					break;
-				case 'o':
-					if (obj >= 0) {
-						score++;
-					} else {
-						return score;
-					}
-					break;
-				case 'c':
-					if (context >= 0) {
-						score++;
-					} else {
-						return score;
-					}
-					break;
-				default:
-					throw new RuntimeException("invalid character '" + field + "' in field sequence: "
-							+ new String(tripleComparator.getFieldSeq()));
-				}
-			}
-
-			return score;
+			return patternScoreFn.score(subj, pred, obj, context);
 		}
 
 		@Override
@@ -1275,9 +1237,11 @@ class TripleStore implements Closeable {
 	private static class TripleComparator implements RecordComparator {
 
 		private final char[] fieldSeq;
+		private final CompareFn compareFn;
 
 		public TripleComparator(String fieldSeq) {
 			this.fieldSeq = fieldSeq.toCharArray();
+			this.compareFn = TripleOrderFunctions.comparatorFor(this.fieldSeq);
 		}
 
 		public char[] getFieldSeq() {
@@ -1286,35 +1250,7 @@ class TripleStore implements Closeable {
 
 		@Override
 		public final int compareBTreeValues(byte[] key, byte[] data, int offset, int length) {
-			for (char field : fieldSeq) {
-				int fieldIdx;
-
-				switch (field) {
-				case 's':
-					fieldIdx = SUBJ_IDX;
-					break;
-				case 'p':
-					fieldIdx = PRED_IDX;
-					break;
-				case 'o':
-					fieldIdx = OBJ_IDX;
-					break;
-				case 'c':
-					fieldIdx = CONTEXT_IDX;
-					break;
-				default:
-					throw new IllegalArgumentException(
-							"invalid character '" + field + "' in field sequence: " + new String(fieldSeq));
-				}
-
-				int diff = ByteArrayUtil.compareRegion(key, fieldIdx, data, offset + fieldIdx, 4);
-
-				if (diff != 0) {
-					return diff;
-				}
-			}
-
-			return 0;
+			return compareFn.compare(key, data, offset);
 		}
 	}
 
