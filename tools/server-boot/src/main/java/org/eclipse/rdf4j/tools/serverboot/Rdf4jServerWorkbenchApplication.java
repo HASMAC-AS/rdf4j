@@ -25,7 +25,6 @@ import javax.servlet.MultipartConfigElement;
 import org.apache.catalina.Context;
 import org.eclipse.rdf4j.common.platform.Platform;
 import org.eclipse.rdf4j.common.platform.PlatformFactory;
-import org.eclipse.rdf4j.common.webapp.filters.PathFilter;
 import org.eclipse.rdf4j.tools.serverboot.config.SolrAutoConfigurationDisabler;
 import org.eclipse.rdf4j.workbench.proxy.CacheFilter;
 import org.eclipse.rdf4j.workbench.proxy.CookieCacheControlFilter;
@@ -246,8 +245,8 @@ public class Rdf4jServerWorkbenchApplication {
 	}
 
 	@Bean
-	FilterRegistrationBean<PathFilter> pathFilter() {
-		FilterRegistrationBean<PathFilter> registration = new FilterRegistrationBean<>(new PathFilter());
+	FilterRegistrationBean<CssPathFilter> pathFilter() {
+		FilterRegistrationBean<CssPathFilter> registration = new FilterRegistrationBean<>(new CssPathFilter());
 		registration.addUrlPatterns("*.css");
 		registration.setName("PathFilter");
 		registration.setOrder(-8);
