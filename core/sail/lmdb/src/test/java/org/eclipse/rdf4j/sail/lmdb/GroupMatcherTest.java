@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.eclipse.rdf4j.sail.lmdb.util.DirectSlice;
 import org.eclipse.rdf4j.sail.lmdb.util.GroupMatcher;
 import org.junit.jupiter.api.Test;
 
@@ -291,5 +292,25 @@ class GroupMatcherTest {
 		SAME_LENGTHS,
 		ROTATED_LENGTHS,
 		INCREMENTED_LENGTHS
+	}
+
+	@Test
+	void supportsDirectSliceWithoutCopying() {
+		long[] referenceValues = { 1, 42, 3, 4 };
+		boolean[] shouldMatch = { true, true, true, true };
+		ByteBuffer encoded = encode(referenceValues);
+		byte[] expected = encoded.duplicate().array();
+		GroupMatcher matcher = new GroupMatcher(expected, shouldMatch);
+
+		ByteBuffer direct = ByteBuffer.allocateDirect(encoded.remaining()).order(ByteOrder.nativeOrder());
+		direct.put(encoded.duplicate());
+		direct.flip();
+		DirectSlice slice = DirectSlice.wrap(direct);
+
+		assertTrue(matcher.matches(slice));
+
+		ByteBuffer mutated = direct.duplicate();
+		mutated.put(0, (byte) (mutated.get(0) ^ 0x01));
+		assertFalse(matcher.matches(slice));
 	}
 }
