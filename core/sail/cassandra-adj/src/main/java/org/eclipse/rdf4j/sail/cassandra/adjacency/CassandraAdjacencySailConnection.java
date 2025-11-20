@@ -21,8 +21,17 @@ import org.eclipse.rdf4j.model.impl.SimpleNamespace;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
+import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.algebra.QueryRoot;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
+import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategyFactory;
+import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategyFactory;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
+import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.sail.SailException;
+import org.eclipse.rdf4j.sail.evaluation.SailTripleSource;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSailConnection;
 
 /**
@@ -77,7 +86,27 @@ public class CassandraAdjacencySailConnection extends AbstractNotifyingSailConne
 	@Override
 	protected CloseableIteration<? extends BindingSet> evaluateInternal(TupleExpr tupleExpr, Dataset dataset,
 			BindingSet bindings, boolean includeInferred) throws SailException {
-		return new EmptyIteration<>();
+		TupleExpr expr = tupleExpr.clone();
+
+		if (!(expr instanceof QueryRoot)) {
+			expr = new QueryRoot(expr);
+		}
+
+		EvaluationStrategyFactory strategyFactory = new DefaultEvaluationStrategyFactory();
+		EvaluationStatistics evaluationStatistics = new EvaluationStatistics();
+		BindingSet effectiveBindings = bindings == null ? EmptyBindingSet.getInstance() : bindings;
+		EvaluationStrategy strategy = strategyFactory.createEvaluationStrategy(
+				dataset,
+				new SailTripleSource(this, includeInferred, getSailBase().getValueFactory()),
+				evaluationStatistics);
+
+		try {
+			expr = strategy.optimize(expr, evaluationStatistics, effectiveBindings);
+			QueryEvaluationStep queryEvaluationStep = strategy.precompile(expr);
+			return queryEvaluationStep.evaluate(EmptyBindingSet.getInstance());
+		} catch (QueryEvaluationException e) {
+			throw new SailException(e);
+		}
 	}
 
 	@Override

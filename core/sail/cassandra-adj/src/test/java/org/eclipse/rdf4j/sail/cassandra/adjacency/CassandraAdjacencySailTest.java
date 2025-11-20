@@ -2,6 +2,8 @@ package org.eclipse.rdf4j.sail.cassandra.adjacency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,6 +20,7 @@ import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
+import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.SailException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +59,61 @@ class CassandraAdjacencySailTest {
 
 		try (RepositoryConnection connection = repository.getConnection()) {
 			assertThat(connection.getStatements(null, null, null).asList()).isEmpty();
+		}
+	}
+
+	@Test
+	void tupleQueryReturnsStoredStatement() {
+		InMemoryGraphStore graphStore = new InMemoryGraphStore();
+		sail = new CassandraAdjacencySail(graphStore, namespaceManager());
+		sail.initialize();
+
+		SailRepository repository = new SailRepository(sail);
+		IRI subject = vf.createIRI("http://example.com/s");
+		IRI predicate = vf.createIRI("http://example.com/p");
+
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.add(subject, predicate, vf.createLiteral("value"));
+		}
+
+		try (RepositoryConnection connection = repository.getConnection()) {
+			List<String> values = connection.prepareTupleQuery("SELECT ?o WHERE { <" + subject + "> <" + predicate
+					+ "> ?o }")
+					.evaluate()
+					.stream()
+					.map(bs -> bs.getValue("o").stringValue())
+					.collect(Collectors.toList());
+
+			assertThat(values).containsExactly("value");
+		}
+	}
+
+	@Test
+	void loadRdfAndQueryIt() throws Exception {
+		InMemoryGraphStore graphStore = new InMemoryGraphStore();
+		sail = new CassandraAdjacencySail(graphStore, namespaceManager());
+		sail.initialize();
+
+		String ttl = "@prefix ex: <http://example.com/> .\n"
+				+ "ex:s1 ex:p ex:o1 .\n"
+				+ "ex:s2 ex:p ex:o2 .\n";
+
+		SailRepository repository = new SailRepository(sail);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.add(new ByteArrayInputStream(ttl.getBytes(StandardCharsets.UTF_8)), "", RDFFormat.TURTLE);
+		}
+
+		try (RepositoryConnection connection = repository.getConnection()) {
+			List<String> results = connection.prepareTupleQuery(
+					"SELECT ?s ?o WHERE { ?s <http://example.com/p> ?o } ORDER BY ?s")
+					.evaluate()
+					.stream()
+					.map(bs -> bs.getValue("s") + " " + bs.getValue("o"))
+					.collect(Collectors.toList());
+
+			assertThat(results).containsExactly(
+					"http://example.com/s1 http://example.com/o1",
+					"http://example.com/s2 http://example.com/o2");
 		}
 	}
 

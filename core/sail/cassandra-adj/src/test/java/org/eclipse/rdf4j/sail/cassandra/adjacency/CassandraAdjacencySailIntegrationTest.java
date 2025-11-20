@@ -2,6 +2,8 @@ package org.eclipse.rdf4j.sail.cassandra.adjacency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.Collectors;
+
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Resource;
@@ -80,5 +82,29 @@ class CassandraAdjacencySailIntegrationTest {
 		}
 
 		assertThat(graphStore.fetchTripleCount()).isEqualTo(1L);
+	}
+
+	@Test
+	void loadRdfAndQueryThroughCassandra() {
+		IRI predicate = VF.createIRI("http://example.com/p");
+
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.add(VF.createIRI("http://example.com/s1"), predicate, VF.createLiteral("o1"));
+			connection.add(VF.createIRI("http://example.com/s2"), predicate, VF.createLiteral("o2"));
+			connection.commit();
+		}
+
+		try (RepositoryConnection connection = repository.getConnection()) {
+			var results = connection.prepareTupleQuery(
+					"SELECT ?s ?o WHERE { ?s <http://example.com/p> ?o } ORDER BY ?s")
+					.evaluate()
+					.stream()
+					.map(bs -> bs.getValue("s") + " " + bs.getValue("o").stringValue())
+					.collect(Collectors.toList());
+
+			assertThat(results).containsExactly(
+					"http://example.com/s1 o1",
+					"http://example.com/s2 o2");
+		}
 	}
 }
