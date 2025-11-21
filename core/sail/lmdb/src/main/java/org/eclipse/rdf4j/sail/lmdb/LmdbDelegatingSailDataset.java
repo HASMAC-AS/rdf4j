@@ -146,4 +146,23 @@ final class LmdbDelegatingSailDataset implements SailDataset, LmdbEvaluationData
 	public ValueStore getValueStore() {
 		return valueStore;
 	}
+
+	@Override
+	public DatasetMode getDatasetMode() {
+		if (delegate instanceof LmdbEvaluationDataset) {
+			return ((LmdbEvaluationDataset) delegate).getDatasetMode();
+		}
+		return DatasetMode.EXPLICIT;
+	}
+
+	@Override
+	public TrieIndexManager getTrieIndexManager() {
+		return delegate instanceof LmdbEvaluationDataset ? ((LmdbEvaluationDataset) delegate).getTrieIndexManager()
+				: null;
+	}
+
+	@Override
+	public TxnManager getTxnManager() {
+		return delegate instanceof LmdbEvaluationDataset ? ((LmdbEvaluationDataset) delegate).getTxnManager() : null;
+	}
 }

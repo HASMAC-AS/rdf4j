@@ -1634,6 +1634,21 @@ class LmdbSailStore implements SailStore {
 		}
 
 		@Override
+		public DatasetMode getDatasetMode() {
+			return explicit ? DatasetMode.EXPLICIT : DatasetMode.INFERRED;
+		}
+
+		@Override
+		public TrieIndexManager getTrieIndexManager() {
+			return tripleStore.getTrieIndexManager();
+		}
+
+		@Override
+		public TxnManager getTxnManager() {
+			return tripleStore.getTxnManager();
+		}
+
+		@Override
 		public IsolationLevel getIsolationLevel() {
 			return isolationLevel;
 		}
@@ -2028,5 +2043,17 @@ class LmdbSailStore implements SailStore {
 				return new ValueComparator().compare(v1, v2);
 			};
 		}
+	}
+
+	TrieIndexManager getTrieIndexManager() {
+		return tripleStore.getTrieIndexManager();
+	}
+
+	TxnManager getTxnManager() {
+		return tripleStore.getTxnManager();
+	}
+
+	ValueStore getValueStore() {
+		return valueStore;
 	}
 }

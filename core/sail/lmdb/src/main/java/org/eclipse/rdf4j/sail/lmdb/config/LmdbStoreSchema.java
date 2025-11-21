@@ -91,6 +91,16 @@ public class LmdbStoreSchema {
 	 */
 	public final static IRI DUPSORT_READ;
 
+	/**
+	 * <tt>http://rdf4j.org/config/sail/lmdb#maintainTrieIndexes</tt>
+	 */
+	public final static IRI MAINTAIN_TRIE_INDEXES;
+
+	/**
+	 * <tt>http://rdf4j.org/config/sail/lmdb#useWcojForBgp</tt>
+	 */
+	public final static IRI USE_WCOJ_FOR_BGP;
+
 	static {
 		ValueFactory factory = SimpleValueFactory.getInstance();
 		TRIPLE_INDEXES = factory.createIRI(NAMESPACE, "tripleIndexes");
@@ -106,5 +116,7 @@ public class LmdbStoreSchema {
 		VALUE_EVICTION_INTERVAL = factory.createIRI(NAMESPACE, "valueEvictionInterval");
 		DUPSORT_INDICES = factory.createIRI(NAMESPACE, "dupsortIndices");
 		DUPSORT_READ = factory.createIRI(NAMESPACE, "dupsortRead");
+		MAINTAIN_TRIE_INDEXES = factory.createIRI(NAMESPACE, "maintainTrieIndexes");
+		USE_WCOJ_FOR_BGP = factory.createIRI(NAMESPACE, "useWcojForBgp");
 	}
 }

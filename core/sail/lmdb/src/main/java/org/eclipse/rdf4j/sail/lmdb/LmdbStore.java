@@ -43,6 +43,7 @@ import org.eclipse.rdf4j.sail.base.SailStore;
 import org.eclipse.rdf4j.sail.base.SnapshotSailStore;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSail;
 import org.eclipse.rdf4j.sail.helpers.DirectoryLockManager;
+import org.eclipse.rdf4j.sail.lmdb.LmdbWcojEvaluationStrategyFactory;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,7 +169,11 @@ public class LmdbStore extends AbstractNotifyingSail implements FederatedService
 	 */
 	public synchronized EvaluationStrategyFactory getEvaluationStrategyFactory() {
 		if (evalStratFactory == null) {
-			evalStratFactory = new LmdbEvaluationStrategyFactory(getFederatedServiceResolver());
+			if (config.isUseWcojForBgp()) {
+				evalStratFactory = new LmdbWcojEvaluationStrategyFactory(getFederatedServiceResolver());
+			} else {
+				evalStratFactory = new LmdbEvaluationStrategyFactory(getFederatedServiceResolver());
+			}
 		}
 		evalStratFactory.setQuerySolutionCacheThreshold(getIterationCacheSyncThreshold());
 		evalStratFactory.setTrackResultSize(isTrackResultSize());

@@ -25,6 +25,16 @@ import org.eclipse.rdf4j.sail.config.SailConfigException;
  *
  */
 public class LmdbStoreConfig extends BaseSailConfig {
+	private static final String MAINTAIN_TRIE_PROP = "rdf4j.lmdb.maintainTrieIndexes";
+	private static final String USE_WCOJ_PROP = "rdf4j.lmdb.useWcojForBgp";
+
+	// Default to true if the property is not set, this allows users to disable trie indexes via a system property if
+	// needed
+	private static final boolean DEFAULT_MAINTAIN_TRIE_INDEXES = System.getProperty(MAINTAIN_TRIE_PROP) == null
+			|| Boolean.getBoolean(MAINTAIN_TRIE_PROP);
+	private static final boolean DEFAULT_USE_WCOJ_FOR_BGP = System.getProperty(USE_WCOJ_PROP) == null
+			|| Boolean.getBoolean(USE_WCOJ_PROP);
+
 	/**
 	 * The default size of the triple database.
 	 */
@@ -76,6 +86,9 @@ public class LmdbStoreConfig extends BaseSailConfig {
 	private boolean pageCardinalityEstimator = true;
 	private boolean dupsortIndices = true;
 	private boolean dupsortRead = true;
+
+	private boolean maintainTrieIndexes = DEFAULT_MAINTAIN_TRIE_INDEXES;
+	private boolean useWcojForBgp = DEFAULT_USE_WCOJ_FOR_BGP;
 
 	private long valueEvictionInterval = Duration.ofSeconds(60).toMillis();
 
@@ -221,6 +234,24 @@ public class LmdbStoreConfig extends BaseSailConfig {
 		return this;
 	}
 
+	public boolean isMaintainTrieIndexes() {
+		return maintainTrieIndexes;
+	}
+
+	public LmdbStoreConfig setMaintainTrieIndexes(boolean maintainTrieIndexes) {
+		this.maintainTrieIndexes = maintainTrieIndexes;
+		return this;
+	}
+
+	public boolean isUseWcojForBgp() {
+		return useWcojForBgp;
+	}
+
+	public LmdbStoreConfig setUseWcojForBgp(boolean useWcojForBgp) {
+		this.useWcojForBgp = useWcojForBgp;
+		return this;
+	}
+
 	@Override
 	public Resource export(Model m) {
 		Resource implNode = super.export(m);
@@ -266,6 +297,12 @@ public class LmdbStoreConfig extends BaseSailConfig {
 		}
 		if (!dupsortRead) {
 			m.add(implNode, LmdbStoreSchema.DUPSORT_READ, vf.createLiteral(false));
+		}
+		if (!maintainTrieIndexes) {
+			m.add(implNode, LmdbStoreSchema.MAINTAIN_TRIE_INDEXES, vf.createLiteral(false));
+		}
+		if (!useWcojForBgp) {
+			m.add(implNode, LmdbStoreSchema.USE_WCOJ_FOR_BGP, vf.createLiteral(false));
 		}
 		return implNode;
 	}
@@ -398,6 +435,25 @@ public class LmdbStoreConfig extends BaseSailConfig {
 				} catch (IllegalArgumentException e) {
 					throw new SailConfigException(
 							"Boolean value required for " + LmdbStoreSchema.DUPSORT_READ + " property, found "
+									+ lit);
+				}
+			});
+			Models.objectLiteral(m.getStatements(implNode, LmdbStoreSchema.MAINTAIN_TRIE_INDEXES, null))
+					.ifPresent(lit -> {
+						try {
+							setMaintainTrieIndexes(lit.booleanValue());
+						} catch (IllegalArgumentException e) {
+							throw new SailConfigException(
+									"Boolean value required for " + LmdbStoreSchema.MAINTAIN_TRIE_INDEXES
+											+ " property, found " + lit);
+						}
+					});
+			Models.objectLiteral(m.getStatements(implNode, LmdbStoreSchema.USE_WCOJ_FOR_BGP, null)).ifPresent(lit -> {
+				try {
+					setUseWcojForBgp(lit.booleanValue());
+				} catch (IllegalArgumentException e) {
+					throw new SailConfigException(
+							"Boolean value required for " + LmdbStoreSchema.USE_WCOJ_FOR_BGP + " property, found "
 									+ lit);
 				}
 			});

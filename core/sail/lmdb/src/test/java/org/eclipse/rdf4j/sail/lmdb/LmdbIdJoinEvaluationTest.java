@@ -12,6 +12,7 @@ package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Field;
@@ -64,12 +65,13 @@ public class LmdbIdJoinEvaluationTest {
 
 	@Test
 	public void simpleJoinUsesIdIterator(@TempDir Path tempDir) throws Exception {
+		assumeFalse(wcojEnabled(), "Legacy ID join expectations do not apply when WCOJ is enabled");
+
 		LmdbStore store = new LmdbStore(tempDir.toFile());
 		SailRepository repository = new SailRepository(store);
 		repository.init();
 
-		assertThat(store.getEvaluationStrategyFactory().getClass().getSimpleName())
-				.isEqualTo("LmdbEvaluationStrategyFactory");
+		assertThat(store.getEvaluationStrategyFactory()).isInstanceOf(LmdbEvaluationStrategyFactory.class);
 
 		ValueFactory vf = SimpleValueFactory.getInstance();
 		IRI alice = vf.createIRI(NS, "alice");
@@ -118,6 +120,8 @@ public class LmdbIdJoinEvaluationTest {
 
 	@Test
 	public void mergeJoinRequestsLmdbMergeIterator(@TempDir Path tempDir) throws Exception {
+		assumeFalse(wcojEnabled(), "Legacy merge-join expectations do not apply when WCOJ is enabled");
+
 		LmdbStore store = new LmdbStore(tempDir.toFile());
 		SailRepository repository = new SailRepository(store);
 		repository.init();
@@ -346,6 +350,8 @@ public class LmdbIdJoinEvaluationTest {
 
 	@Test
 	public void mergeJoinFallsBackWhenOrderUnsupported(@TempDir Path tempDir) throws Exception {
+		assumeFalse(wcojEnabled(), "Legacy merge-join expectations do not apply when WCOJ is enabled");
+
 		LmdbStore store = new LmdbStore(tempDir.toFile());
 		SailRepository repository = new SailRepository(store);
 		repository.init();
@@ -570,5 +576,10 @@ public class LmdbIdJoinEvaluationTest {
 		public boolean hasTransactionChanges() {
 			return delegate.hasTransactionChanges();
 		}
+	}
+
+	private boolean wcojEnabled() {
+		String property = System.getProperty("rdf4j.lmdb.useWcojForBgp");
+		return property == null || Boolean.parseBoolean(property);
 	}
 }

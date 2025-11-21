@@ -95,6 +95,30 @@ class LmdbStoreConfigTest {
 	}
 
 	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	void testThatLmdbStoreConfigParseAndExportMaintainTrieIndexes(final boolean maintainTrieIndexes) {
+		testParseAndExport(
+				LmdbStoreSchema.MAINTAIN_TRIE_INDEXES,
+				Values.literal(maintainTrieIndexes),
+				LmdbStoreConfig::isMaintainTrieIndexes,
+				maintainTrieIndexes,
+				!maintainTrieIndexes
+		);
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	void testThatLmdbStoreConfigParseAndExportUseWcojForBgp(final boolean useWcojForBgp) {
+		testParseAndExport(
+				LmdbStoreSchema.USE_WCOJ_FOR_BGP,
+				Values.literal(useWcojForBgp),
+				LmdbStoreConfig::isUseWcojForBgp,
+				useWcojForBgp,
+				!useWcojForBgp
+		);
+	}
+
+	@ParameterizedTest
 	@ValueSource(ints = { 1, 205454, 0, -1231 })
 	void testThatLmdbStoreConfigParseAndExportValueCacheSize(final int valueCacheSize) {
 		testParseAndExport(
@@ -127,6 +151,18 @@ class LmdbStoreConfigTest {
 		final LmdbStore store = new LmdbStore(config);
 
 		assertThat(store.getPageCardinalityEstimator()).isFalse();
+	}
+
+	@Test
+	void defaultsEnabledWcojAndTries() {
+		LmdbStoreConfig config = new LmdbStoreConfig();
+		boolean maintainDefault = Boolean.getBoolean("rdf4j.lmdb.maintainTrieIndexes");
+		boolean wcojDefault = Boolean.getBoolean("rdf4j.lmdb.useWcojForBgp");
+
+		assertThat(config.isMaintainTrieIndexes())
+				.isEqualTo(System.getProperty("rdf4j.lmdb.maintainTrieIndexes") != null ? maintainDefault : true);
+		assertThat(config.isUseWcojForBgp())
+				.isEqualTo(System.getProperty("rdf4j.lmdb.useWcojForBgp") != null ? wcojDefault : true);
 	}
 
 	/**

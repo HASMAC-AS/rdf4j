@@ -27,7 +27,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategyF
 class LmdbEvaluationStrategyFactory extends StrictEvaluationStrategyFactory {
 
 	private FederatedServiceResolver serviceResolver;
-	private Supplier<CollectionFactory> collectionFactorySupplier = DefaultCollectionFactory::new;
+	protected Supplier<CollectionFactory> collectionFactorySupplier = DefaultCollectionFactory::new;
 
 	LmdbEvaluationStrategyFactory(FederatedServiceResolver resolver) {
 		this.serviceResolver = resolver;

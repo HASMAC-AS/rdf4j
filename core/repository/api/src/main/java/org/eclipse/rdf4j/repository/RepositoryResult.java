@@ -60,7 +60,9 @@ public class RepositoryResult<T> extends AbstractCloseableIteration<T> implement
 
 	@Override
 	public T next() throws RepositoryException {
-		return wrappedIter.next();
+		T next = wrappedIter.next();
+//		System.out.println(next);
+		return next;
 	}
 
 	@Override
