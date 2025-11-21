@@ -6,7 +6,7 @@ You need to read the entire AGENTS.md file and follow all instructions exactly. 
 
 ---
 
-## Read‑Me‑Now: Proportional Test‑First Rule (Default)
+## Read‑Me‑Now: Proportional Test‑First Rule
 
 **Default:** Use **test‑first (TDD)** for any change that alters externally observable behavior.
 
@@ -31,7 +31,7 @@ It is illegal to `-q` when running tests!
 
 ## Four Routines: Choose Your Path
 
-**Routine A — Full TDD (Default)**
+**Routine A — Full TDD**
 **Routine B — Change without new tests (Proportional, gated)**
 **Routine C — Spike/Investigate (No production changes)**
 **Routine D — ExecPlans: Complex features or significant refactors**
@@ -57,8 +57,6 @@ It is illegal to `-q` when running tests!
 5**Is this purely an investigation/design spike with no production code changes?**
    → **Yes:** **Routine C (Spike/Investigate).**
    → **No or unsure:** **Routine A.**
-
-**When in doubt, choose Routine A (Full TDD).** Ambiguity is risk; tests are insurance.
 
 ---
 
@@ -179,27 +177,6 @@ Notes
 
 ---
 
-## Living Plan Protocol (Sharper)
-
-Maintain a **living plan** with checklist items (5–7 words each). Keep **exactly one** `in_progress`.
-
-**Plan format**
-```
-
-Plan
-
-* \[done] sanity build quick profile
-* \[in\_progress] add smallest failing test
-* \[todo] minimal root-cause fix
-* \[todo] rerun focused then module tests
-* \[todo] format, verify, summary
-
-````
-
-**Rule:** If you deviate, update the plan **first**, then proceed.
-
----
-
 ## Environment
 
 * **JDK:** 11 (minimum). The project builds and runs on Java 11+.
@@ -220,7 +197,7 @@ Plan
 1. **Compile deps fast (skip tests):**
    `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -am -Pquick install`
 2. **Run tests:**
-   `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify | tail -500`
+   `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify | tail -200`
 
 It is illegal to `-am` when running tests!
 It is illegal to `-q` when running tests!
@@ -257,9 +234,9 @@ Why this is mandatory
 3. **Format (Java, imports, XML)**
     * `mvn -o -Dmaven.repo.local=.m2_repo -q -T 2C formatter:format impsort:sort xml-format:xml-format`
 4. **Targeted tests (tight loops)**
-    * Module: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify  | tail -500`
-    * Class: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Dtest=ClassName verify  | tail -500`
-    * Method: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Dtest=ClassName#method verify | tail -500`
+    * Module: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify  | tail -200`
+    * Class: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Dtest=ClassName verify  | tail -200`
+    * Method: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Dtest=ClassName#method verify | tail -200`
 5. **Inspect failures**
     * **Unit (Surefire):** `<module>/target/surefire-reports/`
     * **IT (Failsafe):** `<module>/target/failsafe-reports/`
@@ -269,9 +246,9 @@ It is illegal to `-q` when running tests!
 
 ---
 
-## Routine A — Full TDD (Default)
+## Routine A — Full TDD
 
-> Use for **all behavior‑changing work** and whenever Routine B gates do not all pass.
+> Use for **all behavior‑changing work** (except ExecPlans).
 
 ### Bugfix Workflow (Mandatory)
 
@@ -362,7 +339,7 @@ When writing complex features or significant refactors, use an ExecPlan (as desc
 * **Plan:** small, verifiable steps; keep one `in_progress`, or follow PLANS.md (ExecPlans)
 * **Change:** minimal, surgical edits; keep style/structure consistent.
 * **Format:** `mvn -o -Dmaven.repo.local=.m2_repo -q -T 2C formatter:format impsort:sort xml-format:xml-format`
-* **Compile (fast):** `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -am -Pquick install | tail -500`
+* **Compile (fast):** `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -am -Pquick install | tail -200`
 * **Test:** start smallest (class/method → module). For integration, run module `verify`.
 * **Triage:** read reports; fix root cause; expand scope only when needed.
 * **Iterate:** keep momentum; escalate only when blocked or irreversible.
@@ -389,7 +366,7 @@ It is illegal to `-q` when running tests!
 
 ### Optional: Redirect test stdout/stderr to files
 ```bash
-mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Dtest=ClassName[#method] -Dmaven.test.redirectTestOutputToFile=true verify | tail -500
+mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Dtest=ClassName[#method] -Dmaven.test.redirectTestOutputToFile=true verify | tail -200
 ````
 
 Logs under:
@@ -465,7 +442,7 @@ Do **not** modify existing headers’ years.
 
 * **Format:** `mvn -o -Dmaven.repo.local=.m2_repo -q -T 2C formatter:format impsort:sort xml-format:xml-format`
 * **Compile (fast path):** `mvn -o -Dmaven.repo.local=.m2_repo -Pquick install | tail -200`
-* **Tests (targeted):** `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify | tail -500` (broaden as needed)
+* **Tests (targeted):** `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify | tail -200` (broaden as needed)
 * **Reports:** zero new failures in Surefire/Failsafe, or explain precisely.
 * **Evidence:** Routine A — failing pre‑fix + passing post‑fix.
   Routine B — **pre/post green** from same selection + **Hit Proof**.
@@ -536,19 +513,18 @@ Do **not** modify existing headers’ years.
 
 ## Running Tests
 
-* By module: `mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/shacl verify | tail -500`
+* By module: `mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/shacl verify | tail -200`
 * Entire repo: `mvn -o -Dmaven.repo.local=.m2_repo verify` (long; only when appropriate)
 * Slow tests (entire repo):
-  `mvn -o -Dmaven.repo.local=.m2_repo verify -PslowTestsOnly,-skipSlowTests | tail -500`
+  `mvn -o -Dmaven.repo.local=.m2_repo verify -PslowTestsOnly,-skipSlowTests | tail -200`
 * Slow tests (by module):
-  `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify -PslowTestsOnly,-skipSlowTests | tail -500`
+  `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify -PslowTestsOnly,-skipSlowTests | tail -200`
 * Slow tests (specific test):
-
-    * `mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/shacl -PslowTestsOnly,-skipSlowTests -Dtest=ClassName#method verify | tail -500`
+    * `mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/shacl -PslowTestsOnly,-skipSlowTests -Dtest=ClassName#method verify | tail -200`
 * Integration tests (entire repo):
-  `mvn -o -Dmaven.repo.local=.m2_repo verify -PskipUnitTests | tail -500`
+  `mvn -o -Dmaven.repo.local=.m2_repo verify -PskipUnitTests | tail -200`
 * Integration tests (by module):
-  `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify -PskipUnitTests | tail -500`
+  `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> verify -PskipUnitTests | tail -200`
 * Useful flags:
 
     * `-Dtest=ClassName`
@@ -575,9 +551,9 @@ Do **not** modify existing headers’ years.
 JaCoCo is configured via the `jacoco` Maven profile in the root POM. Surefire/Failsafe honor the prepared agent `argLine`, so no extra flags are required beyond `-Pjacoco`.
 
 - Run with coverage
-    - Module: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Pjacoco verify | tail -500`
-    - Class: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Pjacoco -Dtest=ClassName verify | tail -500`
-    - Method: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Pjacoco -Dtest=ClassName#method verify | tail -500`
+    - Module: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Pjacoco verify | tail -200`
+    - Class: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Pjacoco -Dtest=ClassName verify | tail -200`
+    - Method: `mvn -o -Dmaven.repo.local=.m2_repo -pl <module> -Pjacoco -Dtest=ClassName#method verify | tail -200`
 
 - Where to find reports (per module)
     - Exec data: `<module>/target/jacoco.exec`
