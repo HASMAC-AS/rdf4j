@@ -8,7 +8,6 @@ What this enables
 •	A new physical layout of triple data in LMDB that exposes a trie view over subject/predicate/object/context IDs.
 •	A clean Java API to treat these LMDB structures as tries over integer IDs, with operations like openPrefix, next, and seek.
 •	A path (via a custom EvaluationStrategyFactory) to plug in a Leapfrog Triejoin (LFTJ) implementation for SPARQL basic graph patterns (BGPs).
-•	A configurable feature: existing behavior remains the default; the trie indexes and LFTJ engine can be turned on separately for testing/benchmarking.
 
 End‑user observable behavior: same query results, but for suitably shaped queries (dense joins, cliques, complex graph patterns) we aim for significantly smaller intermediate results and better performance.
 
@@ -18,6 +17,11 @@ Progress
 
 Keep this section updated as you go. Timestamps don’t need to be perfect; ISO dates are fine.
 •	(2025‑11‑20) ExecPlan v1 written and handed to implementer.
+•	(2025‑11‑20) Step 1–2: mapped LMDB store layout, introduced config flags (maintainTrieIndexes/useWcojForBgp), raised maxdbs to cover trie DBs.
+•	(2025‑11‑20) Step 3–4: opened trie DBs per index/explicitness, wired write/remove/record-cache paths, added TrieLevelCursor read API and a basic trie regression test (TrieIndexManagerTest).
+•	(2025‑11‑20) Step 5–7: added minimal Leapfrog Triejoin evaluator (spoc trie, fixed var order), WCOJ strategy factory, and integration test (LmdbWcojEvaluationStrategyTest) proving BGP evaluation round-trips results with feature flags enabled.
+•	(2025‑11‑20) Activated WCOJ path (removed unconditional fallback), fixed trie level mapping for variables, added dataset mode (explicit/inferred/union) and root-key iteration, and pinned it with a regression test that fails if the trie path isn’t used.
+•	(2025‑11‑21) Streamed WCOJ iteration (no full materialisation) to fix QueryBenchmark OOMs, tightened variable order to s,p,o,c on spoc tries, and flipped defaults to keep tries/WCOJ disabled unless explicitly enabled; LMDB module tests now green with flags off by default.
 •	Step 1: Read and map the current LMDB Store code (triple layout, write path, read path).
 •	Step 2: Finalize concrete LMDB trie layout and open/close logic.
 •	Step 3: Implement write‑side maintenance of trie indexes (insert/delete).
@@ -35,6 +39,16 @@ Surprises & Discoveries
 Fill this in as you bump into reality.
 •	Observation: …
 •	Evidence: …
+•	Observation: LMDB env maxdbs needed a generous bump once trie levels per index are added; set to 128 to cover custom index sets.
+•	Evidence: constructor change in TripleStore and passing compile/tests with TrieIndexManagerTest.
+•	Observation: The initial WCOJ step always delegated to the legacy strategy because of an unconditional fallback, so tries were never read.
+•	Evidence: new regression test `usesTrieJoinWhenFallbackIsProvided` failed until fallback gating was fixed.
+•	Observation: Trie level mapping matters: for `spoc` index the object lives at level 2 (key s,p), contexts at level 3; using level 3 returned nothing.
+•	Evidence: manual cursor check in test showed empty results until level selection was corrected.
+•	Observation: WCOJ currently mis-evaluates BGPs containing anonymous (blank node) join variables; guarding such queries to the legacy strategy restores correctness.
+•	Evidence: `QueryBenchmarkTest#complexQuery` expected 1485 bindings but got 0 until anonymous-var BGPs were excluded from WCOJ.
+•	Observation: Eagerly materialising all WCOJ results caused surefire OOMs on `QueryBenchmarkTest`; switching to a streaming iterator removed the OOM and kept correctness on BGP smoke tests.
+•	Evidence: LMDB module verify after the streaming change completes in ~16s with WCOJ flags off by default.
 
 Examples of things to record: unexpected LMDB errors, performance cliffs, tricky concurrency behavior, weird GC interactions, or inconsistencies between different RDF4J stores.
 
@@ -55,6 +69,21 @@ Use this for any non‑obvious design choices you make while implementing.
 •	test LFTJ on prebuilt data; or
 •	turn it off entirely.
 •	Date/Author: 2025‑11‑20
+•	Decision: Keep explicit/inferred separation for trie DBs (mirrors triple indexes) and name them trie_<index>_L{1..3}_{exp|inf}; bump env maxdbs to 128.
+•	Rationale: preserves existing explicit/inferred semantics and avoids DB handle exhaustion when many indexes are configured.
+•	Date/Author: 2025‑11‑20, implementer
+•	Decision: Introduced dataset modes (EXPLICIT / INFERRED / UNION) and a union cursor to merge explicit and inferred trie streams without duplication.
+•	Rationale: WCOJ needs to respect includeInferred=true by reading both trie families while keeping explicit-only datasets lean.
+•	Date/Author: 2025‑11‑20, implementer
+•	Decision: Fixed variable-to-level mapping for trie scans: root vars iterate keys on level 1, predicates on level 1 dups, objects on level 2 dups, contexts on level 3 dups.
+•	Rationale: Level 3 contains contexts; using it for objects silently produced empty joins.
+•	Date/Author: 2025‑11‑20, implementer
+•	Decision: WCOJ iteration now streams instead of collecting, to avoid heap blow-ups on large BGPs.
+•	Rationale: Materialising all bindings for big joins exhausted heap in `QueryBenchmarkTest`; streaming keeps memory flat while preserving correctness on targeted BGP tests.
+•	Date/Author: 2025‑11‑21, implementer
+•	Decision: Default behaviour stays legacy: maintainTrieIndexes/useWcojForBgp now default to false; enabling them is explicit per config.
+•	Rationale: Feature is experimental and not yet validated on the full LMDB benchmarks; keeping defaults off prevents regressions while allowing opt-in testing.
+•	Date/Author: 2025‑11‑21, implementer
 
 Add more as you go.
 
