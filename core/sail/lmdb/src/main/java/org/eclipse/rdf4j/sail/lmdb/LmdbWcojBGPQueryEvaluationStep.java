@@ -885,6 +885,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		private BindingSet next;
 		private boolean exhausted = false;
 		private final Metrics metrics;
+		private RingDomain cachedNext;
 
 		RingIteration(Map<String, Long> seed, BindingSet incoming, Txn txn, Metrics metrics) {
 			this.bound = new HashMap<>(seed);
@@ -947,7 +948,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 				return false;
 			}
 			String var = ringPlan.ring.get(idx);
-			RingDomain domain = openDomain(var);
+			RingDomain domain = reuseOrOpenDomain(idx, var);
 			if (domain == null || !domain.hasCurrent()) {
 				if (domain != null) {
 					domain.close();
@@ -1014,7 +1015,12 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 			return false;
 		}
 
-		private RingDomain openDomain(String var) throws IOException {
+		private RingDomain reuseOrOpenDomain(int idx, String var) throws IOException {
+			if (cachedNext != null && cachedNext.var.equals(var)) {
+				RingDomain dom = cachedNext;
+				cachedNext = null;
+				return dom;
+			}
 			boolean isPreBound = bound.containsKey(var);
 			long preBoundValue = isPreBound ? bound.get(var) : -1L;
 			List<JoinCursor> cursors = new ArrayList<>();
@@ -1055,20 +1061,29 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 			if (stack.size() == ringPlan.ring.size()) {
 				return true;
 			}
+			if (!shouldForwardCheck()) {
+				return true;
+			}
 			int nextIdx = (currentIdx + 1) % ringPlan.ring.size();
 			if (nextIdx < stack.size()) {
 				return true; // already bound
 			}
 			String nextVar = ringPlan.ring.get(nextIdx);
-			RingDomain probe = openDomain(nextVar);
+			RingDomain probe = reuseOrOpenDomain(nextIdx, nextVar);
 			if (probe == null || !probe.hasCurrent()) {
 				if (probe != null) {
 					probe.close();
 				}
 				return false;
 			}
-			probe.close();
+			cachedNext = probe;
 			return true;
+		}
+
+		private boolean shouldForwardCheck() {
+			// heuristic: only forward-check when we are within two vars of completing the ring
+			int remaining = ringPlan.ring.size() - stack.size();
+			return remaining <= 2;
 		}
 
 		@Override
