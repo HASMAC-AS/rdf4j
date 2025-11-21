@@ -62,6 +62,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -70,6 +72,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -179,6 +182,8 @@ public class TripleStore implements Closeable {
 	private final boolean dupsortIndices;
 	private final boolean dupsortRead;
 	private final boolean maintainTrieIndexes;
+	private final boolean useCompactTrie;
+	private CompactTrieCache compactTrieCache;
 	private TrieIndexManager trieIndexManager;
 	private long mapSize;
 	private long writeTxn;
@@ -213,6 +218,7 @@ public class TripleStore implements Closeable {
 		this.autoGrow = config.getAutoGrow();
 		this.valueStore = valueStore;
 		this.maintainTrieIndexes = config.isMaintainTrieIndexes();
+		this.useCompactTrie = config.isUseCompactTrie();
 
 		// create directory if it not exists
 		this.dir.mkdirs();
@@ -289,6 +295,9 @@ public class TripleStore implements Closeable {
 		subjectPredicateIndex = dupsortIndices ? new SubjectPredicateIndex() : null;
 		if (maintainTrieIndexes) {
 			trieIndexManager = new TrieIndexManager(env, indexSpecStr);
+		}
+		if (useCompactTrie) {
+			compactTrieCache = new CompactTrieCache(indexSpecStr, dir);
 		}
 
 		boolean propertiesDirty = false;
@@ -389,6 +398,62 @@ public class TripleStore implements Closeable {
 
 	TrieIndexManager getTrieIndexManager() {
 		return trieIndexManager;
+	}
+
+	boolean useCompactTrie() {
+		return useCompactTrie;
+	}
+
+	CompactTrieReader.LoadedTrie getCompactTrie(String perm, boolean explicit) throws IOException {
+		if (compactTrieCache == null) {
+			return null;
+		}
+		CompactTrieReader.LoadedTrie loaded = compactTrieCache.load(perm, explicit);
+		if (loaded != null) {
+			return loaded;
+		}
+		synchronized (this) {
+			loaded = compactTrieCache.load(perm, explicit);
+			if (loaded != null) {
+				return loaded;
+			}
+			buildCompactTrieFiles(perm);
+		}
+		return compactTrieCache.load(perm, explicit);
+	}
+
+	private void buildCompactTrieFiles(String perm) throws IOException {
+		// Build both explicit and inferred to keep pairs consistent.
+		for (boolean explicit : new boolean[] { true, false }) {
+			Path out = compactTriePath(perm, explicit);
+			Files.createDirectories(out.getParent());
+			// If an existing file is present, overwrite with fresh build.
+			List<IdQuad> quads = new ArrayList<>();
+			TripleIndex source = indexes.get(0); // use primary index (sorted) as source
+			txnManager.doWith((stack, txn) -> {
+				LmdbRecordIterator it = null;
+				try {
+					it = new LmdbRecordIterator(source, false, -1, -1, -1, -1, explicit,
+							txnManager.createTxn(txn), null);
+					long[] q;
+					while ((q = it.next()) != null) {
+						quads.add(new IdQuad(q[SUBJ_IDX], q[PRED_IDX], q[OBJ_IDX], q[CONTEXT_IDX]));
+					}
+				} finally {
+					if (it != null) {
+						it.close();
+					}
+				}
+				return null;
+			});
+			TrieIndexManager.IndexOrder order = new TrieIndexManager.IndexOrder(perm);
+			CompactTrieWriter.write(quads, order, out);
+		}
+	}
+
+	private Path compactTriePath(String perm, boolean explicit) {
+		String file = "compact_" + perm.toLowerCase(Locale.ROOT) + (explicit ? "_exp" : "_inf") + ".bin";
+		return dir.toPath().resolve(file);
 	}
 
 	/**

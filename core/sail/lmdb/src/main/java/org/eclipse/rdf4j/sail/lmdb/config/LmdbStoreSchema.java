@@ -96,6 +96,11 @@ public class LmdbStoreSchema {
 	 */
 	public final static IRI USE_WCOJ_FOR_BGP;
 
+	/**
+	 * <tt>http://rdf4j.org/config/sail/lmdb#useCompactTrie</tt>
+	 */
+	public final static IRI USE_COMPACT_TRIE;
+
 	static {
 		ValueFactory factory = SimpleValueFactory.getInstance();
 		TRIPLE_INDEXES = factory.createIRI(NAMESPACE, "tripleIndexes");
@@ -112,5 +117,6 @@ public class LmdbStoreSchema {
 		DUPSORT_READ = factory.createIRI(NAMESPACE, "dupsortRead");
 		MAINTAIN_TRIE_INDEXES = factory.createIRI(NAMESPACE, "maintainTrieIndexes");
 		USE_WCOJ_FOR_BGP = factory.createIRI(NAMESPACE, "useWcojForBgp");
+		USE_COMPACT_TRIE = factory.createIRI(NAMESPACE, "useCompactTrie");
 	}
 }

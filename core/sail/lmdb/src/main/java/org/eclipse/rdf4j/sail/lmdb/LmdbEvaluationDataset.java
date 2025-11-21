@@ -194,6 +194,14 @@ public interface LmdbEvaluationDataset {
 		return null;
 	}
 
+	default boolean useCompactTrie() {
+		return false;
+	}
+
+	default CompactTrieReader.LoadedTrie getCompactTrie(String perm, boolean explicit) {
+		return null;
+	}
+
 	/**
 	 * Optional access to the LMDB transaction manager for opening read-only transactions.
 	 */

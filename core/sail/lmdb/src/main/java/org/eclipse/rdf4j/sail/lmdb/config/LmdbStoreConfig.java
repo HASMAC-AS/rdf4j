@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.sail.config.SailConfigException;
 public class LmdbStoreConfig extends BaseSailConfig {
 	private static final String MAINTAIN_TRIE_PROP = "rdf4j.lmdb.maintainTrieIndexes";
 	private static final String USE_WCOJ_PROP = "rdf4j.lmdb.useWcojForBgp";
+	private static final String USE_COMPACT_TRIE_PROP = "rdf4j.lmdb.useCompactTrie";
 
 	// Default to true if the property is not set, this allows users to disable trie indexes via a system property if
 	// needed
@@ -34,6 +35,7 @@ public class LmdbStoreConfig extends BaseSailConfig {
 			|| Boolean.getBoolean(MAINTAIN_TRIE_PROP);
 	private static final boolean DEFAULT_USE_WCOJ_FOR_BGP = System.getProperty(USE_WCOJ_PROP) == null
 			|| Boolean.getBoolean(USE_WCOJ_PROP);
+	private static final boolean DEFAULT_USE_COMPACT_TRIE = Boolean.getBoolean(USE_COMPACT_TRIE_PROP);
 
 	/**
 	 * The default size of the triple database.
@@ -88,6 +90,7 @@ public class LmdbStoreConfig extends BaseSailConfig {
 
 	private boolean maintainTrieIndexes = DEFAULT_MAINTAIN_TRIE_INDEXES;
 	private boolean useWcojForBgp = DEFAULT_USE_WCOJ_FOR_BGP;
+	private boolean useCompactTrie = DEFAULT_USE_COMPACT_TRIE;
 
 	private long valueEvictionInterval = Duration.ofSeconds(60).toMillis();
 
@@ -242,6 +245,15 @@ public class LmdbStoreConfig extends BaseSailConfig {
 		return this;
 	}
 
+	public boolean isUseCompactTrie() {
+		return useCompactTrie;
+	}
+
+	public LmdbStoreConfig setUseCompactTrie(boolean useCompactTrie) {
+		this.useCompactTrie = useCompactTrie;
+		return this;
+	}
+
 	@Override
 	public Resource export(Model m) {
 		Resource implNode = super.export(m);
@@ -290,6 +302,9 @@ public class LmdbStoreConfig extends BaseSailConfig {
 		}
 		if (!useWcojForBgp) {
 			m.add(implNode, LmdbStoreSchema.USE_WCOJ_FOR_BGP, vf.createLiteral(false));
+		}
+		if (useCompactTrie) {
+			m.add(implNode, LmdbStoreSchema.USE_COMPACT_TRIE, vf.createLiteral(true));
 		}
 		return implNode;
 	}
@@ -430,6 +445,15 @@ public class LmdbStoreConfig extends BaseSailConfig {
 				} catch (IllegalArgumentException e) {
 					throw new SailConfigException(
 							"Boolean value required for " + LmdbStoreSchema.USE_WCOJ_FOR_BGP + " property, found "
+									+ lit);
+				}
+			});
+			Models.objectLiteral(m.getStatements(implNode, LmdbStoreSchema.USE_COMPACT_TRIE, null)).ifPresent(lit -> {
+				try {
+					setUseCompactTrie(lit.booleanValue());
+				} catch (IllegalArgumentException e) {
+					throw new SailConfigException(
+							"Boolean value required for " + LmdbStoreSchema.USE_COMPACT_TRIE + " property, found "
 									+ lit);
 				}
 			});
