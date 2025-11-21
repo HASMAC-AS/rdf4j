@@ -46,7 +46,7 @@ final class LmdbOverlayEvaluationDataset implements LmdbEvaluationDataset {
 
 		// Fast path: no active connection changes → delegate directly to LMDB dataset to avoid materialization
 		try {
-			if (!LmdbEvaluationStrategy.hasActiveConnectionChanges()) {
+			if (!hasTransactionChanges() && !LmdbEvaluationStrategy.hasActiveConnectionChanges()) {
 				var dsOpt = LmdbEvaluationStrategy.getCurrentDataset();
 				if (dsOpt.isPresent()) {
 					return dsOpt.get().getRecordIterator(pattern, bindings);
@@ -145,7 +145,7 @@ final class LmdbOverlayEvaluationDataset implements LmdbEvaluationDataset {
 			long[] patternIds, long[] reuse, long[] quadReuse) throws QueryEvaluationException {
 		// Fast path: no active connection changes → use the current LMDB dataset's ID-level iterator
 		try {
-			if (!LmdbEvaluationStrategy.hasActiveConnectionChanges()) {
+			if (!hasTransactionChanges() && !LmdbEvaluationStrategy.hasActiveConnectionChanges()) {
 				var dsOpt = LmdbEvaluationStrategy.getCurrentDataset();
 				if (dsOpt.isPresent()) {
 					return dsOpt.get()
@@ -276,6 +276,18 @@ final class LmdbOverlayEvaluationDataset implements LmdbEvaluationDataset {
 	@Override
 	public ValueStore getValueStore() {
 		return valueStore;
+	}
+
+	@Override
+	public boolean hasTransactionChanges() {
+		return true;
+	}
+
+	@Override
+	public DatasetMode getDatasetMode() {
+		return LmdbEvaluationStrategy.getCurrentDataset()
+				.map(LmdbEvaluationDataset::getDatasetMode)
+				.orElse(DatasetMode.EXPLICIT);
 	}
 
 	private long selectQueryId(long patternId, long[] binding, int index) {

@@ -197,6 +197,39 @@ final class LmdbUnionSailDataset implements SailDataset, LmdbEvaluationDataset {
 		return valueStore;
 	}
 
+	@Override
+	public DatasetMode getDatasetMode() {
+		return DatasetMode.UNION;
+	}
+
+	@Override
+	public TrieIndexManager getTrieIndexManager() {
+		if (dataset1 instanceof LmdbEvaluationDataset) {
+			TrieIndexManager mgr = ((LmdbEvaluationDataset) dataset1).getTrieIndexManager();
+			if (mgr != null) {
+				return mgr;
+			}
+		}
+		if (dataset2 instanceof LmdbEvaluationDataset) {
+			return ((LmdbEvaluationDataset) dataset2).getTrieIndexManager();
+		}
+		return null;
+	}
+
+	@Override
+	public TxnManager getTxnManager() {
+		if (dataset1 instanceof LmdbEvaluationDataset) {
+			TxnManager mgr = ((LmdbEvaluationDataset) dataset1).getTxnManager();
+			if (mgr != null) {
+				return mgr;
+			}
+		}
+		if (dataset2 instanceof LmdbEvaluationDataset) {
+			return ((LmdbEvaluationDataset) dataset2).getTxnManager();
+		}
+		return null;
+	}
+
 	private RecordIterator chain(RecordIterator left, RecordIterator right) {
 		return new RecordIterator() {
 			boolean leftDone = false;

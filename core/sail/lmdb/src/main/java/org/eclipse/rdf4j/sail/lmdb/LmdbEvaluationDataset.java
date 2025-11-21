@@ -22,6 +22,12 @@ import org.eclipse.rdf4j.query.algebra.StatementPattern;
  */
 public interface LmdbEvaluationDataset {
 
+	enum DatasetMode {
+		EXPLICIT,
+		INFERRED,
+		UNION
+	}
+
 	/**
 	 * Create a {@link RecordIterator} for the supplied {@link StatementPattern}, taking into account any existing
 	 * bindings.
@@ -143,6 +149,14 @@ public interface LmdbEvaluationDataset {
 	ValueStore getValueStore();
 
 	/**
+	 * Indicates whether this dataset exposes explicit statements, inferred statements, or a union of both. Defaults to
+	 * {@link DatasetMode#EXPLICIT} for legacy callers.
+	 */
+	default DatasetMode getDatasetMode() {
+		return DatasetMode.EXPLICIT;
+	}
+
+	/**
 	 * @return the isolation level associated with this dataset.
 	 */
 	default IsolationLevel getIsolationLevel() {
@@ -170,5 +184,20 @@ public interface LmdbEvaluationDataset {
 	 */
 	default boolean hasTransactionChanges() {
 		return false;
+	}
+
+	/**
+	 * Optional access to trie indexes used by leapfrog joins. Implementations that support trie-backed joins should
+	 * return a non-null manager.
+	 */
+	default TrieIndexManager getTrieIndexManager() {
+		return null;
+	}
+
+	/**
+	 * Optional access to the LMDB transaction manager for opening read-only transactions.
+	 */
+	default TxnManager getTxnManager() {
+		return null;
 	}
 }

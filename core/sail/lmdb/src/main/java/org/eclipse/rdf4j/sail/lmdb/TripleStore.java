@@ -178,6 +178,8 @@ public class TripleStore implements Closeable {
 	private final boolean autoGrow;
 	private final boolean dupsortIndices;
 	private final boolean dupsortRead;
+	private final boolean maintainTrieIndexes;
+	private TrieIndexManager trieIndexManager;
 	private long mapSize;
 	private long writeTxn;
 	private final TxnManager txnManager;
@@ -210,6 +212,7 @@ public class TripleStore implements Closeable {
 		this.forceSync = config.getForceSync();
 		this.autoGrow = config.getAutoGrow();
 		this.valueStore = valueStore;
+		this.maintainTrieIndexes = config.isMaintainTrieIndexes();
 
 		// create directory if it not exists
 		this.dir.mkdirs();
@@ -220,10 +223,9 @@ public class TripleStore implements Closeable {
 			env = pp.get(0);
 		}
 
-		// Max DBs: 1 for contexts, 12 for triple indexes (2 per index),
-		// plus up to 12 dupsort companion DBs when enabled and an additional subject-predicate index.
-		// Use a safe upper bound of 27.
-		E(mdb_env_set_maxdbs(env, 27));
+		// Max DBs: contexts + triple indexes (main + dup DBs) + subject-predicate dup DBs + trie levels.
+		// Use a generous upper bound to accommodate custom index configurations.
+		E(mdb_env_set_maxdbs(env, 128));
 		E(mdb_env_set_maxreaders(env, 256));
 
 		// Open environment
@@ -285,6 +287,9 @@ public class TripleStore implements Closeable {
 		}
 
 		subjectPredicateIndex = dupsortIndices ? new SubjectPredicateIndex() : null;
+		if (maintainTrieIndexes) {
+			trieIndexManager = new TrieIndexManager(env, indexSpecStr);
+		}
 
 		boolean propertiesDirty = false;
 		if (!String.valueOf(SCHEME_VERSION).equals(properties.getProperty(VERSION_KEY))) {
@@ -380,6 +385,10 @@ public class TripleStore implements Closeable {
 
 	TxnManager getTxnManager() {
 		return txnManager;
+	}
+
+	TrieIndexManager getTrieIndexManager() {
+		return trieIndexManager;
 	}
 
 	/**
@@ -1181,6 +1190,14 @@ public class TripleStore implements Closeable {
 			}
 
 			if (stAdded) {
+				if (maintainTrieIndexes && trieIndexManager != null) {
+					IdQuad quad = new IdQuad(subj, pred, obj, context);
+					if (foundImplicit) {
+						trieIndexManager.delete(quad, false, writeTxn);
+					}
+					trieIndexManager.insert(quad, explicit, writeTxn);
+				}
+
 				for (int i = 1; i < indexes.size(); i++) {
 
 					TripleIndex index = indexes.get(i);
@@ -1226,7 +1243,6 @@ public class TripleStore implements Closeable {
 				subjectPredicateIndex.delete(writeTxn, subj, pred, obj, context, false, stack);
 			}
 		}
-
 		return stAdded;
 	}
 
@@ -1362,6 +1378,11 @@ public class TripleStore implements Closeable {
 							quad[CONTEXT_IDX], explicit, stack);
 				}
 
+				if (maintainTrieIndexes && trieIndexManager != null) {
+					trieIndexManager.delete(new IdQuad(quad[SUBJ_IDX], quad[PRED_IDX], quad[OBJ_IDX],
+							quad[CONTEXT_IDX]), explicit, writeTxn);
+				}
+
 				decrementContext(stack, quad[CONTEXT_IDX]);
 				handler.accept(quad);
 			}
@@ -1463,6 +1484,15 @@ public class TripleStore implements Closeable {
 						} else {
 							subjectPredicateIndex.delete(writeTxn, r.quad[0], r.quad[1], r.quad[2], r.quad[3], explicit,
 									stack);
+						}
+					}
+
+					if (maintainTrieIndexes && trieIndexManager != null) {
+						IdQuad quad = new IdQuad(r.quad[0], r.quad[1], r.quad[2], r.quad[3]);
+						if (r.add) {
+							trieIndexManager.insert(quad, explicit, writeTxn);
+						} else {
+							trieIndexManager.delete(quad, explicit, writeTxn);
 						}
 					}
 				}

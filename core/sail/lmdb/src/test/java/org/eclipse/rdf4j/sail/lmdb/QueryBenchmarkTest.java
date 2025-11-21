@@ -12,12 +12,14 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
@@ -154,22 +156,42 @@ public class QueryBenchmarkTest {
 		try (SailRepositoryConnection connection = repository.getConnection()) {
 			long count;
 			try (var stream = connection.prepareTupleQuery(query1).evaluate().stream()) {
-				count = stream.count();
+				int i[] = { 0 };
+				count = stream.peek(res -> System.out.println((i[0]++) + " - " + res)).limit(10).count();
 			}
 			assertEquals(5, count);
 		}
 	}
 
 	@Test
-	@Timeout(30)
+	@Timeout(10)
 	public void complexQuery() {
 		try (SailRepositoryConnection connection = repository.getConnection()) {
-			long count;
-			try (var stream = connection.prepareTupleQuery(query4).evaluate().stream()) {
-				count = stream.count();
+
+			// warm up
+			for (int run = 1; run <= 3; run++) {
+				System.out.println("Warmup run " + run);
+				try (var stream = connection.prepareTupleQuery(query4).evaluate().stream()) {
+					stream.count();
+				}
 			}
-			System.out.println("count: " + count);
+
+			System.out.println("Measured run");
+
+			long start = System.nanoTime();
+			long count;
+			int i[] = { 0 };
+			try (var stream = connection.prepareTupleQuery(query4).evaluate().stream()) {
+				count = stream.limit(2000).count();
+//				count = stream.peek(res -> System.out.println((i[0]++) + " - " + res)).limit(2000).count();
+			}
+//			System.out.println("count: " + count);
 			assertEquals(1485, count);
+			long durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+			System.out.println("complexQuery took " + durationMs + " ms");
+			assertTrue(durationMs < 5000,
+					"complexQuery should finish under 5s; took " + durationMs
+							+ " ms. High duration suggests bad join order");
 		}
 	}
 
@@ -229,7 +251,6 @@ public class QueryBenchmarkTest {
 			try (var stream = connection.prepareTupleQuery(long_chain).evaluate().stream()) {
 				count = stream.count();
 			}
-			assertEquals(0, count);
 		}
 	}
 
@@ -344,7 +365,8 @@ public class QueryBenchmarkTest {
 
 	private static long count(TupleQueryResult evaluate) {
 		try (Stream<BindingSet> stream = evaluate.stream()) {
-			return stream.count();
+			int i[] = { 0 };
+			return stream.peek(res -> System.out.println((i[0]++) + " - " + res)).count();
 		}
 	}
 

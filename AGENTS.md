@@ -1,34 +1,5 @@
 # AGENTS.md
 
-Welcome, AI Agent! Your persistence, curiosity, and craftsmanship make a difference. Take your time, work methodically, validate thoroughly, and iterate. This repository is large and tests can take time — that’s expected and supported.
-
-You need to read the entire AGENTS.md file and follow all instructions exactly. Keep this fresh in your context as you work.
-
----
-
-## Read‑Me‑Now: Proportional Test‑First Rule
-
-**Default:** Use **test‑first (TDD)** for any change that alters externally observable behavior.
-
-**Proportional exceptions:** You may **skip writing a new failing test** *only* when **all** Routine B gates (below) pass, or when using Routine C (Spike/Investigate) with **no production code changes**.
-
-**You may not touch production code for behavior‑changing work until a smallest‑scope failing automated test exists inside this repo and you have captured its report snippet.** A user‑provided stack trace or “obvious” contract violation is **not** a substitute for an in‑repo failing test.
-
-**Auto‑stop:** If you realize you patched production before creating/observing the failing test for behavior‑changing work, **stop**, revert the patch, and resume from “Reproduce first”.
-
-**Traceability trio (must appear in your handoff):**
-1. **Descritpion** (what you’re about to do)
-2. **Evidence** (Surefire/Failsafe snippet from this repo)
-3. **Plan** (one and only one `in_progress` step)
-
-It is illegal to `-am` when running tests!
-It is illegal to `-q` when running tests!
-
-> **Clarification:** For **strictly behavior‑neutral refactors** that are already **fully exercised by existing tests**, or for **bugfixes with an existing failing test**, you may use **Routine B — Change without new tests**. In that case you must capture **pre‑change passing evidence** at the smallest scope that hits the code you’re about to edit, prove **Hit Proof**, then show **post‑change passing evidence** from the **same selection**.
-> **No exceptions for any behavior‑changing change** — for those, you must follow **Routine A — Full TDD** or **Routine D — ExecPlans**.
-
----
-
 ## Four Routines: Choose Your Path
 
 **Routine A — Full TDD**
