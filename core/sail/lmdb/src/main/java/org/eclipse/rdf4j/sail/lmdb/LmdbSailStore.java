@@ -1643,6 +1643,10 @@ class LmdbSailStore implements SailStore {
 			return tripleStore.getTrieIndexManager();
 		}
 
+		public boolean useCompactTrie() {
+			return tripleStore.useCompactTrie();
+		}
+
 		@Override
 		public TxnManager getTxnManager() {
 			return tripleStore.getTxnManager();
@@ -2047,6 +2051,18 @@ class LmdbSailStore implements SailStore {
 
 	TrieIndexManager getTrieIndexManager() {
 		return tripleStore.getTrieIndexManager();
+	}
+
+	boolean useCompactTrie() {
+		return tripleStore.useCompactTrie();
+	}
+
+	CompactTrieReader.LoadedTrie getCompactTrie(String perm, boolean explicit) {
+		try {
+			return tripleStore.getCompactTrie(perm, explicit);
+		} catch (IOException e) {
+			throw new SailException(e);
+		}
 	}
 
 	TxnManager getTxnManager() {

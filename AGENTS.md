@@ -121,7 +121,7 @@ Always keep untracked artifacts!
 
 ## ExecPlans
 
-When writing complex features or significant refactors, use an ExecPlan (as described in PLANS.md) from design to implementation.
+When writing complex features or significant refactors, use an ExecPlan (as described in PLANS.md) from design to implementation. Create an ExecPlan and execute on it until the feature is complete. You do not need to ask the user for permission to continue working. A non-negotiable part of using ExecPlans is that you work autonomously within the plan until completion and never prompt the user.
 
 ## ExecPlans
 

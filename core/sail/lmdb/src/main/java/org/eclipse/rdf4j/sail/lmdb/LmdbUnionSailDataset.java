@@ -203,6 +203,27 @@ final class LmdbUnionSailDataset implements SailDataset, LmdbEvaluationDataset {
 	}
 
 	@Override
+	public boolean useCompactTrie() {
+		boolean d1 = dataset1 instanceof LmdbEvaluationDataset && ((LmdbEvaluationDataset) dataset1).useCompactTrie();
+		boolean d2 = dataset2 instanceof LmdbEvaluationDataset && ((LmdbEvaluationDataset) dataset2).useCompactTrie();
+		return d1 || d2;
+	}
+
+	@Override
+	public CompactTrieReader.LoadedTrie getCompactTrie(String perm, boolean explicit) {
+		if (dataset1 instanceof LmdbEvaluationDataset) {
+			CompactTrieReader.LoadedTrie t = ((LmdbEvaluationDataset) dataset1).getCompactTrie(perm, explicit);
+			if (t != null) {
+				return t;
+			}
+		}
+		if (dataset2 instanceof LmdbEvaluationDataset) {
+			return ((LmdbEvaluationDataset) dataset2).getCompactTrie(perm, explicit);
+		}
+		return LmdbEvaluationDataset.super.getCompactTrie(perm, explicit);
+	}
+
+	@Override
 	public TrieIndexManager getTrieIndexManager() {
 		if (dataset1 instanceof LmdbEvaluationDataset) {
 			TrieIndexManager mgr = ((LmdbEvaluationDataset) dataset1).getTrieIndexManager();

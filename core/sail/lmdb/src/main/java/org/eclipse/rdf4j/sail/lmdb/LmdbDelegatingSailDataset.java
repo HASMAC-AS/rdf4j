@@ -156,6 +156,19 @@ final class LmdbDelegatingSailDataset implements SailDataset, LmdbEvaluationData
 	}
 
 	@Override
+	public boolean useCompactTrie() {
+		return delegate instanceof LmdbEvaluationDataset && ((LmdbEvaluationDataset) delegate).useCompactTrie();
+	}
+
+	@Override
+	public CompactTrieReader.LoadedTrie getCompactTrie(String perm, boolean explicit) {
+		if (delegate instanceof LmdbEvaluationDataset) {
+			return ((LmdbEvaluationDataset) delegate).getCompactTrie(perm, explicit);
+		}
+		return LmdbEvaluationDataset.super.getCompactTrie(perm, explicit);
+	}
+
+	@Override
 	public TrieIndexManager getTrieIndexManager() {
 		return delegate instanceof LmdbEvaluationDataset ? ((LmdbEvaluationDataset) delegate).getTrieIndexManager()
 				: null;
