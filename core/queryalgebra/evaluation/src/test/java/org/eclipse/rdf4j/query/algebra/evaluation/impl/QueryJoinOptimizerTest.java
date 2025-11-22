@@ -192,6 +192,31 @@ public class QueryJoinOptimizerTest extends QueryOptimizerTest {
 
 	}
 
+	@Test
+	public void connectedPatternsPreferredOverSelectiveIsolates() throws RDF4JException {
+		String query = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\tex:isolate ex:p ?x .",
+				"\t?a ex:p ?b .",
+				"\t?b ex:q ?c .",
+				"}",
+				"");
+
+		String expectedQuery = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\t{",
+				"\t\t?a ex:p ?b .",
+				"\t\t?b ex:q ?c .",
+				"\t}",
+				"\tex:isolate ex:p ?x .",
+				"}",
+				"");
+
+		testOptimizer(expectedQuery, query);
+	}
+
 	@Override
 	public QueryJoinOptimizer getOptimizer() {
 		return new QueryJoinOptimizer(new EvaluationStatistics(), new EmptyTripleSource());
