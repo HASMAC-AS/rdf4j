@@ -24,16 +24,16 @@ import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.StandardQueryOptimiz
  */
 public class LmdbQueryOptimizerPipeline extends StandardQueryOptimizerPipeline {
 
-public LmdbQueryOptimizerPipeline(EvaluationStrategy strategy, TripleSource tripleSource,
-EvaluationStatistics evaluationStatistics) {
-super(strategy, tripleSource, evaluationStatistics);
-}
+	public LmdbQueryOptimizerPipeline(EvaluationStrategy strategy, TripleSource tripleSource,
+			EvaluationStatistics evaluationStatistics) {
+		super(strategy, tripleSource, evaluationStatistics);
+	}
 
-@Override
-public List<QueryOptimizer> getOptimizers() {
-List<QueryOptimizer> optimizers = new ArrayList<>(super.getOptimizers());
-optimizers.add(new LmdbWCOJOptimizer());
-return optimizers;
+	@Override
+	public Iterable<QueryOptimizer> getOptimizers() {
+		List<QueryOptimizer> optimizers = new ArrayList<>();
+		super.getOptimizers().forEach(optimizers::add);
+		optimizers.add(new LmdbWCOJOptimizer());
+		return optimizers;
+	}
 }
-}
-
