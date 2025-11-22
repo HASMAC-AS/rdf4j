@@ -27,41 +27,40 @@ import org.eclipse.rdf4j.query.algebra.evaluation.QueryOptimizer;
  */
 public class LmdbWCOJOptimizer implements QueryOptimizer {
 
-@Override
-public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings) {
-if (bindings != null && !bindings.isEmpty()) {
-return;
-}
+	@Override
+	public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings) {
+		if (bindings != null && !bindings.isEmpty()) {
+			return;
+		}
 
-TupleExpr target = unwrap(tupleExpr);
-List<StatementPattern> patterns = new ArrayList<>();
-if (isJoinTree(target, patterns) && patterns.size() >= 3) {
-LmdbWCOJ wcoj = new LmdbWCOJ(patterns);
-target.replaceWith(wcoj);
-}
-}
+		TupleExpr target = unwrap(tupleExpr);
+		List<StatementPattern> patterns = new ArrayList<>();
+		if (isJoinTree(target, patterns) && patterns.size() >= 3) {
+			LmdbWCOJ wcoj = new LmdbWCOJ(patterns);
+			target.replaceWith(wcoj);
+		}
+	}
 
-private TupleExpr unwrap(TupleExpr expr) {
-TupleExpr current = expr;
-if (current instanceof QueryRoot) {
-current = ((QueryRoot) current).getArg();
-}
-if (current instanceof Projection) {
-current = ((Projection) current).getArg();
-}
-return current;
-}
+	private TupleExpr unwrap(TupleExpr expr) {
+		TupleExpr current = expr;
+		if (current instanceof QueryRoot) {
+			current = ((QueryRoot) current).getArg();
+		}
+		if (current instanceof Projection) {
+			current = ((Projection) current).getArg();
+		}
+		return current;
+	}
 
-private boolean isJoinTree(TupleExpr expr, List<StatementPattern> patterns) {
-if (expr instanceof StatementPattern) {
-patterns.add((StatementPattern) expr);
-return true;
+	private boolean isJoinTree(TupleExpr expr, List<StatementPattern> patterns) {
+		if (expr instanceof StatementPattern) {
+			patterns.add((StatementPattern) expr);
+			return true;
+		}
+		if (expr instanceof Join) {
+			Join join = (Join) expr;
+			return isJoinTree(join.getLeftArg(), patterns) && isJoinTree(join.getRightArg(), patterns);
+		}
+		return false;
+	}
 }
-if (expr instanceof Join) {
-Join join = (Join) expr;
-return isJoinTree(join.getLeftArg(), patterns) && isJoinTree(join.getRightArg(), patterns);
-}
-return false;
-}
-}
-

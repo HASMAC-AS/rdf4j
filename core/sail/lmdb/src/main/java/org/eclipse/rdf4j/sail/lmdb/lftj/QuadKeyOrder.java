@@ -27,45 +27,45 @@ public final class QuadKeyOrder {
 		this.positions = positions;
 	}
 
-        public static QuadKeyOrder of(Slot... positions) {
-                Objects.requireNonNull(positions, "positions");
-                if (positions.length != KEY_LENGTH) {
-                        throw new IllegalArgumentException("QuadKeyOrder must contain exactly four slots");
-                }
+	public static QuadKeyOrder of(Slot... positions) {
+		Objects.requireNonNull(positions, "positions");
+		if (positions.length != KEY_LENGTH) {
+			throw new IllegalArgumentException("QuadKeyOrder must contain exactly four slots");
+		}
 		EnumSet<Slot> unique = EnumSet.noneOf(Slot.class);
 		unique.addAll(Arrays.asList(positions));
 		if (unique.size() != KEY_LENGTH) {
 			throw new IllegalArgumentException("QuadKeyOrder must contain each slot exactly once");
-                }
-                return new QuadKeyOrder(Arrays.copyOf(positions, positions.length));
-        }
+		}
+		return new QuadKeyOrder(Arrays.copyOf(positions, positions.length));
+	}
 
-        public static QuadKeyOrder fromFieldSequence(String sequence) {
-                Objects.requireNonNull(sequence, "sequence");
-                if (sequence.length() != KEY_LENGTH) {
-                        throw new IllegalArgumentException("Field sequence must be four characters: " + sequence);
-                }
-                Slot[] positions = new Slot[KEY_LENGTH];
-                for (int i = 0; i < KEY_LENGTH; i++) {
-                        positions[i] = toSlot(sequence.charAt(i));
-                }
-                return of(positions);
-        }
+	public static QuadKeyOrder fromFieldSequence(String sequence) {
+		Objects.requireNonNull(sequence, "sequence");
+		if (sequence.length() != KEY_LENGTH) {
+			throw new IllegalArgumentException("Field sequence must be four characters: " + sequence);
+		}
+		Slot[] positions = new Slot[KEY_LENGTH];
+		for (int i = 0; i < KEY_LENGTH; i++) {
+			positions[i] = toSlot(sequence.charAt(i));
+		}
+		return of(positions);
+	}
 
-        private static Slot toSlot(char ch) {
-                switch (Character.toLowerCase(ch)) {
-                case 's':
-                        return Slot.S;
-                case 'p':
-                        return Slot.P;
-                case 'o':
-                        return Slot.O;
-                case 'c':
-                        return Slot.C;
-                default:
-                        throw new IllegalArgumentException("Unknown field in sequence: " + ch);
-                }
-        }
+	private static Slot toSlot(char ch) {
+		switch (Character.toLowerCase(ch)) {
+		case 's':
+			return Slot.S;
+		case 'p':
+			return Slot.P;
+		case 'o':
+			return Slot.O;
+		case 'c':
+			return Slot.C;
+		default:
+			throw new IllegalArgumentException("Unknown field in sequence: " + ch);
+		}
+	}
 
 	public List<Slot> positions() {
 		return List.copyOf(Arrays.asList(positions));

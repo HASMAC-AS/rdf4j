@@ -70,14 +70,14 @@ class LmdbSailStore implements SailStore {
 	private final ExecutorService tripleStoreExecutor = Executors.newCachedThreadPool();
 	private final CircularBuffer<Operation> opQueue = new CircularBuffer<>(1024);
 	private volatile Throwable tripleStoreException;
-        private final AtomicBoolean running = new AtomicBoolean(false);
-        private boolean multiThreadingActive;
-        private volatile boolean asyncTransactionFinished;
-        private volatile boolean nextTransactionAsync;
-        private volatile boolean mayHaveInferred;
+	private final AtomicBoolean running = new AtomicBoolean(false);
+	private boolean multiThreadingActive;
+	private volatile boolean asyncTransactionFinished;
+	private volatile boolean nextTransactionAsync;
+	private volatile boolean mayHaveInferred;
 
-        private volatile Map<QuadKeyOrder, Integer> explicitIndexHandles;
-        private volatile Map<QuadKeyOrder, Integer> inferredIndexHandles;
+	private volatile Map<QuadKeyOrder, Integer> explicitIndexHandles;
+	private volatile Map<QuadKeyOrder, Integer> inferredIndexHandles;
 
 	boolean enableMultiThreading = true;
 
@@ -288,29 +288,29 @@ class LmdbSailStore implements SailStore {
 		}
 	}
 
-        SailException wrapTripleStoreException() {
-                return tripleStoreException instanceof SailException ? (SailException) tripleStoreException
-                                : new SailException(tripleStoreException);
-        }
+	SailException wrapTripleStoreException() {
+		return tripleStoreException instanceof SailException ? (SailException) tripleStoreException
+				: new SailException(tripleStoreException);
+	}
 
-        Map<QuadKeyOrder, Integer> getIndexHandles(boolean explicit) {
-                Map<QuadKeyOrder, Integer> cached = explicit ? explicitIndexHandles : inferredIndexHandles;
-                if (cached != null) {
-                        return cached;
-                }
+	Map<QuadKeyOrder, Integer> getIndexHandles(boolean explicit) {
+		Map<QuadKeyOrder, Integer> cached = explicit ? explicitIndexHandles : inferredIndexHandles;
+		if (cached != null) {
+			return cached;
+		}
 
-                Map<QuadKeyOrder, Integer> resolved = new LinkedHashMap<>();
-                for (Map.Entry<String, Integer> entry : tripleStore.indexHandles(explicit).entrySet()) {
-                        resolved.put(QuadKeyOrder.fromFieldSequence(entry.getKey()), entry.getValue());
-                }
+		Map<QuadKeyOrder, Integer> resolved = new LinkedHashMap<>();
+		for (Map.Entry<String, Integer> entry : tripleStore.indexHandles(explicit).entrySet()) {
+			resolved.put(QuadKeyOrder.fromFieldSequence(entry.getKey()), entry.getValue());
+		}
 
-                if (explicit) {
-                        explicitIndexHandles = resolved;
-                } else {
-                        inferredIndexHandles = resolved;
-                }
-                return resolved;
-        }
+		if (explicit) {
+			explicitIndexHandles = resolved;
+		} else {
+			inferredIndexHandles = resolved;
+		}
+		return resolved;
+	}
 
 	@Override
 	public EvaluationStatistics getEvaluationStatistics() {
@@ -919,7 +919,7 @@ class LmdbSailStore implements SailStore {
 		}
 	}
 
-        private final class LmdbSailDataset implements SailDataset, LmdbDatasetSnapshot {
+	private final class LmdbSailDataset implements SailDataset, LmdbDatasetSnapshot {
 
 		private final boolean explicit;
 		private final Txn txn;
@@ -986,29 +986,29 @@ class LmdbSailStore implements SailStore {
 			return Set.of();
 		}
 
-                @Override
-                public Comparator<Value> getComparator() {
-                        return null;
-                }
+		@Override
+		public Comparator<Value> getComparator() {
+			return null;
+		}
 
-                @Override
-                public Txn getTxn() {
-                        return txn;
-                }
+		@Override
+		public Txn getTxn() {
+			return txn;
+		}
 
-                @Override
-                public Map<QuadKeyOrder, Integer> indexHandles() {
-                        return getIndexHandles(explicit);
-                }
+		@Override
+		public Map<QuadKeyOrder, Integer> indexHandles() {
+			return getIndexHandles(explicit);
+		}
 
-                @Override
-                public ValueStore valueStore() {
-                        return valueStore;
-                }
+		@Override
+		public ValueStore valueStore() {
+			return valueStore;
+		}
 
-                @Override
-                public boolean isExplicit() {
-                        return explicit;
-                }
-        }
+		@Override
+		public boolean isExplicit() {
+			return explicit;
+		}
+	}
 }

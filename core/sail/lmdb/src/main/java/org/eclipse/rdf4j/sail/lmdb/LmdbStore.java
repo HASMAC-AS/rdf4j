@@ -168,9 +168,9 @@ public class LmdbStore extends AbstractNotifyingSail implements FederatedService
 	 * @return Returns the {@link EvaluationStrategy}.
 	 */
 	public synchronized EvaluationStrategyFactory getEvaluationStrategyFactory() {
-                if (evalStratFactory == null) {
-                        evalStratFactory = new LmdbEvaluationStrategyFactory(getFederatedServiceResolver());
-                }
+		if (evalStratFactory == null) {
+			evalStratFactory = new LmdbEvaluationStrategyFactory(getFederatedServiceResolver());
+		}
 		evalStratFactory.setQuerySolutionCacheThreshold(getIterationCacheSyncThreshold());
 		evalStratFactory.setTrackResultSize(isTrackResultSize());
 		evalStratFactory.setCollectionFactory(getCollectionFactory());

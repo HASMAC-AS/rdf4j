@@ -310,17 +310,17 @@ class TripleStore implements Closeable {
 		return indexSpecs;
 	}
 
-        TxnManager getTxnManager() {
-                return txnManager;
-        }
+	TxnManager getTxnManager() {
+		return txnManager;
+	}
 
-        Map<String, Integer> indexHandles(boolean explicit) {
-                Map<String, Integer> handles = new LinkedHashMap<>();
-                for (TripleIndex index : indexes) {
-                        handles.put(new String(index.getFieldSeq()), index.getDB(explicit));
-                }
-                return handles;
-        }
+	Map<String, Integer> indexHandles(boolean explicit) {
+		Map<String, Integer> handles = new LinkedHashMap<>();
+		for (TripleIndex index : indexes) {
+			handles.put(new String(index.getFieldSeq()), index.getDB(explicit));
+		}
+		return handles;
+	}
 
 	/**
 	 * Parses a comma/whitespace-separated list of index specifications. Index specifications are required to consists

@@ -20,12 +20,11 @@ import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
  */
 interface LmdbDatasetSnapshot {
 
-Txn getTxn();
+	Txn getTxn();
 
-Map<QuadKeyOrder, Integer> indexHandles();
+	Map<QuadKeyOrder, Integer> indexHandles();
 
-ValueStore valueStore();
+	ValueStore valueStore();
 
-boolean isExplicit();
+	boolean isExplicit();
 }
-

@@ -39,25 +39,25 @@ public final class PrefixBuilder {
 		return prefix.build();
 	}
 
-        private static void assignSlot(Prefix.Builder prefix, Slot slot, QuadPatternTerm term, List<String> variableOrder,
-                        Map<String, Long> bindings, int currentIndex) {
-                if (term.isUnbound()) {
-                        return;
-                }
+	private static void assignSlot(Prefix.Builder prefix, Slot slot, QuadPatternTerm term, List<String> variableOrder,
+			Map<String, Long> bindings, int currentIndex) {
+		if (term.isUnbound()) {
+			return;
+		}
 
-                if (term.isConstant()) {
-                        write(prefix, slot, term.constant());
-                        return;
-                }
+		if (term.isConstant()) {
+			write(prefix, slot, term.constant());
+			return;
+		}
 
-                int termIndex = indexOf(variableOrder, term.variable());
-                if (termIndex < currentIndex) {
-                        Long boundValue = bindings.get(term.variable());
-                        if (boundValue != null) {
-                                write(prefix, slot, boundValue);
-                        }
-                }
-        }
+		int termIndex = indexOf(variableOrder, term.variable());
+		if (termIndex < currentIndex) {
+			Long boundValue = bindings.get(term.variable());
+			if (boundValue != null) {
+				write(prefix, slot, boundValue);
+			}
+		}
+	}
 
 	private static void write(Prefix.Builder prefix, Slot slot, long value) {
 		switch (slot) {
