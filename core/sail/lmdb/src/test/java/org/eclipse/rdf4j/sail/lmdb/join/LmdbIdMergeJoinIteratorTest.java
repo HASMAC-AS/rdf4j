@@ -48,7 +48,8 @@ class LmdbIdMergeJoinIteratorTest {
 		RecordIterator leftIterator = new ArrayRecordIterator(leftRecord);
 		RecordIterator rightIterator = new ArrayRecordIterator(rightRecord);
 
-		LmdbIdMergeJoinIterator iterator = new LmdbIdMergeJoinIterator(leftIterator, rightIterator, leftInfo, rightInfo,
+		LmdbIdMergeJoinIterator iterator = new LmdbIdMergeJoinIterator(null, leftIterator, rightIterator, leftInfo,
+				rightInfo,
 				"x", bindingInfo);
 		try {
 			Object record = iterator.next();
@@ -83,7 +84,8 @@ class LmdbIdMergeJoinIteratorTest {
 		RecordIterator leftIterator = new ArrayRecordIterator(leftRecord);
 		RecordIterator rightIterator = new ArrayRecordIterator(rightRecord);
 
-		LmdbIdMergeJoinIterator iterator = new LmdbIdMergeJoinIterator(leftIterator, rightIterator, leftInfo, rightInfo,
+		LmdbIdMergeJoinIterator iterator = new LmdbIdMergeJoinIterator(null, leftIterator, rightIterator, leftInfo,
+				rightInfo,
 				"x", bindingInfo);
 		try {
 			assertThat(iterator.next()).isNull();

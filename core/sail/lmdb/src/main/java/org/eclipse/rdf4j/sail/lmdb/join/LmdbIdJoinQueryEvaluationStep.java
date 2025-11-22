@@ -54,6 +54,7 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 	private final LmdbDatasetContext datasetContext;
 	private final QueryEvaluationStep fallbackStep;
 	private final boolean fallbackImmediately;
+	private final Join join;
 
 	public LmdbIdJoinQueryEvaluationStep(EvaluationStrategy strategy, Join join, QueryEvaluationContext context,
 			QueryEvaluationStep fallbackStep) {
@@ -74,6 +75,8 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 		this.sharedVariables = computeSharedVariables(leftInfo, rightInfo);
 		this.fallbackStep = fallbackStep;
 
+		this.join = join;
+
 		boolean allowCreate = this.datasetContext.getLmdbDataset()
 				.map(LmdbEvaluationDataset::hasTransactionChanges)
 				.orElse(LmdbEvaluationStrategy.hasActiveConnectionChanges());
@@ -93,10 +96,6 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 
 	public boolean shouldUseFallbackImmediately() {
 		return fallbackImmediately;
-	}
-
-	public void applyAlgorithmTag(Join join) {
-		join.setAlgorithm(LmdbIdJoinIterator.class.getSimpleName());
 	}
 
 	private static boolean constantsResolvable(StatementPattern pattern, ValueStore valueStore, boolean allowCreate) {
@@ -214,7 +213,7 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 							rightScratch, rightQuadScratch);
 				};
 
-				return new LmdbIdJoinIterator(leftIterator, rightFactory, leftInfo, bindingInfo, sharedVariables,
+				return new LmdbIdJoinIterator(join, leftIterator, rightFactory, leftInfo, bindingInfo, sharedVariables,
 						context, bindings, valueStore);
 			}
 
@@ -231,7 +230,8 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 				return dataset.getRecordIterator(rightPattern, bs);
 			};
 
-			return new LmdbIdJoinIterator(leftIterator, rightFactory, leftInfo, rightInfo, sharedVariables, context,
+			return new LmdbIdJoinIterator(join, leftIterator, rightFactory, leftInfo, rightInfo, sharedVariables,
+					context,
 					bindings, valueStore);
 		} catch (QueryEvaluationException e) {
 			throw e;

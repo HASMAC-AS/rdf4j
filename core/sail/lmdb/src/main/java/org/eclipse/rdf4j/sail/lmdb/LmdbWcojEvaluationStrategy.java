@@ -78,8 +78,12 @@ public class LmdbWcojEvaluationStrategy extends LmdbEvaluationStrategy {
 		if (hasAnonymous) {
 			return defaultStep;
 		}
-		return new LmdbWcojBGPQueryEvaluationStep(patterns, context, ds, ds.getTrieIndexManager(),
-				ds.getTxnManager(), defaultStep);
+		LmdbWcojBGPQueryEvaluationStep step = new LmdbWcojBGPQueryEvaluationStep(patterns, context, ds,
+				ds.getTrieIndexManager(), ds.getTxnManager(), defaultStep);
+		if (!step.usesWcoj()) {
+			return defaultStep;
+		}
+		return step;
 	}
 
 	private boolean hasAnonymousVar(StatementPattern p) {

@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.algebra.Join;
 import org.eclipse.rdf4j.sail.lmdb.IdBindingInfo;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.TripleStore;
@@ -53,7 +54,7 @@ public class LmdbIdMergeJoinIterator implements RecordIterator {
 	private static final boolean DEBUG = Boolean.getBoolean("rdf4j.lmdb.mergeJoinDebug");
 	private final AtomicInteger debugCounter = DEBUG ? new AtomicInteger() : null;
 
-	public LmdbIdMergeJoinIterator(RecordIterator leftIterator, RecordIterator rightIterator,
+	public LmdbIdMergeJoinIterator(Join join, RecordIterator leftIterator, RecordIterator rightIterator,
 			LmdbIdJoinIterator.PatternInfo leftInfo, LmdbIdJoinIterator.PatternInfo rightInfo, String mergeVariable,
 			IdBindingInfo bindingInfo) {
 		if (mergeVariable == null || mergeVariable.isEmpty()) {
@@ -73,6 +74,9 @@ public class LmdbIdMergeJoinIterator implements RecordIterator {
 		this.rightIterator = new PeekMarkRecordIterator(rightIterator);
 		this.mergeVariable = mergeVariable;
 		this.bindingInfo = bindingInfo;
+		if (join != null) {
+			join.setAlgorithm(this.getClass().getSimpleName());
+		}
 
 		int idx = bindingInfo.getIndex(mergeVariable);
 		if (idx < 0) {

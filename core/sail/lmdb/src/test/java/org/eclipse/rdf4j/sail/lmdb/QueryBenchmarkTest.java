@@ -33,10 +33,15 @@ import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.query.TupleQueryResult;
+import org.eclipse.rdf4j.query.algebra.Join;
+import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.explanation.Explanation;
+import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+import org.eclipse.rdf4j.sail.lmdb.join.LmdbIdJoinIterator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -198,6 +203,32 @@ public class QueryBenchmarkTest {
 					"complexQuery should finish under 5s; took " + durationMs
 							+ " ms. High duration suggests bad join order");
 		}
+	}
+
+	@Test
+	@Timeout(10)
+	public void complexQueryUsesIdJoinWhenAcyclic() {
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			TupleExpr expr = org.eclipse.rdf4j.query.parser.QueryParserUtil
+					.parseTupleQuery(org.eclipse.rdf4j.query.QueryLanguage.SPARQL, query4, null)
+					.getTupleExpr();
+			connection.getSailConnection()
+					.explain(Explanation.Level.Optimized, expr, null, EmptyBindingSet.getInstance(),
+							true, 0);
+			TupleExpr join = unwrapJoin(expr);
+			assertTrue(join instanceof Join, "Expected top-level join for complexQuery");
+			assertEquals(LmdbIdJoinIterator.class.getSimpleName(), ((Join) join).getAlgorithmName());
+		}
+	}
+
+	private TupleExpr unwrapJoin(TupleExpr expr) {
+		if (expr instanceof org.eclipse.rdf4j.query.algebra.Projection) {
+			return unwrapJoin(((org.eclipse.rdf4j.query.algebra.Projection) expr).getArg());
+		}
+		if (expr instanceof org.eclipse.rdf4j.query.algebra.QueryRoot) {
+			return unwrapJoin(((org.eclipse.rdf4j.query.algebra.QueryRoot) expr).getArg());
+		}
+		return expr;
 	}
 
 	@Test

@@ -46,6 +46,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import org.openjdk.jmh.runner.options.TimeValue;
 
 /**
  * @author Håvard Ottestad
@@ -135,9 +136,11 @@ public class QueryBenchmark {
 //		queryBenchmark.afterClass();
 
 		Options opt = new OptionsBuilder()
-				.include("QueryBenchmark.long_chain") // adapt to run other benchmark tests
+				.include("QueryBenchmark.complexQuery") // adapt to run other benchmark tests
 				.warmupIterations(0)
 				.measurementIterations(10)
+				.measurementBatchSize(1)
+				.measurementTime(TimeValue.seconds(10))
 				.forks(0)
 				.build();
 

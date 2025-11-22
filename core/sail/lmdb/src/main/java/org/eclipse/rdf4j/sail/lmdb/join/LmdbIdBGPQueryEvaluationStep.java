@@ -49,8 +49,6 @@ import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
  */
 public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 
-	private static final String ID_JOIN_ALGORITHM = LmdbIdJoinIterator.class.getSimpleName();
-
 	private final List<PatternPlan> plans;
 	private final List<RawPattern> rawPatterns;
 	private final IdBindingInfo finalInfo;
@@ -233,11 +231,6 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 	private static void markJoinTreeWithIdAlgorithm(TupleExpr expr, Set<Join> mergeJoins) {
 		if (expr instanceof Join) {
 			Join join = (Join) expr;
-			if (mergeJoins != null && mergeJoins.contains(join)) {
-				join.setAlgorithm(LmdbIdMergeJoinIterator.class.getSimpleName());
-			} else {
-				join.setAlgorithm(ID_JOIN_ALGORITHM);
-			}
 			markJoinTreeWithIdAlgorithm(join.getLeftArg(), mergeJoins);
 			markJoinTreeWithIdAlgorithm(join.getRightArg(), mergeJoins);
 		}
@@ -258,7 +251,7 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 			StatementOrder rightOrder = determineOrder(rightRaw, spec.mergeVariable);
 			PatternPlan leftPlan = leftRaw.toPlan(finalInfo, leftOrder);
 			PatternPlan rightPlan = rightRaw.toPlan(finalInfo, rightOrder);
-			stages.add(new MergeStage(leftPlan, rightPlan, leftRaw.patternInfo, rightRaw.patternInfo,
+			stages.add(new MergeStage(root, leftPlan, rightPlan, leftRaw.patternInfo, rightRaw.patternInfo,
 					spec.mergeVariable));
 			consumed[leftIndex] = true;
 			consumed[rightIndex] = true;
@@ -338,6 +331,7 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 		private final LmdbIdJoinIterator.PatternInfo leftInfo;
 		private final LmdbIdJoinIterator.PatternInfo rightInfo;
 		private final String mergeVariable;
+		private final Join join;
 		private long[] sequentialLeftScratch;
 		private long[] orderedLeftScratch;
 		private long[] orderedRightScratch;
@@ -345,13 +339,15 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 		private long[] orderedLeftQuadScratch;
 		private long[] orderedRightQuadScratch;
 
-		private MergeStage(PatternPlan leftPlan, PatternPlan rightPlan, LmdbIdJoinIterator.PatternInfo leftInfo,
+		private MergeStage(Join join, PatternPlan leftPlan, PatternPlan rightPlan,
+				LmdbIdJoinIterator.PatternInfo leftInfo,
 				LmdbIdJoinIterator.PatternInfo rightInfo, String mergeVariable) {
 			this.leftPlan = leftPlan;
 			this.rightPlan = rightPlan;
 			this.leftInfo = leftInfo;
 			this.rightInfo = rightInfo;
 			this.mergeVariable = mergeVariable;
+			this.join = join;
 		}
 
 		@Override
@@ -434,7 +430,7 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 				return createSequentialIterator(dataset, binding, valueStore);
 			}
 
-			return new LmdbIdMergeJoinIterator(leftIterator, rightIterator, leftInfo, rightInfo, mergeVariable,
+			return new LmdbIdMergeJoinIterator(join, leftIterator, rightIterator, leftInfo, rightInfo, mergeVariable,
 					finalInfo);
 		}
 
