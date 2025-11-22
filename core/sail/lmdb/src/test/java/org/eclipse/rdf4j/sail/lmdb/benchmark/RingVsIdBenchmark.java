@@ -46,11 +46,9 @@ import org.openjdk.jmh.annotations.Warmup;
 /**
  * JMH benchmark to compare ID-based join vs WCOJ (LTJ) vs WCO Ring on the same dataset.
  *
- * Modes:
- *  - ID: classic ID join (useWcojForBgp=false)
- *  - LTJ: WCOJ using LeapfrogTrieJoin (useWcojForBgp=true, strategy=ltj)
- *  - RING: WCOJ using Ring (useWcojForBgp=true, strategy=ring)
- *  - AUTO: WCOJ with auto (ring on cyclic, LTJ on acyclic)
+ * Modes: - ID: classic ID join (useWcojForBgp=false) - LTJ: WCOJ using LeapfrogTrieJoin (useWcojForBgp=true,
+ * strategy=ltj) - RING: WCOJ using Ring (useWcojForBgp=true, strategy=ring) - AUTO: WCOJ with auto (ring on cyclic, LTJ
+ * on acyclic)
  */
 @State(Scope.Benchmark)
 @Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)

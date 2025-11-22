@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -65,6 +66,9 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 	private final RingPlan ringPlan;
 	private final boolean ringEnabled;
 	private final boolean trackPartial;
+	private final Map<Value, Long> constantIdCache = new HashMap<>();
+	private final Map<StatementPattern, long[]> patternConstantIds = new IdentityHashMap<>();
+	private final List<String> indexNames;
 	private static final AtomicReference<Metrics> LAST_METRICS = new AtomicReference<>();
 
 	public enum WcojStrategy {
@@ -241,11 +245,14 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		this.valueStore = dataset.getValueStore();
 		this.fallback = fallback;
 		this.useCompact = dataset.useCompactTrie();
+		this.indexNames = computeIndexNames();
 		this.varOrder = computeVarOrder(patterns);
 		this.strategy = resolveStrategy();
 		this.ringPlan = buildRingPlan(patterns, varOrder);
 		this.ringEnabled = strategy == WcojStrategy.RING || (strategy == WcojStrategy.AUTO && ringPlan.cyclic);
 		this.trackPartial = Boolean.getBoolean("rdf4j.lmdb.wcoj.trackPartial");
+		precomputeConstantIds(patterns);
+		precomputePatternConstants(patterns);
 	}
 
 	@Override
@@ -275,6 +282,10 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		}
 
 		if (!prefixDependenciesSatisfied(bound)) {
+			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
+		}
+
+		if (!shouldUseWcoj(bound)) {
 			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
 		}
 
@@ -319,10 +330,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 
 	private JoinCursor openCursorForVar(StatementPattern pattern, String varName, Map<String, Long> bound,
 			long txn, Pool pool) throws QueryEvaluationException {
-		List<String> indexes = trieIndexManager.getIndexNames();
-		if (indexes == null || indexes.isEmpty()) {
-			indexes = java.util.List.of("spoc");
-		}
+		List<String> indexes = indexNames;
 		String bestIndex = null;
 		char[] bestOrder = null;
 		int bestPrefix = -1;
@@ -343,7 +351,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 			boolean ok = true;
 			for (int i = 0; i < position && i < 3; i++) {
 				Var v = componentVar(pattern, order[i]);
-				long c = constantId(v);
+				long c = constantFor(pattern, order[i]);
 				if (c != LmdbValue.UNKNOWN_ID) {
 					usablePrefix++;
 					continue;
@@ -377,7 +385,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		long[] prefix = new long[Math.min(pos, 3)];
 		for (int i = 0; i < prefix.length; i++) {
 			Var v = componentVar(pattern, bestOrder[i]);
-			long val = constantId(v);
+			long val = constantFor(pattern, bestOrder[i]);
 			if (val == LmdbValue.UNKNOWN_ID) {
 				Long b = bound.get(v.getName());
 				if (b == null) {
@@ -484,12 +492,45 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		return new CompactJoinCursor(inferredNav);
 	}
 
+	private void precomputeConstantIds(List<StatementPattern> patterns) {
+		for (StatementPattern pattern : patterns) {
+			cacheConstant(pattern.getSubjectVar());
+			cacheConstant(pattern.getPredicateVar());
+			cacheConstant(pattern.getObjectVar());
+			cacheConstant(pattern.getContextVar());
+		}
+	}
+
+	private void precomputePatternConstants(List<StatementPattern> patterns) {
+		for (StatementPattern pattern : patterns) {
+			long[] ids = new long[4];
+			ids[0] = constantId(pattern.getSubjectVar());
+			ids[1] = constantId(pattern.getPredicateVar());
+			ids[2] = constantId(pattern.getObjectVar());
+			ids[3] = constantId(pattern.getContextVar());
+			patternConstantIds.put(pattern, ids);
+		}
+	}
+
+	private void cacheConstant(Var v) {
+		if (v != null && v.hasValue()) {
+			constantId(v);
+		}
+	}
+
 	private long constantId(Var v) {
 		if (v == null || !v.hasValue()) {
 			return LmdbValue.UNKNOWN_ID;
 		}
+		Value val = v.getValue();
+		Long cached = constantIdCache.get(val);
+		if (cached != null) {
+			return cached;
+		}
 		try {
-			return valueStore.getId(v.getValue());
+			long id = valueStore.getId(val);
+			constantIdCache.put(val, id);
+			return id;
 		} catch (IOException e) {
 			throw new QueryEvaluationException(e);
 		}
@@ -508,6 +549,30 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		default:
 			return null;
 		}
+	}
+
+	private int componentIndex(char component) {
+		switch (component) {
+		case 's':
+			return 0;
+		case 'p':
+			return 1;
+		case 'o':
+			return 2;
+		case 'c':
+			return 3;
+		default:
+			return -1;
+		}
+	}
+
+	private long constantFor(StatementPattern pattern, char component) {
+		int idx = componentIndex(component);
+		if (idx < 0) {
+			return LmdbValue.UNKNOWN_ID;
+		}
+		long[] ids = patternConstantIds.get(pattern);
+		return ids == null ? LmdbValue.UNKNOWN_ID : ids[idx];
 	}
 
 	private boolean usesVar(StatementPattern p, String name) {
@@ -554,7 +619,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 				}
 			}
 		}
-		List<String> indexes = getIndexNames();
+		List<String> indexes = indexNames;
 		Map<String, Set<String>> dependencies = new HashMap<>();
 		for (StatementPattern pattern : patterns) {
 			for (Var v : new Var[] { pattern.getSubjectVar(), pattern.getPredicateVar(), pattern.getObjectVar(),
@@ -683,6 +748,13 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		return false;
 	}
 
+	private boolean shouldUseWcoj(Map<String, Long> bound) {
+		if (strategy == WcojStrategy.RING || strategy == WcojStrategy.LTJ) {
+			return true;
+		}
+		return ringPlan.cyclic;
+	}
+
 	private boolean dfsHasCycle(String node, String parent, Map<String, Set<String>> adj, Set<String> visited) {
 		visited.add(node);
 		for (String nei : adj.getOrDefault(node, Set.of())) {
@@ -732,12 +804,12 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		}
 	}
 
-	private List<String> getIndexNames() {
+	private List<String> computeIndexNames() {
 		List<String> indexes = trieIndexManager != null ? trieIndexManager.getIndexNames() : null;
 		if (indexes == null || indexes.isEmpty()) {
 			return java.util.List.of("spoc");
 		}
-		return indexes;
+		return List.copyOf(indexes);
 	}
 
 	private Set<String> minimalDependencies(StatementPattern pattern, String varName, List<String> indexes) {
@@ -809,7 +881,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 	}
 
 	private boolean hasUsableIndex(StatementPattern pattern, String varName, Set<String> available) {
-		for (String idx : getIndexNames()) {
+		for (String idx : indexNames) {
 			char[] order = idx.toCharArray();
 			int position = -1;
 			for (int i = 0; i < order.length; i++) {
