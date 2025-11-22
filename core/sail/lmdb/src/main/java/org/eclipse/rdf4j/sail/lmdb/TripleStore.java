@@ -69,6 +69,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -309,9 +310,17 @@ class TripleStore implements Closeable {
 		return indexSpecs;
 	}
 
-	TxnManager getTxnManager() {
-		return txnManager;
-	}
+        TxnManager getTxnManager() {
+                return txnManager;
+        }
+
+        Map<String, Integer> indexHandles(boolean explicit) {
+                Map<String, Integer> handles = new LinkedHashMap<>();
+                for (TripleIndex index : indexes) {
+                        handles.put(new String(index.getFieldSeq()), index.getDB(explicit));
+                }
+                return handles;
+        }
 
 	/**
 	 * Parses a comma/whitespace-separated list of index specifications. Index specifications are required to consists
