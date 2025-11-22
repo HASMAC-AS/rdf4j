@@ -51,11 +51,11 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
  * @author Håvard Ottestad
  */
 @State(Scope.Benchmark)
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 1, time = 100, timeUnit = TimeUnit.MILLISECONDS)
 @BenchmarkMode({ Mode.AverageTime })
 @Fork(value = 1, jvmArgs = { "-Xms1G", "-Xmx1G" })
 //@Fork(value = 1, jvmArgs = {"-Xms1G", "-Xmx1G", "-XX:StartFlightRecording=jdk.CPUTimeSample#enabled=true,filename=profile.jfr,method-profiling=max","-XX:FlightRecorderOptions=stackdepth=1024", "-XX:+UnlockDiagnosticVMOptions", "-XX:+DebugNonSafepoints"})
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 1, time = 100, timeUnit = TimeUnit.MILLISECONDS)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class QueryBenchmark {
 
@@ -135,9 +135,9 @@ public class QueryBenchmark {
 //		queryBenchmark.afterClass();
 
 		Options opt = new OptionsBuilder()
-				.include("QueryBenchmark.complexQuery") // adapt to run other benchmark tests
-				.warmupIterations(3)
-				.measurementIterations(3)
+				.include("QueryBenchmark.long_chain") // adapt to run other benchmark tests
+				.warmupIterations(0)
+				.measurementIterations(10)
 				.forks(0)
 				.build();
 
@@ -277,6 +277,16 @@ public class QueryBenchmark {
 	}
 
 	@Benchmark
+	public long triangleCycle() {
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			return count(connection
+					.prepareTupleQuery("select * where { ?a ?p1 ?b . ?b ?p2 ?c . ?c ?p3 ?a . }")
+					.evaluate()
+			);
+		}
+	}
+
+	@Benchmark
 	public long pathExpressionQuery1() {
 
 		try (SailRepositoryConnection connection = repository.getConnection()) {
@@ -379,16 +389,16 @@ public class QueryBenchmark {
 		}
 	}
 
-	@Benchmark
-	public long particularly_large_join_surface() {
-		try (SailRepositoryConnection connection = repository.getConnection()) {
-			return connection
-					.prepareTupleQuery(particularly_large_join_surface)
-					.evaluate()
-					.stream()
-					.count();
-		}
-	}
+//	@Benchmark
+//	public long particularly_large_join_surface() {
+//		try (SailRepositoryConnection connection = repository.getConnection()) {
+//			return connection
+//					.prepareTupleQuery(particularly_large_join_surface)
+//					.evaluate()
+//					.stream()
+//					.count();
+//		}
+//	}
 
 	@Benchmark
 	public long query_distinct_predicates() {
