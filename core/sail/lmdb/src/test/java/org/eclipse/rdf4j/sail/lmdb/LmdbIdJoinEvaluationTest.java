@@ -56,6 +56,7 @@ import org.eclipse.rdf4j.sail.base.SailDataset;
 import org.eclipse.rdf4j.sail.base.SailDatasetTripleSource;
 import org.eclipse.rdf4j.sail.base.SailSource;
 import org.eclipse.rdf4j.sail.lmdb.join.LmdbIdJoinQueryEvaluationStep;
+import org.eclipse.rdf4j.sail.lmdb.join.LmdbIdMergeJoinQueryEvaluationStep;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -65,7 +66,6 @@ public class LmdbIdJoinEvaluationTest {
 
 	@Test
 	public void simpleJoinUsesIdIterator(@TempDir Path tempDir) throws Exception {
-		assumeFalse(wcojEnabled(), "Legacy ID join expectations do not apply when WCOJ is enabled");
 
 		LmdbStore store = new LmdbStore(tempDir.toFile());
 		SailRepository repository = new SailRepository(store);
@@ -104,8 +104,11 @@ public class LmdbIdJoinEvaluationTest {
 				assertThat(bindings).hasSize(1);
 			}
 
-			sailConnection.explain(Explanation.Level.Optimized, tupleExpr, null, EmptyBindingSet.getInstance(), true,
+			Explanation explain = sailConnection.explain(Explanation.Level.Executed, tupleExpr, null,
+					EmptyBindingSet.getInstance(), true,
 					0);
+
+			System.out.println(explain);
 
 			TupleExpr joinExpr = unwrap(tupleExpr);
 			assertThat(joinExpr).isInstanceOf(Join.class);
@@ -114,6 +117,60 @@ public class LmdbIdJoinEvaluationTest {
 					.withFailMessage("left=%s right=%s", join.getLeftArg().getClass(), join.getRightArg().getClass())
 					.isEqualTo("LmdbIdJoinIterator");
 		} finally {
+			repository.shutDown();
+		}
+	}
+
+	@Test
+	public void precompileTwoPatternJoinUsesLmdbIdJoinStep(@TempDir Path tempDir) throws Exception {
+		assumeFalse(wcojEnabled(), "Legacy ID join expectations do not apply when WCOJ is enabled");
+
+		LmdbStore store = new LmdbStore(tempDir.toFile());
+		SailRepository repository = new SailRepository(store);
+		repository.init();
+
+		ValueFactory vf = SimpleValueFactory.getInstance();
+		IRI alice = vf.createIRI(NS, "alice");
+		IRI bob = vf.createIRI(NS, "bob");
+		IRI knows = vf.createIRI(NS, "knows");
+		IRI likes = vf.createIRI(NS, "likes");
+		IRI pizza = vf.createIRI(NS, "pizza");
+
+		try (RepositoryConnection conn = repository.getConnection()) {
+			conn.add(alice, knows, bob);
+			conn.add(alice, likes, pizza);
+			conn.add(bob, likes, pizza);
+		}
+
+		String query = "SELECT ?person ?item\n" +
+				"WHERE {\n" +
+				"  ?person <http://example.com/knows> ?other .\n" +
+				"  ?person <http://example.com/likes> ?item .\n" +
+				"}";
+
+		SailSource branch = store.getBackingStore().getExplicitSailSource();
+		SailDataset dataset = branch.dataset(IsolationLevels.SNAPSHOT_READ);
+		try {
+			ParsedTupleQuery parsed = QueryParserUtil.parseTupleQuery(QueryLanguage.SPARQL, query, null);
+			TupleExpr tupleExpr = parsed.getTupleExpr();
+			TupleExpr joinExpr = unwrap(tupleExpr);
+			assertThat(joinExpr).isInstanceOf(Join.class);
+			Join join = (Join) joinExpr;
+
+			SailDatasetTripleSource tripleSource = new SailDatasetTripleSource(repository.getValueFactory(), dataset);
+			EvaluationStrategyFactory factory = store.getEvaluationStrategyFactory();
+			EvaluationStrategy strategy = factory.createEvaluationStrategy(null, tripleSource,
+					store.getBackingStore().getEvaluationStatistics());
+			LmdbEvaluationDataset lmdbDataset = (LmdbEvaluationDataset) dataset;
+			QueryEvaluationContext context = new LmdbQueryEvaluationContext(null,
+					tripleSource.getValueFactory(), tripleSource.getComparator(), lmdbDataset,
+					lmdbDataset.getValueStore());
+
+			QueryEvaluationStep step = strategy.precompile(join, context);
+			assertThat(step).isInstanceOf(LmdbIdJoinQueryEvaluationStep.class);
+		} finally {
+			dataset.close();
+			branch.close();
 			repository.shutDown();
 		}
 	}
@@ -181,6 +238,76 @@ public class LmdbIdJoinEvaluationTest {
 			assertThat(join.getAlgorithmName())
 					.withFailMessage("left=%s right=%s", join.getLeftArg().getClass(), join.getRightArg().getClass())
 					.isEqualTo("LmdbIdMergeJoinIterator");
+		} finally {
+			dataset.close();
+			branch.close();
+			repository.shutDown();
+		}
+	}
+
+	@Test
+	public void precompileMergeJoinUsesLmdbIdMergeJoinStep(@TempDir Path tempDir) throws Exception {
+		assumeFalse(wcojEnabled(), "Legacy merge-join expectations do not apply when WCOJ is enabled");
+
+		LmdbStore store = new LmdbStore(tempDir.toFile());
+		SailRepository repository = new SailRepository(store);
+		repository.init();
+
+		ValueFactory vf = SimpleValueFactory.getInstance();
+		IRI alice = vf.createIRI(NS, "alice");
+		IRI bob = vf.createIRI(NS, "bob");
+		IRI carol = vf.createIRI(NS, "carol");
+		IRI knows = vf.createIRI(NS, "knows");
+		IRI likes = vf.createIRI(NS, "likes");
+		IRI pizza = vf.createIRI(NS, "pizza");
+		IRI salad = vf.createIRI(NS, "salad");
+
+		try (RepositoryConnection conn = repository.getConnection()) {
+			conn.add(alice, knows, bob);
+			conn.add(alice, likes, pizza);
+			conn.add(alice, likes, salad);
+			conn.add(bob, knows, carol);
+			conn.add(bob, likes, salad);
+		}
+
+		String query = "SELECT ?person ?item\n" +
+				"WHERE {\n" +
+				"  ?person <http://example.com/knows> ?other .\n" +
+				"  ?person <http://example.com/likes> ?item .\n" +
+				"}";
+
+		SailSource branch = store.getBackingStore().getExplicitSailSource();
+		SailDataset dataset = branch.dataset(IsolationLevels.SNAPSHOT_READ);
+
+		try {
+			ParsedTupleQuery parsed = QueryParserUtil.parseTupleQuery(QueryLanguage.SPARQL, query, null);
+			TupleExpr tupleExpr = parsed.getTupleExpr();
+			TupleExpr joinExpr = unwrap(tupleExpr);
+			assertThat(joinExpr).isInstanceOf(Join.class);
+			Join join = (Join) joinExpr;
+			StatementPattern left = (StatementPattern) join.getLeftArg();
+			join.setOrder(left.getSubjectVar());
+			join.setMergeJoin(true);
+
+			SailDatasetTripleSource tripleSource = new SailDatasetTripleSource(repository.getValueFactory(), dataset);
+			EvaluationStrategyFactory factory = store.getEvaluationStrategyFactory();
+			EvaluationStrategy strategy = factory.createEvaluationStrategy(null, tripleSource,
+					store.getBackingStore().getEvaluationStatistics());
+			LmdbEvaluationDataset lmdbDataset = (LmdbEvaluationDataset) dataset;
+			QueryEvaluationContext context = new LmdbQueryEvaluationContext(null,
+					tripleSource.getValueFactory(), tripleSource.getComparator(), lmdbDataset,
+					lmdbDataset.getValueStore());
+
+			QueryEvaluationStep step = strategy.precompile(join, context);
+			assertThat(step).isInstanceOf(LmdbIdMergeJoinQueryEvaluationStep.class);
+
+			try (CloseableIteration<BindingSet> iter = step.evaluate(EmptyBindingSet.getInstance())) {
+				List<? extends BindingSet> bindings = Iterations.asList(iter);
+				assertThat(bindings).hasSize(3);
+			}
+
+			assertThat(join.isMergeJoin()).isTrue();
+			assertThat(join.getAlgorithmName()).isEqualTo("LmdbIdMergeJoinIterator");
 		} finally {
 			dataset.close();
 			branch.close();

@@ -66,6 +66,15 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 	private final RingPlan ringPlan;
 	private final boolean ringEnabled;
 	private final boolean trackPartial;
+
+	/**
+	 * Indicates whether this step intends to execute using the WCOJ engine (as opposed to delegating to the fallback
+	 * ID-based join implementation).
+	 */
+	public boolean usesWcoj() {
+		return shouldUseWcoj();
+	}
+
 	private final Map<Value, Long> constantIdCache = new HashMap<>();
 	private final Map<StatementPattern, long[]> patternConstantIds = new IdentityHashMap<>();
 	private final List<String> indexNames;
@@ -289,8 +298,6 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		if (!prefixDependenciesSatisfied(bound)) {
 			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
 		}
-
-
 
 		Metrics metrics = trackPartial ? new Metrics() : null;
 

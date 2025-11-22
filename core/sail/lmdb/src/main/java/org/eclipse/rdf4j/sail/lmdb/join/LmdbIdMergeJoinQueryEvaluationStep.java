@@ -152,7 +152,8 @@ public class LmdbIdMergeJoinQueryEvaluationStep implements QueryEvaluationStep {
 			}
 
 			join.setAlgorithm(LmdbIdMergeJoinIterator.class.getSimpleName());
-			RecordIterator mergeIterator = new LmdbIdMergeJoinIterator(leftIterator, rightIterator, leftInfo, rightInfo,
+			RecordIterator mergeIterator = new LmdbIdMergeJoinIterator(join, leftIterator, rightIterator, leftInfo,
+					rightInfo,
 					mergeVariable, bindingInfo);
 			return new LmdbIdFinalBindingSetIteration(mergeIterator, bindingInfo, context, bindings, valueStore,
 					Collections.emptyMap());

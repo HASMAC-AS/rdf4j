@@ -159,10 +159,8 @@ public class LmdbEvaluationStrategy extends StrictEvaluationStrategy {
 							valueStoreOpt.get());
 					LmdbIdJoinQueryEvaluationStep overlayStep = new LmdbIdJoinQueryEvaluationStep(this, node,
 							overlayContext, defaultStep);
-					overlayStep.applyAlgorithmTag(node);
 					return overlayStep;
 				}
-				step.applyAlgorithmTag(node);
 				return step;
 			}
 		}
