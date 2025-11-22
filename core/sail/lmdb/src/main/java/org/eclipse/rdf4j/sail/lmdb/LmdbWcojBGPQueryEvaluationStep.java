@@ -69,6 +69,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 	private final Map<Value, Long> constantIdCache = new HashMap<>();
 	private final Map<StatementPattern, long[]> patternConstantIds = new IdentityHashMap<>();
 	private final List<String> indexNames;
+	private final boolean subjectObjectCyclic;
 	private static final AtomicReference<Metrics> LAST_METRICS = new AtomicReference<>();
 
 	public enum WcojStrategy {
@@ -249,7 +250,8 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		this.varOrder = computeVarOrder(patterns);
 		this.strategy = resolveStrategy();
 		this.ringPlan = buildRingPlan(patterns, varOrder);
-		this.ringEnabled = strategy == WcojStrategy.RING || (strategy == WcojStrategy.AUTO && ringPlan.cyclic);
+		this.subjectObjectCyclic = hasSubjectObjectCycle(patterns);
+		this.ringEnabled = strategy == WcojStrategy.RING || (strategy == WcojStrategy.AUTO && subjectObjectCyclic);
 		this.trackPartial = Boolean.getBoolean("rdf4j.lmdb.wcoj.trackPartial");
 		precomputeConstantIds(patterns);
 		precomputePatternConstants(patterns);
@@ -257,6 +259,9 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 
 	@Override
 	public CloseableIteration<BindingSet> evaluate(BindingSet bindings) {
+		if (!shouldUseWcoj()) {
+			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
+		}
 		if (trieIndexManager == null || txnManager == null || LmdbEvaluationStrategy.hasActiveConnectionChanges()) {
 			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
 		}
@@ -285,9 +290,7 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
 		}
 
-		if (!shouldUseWcoj(bound)) {
-			return fallback != null ? fallback.evaluate(bindings) : new EmptyIteration<>();
-		}
+
 
 		Metrics metrics = trackPartial ? new Metrics() : null;
 
@@ -748,11 +751,48 @@ class LmdbWcojBGPQueryEvaluationStep implements QueryEvaluationStep {
 		return false;
 	}
 
-	private boolean shouldUseWcoj(Map<String, Long> bound) {
+	private boolean hasSubjectObjectCycle(List<StatementPattern> patterns) {
+		Map<String, Set<String>> adj = new HashMap<>();
+		for (StatementPattern p : patterns) {
+			Var s = p.getSubjectVar();
+			Var o = p.getObjectVar();
+			if (s != null && o != null && !s.hasValue() && !o.hasValue()) {
+				adj.computeIfAbsent(s.getName(), k -> new HashSet<>()).add(o.getName());
+			}
+		}
+		Set<String> visiting = new HashSet<>();
+		Set<String> visited = new HashSet<>();
+		for (String node : adj.keySet()) {
+			if (dfsDirectedCycle(node, adj, visiting, visited)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean dfsDirectedCycle(String node, Map<String, Set<String>> adj, Set<String> visiting,
+			Set<String> visited) {
+		if (visited.contains(node)) {
+			return false;
+		}
+		if (!visiting.add(node)) {
+			return true;
+		}
+		for (String nei : adj.getOrDefault(node, Set.of())) {
+			if (dfsDirectedCycle(nei, adj, visiting, visited)) {
+				return true;
+			}
+		}
+		visiting.remove(node);
+		visited.add(node);
+		return false;
+	}
+
+	private boolean shouldUseWcoj() {
 		if (strategy == WcojStrategy.RING || strategy == WcojStrategy.LTJ) {
 			return true;
 		}
-		return ringPlan.cyclic;
+		return subjectObjectCyclic;
 	}
 
 	private boolean dfsHasCycle(String node, String parent, Map<String, Set<String>> adj, Set<String> visited) {
