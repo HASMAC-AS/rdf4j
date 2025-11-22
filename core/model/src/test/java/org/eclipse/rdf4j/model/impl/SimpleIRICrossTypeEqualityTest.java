@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.model.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.eclipse.rdf4j.model.IRI;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ public class SimpleIRICrossTypeEqualityTest {
 
 		// Historical behavior: SimpleIRI compares by string value against any IRI implementation.
 		assertThat(simple).isEqualTo(thirdParty);
+		assertThat(thirdParty).isEqualTo(simple);
 
 		// Note: The reverse direction is deliberately not asserted here. A third-party
 		// implementation may rely on Object.equals (identity) and thus not be symmetric.
@@ -63,6 +65,21 @@ public class SimpleIRICrossTypeEqualityTest {
 		@Override
 		public String stringValue() {
 			return namespace + localname;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof IRI)) {
+				return false;
+			}
+
+			return stringValue().equals(((IRI) o).stringValue());
+		}
+
+		@Override
+		public int hashCode() {
+			throw new UnsupportedOperationException(
+					"ThirdPartyIri does not implement hashCode, it is not needed for this test");
 		}
 	}
 }
