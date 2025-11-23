@@ -22,6 +22,8 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.algebra.Var;
+import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
@@ -41,11 +43,11 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 	private final Object snapshot;
 	private final QueryEvaluationContext context;
 	private final Function<LmdbWCOJ, TupleExpr> rebuildJoin;
-	private final org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy strategy;
+	private final EvaluationStrategy strategy;
 
 	public LmdbWCOJStep(LmdbWCOJ wcoj, Object snapshot, QueryEvaluationContext context,
 			Function<LmdbWCOJ, TupleExpr> rebuildJoin,
-			org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy strategy) {
+			EvaluationStrategy strategy) {
 		this.wcoj = wcoj;
 		this.snapshot = snapshot;
 		this.context = context;
@@ -107,7 +109,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 		return quadPatterns;
 	}
 
-	private QuadPatternTerm toTerm(org.eclipse.rdf4j.query.algebra.Var var, ValueStoreFacade valueStore)
+	private QuadPatternTerm toTerm(Var var, ValueStoreFacade valueStore)
 			throws QueryEvaluationException {
 		if (var == null) {
 			return QuadPatternTerm.unbound();
@@ -145,10 +147,10 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			return ((Number) id).longValue();
 		}
 
-		org.eclipse.rdf4j.model.Value getValue(long id) throws IOException {
+		Value getValue(long id) throws IOException {
 			try {
 				Object valueStore = valueStore();
-				return (org.eclipse.rdf4j.model.Value) invoke(valueStore, "getValue", long.class, id);
+				return (Value) invoke(valueStore, "getValue", long.class, id);
 			} catch (QueryEvaluationException e) {
 				throw new IOException(e);
 			}
