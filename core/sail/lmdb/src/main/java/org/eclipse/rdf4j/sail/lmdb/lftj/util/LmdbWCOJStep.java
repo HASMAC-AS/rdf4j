@@ -12,15 +12,14 @@ package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
@@ -51,9 +50,6 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 	private final Function<LmdbWCOJ, TupleExpr> rebuildJoin;
 	private final EvaluationStrategy strategy;
 
-	private static final int RESULT_QUEUE_CAPACITY = 64;
-	private static final Object END_OF_RESULTS = new Object();
-
 	public LmdbWCOJStep(LmdbWCOJ wcoj, List<LmdbDatasetSnapshot> snapshots, QueryEvaluationContext context,
 			Function<LmdbWCOJ, TupleExpr> rebuildJoin,
 			EvaluationStrategy strategy) {
@@ -73,45 +69,10 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			return new CloseableIteratorIteration<>(fallback.evaluate(bindings));
 		}
 
-		BlockingQueue<Object> queue = new ArrayBlockingQueue<>(RESULT_QUEUE_CAPACITY);
-		AtomicReference<Throwable> error = new AtomicReference<>();
 		AtomicBoolean cancelled = new AtomicBoolean(false);
 
-		Thread worker = new Thread(() -> {
-			try {
-				for (LmdbDatasetSnapshot snapshot : snapshots) {
-					if (cancelled.get()) {
-						break;
-					}
-
-					Map<?, ?> indexHandles = snapshot.indexHandles();
-					if (indexHandles == null || indexHandles.isEmpty()) {
-						// No usable indexes: nothing to evaluate for this snapshot
-						continue;
-					}
-
-					ValueStoreFacade valueStore = new ValueStoreFacade(snapshot);
-					List<QuadPattern> quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
-					LFTJExecutor executor = new LFTJExecutor(valueStore.txnId(), snapshot.indexHandles());
-
-					executor.evaluate(quadPatterns, row -> {
-						if (cancelled.get()) {
-							return;
-						}
-						MapBindingSet bs = toBindingSet(row, valueStore);
-						put(queue, bs, cancelled);
-					});
-				}
-			} catch (Throwable t) {
-				error.compareAndSet(null, t);
-			} finally {
-				put(queue, END_OF_RESULTS, cancelled);
-			}
-		}, "rdf4j-lmdb-wcoj");
-		worker.setDaemon(true);
-		worker.start();
-
-		return new StreamingWCOJIteration(queue, error, cancelled, worker);
+		Iterator<BindingSet> iterator = new BindingIterator(cancelled);
+		return new SingleThreadWCOJIteration(iterator, cancelled);
 	}
 
 	private MapBindingSet toBindingSet(Map<String, Long> row, ValueStoreFacade valueStore)
@@ -154,82 +115,36 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 		return QuadPatternTerm.unbound();
 	}
 
-	private static void put(BlockingQueue<Object> queue, Object value, AtomicBoolean cancelled) {
-		if (cancelled.get()) {
-			return;
-		}
-		boolean interrupted = false;
-		try {
-			while (!cancelled.get()) {
-				try {
-					queue.put(value);
-					return;
-				} catch (InterruptedException e) {
-					interrupted = true;
-					if (cancelled.get()) {
-						return;
-					}
-				}
-			}
-		} finally {
-			if (interrupted) {
-				Thread.currentThread().interrupt();
-			}
-		}
-	}
+	private final class BindingIterator implements Iterator<BindingSet> {
 
-	private static final class BindingQueueIterator implements Iterator<BindingSet> {
-
-		private final BlockingQueue<Object> queue;
-		private final AtomicReference<Throwable> error;
 		private final AtomicBoolean cancelled;
 
-		private BindingSet next;
-		private boolean done;
+		private int snapshotIndex;
+		private Iterator<BindingSet> current = Collections.emptyIterator();
+		private RuntimeException error;
 
-		BindingQueueIterator(BlockingQueue<Object> queue, AtomicReference<Throwable> error,
-				AtomicBoolean cancelled) {
-			this.queue = queue;
-			this.error = error;
+		BindingIterator(AtomicBoolean cancelled) {
 			this.cancelled = cancelled;
 		}
 
 		@Override
 		public boolean hasNext() {
-			if (done) {
+			if (cancelled.get()) {
 				return false;
 			}
-			if (next != null) {
-				return true;
+			if (error != null) {
+				throw error;
 			}
-			while (true) {
+			while ((current == null || !current.hasNext()) && snapshotIndex < snapshots.size()) {
 				if (cancelled.get()) {
-					done = true;
-					queue.clear();
 					return false;
 				}
-				Object item;
-				try {
-					item = queue.take();
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					done = true;
-					throw new RuntimeException("Interrupted while waiting for WCOJ results", e);
-				}
-				if (item == END_OF_RESULTS) {
-					done = true;
-					Throwable t = error.get();
-					if (t != null) {
-						if (t instanceof RuntimeException) {
-							throw (RuntimeException) t;
-						}
-						throw new RuntimeException("Error during WCOJ evaluation", t);
-					}
-					return false;
-				}
-				next = (BindingSet) item;
-				return true;
+				prepareNextIterator();
 			}
+			if (error != null) {
+				throw error;
+			}
+			return current != null && current.hasNext();
 		}
 
 		@Override
@@ -237,36 +152,65 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			if (!hasNext()) {
 				throw new NoSuchElementException("No more results");
 			}
-			BindingSet result = next;
-			next = null;
-			return result;
+			return current.next();
 		}
 
-		@Override
-		public void remove() {
-			throw new UnsupportedOperationException("remove");
+		private void prepareNextIterator() {
+			LmdbDatasetSnapshot snapshot = snapshots.get(snapshotIndex++);
+			Map<?, ?> indexHandles = snapshot.indexHandles();
+			if (indexHandles == null || indexHandles.isEmpty()) {
+				current = Collections.emptyIterator();
+				return;
+			}
+
+			ValueStoreFacade valueStore = new ValueStoreFacade(snapshot);
+			List<QuadPattern> quadPatterns;
+			try {
+				quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
+			} catch (QueryEvaluationException e) {
+				error = new RuntimeException(e);
+				current = Collections.emptyIterator();
+				return;
+			}
+
+			List<BindingSet> results = new ArrayList<>();
+			try {
+				LFTJExecutor executor = new LFTJExecutor(valueStore.txnId(), snapshot.indexHandles());
+				executor.evaluate(quadPatterns, row -> {
+					if (cancelled.get()) {
+						throw new CancellationException("cancelled");
+					}
+					try {
+						results.add(toBindingSet(row, valueStore));
+					} catch (QueryEvaluationException e) {
+						throw new RuntimeException(e);
+					}
+				});
+			} catch (CancellationException e) {
+				// stop processing this snapshot early
+			} catch (IOException e) {
+				error = new RuntimeException(e);
+			} catch (RuntimeException e) {
+				if (!(e instanceof CancellationException)) {
+					error = e;
+				}
+			}
+			current = results.iterator();
 		}
 	}
 
-	private static final class StreamingWCOJIteration extends CloseableIteratorIteration<BindingSet> {
+	private final class SingleThreadWCOJIteration extends CloseableIteratorIteration<BindingSet> {
 
-		private final BlockingQueue<Object> queue;
 		private final AtomicBoolean cancelled;
-		private final Thread worker;
 
-		StreamingWCOJIteration(BlockingQueue<Object> queue, AtomicReference<Throwable> error,
-				AtomicBoolean cancelled, Thread worker) {
-			super(new BindingQueueIterator(queue, error, cancelled));
-			this.queue = queue;
+		SingleThreadWCOJIteration(Iterator<BindingSet> iterator, AtomicBoolean cancelled) {
+			super(iterator);
 			this.cancelled = cancelled;
-			this.worker = worker;
 		}
 
 		@Override
 		protected void handleClose() {
 			cancelled.set(true);
-			queue.clear();
-			worker.interrupt();
 		}
 	}
 

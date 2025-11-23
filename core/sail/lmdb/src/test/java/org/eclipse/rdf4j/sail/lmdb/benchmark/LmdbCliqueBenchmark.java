@@ -60,7 +60,7 @@ public class LmdbCliqueBenchmark {
 	@Param({ "wcoj", "standard" })
 	public String joinStrategy;
 
-	@Param({ "50" })
+	@Param({ "100" })
 	public int nodeCount;
 
 	@Param({ "3" })
