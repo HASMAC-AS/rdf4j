@@ -13,7 +13,9 @@ package org.eclipse.rdf4j.sail.lmdb.lftj;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -145,5 +147,44 @@ class QuadKeyEncodingTest {
 		byte[] largerBytes = QuadKeyEncoding.encode(larger, spoc);
 
 		assertThat(Arrays.compareUnsigned(smallerBytes, largerBytes)).isLessThan(0);
+	}
+
+	@Test
+	void specializedEncodeDecodeMethodsExistForEveryOrder() throws Exception {
+		QuadKey key = new QuadKey(5L, 6L, 7L, 8L);
+
+		for (String sequence : permutations("spoc")) {
+			String suffix = capitalize(sequence);
+			Method encode = QuadKeyEncoding.class.getMethod("encode" + suffix, QuadKey.class);
+			Method decode = QuadKeyEncoding.class.getMethod("decode" + suffix, byte[].class);
+
+			byte[] specialized = (byte[]) encode.invoke(null, key);
+			byte[] generic = QuadKeyEncoding.encode(key, QuadKeyOrder.fromFieldSequence(sequence));
+
+			assertThat(specialized).containsExactly(generic);
+			assertThat(decode.invoke(null, specialized)).isEqualTo(key);
+		}
+	}
+
+	private static String capitalize(String sequence) {
+		return Character.toUpperCase(sequence.charAt(0)) + sequence.substring(1);
+	}
+
+	private static List<String> permutations(String letters) {
+		List<String> results = new ArrayList<>();
+		permutations("", letters, results);
+		return results;
+	}
+
+	private static void permutations(String prefix, String remaining, List<String> results) {
+		if (remaining.isEmpty()) {
+			results.add(prefix);
+			return;
+		}
+		for (int i = 0; i < remaining.length(); i++) {
+			permutations(prefix + remaining.charAt(i),
+					remaining.substring(0, i) + remaining.substring(i + 1),
+					results);
+		}
 	}
 }

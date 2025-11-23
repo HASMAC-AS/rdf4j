@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -18,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -33,11 +33,16 @@ import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
+import org.eclipse.rdf4j.sail.lmdb.lftj.IndexSelector;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LFTJExecutor;
+import org.eclipse.rdf4j.sail.lmdb.lftj.LMDBTrieIterator;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbWCOJ;
+import org.eclipse.rdf4j.sail.lmdb.lftj.Prefix;
+import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadPattern;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadPatternTerm;
 import org.eclipse.rdf4j.sail.lmdb.lftj.Slot;
+import org.eclipse.rdf4j.sail.lmdb.lftj.TrieIterator;
 
 /**
  * Query evaluation step that executes an {@link LmdbWCOJ} using {@link LFTJExecutor}.
@@ -71,16 +76,19 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 
 		AtomicBoolean cancelled = new AtomicBoolean(false);
 
-		Iterator<BindingSet> iterator = new BindingIterator(cancelled);
+		BindingIterator iterator = new BindingIterator(cancelled);
 		return new SingleThreadWCOJIteration(iterator, cancelled);
 	}
 
-	private MapBindingSet toBindingSet(Map<String, Long> row, ValueStoreFacade valueStore)
-			throws QueryEvaluationException {
-		MapBindingSet bs = new MapBindingSet(row.size());
-		for (Map.Entry<String, Long> entry : row.entrySet()) {
+	private MapBindingSet toBindingSet(List<String> variableOrder, long[] values, boolean[] present,
+			ValueStoreFacade valueStore) throws QueryEvaluationException {
+		MapBindingSet bs = new MapBindingSet(variableOrder.size());
+		for (int i = 0; i < variableOrder.size(); i++) {
+			if (!present[i]) {
+				continue;
+			}
 			try {
-				bs.addBinding(entry.getKey(), valueStore.getValue(entry.getValue()));
+				bs.addBinding(variableOrder.get(i), valueStore.getValue(values[i]));
 			} catch (IOException e) {
 				throw new QueryEvaluationException(e);
 			}
@@ -115,13 +123,14 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 		return QuadPatternTerm.unbound();
 	}
 
-	private final class BindingIterator implements Iterator<BindingSet> {
+	private final class BindingIterator implements Iterator<BindingSet>, AutoCloseable {
 
 		private final AtomicBoolean cancelled;
-
 		private int snapshotIndex;
 		private Iterator<BindingSet> current = Collections.emptyIterator();
+		private FrameCursor currentCursor;
 		private RuntimeException error;
+		private BindingSet next;
 
 		BindingIterator(AtomicBoolean cancelled) {
 			this.cancelled = cancelled;
@@ -129,22 +138,52 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 
 		@Override
 		public boolean hasNext() {
+			if (next != null) {
+				return true;
+			}
 			if (cancelled.get()) {
 				return false;
 			}
 			if (error != null) {
 				throw error;
 			}
-			while ((current == null || !current.hasNext()) && snapshotIndex < snapshots.size()) {
-				if (cancelled.get()) {
-					return false;
+
+			try {
+				while (true) {
+					if (current != null) {
+						if (current.hasNext()) {
+							next = current.next();
+							return true;
+						} else {
+							if (currentCursor != null) {
+								currentCursor.close();
+								currentCursor = null;
+							}
+							current = null;
+						}
+					}
+					if (snapshotIndex >= snapshots.size()) {
+						return false;
+					}
+
+					LmdbDatasetSnapshot snapshot = snapshots.get(snapshotIndex++);
+					Map<QuadKeyOrder, Integer> indexHandles = snapshot.indexHandles();
+					if (indexHandles == null || indexHandles.isEmpty()) {
+						continue;
+					}
+
+					ValueStoreFacade valueStore = new ValueStoreFacade(snapshot);
+					List<QuadPattern> quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
+					currentCursor = new FrameCursor(snapshot, valueStore, quadPatterns, indexHandles);
+					current = currentCursor;
 				}
-				prepareNextIterator();
-			}
-			if (error != null) {
+			} catch (QueryEvaluationException e) {
+				error = new RuntimeException(e);
 				throw error;
+			} catch (RuntimeException e) {
+				error = e;
+				throw e;
 			}
-			return current != null && current.hasNext();
 		}
 
 		@Override
@@ -152,65 +191,369 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			if (!hasNext()) {
 				throw new NoSuchElementException("No more results");
 			}
-			return current.next();
+			BindingSet result = next;
+			next = null;
+			return result;
 		}
 
-		private void prepareNextIterator() {
-			LmdbDatasetSnapshot snapshot = snapshots.get(snapshotIndex++);
-			Map<?, ?> indexHandles = snapshot.indexHandles();
-			if (indexHandles == null || indexHandles.isEmpty()) {
-				current = Collections.emptyIterator();
-				return;
+		@Override
+		public void close() {
+			if (currentCursor != null) {
+				currentCursor.close();
+			}
+		}
+
+		private Map<QuadPattern, QuadKeyOrder> chooseOrders(List<QuadPattern> patterns, List<String> order,
+				Map<QuadKeyOrder, Integer> indexHandles) {
+			List<QuadKeyOrder> candidates = new ArrayList<>(indexHandles.keySet());
+			Map<QuadPattern, QuadKeyOrder> chosen = new java.util.HashMap<>();
+			for (QuadPattern pattern : patterns) {
+				QuadKeyOrder selected = IndexSelector.chooseBestOrder(pattern, order, candidates);
+				chosen.put(pattern, selected);
+			}
+			return chosen;
+		}
+
+		private final class FrameCursor implements Iterator<BindingSet>, AutoCloseable {
+			private final LmdbDatasetSnapshot snapshot;
+			private final ValueStoreFacade valueStore;
+			private final List<QuadPattern> patterns;
+			private final Map<QuadKeyOrder, Integer> indexHandles;
+			private final List<String> variableOrder;
+			private final Map<QuadPattern, QuadKeyOrder> orders;
+			private final Map<String, Integer> variableIndex;
+			private final List<List<QuadPattern>> participatingByDepth;
+			private final long[] bindingValues;
+			private final boolean[] bindingPresent;
+			private final ArrayDeque<Frame> stack = new ArrayDeque<>();
+			private BindingSet pending;
+
+			FrameCursor(LmdbDatasetSnapshot snapshot, ValueStoreFacade valueStore, List<QuadPattern> patterns,
+					Map<QuadKeyOrder, Integer> indexHandles) throws QueryEvaluationException {
+				this.snapshot = snapshot;
+				this.valueStore = valueStore;
+				this.patterns = patterns;
+				this.indexHandles = indexHandles;
+				this.variableOrder = LFTJExecutor.chooseVariableOrder(patterns);
+				this.variableIndex = indexByName(variableOrder);
+				this.participatingByDepth = groupPatternsByVariable(patterns, variableOrder);
+				this.bindingValues = new long[variableOrder.size()];
+				this.bindingPresent = new boolean[variableOrder.size()];
+				this.orders = chooseOrders(patterns, variableOrder, indexHandles);
+				pushFrame(0);
 			}
 
-			ValueStoreFacade valueStore = new ValueStoreFacade(snapshot);
-			List<QuadPattern> quadPatterns;
-			try {
-				quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
-			} catch (QueryEvaluationException e) {
-				error = new RuntimeException(e);
-				current = Collections.emptyIterator();
-				return;
+			@Override
+			public boolean hasNext() {
+				if (pending != null) {
+					return true;
+				}
+				if (cancelled.get()) {
+					return false;
+				}
+				try {
+					while (!stack.isEmpty()) {
+						Frame frame = stack.peek();
+						if (!frame.initialized) {
+							frame.initialize();
+							if (frame.exhausted) {
+								popFrame();
+								continue;
+							}
+						}
+
+						if (frame.nextValue()) {
+							bindingValues[frame.variableIndex] = frame.currentValue;
+							bindingPresent[frame.variableIndex] = true;
+							if (stack.size() == variableOrder.size()) {
+								pending = toBindingSet(variableOrder, bindingValues, bindingPresent, valueStore);
+								return true;
+							}
+							pushFrame(stack.size());
+							continue;
+						}
+
+						popFrame();
+					}
+				} catch (IOException | QueryEvaluationException e) {
+					throw new RuntimeException(e);
+				}
+				return false;
 			}
 
-			List<BindingSet> results = new ArrayList<>();
-			try {
-				LFTJExecutor executor = new LFTJExecutor(valueStore.txnId(), snapshot.indexHandles());
-				executor.evaluate(quadPatterns, row -> {
-					if (cancelled.get()) {
-						throw new CancellationException("cancelled");
-					}
-					try {
-						results.add(toBindingSet(row, valueStore));
-					} catch (QueryEvaluationException e) {
-						throw new RuntimeException(e);
-					}
-				});
-			} catch (CancellationException e) {
-				// stop processing this snapshot early
-			} catch (IOException e) {
-				error = new RuntimeException(e);
-			} catch (RuntimeException e) {
-				if (!(e instanceof CancellationException)) {
-					error = e;
+			@Override
+			public BindingSet next() {
+				if (!hasNext()) {
+					throw new NoSuchElementException("No more results");
+				}
+				BindingSet bs = pending;
+				pending = null;
+				return bs;
+			}
+
+			private void pushFrame(int depth) {
+				if (depth >= variableOrder.size()) {
+					return;
+				}
+				stack.push(new Frame(depth));
+			}
+
+			private void popFrame() {
+				Frame frame = stack.pop();
+				bindingPresent[frame.variableIndex] = false;
+				frame.close();
+			}
+
+			@Override
+			public void close() {
+				while (!stack.isEmpty()) {
+					popFrame();
 				}
 			}
-			current = results.iterator();
+
+			private final class Frame {
+				private final String variable;
+				private final int variableIndex;
+				private final List<QuadPattern> participating;
+				private List<LMDBTrieIterator> iterators = List.of();
+				private LeapfrogCursor cursor;
+				private boolean initialized;
+				private boolean exhausted;
+				private long currentValue;
+
+				Frame(int depth) {
+					this.variable = variableOrder.get(depth);
+					this.variableIndex = depth;
+					this.participating = participatingByDepth.get(depth);
+				}
+
+				void initialize() throws IOException, QueryEvaluationException {
+					if (initialized) {
+						return;
+					}
+					List<LMDBTrieIterator> iters = new ArrayList<>(participating.size());
+					for (QuadPattern pattern : participating) {
+						QuadKeyOrder order = orders.get(pattern);
+						Integer dbi = FrameCursor.this.indexHandles.get(order);
+						if (dbi == null) {
+							throw new IllegalStateException("No DBI registered for order " + order);
+						}
+						Prefix prefix = buildPrefix(pattern, variableIndex);
+						Slot slot = pattern.variableSlots().get(variable);
+						LMDBTrieIterator iterator = new LMDBTrieIterator(valueStore.txnId(), dbi.intValue(), order,
+								slot);
+						iterator.open(prefix);
+						if (iterator.atEnd()) {
+							closeIterators(iters);
+							exhausted = true;
+							initialized = true;
+							return;
+						}
+						iters.add(iterator);
+					}
+					iterators = iters;
+					cursor = new LeapfrogCursor(iterators);
+					if (!cursor.hasValue()) {
+						exhausted = true;
+					}
+					initialized = true;
+				}
+
+				boolean nextValue() {
+					if (exhausted || cursor == null) {
+						return false;
+					}
+					if (!cursor.hasValue()) {
+						exhausted = true;
+						return false;
+					}
+					currentValue = cursor.current();
+					cursor.advance();
+					return true;
+				}
+
+				void close() {
+					closeIterators(iterators);
+				}
+			}
+
+			private final class LeapfrogCursor {
+				private final List<LMDBTrieIterator> iterators;
+				private final int size;
+				private int p;
+				private boolean atValue;
+				private long current;
+				private boolean exhausted;
+
+				LeapfrogCursor(List<LMDBTrieIterator> iterators) {
+					this.iterators = new ArrayList<>(iterators);
+					this.size = this.iterators.size();
+					this.iterators.sort(java.util.Comparator.comparingLong(TrieIterator::key));
+					if (this.iterators.isEmpty()) {
+						exhausted = true;
+						return;
+					}
+					for (TrieIterator iterator : this.iterators) {
+						if (iterator.atEnd()) {
+							exhausted = true;
+							return;
+						}
+					}
+					p = 0;
+					leapfrogSearch();
+				}
+
+				boolean hasValue() {
+					return atValue && !exhausted;
+				}
+
+				long current() {
+					if (!atValue) {
+						throw new IllegalStateException("No current value");
+					}
+					return current;
+				}
+
+				void advance() {
+					if (exhausted) {
+						return;
+					}
+					LMDBTrieIterator iterator = iterators.get(p);
+					iterator.next();
+					if (iterator.atEnd()) {
+						exhausted = true;
+						atValue = false;
+						return;
+					}
+					leapfrogSearch();
+				}
+
+				private void leapfrogSearch() {
+					atValue = false;
+					while (true) {
+						int next = (p + 1) % size;
+						TrieIterator currentIterator = iterators.get(p);
+						TrieIterator nextIterator = iterators.get(next);
+						long key = currentIterator.key();
+						long nextKey = nextIterator.key();
+
+						if (key == nextKey) {
+							p = next;
+							if (p == 0) {
+								current = key;
+								atValue = true;
+								return;
+							}
+						} else if (key < nextKey) {
+							currentIterator.seek(nextKey);
+							if (currentIterator.atEnd()) {
+								exhausted = true;
+								return;
+							}
+						} else {
+							p = next;
+						}
+					}
+				}
+			}
+
+			private Prefix buildPrefix(QuadPattern pattern, int currentIndex) {
+				Prefix.Builder prefix = Prefix.builder();
+				assignSlot(prefix, Slot.S, pattern.term(Slot.S), currentIndex);
+				assignSlot(prefix, Slot.P, pattern.term(Slot.P), currentIndex);
+				assignSlot(prefix, Slot.O, pattern.term(Slot.O), currentIndex);
+				assignSlot(prefix, Slot.C, pattern.term(Slot.C), currentIndex);
+				return prefix.build();
+			}
+
+			private void assignSlot(Prefix.Builder prefix, Slot slot, QuadPatternTerm term, int currentIndex) {
+				if (term.isUnbound()) {
+					return;
+				}
+
+				if (term.isConstant()) {
+					write(prefix, slot, term.constant());
+					return;
+				}
+
+				Integer idx = variableIndex.get(term.variable());
+				if (idx != null && idx < currentIndex && bindingPresent[idx]) {
+					write(prefix, slot, bindingValues[idx]);
+				}
+			}
+
+			private void write(Prefix.Builder prefix, Slot slot, long value) {
+				switch (slot) {
+				case S:
+					prefix.subject(value);
+					break;
+				case P:
+					prefix.predicate(value);
+					break;
+				case O:
+					prefix.object(value);
+					break;
+				case C:
+					prefix.context(value);
+					break;
+				default:
+					throw new IllegalArgumentException("Unknown slot: " + slot);
+				}
+			}
+
+			private Map<String, Integer> indexByName(List<String> order) {
+				Map<String, Integer> index = new java.util.HashMap<>(order.size());
+				for (int i = 0; i < order.size(); i++) {
+					index.put(order.get(i), i);
+				}
+				return index;
+			}
+
+			private List<List<QuadPattern>> groupPatternsByVariable(List<QuadPattern> patterns,
+					List<String> variableOrder) {
+				List<List<QuadPattern>> grouped = new ArrayList<>(variableOrder.size());
+				for (String variable : variableOrder) {
+					List<QuadPattern> participating = new ArrayList<>();
+					for (QuadPattern pattern : patterns) {
+						if (pattern.variables().contains(variable)) {
+							participating.add(pattern);
+						}
+					}
+					if (participating.isEmpty()) {
+						throw new IllegalArgumentException("Variable not found in any pattern: " + variable);
+					}
+					grouped.add(participating);
+				}
+				return grouped;
+			}
+
+			private void closeIterators(List<LMDBTrieIterator> iterators) {
+				for (LMDBTrieIterator iterator : iterators) {
+					try {
+						iterator.close();
+					} catch (Exception e) {
+						// ignore close failures
+					}
+				}
+			}
 		}
 	}
 
 	private final class SingleThreadWCOJIteration extends CloseableIteratorIteration<BindingSet> {
 
 		private final AtomicBoolean cancelled;
+		private final BindingIterator iterator;
 
-		SingleThreadWCOJIteration(Iterator<BindingSet> iterator, AtomicBoolean cancelled) {
+		SingleThreadWCOJIteration(BindingIterator iterator, AtomicBoolean cancelled) {
 			super(iterator);
+			this.iterator = iterator;
 			this.cancelled = cancelled;
 		}
 
 		@Override
 		protected void handleClose() {
 			cancelled.set(true);
+			iterator.close();
 		}
 	}
 

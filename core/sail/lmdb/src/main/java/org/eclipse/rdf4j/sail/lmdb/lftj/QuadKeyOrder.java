@@ -22,9 +22,11 @@ public final class QuadKeyOrder {
 	private static final int KEY_LENGTH = 4;
 
 	private final Slot[] positions;
+	private final String fieldSequence;
 
 	private QuadKeyOrder(Slot[] positions) {
 		this.positions = positions;
+		this.fieldSequence = buildFieldSequence(positions);
 	}
 
 	public static QuadKeyOrder of(Slot... positions) {
@@ -82,5 +84,32 @@ public final class QuadKeyOrder {
 			}
 		}
 		return -1;
+	}
+
+	public String fieldSequence() {
+		return fieldSequence;
+	}
+
+	private static String buildFieldSequence(Slot[] positions) {
+		StringBuilder builder = new StringBuilder(KEY_LENGTH);
+		for (Slot position : positions) {
+			switch (position) {
+			case S:
+				builder.append('s');
+				break;
+			case P:
+				builder.append('p');
+				break;
+			case O:
+				builder.append('o');
+				break;
+			case C:
+				builder.append('c');
+				break;
+			default:
+				throw new IllegalStateException("Unexpected slot: " + position);
+			}
+		}
+		return builder.toString();
 	}
 }
