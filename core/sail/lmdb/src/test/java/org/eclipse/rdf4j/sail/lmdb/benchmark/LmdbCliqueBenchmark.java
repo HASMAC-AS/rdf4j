@@ -50,7 +50,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
  */
 @Fork(1)
 @State(Scope.Benchmark)
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 30, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -182,6 +182,7 @@ public class LmdbCliqueBenchmark {
 	public static void main(String[] args) throws RunnerException, IOException {
 		Options options = new OptionsBuilder()
 				.include(".*" + LmdbCliqueBenchmark.class.getSimpleName() + ".*")
+				.forks(0)
 				.build();
 		new Runner(options).run();
 	}

@@ -14,11 +14,15 @@ import java.lang.reflect.Field;
 
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.eclipse.rdf4j.sail.base.SailDatasetTripleSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Helper to extract LMDB-specific dataset details from a {@link TripleSource}.
  */
 public final class DatasetIntrospection {
+
+	private static final Logger log = LoggerFactory.getLogger(DatasetIntrospection.class);
 
 	private DatasetIntrospection() {
 	}
@@ -42,6 +46,7 @@ public final class DatasetIntrospection {
 					return dataset;
 				}
 			} catch (ReflectiveOperationException ignored) {
+				log.warn("Could not access dataset field on SailDatasetTripleSource", ignored);
 				// fall through to null
 			}
 		}
