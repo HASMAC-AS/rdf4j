@@ -161,10 +161,9 @@ public class LmdbCliqueBenchmark {
 			}
 		}
 
-		if(nodeCount == 50 && cliqueSize ==3 && queryCliqueSize ==3 ) {
-			if(count != 117600){
-				System.out.println("HERE");
-				throw  new IllegalStateException("Unexpected result size: " + count + " (expected " + 117600 + ')');
+		if (nodeCount == 50 && cliqueSize == 3 && queryCliqueSize == 3) {
+			if (count != 117600) {
+				throw new IllegalStateException("Unexpected result size: " + count + " (expected " + 117600 + ')');
 			}
 		}
 		return count;

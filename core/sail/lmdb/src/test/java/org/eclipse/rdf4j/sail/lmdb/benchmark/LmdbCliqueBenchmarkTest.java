@@ -97,8 +97,6 @@ class LmdbCliqueBenchmarkTest {
 
 		Explanation explanation = benchmark.explainCliqueQuery();
 
-		System.out.println(explanation);
-
 		assertThat(explanation.toString()).withFailMessage("Expected no standard join operations in query evaluation")
 				.doesNotContain("Join (JoinIterator)");
 		assertTrue(explanation.toString().contains("LmdbWCOJ"), "Expected LmdbWCOJ to be used in query evaluation");
@@ -109,6 +107,21 @@ class LmdbCliqueBenchmarkTest {
 		LmdbCliqueBenchmark benchmark = new LmdbCliqueBenchmark();
 		benchmarkToClose = benchmark;
 		benchmark.joinStrategy = "wcoj";
+		benchmark.nodeCount = 50;
+		benchmark.cliqueSize = 3;
+		benchmark.queryCliqueSize = 3;
+
+		benchmark.setup();
+
+		long l = benchmark.cliqueQuery();
+		System.out.println(l);
+	}
+
+	@Test
+	void cliqueQueryEvaluationStandard() throws Exception {
+		LmdbCliqueBenchmark benchmark = new LmdbCliqueBenchmark();
+		benchmarkToClose = benchmark;
+		benchmark.joinStrategy = "standard";
 		benchmark.nodeCount = 50;
 		benchmark.cliqueSize = 3;
 		benchmark.queryCliqueSize = 3;
