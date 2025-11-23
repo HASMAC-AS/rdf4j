@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
+import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.ConvertingIteration;
@@ -59,7 +60,8 @@ import org.slf4j.LoggerFactory;
 /**
  * A disk based {@link SailStore} implementation that keeps committed statements in a {@link TripleStore}.
  */
-class LmdbSailStore implements SailStore {
+@InternalUseOnly
+public class LmdbSailStore implements SailStore {
 
 	final Logger logger = LoggerFactory.getLogger(LmdbSailStore.class);
 
@@ -919,7 +921,8 @@ class LmdbSailStore implements SailStore {
 		}
 	}
 
-	private final class LmdbSailDataset implements SailDataset, LmdbDatasetSnapshot {
+	@InternalUseOnly
+	public final class LmdbSailDataset implements SailDataset, LmdbDatasetSnapshot {
 
 		private final boolean explicit;
 		private final Txn txn;

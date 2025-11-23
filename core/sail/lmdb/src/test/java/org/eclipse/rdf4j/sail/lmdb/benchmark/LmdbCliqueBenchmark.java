@@ -51,8 +51,8 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
  */
 @Fork(1)
 @State(Scope.Benchmark)
-@Warmup(iterations = 30, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 1, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 1, time = 1, timeUnit = TimeUnit.SECONDS)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class LmdbCliqueBenchmark {
@@ -160,10 +160,13 @@ public class LmdbCliqueBenchmark {
 				count++;
 			}
 		}
-//		if (count != expectedResultCount) {
-//			throw new IllegalStateException(
-//					"Unexpected result size: " + count + " (expected " + expectedResultCount + ')');
-//		}
+
+		if(nodeCount == 50 && cliqueSize ==3 && queryCliqueSize ==3 ) {
+			if(count != 117600){
+				System.out.println("HERE");
+				throw  new IllegalStateException("Unexpected result size: " + count + " (expected " + 117600 + ')');
+			}
+		}
 		return count;
 	}
 

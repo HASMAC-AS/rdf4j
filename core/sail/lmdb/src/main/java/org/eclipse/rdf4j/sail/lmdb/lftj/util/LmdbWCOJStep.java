@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			return new CloseableIteratorIteration<>(fallback.evaluate(bindings));
 		}
 
-		ValueStoreFacade valueStore = new ValueStoreFacade(snapshot);
+		ValueStoreFacade valueStore = new ValueStoreFacade(((LmdbSailStore.LmdbSailDataset) snapshot));
 		List<QuadPattern> quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
 		LFTJExecutor executor = new LFTJExecutor(valueStore.txnId(), valueStore.indexHandles());
 
@@ -124,63 +125,32 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 	}
 
 	private static final class ValueStoreFacade {
-		private final Object snapshot;
+		private final LmdbSailStore.LmdbSailDataset snapshot;
 
-		ValueStoreFacade(Object snapshot) {
+		ValueStoreFacade(LmdbSailStore.LmdbSailDataset snapshot) {
 			this.snapshot = snapshot;
 		}
 
 		long txnId() throws QueryEvaluationException {
-			Object txn = invoke(snapshot, "getTxn");
-			Object id = invoke(txn, "get");
-			return ((Number) id).longValue();
+			return snapshot.getTxn().get();
 		}
 
 		@SuppressWarnings("unchecked")
 		Map<QuadKeyOrder, Integer> indexHandles() throws QueryEvaluationException {
-			return (Map<QuadKeyOrder, Integer>) invoke(snapshot, "indexHandles");
+			return snapshot.indexHandles();
 		}
 
 		long getId(Value value) throws QueryEvaluationException {
-			Object valueStore = valueStore();
-			Object id = invoke(valueStore, "getId", Value.class, value);
-			return ((Number) id).longValue();
+			try {
+				return snapshot.valueStore().getId(value);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		Value getValue(long id) throws IOException {
-			try {
-				Object valueStore = valueStore();
-				return (Value) invoke(valueStore, "getValue", long.class, id);
-			} catch (QueryEvaluationException e) {
-				throw new IOException(e);
-			}
+			return snapshot.valueStore().getValue(id);
 		}
 
-		private Object valueStore() throws QueryEvaluationException {
-			return invoke(snapshot, "valueStore");
-		}
-
-		private Object invoke(Object target, String method, Class<?> paramType, Object arg)
-				throws QueryEvaluationException {
-			return invoke(target, method, new Class<?>[] { paramType }, new Object[] { arg });
-		}
-
-		private Object invoke(Object target, String method) throws QueryEvaluationException {
-			return invoke(target, method, new Class<?>[0], new Object[0]);
-		}
-
-		private Object invoke(Object target, String method, Class<?>[] paramTypes, Object[] args)
-				throws QueryEvaluationException {
-			if (target == null) {
-				throw new QueryEvaluationException("LMDB snapshot unavailable for WCOJ evaluation");
-			}
-			try {
-				var m = target.getClass().getMethod(method, paramTypes);
-				m.setAccessible(true);
-				return m.invoke(target, args);
-			} catch (Exception e) {
-				throw new QueryEvaluationException(e);
-			}
-		}
 	}
 }
