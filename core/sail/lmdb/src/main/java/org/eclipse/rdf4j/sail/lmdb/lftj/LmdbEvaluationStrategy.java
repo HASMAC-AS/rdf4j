@@ -23,6 +23,8 @@ import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceRes
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategy;
+import org.eclipse.rdf4j.sail.lmdb.DatasetIntrospection;
+import org.eclipse.rdf4j.sail.lmdb.LmdbWCOJStep;
 
 /**
  * Evaluation strategy that recognizes {@link LmdbWCOJ} placeholders.
@@ -39,8 +41,13 @@ public class LmdbEvaluationStrategy extends StrictEvaluationStrategy {
 	@Override
 	public QueryEvaluationStep precompile(TupleExpr expr, QueryEvaluationContext context) {
 		if (expr instanceof LmdbWCOJ) {
-			TupleExpr delegate = rebuildJoin((LmdbWCOJ) expr);
-			return super.precompile(delegate, context);
+			Object snapshot = DatasetIntrospection.tryExtractDataset(tripleSource);
+			if (snapshot != null) {
+				return new LmdbWCOJStep((LmdbWCOJ) expr, snapshot, context, this::rebuildJoin, this);
+			} else {
+				TupleExpr delegate = rebuildJoin((LmdbWCOJ) expr);
+				return super.precompile(delegate, context);
+			}
 		}
 		return super.precompile(expr, context);
 	}
