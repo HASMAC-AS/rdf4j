@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import org.eclipse.rdf4j.sail.lmdb.Varint;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.lmdb.MDBVal;
@@ -33,6 +34,9 @@ import org.lwjgl.util.lmdb.MDBVal;
  * LMDB-backed implementation of {@link TrieIterator} for quad indexes.
  */
 public class LMDBTrieIterator implements TrieIterator, Closeable {
+
+	private static final int MAX_ENCODED_KEY_LENGTH = Varint
+			.calcListLengthUnsigned(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
 
 	private final long cursor;
 
@@ -46,7 +50,7 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 
 	private final MDBVal dataVal = MDBVal.malloc();
 
-	private final ByteBuffer seekKeyBuffer = ByteBuffer.allocateDirect(Long.BYTES * 4);
+	private final ByteBuffer seekKeyBuffer = ByteBuffer.allocateDirect(MAX_ENCODED_KEY_LENGTH);
 
 	private boolean end = true;
 

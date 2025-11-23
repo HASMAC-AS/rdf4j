@@ -17,6 +17,8 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
+import org.eclipse.rdf4j.sail.lmdb.Varint;
+import org.eclipse.rdf4j.sail.lmdb.util.IndexKeyWriters;
 import org.junit.jupiter.api.Test;
 
 class QuadKeyEncodingTest {
@@ -34,6 +36,41 @@ class QuadKeyEncodingTest {
 		byte[] psocBytes = QuadKeyEncoding.encode(key, psoc);
 		QuadKey decodedPsoc = QuadKeyEncoding.decode(psocBytes, psoc);
 		assertThat(decodedPsoc).isEqualTo(key);
+	}
+
+	@Test
+	void decodesVarintKeysWrittenByTripleStoreKeyWriter() {
+		QuadKey key = new QuadKey(1L, 2L, 3L, 4L);
+		QuadKeyOrder spoc = QuadKeyOrder.of(Slot.S, Slot.P, Slot.O, Slot.C);
+
+		ByteBuffer encoded = ByteBuffer
+				.allocate(Varint.calcListLengthUnsigned(key.s(), key.p(), key.o(), key.c()));
+		IndexKeyWriters.forFieldSeq("spoc").write(encoded, key.s(), key.p(), key.o(), key.c(), false);
+		encoded.flip();
+
+		byte[] keyBytes = new byte[encoded.remaining()];
+		encoded.get(keyBytes);
+
+		QuadKey decoded = QuadKeyEncoding.decode(keyBytes, spoc);
+
+		assertThat(decoded).isEqualTo(key);
+	}
+
+	@Test
+	void encodeUsesSameVarintLayoutAsTripleStore() {
+		QuadKey key = new QuadKey(10L, 20L, 30L, 40L);
+		QuadKeyOrder order = QuadKeyOrder.of(Slot.P, Slot.O, Slot.S, Slot.C);
+
+		ByteBuffer expected = ByteBuffer
+				.allocate(Varint.calcListLengthUnsigned(key.p(), key.o(), key.s(), key.c()));
+		IndexKeyWriters.forFieldSeq("posc").write(expected, key.s(), key.p(), key.o(), key.c(), false);
+		expected.flip();
+		byte[] expectedBytes = new byte[expected.remaining()];
+		expected.get(expectedBytes);
+
+		byte[] actual = QuadKeyEncoding.encode(key, order);
+
+		assertThat(actual).containsExactly(expectedBytes);
 	}
 
 	@Test
@@ -67,10 +104,11 @@ class QuadKeyEncodingTest {
 		byte[] bytes = QuadKeyEncoding.encode(key, psoc);
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-		assertThat(buffer.getLong()).isEqualTo(key.p());
-		assertThat(buffer.getLong()).isEqualTo(key.s());
-		assertThat(buffer.getLong()).isEqualTo(key.o());
-		assertThat(buffer.getLong()).isEqualTo(key.c());
+		assertThat(Varint.readUnsigned(buffer)).isEqualTo(key.p());
+		assertThat(Varint.readUnsigned(buffer)).isEqualTo(key.s());
+		assertThat(Varint.readUnsigned(buffer)).isEqualTo(key.o());
+		assertThat(Varint.readUnsigned(buffer)).isEqualTo(key.c());
+		assertThat(buffer.hasRemaining()).isFalse();
 	}
 
 	@Test

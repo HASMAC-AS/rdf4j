@@ -13,6 +13,8 @@ package org.eclipse.rdf4j.sail.lmdb.lftj;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import org.eclipse.rdf4j.sail.lmdb.Varint;
+
 /**
  * Utility methods for encoding and decoding quad keys according to a {@link QuadKeyOrder}.
  */
@@ -25,10 +27,12 @@ public final class QuadKeyEncoding {
 	public static byte[] encode(QuadKey key, QuadKeyOrder order) {
 		Objects.requireNonNull(key, "key");
 		Objects.requireNonNull(order, "order");
-		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 4);
-		for (int i = 0; i < 4; i++) {
-			Slot slot = order.positionAt(i);
-			buffer.putLong(componentForRole(key, slot));
+		long[] orderedComponents = orderedComponents(key, order);
+		ByteBuffer buffer = ByteBuffer.allocate(
+				Varint.calcListLengthUnsigned(orderedComponents[0], orderedComponents[1], orderedComponents[2],
+						orderedComponents[3]));
+		for (long component : orderedComponents) {
+			Varint.writeUnsigned(buffer, component);
 		}
 		return buffer.array();
 	}
@@ -36,16 +40,13 @@ public final class QuadKeyEncoding {
 	public static QuadKey decode(byte[] bytes, QuadKeyOrder order) {
 		Objects.requireNonNull(bytes, "bytes");
 		Objects.requireNonNull(order, "order");
-		if (bytes.length != Long.BYTES * 4) {
-			throw new IllegalArgumentException("QuadKey encoding must be 32 bytes");
-		}
+		ByteBuffer buffer = ByteBuffer.wrap(bytes);
 		long s = 0;
 		long p = 0;
 		long o = 0;
 		long c = 0;
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
 		for (int i = 0; i < 4; i++) {
-			long value = buffer.getLong();
+			long value = Varint.readUnsigned(buffer);
 			Slot slot = order.positionAt(i);
 			switch (slot) {
 			case S:
@@ -64,7 +65,18 @@ public final class QuadKeyEncoding {
 				throw new IllegalStateException("Unexpected slot: " + slot);
 			}
 		}
+		if (buffer.hasRemaining()) {
+			throw new IllegalArgumentException("QuadKey encoding contains trailing bytes");
+		}
 		return new QuadKey(s, p, o, c);
+	}
+
+	private static long[] orderedComponents(QuadKey key, QuadKeyOrder order) {
+		long[] components = new long[4];
+		for (int i = 0; i < 4; i++) {
+			components[i] = componentForRole(key, order.positionAt(i));
+		}
+		return components;
 	}
 
 	public static boolean matchesPrefix(QuadKey key, Prefix prefix) {
