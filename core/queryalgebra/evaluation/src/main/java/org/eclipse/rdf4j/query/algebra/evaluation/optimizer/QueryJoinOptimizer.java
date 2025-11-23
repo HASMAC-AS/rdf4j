@@ -275,7 +275,40 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 						}
 
 						TupleExpr tupleExpr = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
-						this.currentHighestCost = Math.max(currentHighestCost, tupleExpr.getCostEstimate());
+						double tupleCost = ensureCostEstimate(tupleExpr, cardinalityMap, varsMap, varFreqMap);
+
+						Set<String> tupleBindingNames = tupleExpr.getBindingNames();
+						Set<String> nonConstantBoundVars = getNonConstantBindingNames(boundVars);
+						Set<String> tupleNonConstantNames = getNonConstantVarNames(varsMap.get(tupleExpr));
+						if (!nonConstantBoundVars.isEmpty() && !tupleNonConstantNames.isEmpty()
+								&& Collections.disjoint(nonConstantBoundVars, tupleNonConstantNames)) {
+							TupleExpr partner = selectBestConnectingTupleExpr(tupleExpr, joinArgs, cardinalityMap,
+									varsMap,
+									varFreqMap);
+
+							if (partner != null) {
+								double partnerCost = ensureCostEstimate(partner, cardinalityMap, varsMap, varFreqMap);
+								this.currentHighestCost = Math.max(currentHighestCost,
+										Math.max(tupleCost, partnerCost));
+
+								joinArgs.remove(tupleExpr);
+								joinArgs.remove(partner);
+
+								tupleExpr.visit(this);
+								partner.visit(this);
+
+								Join join = new Join(tupleExpr, partner);
+								join.setVariableScopeChange(true);
+								orderedJoinArgs.addLast(join);
+
+								boundVars.addAll(tupleBindingNames);
+								boundVars.addAll(partner.getBindingNames());
+
+								continue;
+							}
+						}
+
+						this.currentHighestCost = Math.max(currentHighestCost, tupleCost);
 
 						joinArgs.remove(tupleExpr);
 						orderedJoinArgs.addLast(tupleExpr);
@@ -283,7 +316,7 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 						// Recursively optimize join arguments
 						tupleExpr.visit(this);
 
-						boundVars.addAll(tupleExpr.getBindingNames());
+						boundVars.addAll(tupleBindingNames);
 					}
 				}
 
@@ -762,6 +795,21 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 			for (Var var : vars) {
 				if (!var.hasValue() && var.getName() != null) {
 					names.add(var.getName());
+				}
+			}
+
+			return names;
+		}
+
+		private Set<String> getNonConstantBindingNames(Set<String> bindingNames) {
+			if (bindingNames.isEmpty()) {
+				return Collections.emptySet();
+			}
+
+			Set<String> names = new HashSet<>(bindingNames.size());
+			for (String bindingName : bindingNames) {
+				if (!bindingName.startsWith("_const_")) {
+					names.add(bindingName);
 				}
 			}
 
