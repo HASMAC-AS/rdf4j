@@ -11,6 +11,8 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -31,7 +33,9 @@ import org.eclipse.rdf4j.model.Triple;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
+import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.Var;
@@ -43,11 +47,6 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.SailDataset;
 import org.eclipse.rdf4j.sail.base.SailDatasetTripleSource;
-import org.eclipse.rdf4j.sail.lmdb.LmdbDatasetProvider;
-import org.eclipse.rdf4j.sail.lmdb.LmdbDatasetSnapshot;
-import org.eclipse.rdf4j.sail.lmdb.LmdbWCOJStep;
-import org.eclipse.rdf4j.sail.lmdb.TxnManager;
-import org.eclipse.rdf4j.sail.lmdb.ValueStore;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbEvaluationStrategy;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbWCOJ;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
@@ -97,6 +96,35 @@ class LmdbEvaluationStrategyWCOJTest {
 
 		assertEquals(LmdbWCOJStep.class.getSimpleName(), step.getClass().getSimpleName(),
 				"Delegated union datasets should still expose LMDB snapshot for WCOJ");
+	}
+
+	@Test
+	void wcojStepEvaluationIsLazyForInvalidIndexMetadata() throws Exception {
+		LmdbDatasetSnapshot snapshot = new EmptyIndexSnapshot();
+
+		LmdbWCOJ wcoj = new LmdbWCOJ(
+				List.of(new StatementPattern(new Var("s"), new Var("p"), new Var("o"))));
+
+		LmdbWCOJStep step = new LmdbWCOJStep(wcoj,
+				List.of(snapshot),
+				new QueryEvaluationContext.Minimal((Literal) null, (Dataset) null, (Comparator<Value>) null),
+				ignored -> wcoj,
+				null);
+
+		CloseableIteration<BindingSet> iteration;
+		try {
+			iteration = step.evaluate(null);
+		} catch (QueryEvaluationException e) {
+			fail("evaluate() should not access LMDB indexes eagerly", e);
+			return;
+		}
+
+		try {
+			assertFalse(iteration.hasNext(),
+					"Iterator should be empty when no LMDB index metadata is available");
+		} finally {
+			iteration.close();
+		}
 	}
 
 	private static final class StubTripleSource implements TripleSource, LmdbDatasetProvider {
@@ -158,6 +186,36 @@ class LmdbEvaluationStrategyWCOJTest {
 					return true;
 				}
 			};
+		}
+	}
+
+	private static final class EmptyIndexSnapshot implements LmdbDatasetSnapshot {
+
+		private final TxnManager.Txn txn;
+
+		EmptyIndexSnapshot() {
+			TxnManager txnManager = new TxnManager(0L, TxnManager.Mode.NONE);
+			this.txn = txnManager.createTxn(0L);
+		}
+
+		@Override
+		public TxnManager.Txn getTxn() {
+			return txn;
+		}
+
+		@Override
+		public Map<QuadKeyOrder, Integer> indexHandles() {
+			return Collections.emptyMap();
+		}
+
+		@Override
+		public ValueStore valueStore() {
+			return null;
+		}
+
+		@Override
+		public boolean isExplicit() {
+			return true;
 		}
 	}
 

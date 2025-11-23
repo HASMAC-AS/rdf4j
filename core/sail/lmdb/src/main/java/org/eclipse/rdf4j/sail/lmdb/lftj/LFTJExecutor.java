@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 /**
@@ -37,12 +38,17 @@ public final class LFTJExecutor {
 	}
 
 	public List<Map<String, Long>> evaluate(List<QuadPattern> patterns) throws IOException {
+		List<Map<String, Long>> results = new ArrayList<>();
+		evaluate(patterns, results::add);
+		return results;
+	}
+
+	public void evaluate(List<QuadPattern> patterns, Consumer<Map<String, Long>> consumer) throws IOException {
 		Objects.requireNonNull(patterns, "patterns");
+		Objects.requireNonNull(consumer, "consumer");
 		List<String> variableOrder = chooseVariableOrder(patterns);
 		Map<QuadPattern, QuadKeyOrder> chosenOrders = chooseOrders(patterns, variableOrder);
-		List<Map<String, Long>> results = new ArrayList<>();
-		recurse(variableOrder, 0, patterns, chosenOrders, new HashMap<>(), results);
-		return results;
+		recurse(variableOrder, 0, patterns, chosenOrders, new HashMap<>(), consumer);
 	}
 
 	public static List<String> chooseVariableOrder(List<QuadPattern> patterns) {
@@ -72,9 +78,9 @@ public final class LFTJExecutor {
 
 	private void recurse(List<String> variableOrder, int depth, List<QuadPattern> patterns,
 			Map<QuadPattern, QuadKeyOrder> chosenOrders, Map<String, Long> bindings,
-			List<Map<String, Long>> results) throws IOException {
+			Consumer<Map<String, Long>> consumer) throws IOException {
 		if (depth >= variableOrder.size()) {
-			results.add(Map.copyOf(bindings));
+			consumer.accept(Map.copyOf(bindings));
 			return;
 		}
 
@@ -102,7 +108,7 @@ public final class LFTJExecutor {
 				leapfrog(iterators, value -> {
 					bindings.put(variable, value);
 					try {
-						recurse(variableOrder, depth + 1, patterns, chosenOrders, bindings, results);
+						recurse(variableOrder, depth + 1, patterns, chosenOrders, bindings, consumer);
 					} catch (IOException e) {
 						throw new EvaluationException(e);
 					}
