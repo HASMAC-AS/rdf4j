@@ -50,7 +50,15 @@ public final class LFTJExecutor {
 		Map<QuadPattern, QuadKeyOrder> chosenOrders = chooseOrders(patterns, variableOrder);
 		Map<String, Integer> variableOrderIndex = indexVariableOrder(variableOrder);
 		Map<String, List<QuadPattern>> participating = groupByVariable(patterns);
-		recurse(variableOrder, variableOrderIndex, participating, 0, chosenOrders, new HashMap<>(), consumer);
+		Map<IteratorKey, LMDBTrieIterator> iteratorCache = new HashMap<>();
+		try {
+			recurse(variableOrder, variableOrderIndex, participating, 0, chosenOrders, iteratorCache, new HashMap<>(),
+					consumer);
+		} finally {
+			for (LMDBTrieIterator iterator : iteratorCache.values()) {
+				iterator.close();
+			}
+		}
 	}
 
 	public static List<String> chooseVariableOrder(List<QuadPattern> patterns,
@@ -114,7 +122,8 @@ public final class LFTJExecutor {
 
 	private void recurse(List<String> variableOrder, Map<String, Integer> variableOrderIndex,
 			Map<String, List<QuadPattern>> participatingByVariable, int depth,
-			Map<QuadPattern, QuadKeyOrder> chosenOrders, Map<String, Long> bindings,
+			Map<QuadPattern, QuadKeyOrder> chosenOrders, Map<IteratorKey, LMDBTrieIterator> iteratorCache,
+			Map<String, Long> bindings,
 			Consumer<Map<String, Long>> consumer) throws IOException {
 		if (depth >= variableOrder.size()) {
 			consumer.accept(Map.copyOf(bindings));
@@ -128,42 +137,67 @@ public final class LFTJExecutor {
 		}
 		int currentIndex = variableOrderIndex.get(variable);
 		List<LMDBTrieIterator> iterators = new ArrayList<>(participating.size());
-		try {
-			for (QuadPattern pattern : participating) {
-				QuadKeyOrder order = chosenOrders.get(pattern);
-				Integer dbi = indexMapping.get(order);
-				if (dbi == null) {
-					throw new IllegalStateException("No DBI registered for order " + order);
-				}
-				Slot slot = pattern.variableSlots().get(variable);
-				Prefix prefix = PrefixBuilder.buildPrefix(pattern, variableOrderIndex, currentIndex, bindings);
-				LMDBTrieIterator iterator = new LMDBTrieIterator(txn, dbi.intValue(), order, slot);
-				iterator.open(prefix);
-				if (iterator.atEnd()) {
-					iterator.close();
-					return;
-				}
-				iterators.add(iterator);
+		for (QuadPattern pattern : participating) {
+			QuadKeyOrder order = chosenOrders.get(pattern);
+			Integer dbi = indexMapping.get(order);
+			if (dbi == null) {
+				throw new IllegalStateException("No DBI registered for order " + order);
 			}
+			Slot slot = pattern.variableSlots().get(variable);
+			Prefix prefix = PrefixBuilder.buildPrefix(pattern, variableOrderIndex, currentIndex, bindings);
+			IteratorKey key = new IteratorKey(pattern, slot);
+			LMDBTrieIterator iterator = iteratorCache.get(key);
+			if (iterator == null) {
+				iterator = new LMDBTrieIterator(txn, dbi.intValue(), order, slot);
+				iteratorCache.put(key, iterator);
+			}
+			iterator.open(prefix);
+			if (iterator.atEnd()) {
+				return;
+			}
+			iterators.add(iterator);
+		}
 
-			try {
-				leapfrog(iterators, value -> {
-					bindings.put(variable, value);
-					try {
-						recurse(variableOrder, variableOrderIndex, participatingByVariable, depth + 1, chosenOrders,
-								bindings, consumer);
-					} catch (IOException e) {
-						throw new EvaluationException(e);
-					}
-				});
-			} catch (EvaluationException e) {
-				throw e.ioException;
+		try {
+			leapfrog(iterators, value -> {
+				bindings.put(variable, value);
+				try {
+					recurse(variableOrder, variableOrderIndex, participatingByVariable, depth + 1, chosenOrders,
+							iteratorCache, bindings, consumer);
+				} catch (IOException e) {
+					throw new EvaluationException(e);
+				}
+			});
+		} catch (EvaluationException e) {
+			throw e.ioException;
+		}
+		bindings.remove(variable);
+	}
+
+	private static final class IteratorKey {
+		private final QuadPattern pattern;
+		private final Slot slot;
+
+		IteratorKey(QuadPattern pattern, Slot slot) {
+			this.pattern = Objects.requireNonNull(pattern, "pattern");
+			this.slot = Objects.requireNonNull(slot, "slot");
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
 			}
-			bindings.remove(variable);
-		} finally {
-			for (LMDBTrieIterator iterator : iterators) {
-				iterator.close();
+			if (obj == null || getClass() != obj.getClass()) {
+				return false;
 			}
+			IteratorKey other = (IteratorKey) obj;
+			return pattern.equals(other.pattern) && slot == other.slot;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(pattern, slot);
 		}
 	}
 
