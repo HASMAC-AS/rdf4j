@@ -11,10 +11,10 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
@@ -30,7 +30,6 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LFTJExecutor;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbWCOJ;
-import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadPattern;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadPatternTerm;
 import org.eclipse.rdf4j.sail.lmdb.lftj.Slot;
@@ -41,16 +40,16 @@ import org.eclipse.rdf4j.sail.lmdb.lftj.Slot;
 public class LmdbWCOJStep implements QueryEvaluationStep {
 
 	private final LmdbWCOJ wcoj;
-	private final Object snapshot;
+	private final List<LmdbDatasetSnapshot> snapshots;
 	private final QueryEvaluationContext context;
 	private final Function<LmdbWCOJ, TupleExpr> rebuildJoin;
 	private final EvaluationStrategy strategy;
 
-	public LmdbWCOJStep(LmdbWCOJ wcoj, Object snapshot, QueryEvaluationContext context,
+	public LmdbWCOJStep(LmdbWCOJ wcoj, List<LmdbDatasetSnapshot> snapshots, QueryEvaluationContext context,
 			Function<LmdbWCOJ, TupleExpr> rebuildJoin,
 			EvaluationStrategy strategy) {
 		this.wcoj = wcoj;
-		this.snapshot = snapshot;
+		this.snapshots = List.copyOf(Objects.requireNonNull(snapshots, "snapshots"));
 		this.context = context;
 		this.rebuildJoin = rebuildJoin;
 		this.strategy = strategy;
@@ -65,28 +64,22 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			return new CloseableIteratorIteration<>(fallback.evaluate(bindings));
 		}
 
-		ValueStoreFacade valueStore = new ValueStoreFacade(((LmdbSailStore.LmdbSailDataset) snapshot));
-		List<QuadPattern> quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
-		LFTJExecutor executor = new LFTJExecutor(valueStore.txnId(), valueStore.indexHandles());
+		List<BindingSet> converted = new ArrayList<>();
+		for (LmdbDatasetSnapshot snapshot : snapshots) {
+			ValueStoreFacade valueStore = new ValueStoreFacade(snapshot);
+			List<QuadPattern> quadPatterns = toQuadPatterns(wcoj.getPatterns(), valueStore);
+			LFTJExecutor executor = new LFTJExecutor(valueStore.txnId(), snapshot.indexHandles());
 
-		List<Map<String, Long>> raw;
-		try {
-			raw = executor.evaluate(quadPatterns);
-		} catch (IOException e) {
-			throw new QueryEvaluationException(e);
-		}
-
-		List<BindingSet> converted = new ArrayList<>(raw.size());
-		for (Map<String, Long> row : raw) {
-			MapBindingSet bs = new MapBindingSet(row.size());
-			for (Map.Entry<String, Long> entry : row.entrySet()) {
-				try {
-					bs.addBinding(entry.getKey(), valueStore.getValue(entry.getValue()));
-				} catch (IOException e) {
-					throw new QueryEvaluationException(e);
-				}
+			List<Map<String, Long>> raw;
+			try {
+				raw = executor.evaluate(quadPatterns);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
 			}
-			converted.add(bs);
+
+			for (Map<String, Long> row : raw) {
+				converted.add(toBindingSet(row, valueStore));
+			}
 		}
 
 		return new CloseableIteratorIteration<>(converted.iterator()) {
@@ -95,6 +88,19 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 				return super.next();
 			}
 		};
+	}
+
+	private MapBindingSet toBindingSet(Map<String, Long> row, ValueStoreFacade valueStore)
+			throws QueryEvaluationException {
+		MapBindingSet bs = new MapBindingSet(row.size());
+		for (Map.Entry<String, Long> entry : row.entrySet()) {
+			try {
+				bs.addBinding(entry.getKey(), valueStore.getValue(entry.getValue()));
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
+			}
+		}
+		return bs;
 	}
 
 	private List<QuadPattern> toQuadPatterns(List<StatementPattern> patterns, ValueStoreFacade valueStore)
@@ -125,26 +131,25 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 	}
 
 	private static final class ValueStoreFacade {
-		private final LmdbSailStore.LmdbSailDataset snapshot;
+		private final LmdbDatasetSnapshot snapshot;
 
-		ValueStoreFacade(LmdbSailStore.LmdbSailDataset snapshot) {
+		ValueStoreFacade(LmdbDatasetSnapshot snapshot) {
 			this.snapshot = snapshot;
 		}
 
 		long txnId() throws QueryEvaluationException {
-			return snapshot.getTxn().get();
-		}
-
-		@SuppressWarnings("unchecked")
-		Map<QuadKeyOrder, Integer> indexHandles() throws QueryEvaluationException {
-			return snapshot.indexHandles();
+			try {
+				return snapshot.getTxn().get();
+			} catch (Exception e) {
+				throw new QueryEvaluationException(e);
+			}
 		}
 
 		long getId(Value value) throws QueryEvaluationException {
 			try {
 				return snapshot.valueStore().getId(value);
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new QueryEvaluationException(e);
 			}
 		}
 

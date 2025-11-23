@@ -51,8 +51,8 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
  */
 @Fork(1)
 @State(Scope.Benchmark)
-@Warmup(iterations = 1, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 1, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class LmdbCliqueBenchmark {

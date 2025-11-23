@@ -18,7 +18,7 @@ import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
 /**
  * Snapshot-specific accessors exposed by {@link LmdbSailStore} datasets to LMDB-aware evaluation components.
  */
-interface LmdbDatasetSnapshot {
+public interface LmdbDatasetSnapshot {
 
 	Txn getTxn();
 

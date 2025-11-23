@@ -40,12 +40,14 @@ import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
-import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategy;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.SailDataset;
 import org.eclipse.rdf4j.sail.base.SailDatasetTripleSource;
 import org.eclipse.rdf4j.sail.lmdb.LmdbDatasetProvider;
+import org.eclipse.rdf4j.sail.lmdb.LmdbDatasetSnapshot;
 import org.eclipse.rdf4j.sail.lmdb.LmdbWCOJStep;
+import org.eclipse.rdf4j.sail.lmdb.TxnManager;
+import org.eclipse.rdf4j.sail.lmdb.ValueStore;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbEvaluationStrategy;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbWCOJ;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
@@ -159,25 +161,24 @@ class LmdbEvaluationStrategyWCOJTest {
 		}
 	}
 
-	private static final class StubLmdbDataset implements SailDataset {
+	private static final class StubLmdbDataset implements SailDataset, LmdbDatasetSnapshot {
 
-		public Object getTxn() {
-			return new Object() {
-				@SuppressWarnings("unused")
-				public long get() {
-					return 1L;
-				}
-			};
+		@Override
+		public TxnManager.Txn getTxn() {
+			return null;
 		}
 
+		@Override
 		public Map<QuadKeyOrder, Integer> indexHandles() {
 			return Map.of();
 		}
 
-		public Object valueStore() {
+		@Override
+		public ValueStore valueStore() {
 			return null;
 		}
 
+		@Override
 		public boolean isExplicit() {
 			return true;
 		}
