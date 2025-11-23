@@ -82,7 +82,6 @@ class LmdbCliqueBenchmarkTest {
 				"}");
 
 		assertEquals(expected, query);
-		benchmark.tearDown();
 	}
 
 	@Test
@@ -97,7 +96,6 @@ class LmdbCliqueBenchmarkTest {
 		benchmark.setup();
 
 		Explanation explanation = benchmark.explainCliqueQuery();
-		benchmark.tearDown();
 
 		System.out.println(explanation);
 
