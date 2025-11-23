@@ -183,7 +183,18 @@ fi
 for arg in "${jvm_args[@]}"; do
         jmh_args+=("-jvmArgsAppend" "${arg}")
 done
+# Normalize JMH args: split any combined tokens like "-p foo=bar" so JMH sees "-p" "foo=bar".
+normalized_jmh_extra_args=()
 for arg in "${jmh_extra_args[@]}"; do
+        if [[ "${arg}" == *" "* ]]; then
+                # shellcheck disable=SC2206
+                parts=(${arg})
+                normalized_jmh_extra_args+=("${parts[@]}")
+        else
+                normalized_jmh_extra_args+=("${arg}")
+        fi
+done
+for arg in "${normalized_jmh_extra_args[@]}"; do
         jmh_args+=("${arg}")
 done
 

@@ -36,6 +36,7 @@ import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.lftj.IndexSelector;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LFTJExecutor;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LMDBTrieIterator;
+import org.eclipse.rdf4j.sail.lmdb.lftj.LeapfrogIteratorCursor;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LmdbWCOJ;
 import org.eclipse.rdf4j.sail.lmdb.lftj.Prefix;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
@@ -43,11 +44,15 @@ import org.eclipse.rdf4j.sail.lmdb.lftj.QuadPattern;
 import org.eclipse.rdf4j.sail.lmdb.lftj.QuadPatternTerm;
 import org.eclipse.rdf4j.sail.lmdb.lftj.Slot;
 import org.eclipse.rdf4j.sail.lmdb.lftj.TrieIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Query evaluation step that executes an {@link LmdbWCOJ} using {@link LFTJExecutor}.
  */
 public class LmdbWCOJStep implements QueryEvaluationStep {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(LmdbWCOJStep.class);
 
 	private final LmdbWCOJ wcoj;
 	private final List<LmdbDatasetSnapshot> snapshots;
@@ -234,7 +239,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 				this.valueStore = valueStore;
 				this.patterns = patterns;
 				this.indexHandles = indexHandles;
-				this.variableOrder = LFTJExecutor.chooseVariableOrder(patterns);
+				this.variableOrder = LFTJExecutor.chooseVariableOrder(patterns, indexHandles.keySet());
 				this.variableIndex = indexByName(variableOrder);
 				this.participatingByDepth = groupPatternsByVariable(patterns, variableOrder);
 				this.bindingValues = new long[variableOrder.size()];
@@ -352,7 +357,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 						iters.add(iterator);
 					}
 					iterators = iters;
-					cursor = new LeapfrogCursor(iterators);
+					cursor = new LeapfrogCursor(variable, iterators);
 					if (!cursor.hasValue()) {
 						exhausted = true;
 					}
@@ -378,82 +383,33 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			}
 
 			private final class LeapfrogCursor {
-				private final List<LMDBTrieIterator> iterators;
-				private final int size;
-				private int p;
-				private boolean atValue;
-				private long current;
-				private boolean exhausted;
+				private final LeapfrogIteratorCursor cursor;
+				private final List<Slot> slots;
+				private final String frameVariable;
 
-				LeapfrogCursor(List<LMDBTrieIterator> iterators) {
-					this.iterators = new ArrayList<>(iterators);
-					this.size = this.iterators.size();
-					this.iterators.sort(java.util.Comparator.comparingLong(TrieIterator::key));
-					if (this.iterators.isEmpty()) {
-						exhausted = true;
-						return;
+				LeapfrogCursor(String frameVariable, List<LMDBTrieIterator> iterators) {
+					this.cursor = new LeapfrogIteratorCursor(iterators);
+					this.slots = new ArrayList<>(iterators.size());
+					for (LMDBTrieIterator iterator : iterators) {
+						this.slots.add(iterator.slot());
 					}
-					for (TrieIterator iterator : this.iterators) {
-						if (iterator.atEnd()) {
-							exhausted = true;
-							return;
-						}
+					this.frameVariable = frameVariable;
+					if (cursor.sawStalledSeek() && LOGGER.isDebugEnabled()) {
+						LOGGER.debug("LFTJ leapfrog stalled on variable {} with slots {}", frameVariable,
+								slots);
 					}
-					p = 0;
-					leapfrogSearch();
 				}
 
 				boolean hasValue() {
-					return atValue && !exhausted;
+					return cursor.hasValue();
 				}
 
 				long current() {
-					if (!atValue) {
-						throw new IllegalStateException("No current value");
-					}
-					return current;
+					return cursor.current();
 				}
 
 				void advance() {
-					if (exhausted) {
-						return;
-					}
-					LMDBTrieIterator iterator = iterators.get(p);
-					iterator.next();
-					if (iterator.atEnd()) {
-						exhausted = true;
-						atValue = false;
-						return;
-					}
-					leapfrogSearch();
-				}
-
-				private void leapfrogSearch() {
-					atValue = false;
-					while (true) {
-						int next = (p + 1) % size;
-						TrieIterator currentIterator = iterators.get(p);
-						TrieIterator nextIterator = iterators.get(next);
-						long key = currentIterator.key();
-						long nextKey = nextIterator.key();
-
-						if (key == nextKey) {
-							p = next;
-							if (p == 0) {
-								current = key;
-								atValue = true;
-								return;
-							}
-						} else if (key < nextKey) {
-							currentIterator.seek(nextKey);
-							if (currentIterator.atEnd()) {
-								exhausted = true;
-								return;
-							}
-						} else {
-							p = next;
-						}
-					}
+					cursor.advance();
 				}
 			}
 

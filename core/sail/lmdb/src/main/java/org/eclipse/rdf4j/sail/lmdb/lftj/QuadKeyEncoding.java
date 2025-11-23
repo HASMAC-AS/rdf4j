@@ -84,55 +84,72 @@ public final class QuadKeyEncoding {
 	public static QuadKey decode(byte[] bytes, QuadKeyOrder order) {
 		Objects.requireNonNull(bytes, "bytes");
 		Objects.requireNonNull(order, "order");
+		return decode(bytes, 0, bytes.length, order);
+	}
+
+	public static QuadKey decode(byte[] bytes, int offset, int length, QuadKeyOrder order) {
+		Objects.requireNonNull(bytes, "bytes");
+		Objects.requireNonNull(order, "order");
+		if (offset < 0 || length < 0 || offset + length > bytes.length) {
+			throw new IllegalArgumentException("Invalid offset/length for key decode");
+		}
+		ByteBuffer buffer = ByteBuffer.wrap(bytes, offset, length);
+		return decode(buffer, order);
+	}
+
+	public static QuadKey decode(ByteBuffer buffer, QuadKeyOrder order) {
+		Objects.requireNonNull(buffer, "buffer");
+		Objects.requireNonNull(order, "order");
+		ByteBuffer slice = buffer.slice();
 		switch (order.fieldSequence()) {
 		case "spoc":
-			return decodeSpoc(bytes);
+			return decodeSpoc(slice);
 		case "spco":
-			return decodeSpco(bytes);
+			return decodeSpco(slice);
 		case "sopc":
-			return decodeSopc(bytes);
+			return decodeSopc(slice);
 		case "socp":
-			return decodeSocp(bytes);
+			return decodeSocp(slice);
 		case "scpo":
-			return decodeScpo(bytes);
+			return decodeScpo(slice);
 		case "scop":
-			return decodeScop(bytes);
+			return decodeScop(slice);
 		case "psoc":
-			return decodePsoc(bytes);
+			return decodePsoc(slice);
 		case "psco":
-			return decodePsco(bytes);
+			return decodePsco(slice);
 		case "posc":
-			return decodePosc(bytes);
+			return decodePosc(slice);
 		case "pocs":
-			return decodePocs(bytes);
+			return decodePocs(slice);
 		case "pcso":
-			return decodePcso(bytes);
+			return decodePcso(slice);
 		case "pcos":
-			return decodePcos(bytes);
+			return decodePcos(slice);
 		case "ospc":
-			return decodeOspc(bytes);
+			return decodeOspc(slice);
 		case "oscp":
-			return decodeOscp(bytes);
+			return decodeOscp(slice);
 		case "opsc":
-			return decodeOpsc(bytes);
+			return decodeOpsc(slice);
 		case "opcs":
-			return decodeOpcs(bytes);
+			return decodeOpcs(slice);
 		case "ocsp":
-			return decodeOcsp(bytes);
+			return decodeOcsp(slice);
 		case "ocps":
-			return decodeOcps(bytes);
+			return decodeOcps(slice);
 		case "cspo":
-			return decodeCspo(bytes);
+			return decodeCspo(slice);
 		case "csop":
-			return decodeCsop(bytes);
+			return decodeCsop(slice);
 		case "cpso":
-			return decodeCpso(bytes);
+			return decodeCpso(slice);
 		case "cpos":
-			return decodeCpos(bytes);
+			return decodeCpos(slice);
 		case "cosp":
-			return decodeCosp(bytes);
+			return decodeCosp(slice);
 		case "cops":
-			return decodeCops(bytes);
+			return decodeCops(slice);
 		default:
 			throw new IllegalArgumentException("Unsupported quad key order: " + order.fieldSequence());
 		}
@@ -235,7 +252,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeSpoc(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeSpoc(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeSpoc(ByteBuffer buffer) {
 		long s = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
@@ -245,7 +265,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeSpco(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeSpco(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeSpco(ByteBuffer buffer) {
 		long s = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
@@ -255,7 +278,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeSopc(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeSopc(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeSopc(ByteBuffer buffer) {
 		long s = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
@@ -265,7 +291,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeSocp(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeSocp(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeSocp(ByteBuffer buffer) {
 		long s = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
@@ -275,7 +304,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeScpo(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeScpo(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeScpo(ByteBuffer buffer) {
 		long s = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
@@ -285,7 +317,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeScop(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeScop(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeScop(ByteBuffer buffer) {
 		long s = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
@@ -295,7 +330,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodePsoc(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodePsoc(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodePsoc(ByteBuffer buffer) {
 		long p = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
@@ -305,7 +343,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodePsco(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodePsco(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodePsco(ByteBuffer buffer) {
 		long p = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
@@ -315,7 +356,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodePosc(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodePosc(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodePosc(ByteBuffer buffer) {
 		long p = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
@@ -325,7 +369,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodePocs(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodePocs(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodePocs(ByteBuffer buffer) {
 		long p = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
@@ -335,7 +382,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodePcso(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodePcso(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodePcso(ByteBuffer buffer) {
 		long p = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
@@ -345,7 +395,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodePcos(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodePcos(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodePcos(ByteBuffer buffer) {
 		long p = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
@@ -355,7 +408,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeOspc(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeOspc(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeOspc(ByteBuffer buffer) {
 		long o = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
@@ -365,7 +421,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeOscp(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeOscp(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeOscp(ByteBuffer buffer) {
 		long o = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
@@ -375,7 +434,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeOpsc(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeOpsc(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeOpsc(ByteBuffer buffer) {
 		long o = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
@@ -385,7 +447,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeOpcs(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeOpcs(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeOpcs(ByteBuffer buffer) {
 		long o = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
@@ -395,7 +460,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeOcsp(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeOcsp(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeOcsp(ByteBuffer buffer) {
 		long o = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
@@ -405,7 +473,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeOcps(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeOcps(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeOcps(ByteBuffer buffer) {
 		long o = Varint.readUnsigned(buffer);
 		long c = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
@@ -415,7 +486,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeCspo(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeCspo(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeCspo(ByteBuffer buffer) {
 		long c = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
@@ -425,7 +499,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeCsop(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeCsop(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeCsop(ByteBuffer buffer) {
 		long c = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
@@ -435,7 +512,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeCpso(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeCpso(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeCpso(ByteBuffer buffer) {
 		long c = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
@@ -445,7 +525,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeCpos(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeCpos(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeCpos(ByteBuffer buffer) {
 		long c = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
@@ -455,7 +538,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeCosp(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeCosp(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeCosp(ByteBuffer buffer) {
 		long c = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
 		long s = Varint.readUnsigned(buffer);
@@ -465,7 +551,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static QuadKey decodeCops(byte[] bytes) {
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		return decodeCops(ByteBuffer.wrap(bytes));
+	}
+
+	private static QuadKey decodeCops(ByteBuffer buffer) {
 		long c = Varint.readUnsigned(buffer);
 		long o = Varint.readUnsigned(buffer);
 		long p = Varint.readUnsigned(buffer);

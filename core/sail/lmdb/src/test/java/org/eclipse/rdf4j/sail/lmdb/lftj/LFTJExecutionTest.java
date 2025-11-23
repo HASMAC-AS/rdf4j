@@ -35,6 +35,7 @@ import java.nio.IntBuffer;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,7 +78,7 @@ class LFTJExecutionTest {
 	}
 
 	@Test
-	void choosesVariableOrderByFrequency() {
+	void ordersVariablesUsingIndexAlignment() {
 		QuadPattern first = QuadPattern.of(
 				QuadPatternTerm.variable("s"),
 				QuadPatternTerm.constant(2L),
@@ -90,9 +91,29 @@ class LFTJExecutionTest {
 				QuadPatternTerm.variable("x"),
 				QuadPatternTerm.constant(0L));
 
-		List<String> order = LFTJExecutor.chooseVariableOrder(List.of(first, second));
+		List<String> order = LFTJExecutor.chooseVariableOrder(List.of(first, second), Set.of(SPOC));
 
-		assertThat(order).containsExactly("o", "s", "x");
+		assertThat(order).containsExactly("s", "o", "x");
+	}
+
+	@Test
+	void prioritizesVariablesThatMatchLeadingIndexSlots() {
+		QuadKeyOrder posc = QuadKeyOrder.of(Slot.P, Slot.O, Slot.S, Slot.C);
+		QuadPattern first = QuadPattern.of(
+				QuadPatternTerm.variable("s"),
+				QuadPatternTerm.variable("p"),
+				QuadPatternTerm.variable("o"),
+				QuadPatternTerm.constant(0L));
+
+		QuadPattern second = QuadPattern.of(
+				QuadPatternTerm.variable("x"),
+				QuadPatternTerm.variable("p"),
+				QuadPatternTerm.constant(9L),
+				QuadPatternTerm.constant(0L));
+
+		List<String> order = LFTJExecutor.chooseVariableOrder(List.of(first, second), Set.of(SPOC, posc));
+
+		assertThat(order.get(0)).isEqualTo("p");
 	}
 
 	@Test

@@ -39,6 +39,22 @@ public final class PrefixBuilder {
 		return prefix.build();
 	}
 
+	public static Prefix buildPrefix(QuadPattern pattern, Map<String, Integer> variableOrderIndex, int currentIndex,
+			Map<String, Long> bindings) {
+		Objects.requireNonNull(pattern, "pattern");
+		Objects.requireNonNull(variableOrderIndex, "variableOrderIndex");
+		Objects.requireNonNull(bindings, "bindings");
+
+		Prefix.Builder prefix = Prefix.builder();
+
+		assignSlot(prefix, Slot.S, pattern.term(Slot.S), variableOrderIndex, bindings, currentIndex);
+		assignSlot(prefix, Slot.P, pattern.term(Slot.P), variableOrderIndex, bindings, currentIndex);
+		assignSlot(prefix, Slot.O, pattern.term(Slot.O), variableOrderIndex, bindings, currentIndex);
+		assignSlot(prefix, Slot.C, pattern.term(Slot.C), variableOrderIndex, bindings, currentIndex);
+
+		return prefix.build();
+	}
+
 	private static void assignSlot(Prefix.Builder prefix, Slot slot, QuadPatternTerm term, List<String> variableOrder,
 			Map<String, Long> bindings, int currentIndex) {
 		if (term.isUnbound()) {
@@ -52,6 +68,26 @@ public final class PrefixBuilder {
 
 		int termIndex = indexOf(variableOrder, term.variable());
 		if (termIndex < currentIndex) {
+			Long boundValue = bindings.get(term.variable());
+			if (boundValue != null) {
+				write(prefix, slot, boundValue);
+			}
+		}
+	}
+
+	private static void assignSlot(Prefix.Builder prefix, Slot slot, QuadPatternTerm term,
+			Map<String, Integer> variableOrderIndex, Map<String, Long> bindings, int currentIndex) {
+		if (term.isUnbound()) {
+			return;
+		}
+
+		if (term.isConstant()) {
+			write(prefix, slot, term.constant());
+			return;
+		}
+
+		Integer termIndex = variableOrderIndex.get(term.variable());
+		if (termIndex != null && termIndex.intValue() < currentIndex) {
 			Long boundValue = bindings.get(term.variable());
 			if (boundValue != null) {
 				write(prefix, slot, boundValue);

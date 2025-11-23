@@ -12,7 +12,7 @@ package org.eclipse.rdf4j.sail.lmdb.lftj;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,24 +46,60 @@ public final class LFTJExecutor {
 	public void evaluate(List<QuadPattern> patterns, Consumer<Map<String, Long>> consumer) throws IOException {
 		Objects.requireNonNull(patterns, "patterns");
 		Objects.requireNonNull(consumer, "consumer");
-		List<String> variableOrder = chooseVariableOrder(patterns);
+		List<String> variableOrder = chooseVariableOrder(patterns, indexMapping.keySet());
 		Map<QuadPattern, QuadKeyOrder> chosenOrders = chooseOrders(patterns, variableOrder);
-		recurse(variableOrder, 0, patterns, chosenOrders, new HashMap<>(), consumer);
+		Map<String, Integer> variableOrderIndex = indexVariableOrder(variableOrder);
+		Map<String, List<QuadPattern>> participating = groupByVariable(patterns);
+		recurse(variableOrder, variableOrderIndex, participating, 0, chosenOrders, new HashMap<>(), consumer);
 	}
 
-	public static List<String> chooseVariableOrder(List<QuadPattern> patterns) {
+	public static List<String> chooseVariableOrder(List<QuadPattern> patterns,
+			Collection<QuadKeyOrder> availableOrders) {
 		Objects.requireNonNull(patterns, "patterns");
-		Map<String, Integer> frequency = new HashMap<>();
+		Collection<QuadKeyOrder> orders = availableOrders == null ? List.of() : availableOrders;
+
+		Map<String, VariableScore> scores = new HashMap<>();
 		for (QuadPattern pattern : patterns) {
-			for (String variable : pattern.variables()) {
-				frequency.merge(variable, 1, Integer::sum);
+			Map<String, Slot> variableSlots = pattern.variableSlots();
+			for (Map.Entry<String, Slot> entry : variableSlots.entrySet()) {
+				String variable = entry.getKey();
+				Slot slot = entry.getValue();
+				VariableScore score = scores.computeIfAbsent(variable, v -> new VariableScore());
+				int bestPosition = bestPosition(slot, orders);
+				score.record(bestPosition);
 			}
 		}
-		List<String> order = new ArrayList<>(frequency.keySet());
-		order.sort(Comparator.<String>comparingInt(var -> frequency.getOrDefault(var, 0))
-				.reversed()
-				.thenComparing(Comparator.naturalOrder()));
+
+		List<String> order = new ArrayList<>(scores.keySet());
+		order.sort((left, right) -> {
+			VariableScore a = scores.get(left);
+			VariableScore b = scores.get(right);
+			int cmp = Integer.compare(b.leadingMatches, a.leadingMatches);
+			if (cmp != 0) {
+				return cmp;
+			}
+			cmp = Double.compare(a.averagePosition(), b.averagePosition());
+			if (cmp != 0) {
+				return cmp;
+			}
+			cmp = Integer.compare(b.occurrences, a.occurrences);
+			if (cmp != 0) {
+				return cmp;
+			}
+			return left.compareTo(right);
+		});
 		return order;
+	}
+
+	private static int bestPosition(Slot slot, Collection<QuadKeyOrder> orders) {
+		int best = Integer.MAX_VALUE;
+		for (QuadKeyOrder order : orders) {
+			int position = order.indexOf(slot);
+			if (position >= 0 && position < best) {
+				best = position;
+			}
+		}
+		return best;
 	}
 
 	private Map<QuadPattern, QuadKeyOrder> chooseOrders(List<QuadPattern> patterns, List<String> variableOrder) {
@@ -76,7 +112,8 @@ public final class LFTJExecutor {
 		return chosen;
 	}
 
-	private void recurse(List<String> variableOrder, int depth, List<QuadPattern> patterns,
+	private void recurse(List<String> variableOrder, Map<String, Integer> variableOrderIndex,
+			Map<String, List<QuadPattern>> participatingByVariable, int depth,
 			Map<QuadPattern, QuadKeyOrder> chosenOrders, Map<String, Long> bindings,
 			Consumer<Map<String, Long>> consumer) throws IOException {
 		if (depth >= variableOrder.size()) {
@@ -85,7 +122,11 @@ public final class LFTJExecutor {
 		}
 
 		String variable = variableOrder.get(depth);
-		List<QuadPattern> participating = patternsWithVariable(patterns, variable);
+		List<QuadPattern> participating = participatingByVariable.get(variable);
+		if (participating == null || participating.isEmpty()) {
+			throw new IllegalArgumentException("Variable not found in any pattern: " + variable);
+		}
+		int currentIndex = variableOrderIndex.get(variable);
 		List<LMDBTrieIterator> iterators = new ArrayList<>(participating.size());
 		try {
 			for (QuadPattern pattern : participating) {
@@ -95,10 +136,11 @@ public final class LFTJExecutor {
 					throw new IllegalStateException("No DBI registered for order " + order);
 				}
 				Slot slot = pattern.variableSlots().get(variable);
-				Prefix prefix = PrefixBuilder.buildPrefix(pattern, variableOrder, variable, bindings);
+				Prefix prefix = PrefixBuilder.buildPrefix(pattern, variableOrderIndex, currentIndex, bindings);
 				LMDBTrieIterator iterator = new LMDBTrieIterator(txn, dbi.intValue(), order, slot);
 				iterator.open(prefix);
 				if (iterator.atEnd()) {
+					iterator.close();
 					return;
 				}
 				iterators.add(iterator);
@@ -108,7 +150,8 @@ public final class LFTJExecutor {
 				leapfrog(iterators, value -> {
 					bindings.put(variable, value);
 					try {
-						recurse(variableOrder, depth + 1, patterns, chosenOrders, bindings, consumer);
+						recurse(variableOrder, variableOrderIndex, participatingByVariable, depth + 1, chosenOrders,
+								bindings, consumer);
 					} catch (IOException e) {
 						throw new EvaluationException(e);
 					}
@@ -135,53 +178,51 @@ public final class LFTJExecutor {
 		}
 	}
 
-	private void leapfrog(List<LMDBTrieIterator> iterators, LongConsumer consumer) {
-		if (iterators.isEmpty()) {
-			return;
-		}
-		for (TrieIterator iterator : iterators) {
-			if (iterator.atEnd()) {
-				return;
-			}
-		}
-		iterators.sort(Comparator.comparingLong(TrieIterator::key));
-		while (true) {
-			long maxKey = iterators.get(iterators.size() - 1).key();
-			boolean advanced = false;
-			for (int i = 0; i < iterators.size() - 1; i++) {
-				TrieIterator iterator = iterators.get(i);
-				if (iterator.key() < maxKey) {
-					iterator.seek(maxKey);
-					advanced = true;
-					if (iterator.atEnd()) {
-						return;
-					}
-				}
-			}
+	private static final class VariableScore {
+		private static final int DEFAULT_POSITION = 4;
+		private int occurrences;
+		private int leadingMatches;
+		private int positionSum;
 
-			if (!advanced) {
-				consumer.accept(maxKey);
-				for (TrieIterator iterator : iterators) {
-					iterator.next();
-					if (iterator.atEnd()) {
-						return;
-					}
-				}
+		void record(int bestPosition) {
+			occurrences++;
+			if (bestPosition == 0) {
+				leadingMatches++;
 			}
-			iterators.sort(Comparator.comparingLong(TrieIterator::key));
+			positionSum += bestPosition == Integer.MAX_VALUE ? DEFAULT_POSITION : bestPosition;
+		}
+
+		double averagePosition() {
+			if (occurrences == 0) {
+				return DEFAULT_POSITION;
+			}
+			return (double) positionSum / occurrences;
 		}
 	}
 
-	private List<QuadPattern> patternsWithVariable(List<QuadPattern> patterns, String variable) {
-		List<QuadPattern> participating = new ArrayList<>();
+	private void leapfrog(List<LMDBTrieIterator> iterators, LongConsumer consumer) {
+		LeapfrogIteratorCursor cursor = new LeapfrogIteratorCursor(iterators);
+		while (cursor.hasValue()) {
+			consumer.accept(cursor.current());
+			cursor.advance();
+		}
+	}
+
+	private Map<String, Integer> indexVariableOrder(List<String> variableOrder) {
+		Map<String, Integer> index = new HashMap<>(variableOrder.size());
+		for (int i = 0; i < variableOrder.size(); i++) {
+			index.put(variableOrder.get(i), i);
+		}
+		return index;
+	}
+
+	private Map<String, List<QuadPattern>> groupByVariable(List<QuadPattern> patterns) {
+		Map<String, List<QuadPattern>> mapping = new HashMap<>();
 		for (QuadPattern pattern : patterns) {
-			if (pattern.variables().contains(variable)) {
-				participating.add(pattern);
+			for (String variable : pattern.variables()) {
+				mapping.computeIfAbsent(variable, v -> new ArrayList<>()).add(pattern);
 			}
 		}
-		if (participating.isEmpty()) {
-			throw new IllegalArgumentException("Variable not found in any pattern: " + variable);
-		}
-		return participating;
+		return mapping;
 	}
 }

@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.query.explanation.Explanation;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.lmdb.LmdbStore;
+import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -87,7 +88,7 @@ public class LmdbCliqueBenchmark {
 
 		dataDir = Files.createTempDirectory("lmdb-clique-benchmark").toFile();
 
-		LmdbStore store = new LmdbStore(dataDir);
+		LmdbStore store = new LmdbStore(dataDir, new LmdbStoreConfig("spoc,posc,opsc,cosp,sopc,cpso"));
 		if ("standard".equalsIgnoreCase(joinStrategy)) {
 			store.setEvaluationStrategyFactory(new DefaultEvaluationStrategyFactory());
 		}

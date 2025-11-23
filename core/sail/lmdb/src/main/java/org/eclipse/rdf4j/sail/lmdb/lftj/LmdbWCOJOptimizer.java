@@ -35,7 +35,7 @@ public class LmdbWCOJOptimizer implements QueryOptimizer {
 
 		TupleExpr target = unwrap(tupleExpr);
 		List<StatementPattern> patterns = new ArrayList<>();
-		if (isJoinTree(target, patterns) && patterns.size() >= 3) {
+		if (isJoinTree(target, patterns) && patterns.size() >= 3 && hasSharedJoinVariable(patterns)) {
 			LmdbWCOJ wcoj = new LmdbWCOJ(patterns);
 			target.replaceWith(wcoj);
 		}
@@ -50,6 +50,25 @@ public class LmdbWCOJOptimizer implements QueryOptimizer {
 			current = ((Projection) current).getArg();
 		}
 		return current;
+	}
+
+	private boolean hasSharedJoinVariable(List<StatementPattern> patterns) {
+		java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+		for (StatementPattern pattern : patterns) {
+			countVar(pattern.getSubjectVar(), counts);
+			countVar(pattern.getPredicateVar(), counts);
+			countVar(pattern.getObjectVar(), counts);
+			countVar(pattern.getContextVar(), counts);
+		}
+		long joinVars = counts.values().stream().filter(count -> count >= 2).count();
+		return joinVars >= 2;
+	}
+
+	private void countVar(org.eclipse.rdf4j.query.algebra.Var var, java.util.Map<String, Integer> counts) {
+		if (var == null || var.isAnonymous() || var.hasValue()) {
+			return;
+		}
+		counts.merge(var.getName(), 1, Integer::sum);
 	}
 
 	private boolean isJoinTree(TupleExpr expr, List<StatementPattern> patterns) {

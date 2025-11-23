@@ -134,6 +134,10 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 		mdb_cursor_close(cursor);
 	}
 
+	public Slot slot() {
+		return role;
+	}
+
 	private QuadKey buildSeekKey(long value) {
 		long s = prefix.hasSubject() ? prefix.subject() : QuadKeyEncoding.MIN_TERM_ID;
 		long p = prefix.hasPredicate() ? prefix.predicate() : QuadKeyEncoding.MIN_TERM_ID;
@@ -185,10 +189,11 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 
 	private void loadCurrentKey() {
 		ByteBuffer buffer = keyVal.mv_data();
-		byte[] keyBytes = new byte[(int) keyVal.mv_size()];
-		buffer.get(keyBytes);
-		buffer.rewind();
-		currentKey = QuadKeyEncoding.decode(keyBytes, order);
+		int len = (int) keyVal.mv_size();
+		ByteBuffer slice = buffer.duplicate();
+		slice.limit(len);
+		slice.position(0);
+		currentKey = QuadKeyEncoding.decode(slice, order);
 	}
 
 	private void assertSuccess(int rc) {
