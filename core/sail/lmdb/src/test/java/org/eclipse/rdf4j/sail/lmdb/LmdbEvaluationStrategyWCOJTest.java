@@ -13,12 +13,26 @@ package org.eclipse.rdf4j.sail.lmdb;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.common.iteration.EmptyIteration;
+import org.eclipse.rdf4j.common.order.StatementOrder;
+import org.eclipse.rdf4j.model.IRI;
+import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.Var;
+import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
@@ -38,18 +52,18 @@ class LmdbEvaluationStrategyWCOJTest {
 	@Test
 	void precompileReturnsWcojStep() {
 		TripleSource tripleSource = new StubTripleSource();
-		StrictEvaluationStrategy strategy = new LmdbEvaluationStrategy(tripleSource, null, null, 0,
+		EvaluationStrategy strategy = new LmdbEvaluationStrategy(tripleSource, null, null, 0,
 				new EvaluationStatistics(), false);
 
 		TupleExpr expr = new LmdbWCOJ(
-				java.util.List.of(new StatementPattern(new Var("s"), new Var("p"), new Var("o")),
+				List.of(new StatementPattern(new Var("s"), new Var("p"), new Var("o")),
 						new StatementPattern(new Var("o"), new Var("p2"), new Var("x")),
 						new StatementPattern(new Var("x"), new Var("p3"), new Var("s"))));
 
 		QueryEvaluationStep step = strategy.precompile(expr,
-				new QueryEvaluationContext.Minimal((org.eclipse.rdf4j.model.Literal) null,
-						(org.eclipse.rdf4j.query.Dataset) null,
-						(java.util.Comparator<org.eclipse.rdf4j.model.Value>) null));
+				new QueryEvaluationContext.Minimal((Literal) null,
+						(Dataset) null,
+						(Comparator<Value>) null));
 
 		assertEquals(LmdbWCOJStep.class.getSimpleName(), step.getClass().getSimpleName());
 	}
@@ -59,29 +73,29 @@ class LmdbEvaluationStrategyWCOJTest {
 		private final ValueFactory vf = SimpleValueFactory.getInstance();
 
 		@Override
-		public org.eclipse.rdf4j.common.iteration.CloseableIteration<? extends org.eclipse.rdf4j.model.Statement> getStatements(
-				org.eclipse.rdf4j.model.Resource subj, org.eclipse.rdf4j.model.IRI pred,
-				org.eclipse.rdf4j.model.Value obj, org.eclipse.rdf4j.model.Resource... contexts) {
-			return new org.eclipse.rdf4j.common.iteration.EmptyIteration<>();
+		public CloseableIteration<? extends Statement> getStatements(
+				Resource subj, IRI pred,
+				Value obj, Resource... contexts) {
+			return new EmptyIteration<>();
 		}
 
 		@Override
-		public org.eclipse.rdf4j.common.iteration.CloseableIteration<? extends org.eclipse.rdf4j.model.Statement> getStatements(
-				org.eclipse.rdf4j.common.order.StatementOrder order, org.eclipse.rdf4j.model.Resource subj,
-				org.eclipse.rdf4j.model.IRI pred, org.eclipse.rdf4j.model.Value obj,
-				org.eclipse.rdf4j.model.Resource... contexts) {
-			return new org.eclipse.rdf4j.common.iteration.EmptyIteration<>();
+		public CloseableIteration<? extends Statement> getStatements(
+				StatementOrder order, Resource subj,
+				IRI pred, Value obj,
+				Resource... contexts) {
+			return new EmptyIteration<>();
 		}
 
 		@Override
-		public java.util.Set<org.eclipse.rdf4j.common.order.StatementOrder> getSupportedOrders(
-				org.eclipse.rdf4j.model.Resource subj, org.eclipse.rdf4j.model.IRI pred,
-				org.eclipse.rdf4j.model.Value obj, org.eclipse.rdf4j.model.Resource... contexts) {
+		public Set<StatementOrder> getSupportedOrders(
+				Resource subj, IRI pred,
+				Value obj, Resource... contexts) {
 			return Collections.emptySet();
 		}
 
 		@Override
-		public java.util.Comparator<org.eclipse.rdf4j.model.Value> getComparator() {
+		public Comparator<Value> getComparator() {
 			return null;
 		}
 
@@ -99,8 +113,8 @@ class LmdbEvaluationStrategyWCOJTest {
 				}
 
 				@Override
-				public java.util.Map<QuadKeyOrder, Integer> indexHandles() {
-					return java.util.Collections.emptyMap();
+				public Map<QuadKeyOrder, Integer> indexHandles() {
+					return Collections.emptyMap();
 				}
 
 				@Override

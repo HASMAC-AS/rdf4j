@@ -31,8 +31,8 @@ public final class DatasetIntrospection {
 		if (tripleSource == null) {
 			return null;
 		}
-		if (tripleSource instanceof LmdbDatasetProvider) {
-			return ((LmdbDatasetProvider) tripleSource).getLmdbDatasetSnapshot();
+		if (tripleSource instanceof org.eclipse.rdf4j.sail.lmdb.LmdbDatasetProvider) {
+			return ((org.eclipse.rdf4j.sail.lmdb.LmdbDatasetProvider) tripleSource).getLmdbDatasetSnapshot();
 		}
 
 		if (tripleSource instanceof SailDatasetTripleSource) {
@@ -40,7 +40,7 @@ public final class DatasetIntrospection {
 				Field datasetField = SailDatasetTripleSource.class.getDeclaredField("dataset");
 				datasetField.setAccessible(true);
 				Object dataset = datasetField.get(tripleSource);
-				// ensure LMDB-specific hooks are present
+				dataset = unwrapUnion(dataset);
 				if (hasMethod(dataset, "getTxn") && hasMethod(dataset, "indexHandles")
 						&& hasMethod(dataset, "valueStore")) {
 					return dataset;
@@ -51,6 +51,28 @@ public final class DatasetIntrospection {
 			}
 		}
 		return null;
+	}
+
+	private static Object unwrapUnion(Object dataset) throws ReflectiveOperationException {
+		if (dataset == null) {
+			return null;
+		}
+		Class<?> clazz = dataset.getClass();
+		if ("org.eclipse.rdf4j.sail.base.UnionSailDataset".equals(clazz.getName())) {
+			Field left = clazz.getDeclaredField("dataset1");
+			Field right = clazz.getDeclaredField("dataset2");
+			left.setAccessible(true);
+			right.setAccessible(true);
+			Object d1 = left.get(dataset);
+			Object d2 = right.get(dataset);
+			if (hasMethod(d1, "getTxn") && hasMethod(d1, "indexHandles") && hasMethod(d1, "valueStore")) {
+				return d1;
+			}
+			if (hasMethod(d2, "getTxn") && hasMethod(d2, "indexHandles") && hasMethod(d2, "valueStore")) {
+				return d2;
+			}
+		}
+		return dataset;
 	}
 
 	private static boolean hasMethod(Object target, String name) {

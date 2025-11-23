@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.lmdb.benchmark;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
+import org.eclipse.rdf4j.query.explanation.Explanation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -31,7 +33,7 @@ class LmdbCliqueBenchmarkTest {
 	void benchmarkClassExposesStrategiesAndBenchmarkMethod() {
 		Class<?> clazz;
 		try {
-			clazz = Class.forName("org.eclipse.rdf4j.benchmark.LmdbCliqueBenchmark");
+			clazz = Class.forName("org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbCliqueBenchmark");
 		} catch (ClassNotFoundException e) {
 			fail("Expected LmdbCliqueBenchmark to be available for JMH", e);
 			return;
@@ -80,6 +82,28 @@ class LmdbCliqueBenchmarkTest {
 				"}");
 
 		assertEquals(expected, query);
+		benchmark.tearDown();
+	}
+
+	@Test
+	void cliqueQueryEvaluationUsesCorrectAlgorithm() throws Exception {
+		LmdbCliqueBenchmark benchmark = new LmdbCliqueBenchmark();
+		benchmarkToClose = benchmark;
+		benchmark.joinStrategy = "wcoj";
+		benchmark.nodeCount = 4;
+		benchmark.cliqueSize = 4;
+		benchmark.queryCliqueSize = 4;
+
+		benchmark.setup();
+
+		Explanation explanation = benchmark.explainCliqueQuery();
+		benchmark.tearDown();
+
+		System.out.println(explanation);
+
+		assertThat(explanation.toString()).withFailMessage("Expected no standard join operations in query evaluation")
+				.doesNotContain("Join (JoinIterator)");
+		assertTrue(explanation.toString().contains("LmdbWCOJ"), "Expected LmdbWCOJ to be used in query evaluation");
 	}
 
 	@AfterEach

@@ -20,6 +20,7 @@ import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolver;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategy;
@@ -29,7 +30,7 @@ import org.eclipse.rdf4j.sail.lmdb.LmdbWCOJStep;
 /**
  * Evaluation strategy that recognizes {@link LmdbWCOJ} placeholders.
  */
-public class LmdbEvaluationStrategy extends StrictEvaluationStrategy {
+public class LmdbEvaluationStrategy extends DefaultEvaluationStrategy {
 
 	public LmdbEvaluationStrategy(TripleSource tripleSource, Dataset dataset,
 			FederatedServiceResolver serviceResolver, long iterationCacheSyncTreshold,
@@ -46,6 +47,8 @@ public class LmdbEvaluationStrategy extends StrictEvaluationStrategy {
 				return new LmdbWCOJStep((LmdbWCOJ) expr, snapshot, context, this::rebuildJoin, this);
 			} else {
 				TupleExpr delegate = rebuildJoin((LmdbWCOJ) expr);
+				// Replace the WCOJ with the equivalent join expression
+				expr.replaceWith(delegate);
 				return super.precompile(delegate, context);
 			}
 		}

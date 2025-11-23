@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.FOAF;
 import org.eclipse.rdf4j.query.TupleQueryResult;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategyFactory;
+import org.eclipse.rdf4j.query.explanation.Explanation;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.lmdb.LmdbStore;
@@ -164,6 +165,10 @@ public class LmdbCliqueBenchmark {
 //					"Unexpected result size: " + count + " (expected " + expectedResultCount + ')');
 //		}
 		return count;
+	}
+
+	public Explanation explainCliqueQuery() {
+		return connection.prepareTupleQuery(cliqueQuery).explain(Explanation.Level.Executed);
 	}
 
 	@TearDown(Level.Trial)
