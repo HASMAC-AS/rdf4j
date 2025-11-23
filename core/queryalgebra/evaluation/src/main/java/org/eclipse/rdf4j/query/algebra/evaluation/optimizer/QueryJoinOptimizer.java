@@ -295,7 +295,12 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 								TupleExpr partner = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
 								Set<String> partnerNonConstantNames = getNonConstantVarNames(varsMap.get(partner));
 								if (partnerNonConstantNames.isEmpty()) {
-									joinArgs.add(first);
+									boundVars.addAll(first.getBindingNames());
+									this.currentHighestCost = Math.max(currentHighestCost, firstCost);
+									orderedJoinArgs.addLast(first);
+
+									first.visit(this);
+
 									continue;
 								}
 								double partnerCost = ensureCostEstimate(partner, cardinalityMap, varsMap, varFreqMap);
