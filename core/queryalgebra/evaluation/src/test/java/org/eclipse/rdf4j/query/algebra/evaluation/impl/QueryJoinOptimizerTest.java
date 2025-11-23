@@ -267,6 +267,30 @@ public class QueryJoinOptimizerTest extends QueryOptimizerTest {
 	}
 
 	@Test
+	public void disconnectedSingletonsAreScoped() throws RDF4JException {
+		String query = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\t?x ex:p ?y .",
+				"\t?u ex:p ?v .",
+				"\t?m ex:q ?n .",
+				"}",
+				"");
+
+		ParsedQuery pq = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, query, null);
+		QueryJoinOptimizer opt = getOptimizer();
+		QueryRoot optRoot = new QueryRoot(pq.getTupleExpr());
+		opt.optimize(optRoot, null, null);
+
+		ScopedJoinCollector scopedJoinCollector = new ScopedJoinCollector();
+		optRoot.visit(scopedJoinCollector);
+
+		assertThat(scopedJoinCollector.getScopedJoins())
+				.hasSize(2)
+				.allSatisfy(join -> assertThat(join.isVariableScopeChange()).isTrue());
+	}
+
+	@Test
 	public void connectedPatternsPreferredWithIrrelevantBindings() throws RDF4JException {
 		String query = String.join("\n", "",
 				"prefix ex: <ex:> ",

@@ -272,6 +272,51 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 
 								continue;
 							}
+
+							if (joinArgs.size() >= 2) {
+								TupleExpr first = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
+								double firstCost = ensureCostEstimate(first, cardinalityMap, varsMap, varFreqMap);
+								Set<String> firstNonConstantNames = getNonConstantVarNames(varsMap.get(first));
+
+								if (firstNonConstantNames.isEmpty()) {
+									// fall through to the regular selection logic
+									boundVars.addAll(first.getBindingNames());
+									this.currentHighestCost = Math.max(currentHighestCost, firstCost);
+									joinArgs.remove(first);
+									orderedJoinArgs.addLast(first);
+
+									first.visit(this);
+
+									continue;
+								}
+
+								joinArgs.remove(first);
+
+								TupleExpr partner = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
+								Set<String> partnerNonConstantNames = getNonConstantVarNames(varsMap.get(partner));
+								if (partnerNonConstantNames.isEmpty()) {
+									joinArgs.add(first);
+									continue;
+								}
+								double partnerCost = ensureCostEstimate(partner, cardinalityMap, varsMap, varFreqMap);
+
+								this.currentHighestCost = Math.max(currentHighestCost,
+										Math.max(firstCost, partnerCost));
+
+								joinArgs.remove(partner);
+
+								first.visit(this);
+								partner.visit(this);
+
+								Join join = new Join(first, partner);
+								join.setVariableScopeChange(true);
+								orderedJoinArgs.addLast(join);
+
+								boundVars.addAll(first.getBindingNames());
+								boundVars.addAll(partner.getBindingNames());
+
+								continue;
+							}
 						}
 
 						TupleExpr tupleExpr = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
@@ -358,6 +403,11 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 							cardinality = Math.max(cardinality, left.getResultSizeEstimate());
 							cardinality = Math.max(cardinality, right.getResultSizeEstimate());
 							Join join = new Join(left, right);
+							if (nonConstantBindingsDisjoint(left, right)
+									&& !(TupleExprs.isVariableScopeChange(left)
+											&& TupleExprs.isVariableScopeChange(right))) {
+								join.setVariableScopeChange(true);
+							}
 							join.setOrder((Var) supportedOrders.toArray()[0]);
 							join.setMergeJoin(true);
 							orderedJoinArgs.addFirst(join);
@@ -380,6 +430,11 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 						supportedOrders.retainAll(right.getSupportedOrders(tripleSource));
 
 						Join join = new Join(left, right);
+						if (nonConstantBindingsDisjoint(left, right)
+								&& !(TupleExprs.isVariableScopeChange(left)
+										&& TupleExprs.isVariableScopeChange(right))) {
+							join.setVariableScopeChange(true);
+						}
 
 						if (USE_MERGE_JOIN_FOR_LAST_STATEMENT_PATTERNS_WHEN_CROSS_JOIN) {
 							mergeJoinForCrossJoin(orderedJoinArgs, supportedOrders, left, right, join);
@@ -389,7 +444,14 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 
 					}
 					while (!orderedJoinArgs.isEmpty()) {
-						right = new Join(orderedJoinArgs.removeLast(), right);
+						TupleExpr left = orderedJoinArgs.removeLast();
+						Join join = new Join(left, right);
+						if (nonConstantBindingsDisjoint(left, right)
+								&& !(TupleExprs.isVariableScopeChange(left)
+										&& TupleExprs.isVariableScopeChange(right))) {
+							join.setVariableScopeChange(true);
+						}
+						right = join;
 					}
 
 					if (priorityJoins != null) {
@@ -814,6 +876,20 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 			}
 
 			return names;
+		}
+
+		private boolean nonConstantBindingsDisjoint(TupleExpr left, TupleExpr right) {
+			Set<String> leftNames = getNonConstantBindingNames(left.getBindingNames());
+			if (leftNames.isEmpty()) {
+				return false;
+			}
+
+			Set<String> rightNames = getNonConstantBindingNames(right.getBindingNames());
+			if (rightNames.isEmpty()) {
+				return false;
+			}
+
+			return Collections.disjoint(leftNames, rightNames);
 		}
 
 		private void reorderWildcardProjection(Projection projection) {
