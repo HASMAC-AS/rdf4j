@@ -21,11 +21,14 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.MutableBindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
@@ -33,7 +36,6 @@ import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
-import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.lftj.IndexSelector;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LFTJExecutor;
 import org.eclipse.rdf4j.sail.lmdb.lftj.LMDBTrieIterator;
@@ -60,6 +62,8 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 	private final QueryEvaluationContext context;
 	private final Function<LmdbWCOJ, TupleExpr> rebuildJoin;
 	private final EvaluationStrategy strategy;
+	private final Supplier<MutableBindingSet> bindingSetSupplier;
+	private final Function<String, BiConsumer<Value, MutableBindingSet>> bindingSetterFactory;
 
 	public LmdbWCOJStep(LmdbWCOJ wcoj, List<LmdbDatasetSnapshot> snapshots, QueryEvaluationContext context,
 			Function<LmdbWCOJ, TupleExpr> rebuildJoin,
@@ -69,6 +73,8 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 		this.context = context;
 		this.rebuildJoin = rebuildJoin;
 		this.strategy = strategy;
+		this.bindingSetSupplier = context::createBindingSet;
+		this.bindingSetterFactory = context::setBinding;
 	}
 
 	@Override
@@ -86,15 +92,17 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 		return new SingleThreadWCOJIteration(iterator, cancelled);
 	}
 
-	private MapBindingSet toBindingSet(List<String> variableOrder, long[] values, boolean[] present,
+	private MutableBindingSet toBindingSet(List<String> variableOrder, long[] values, boolean[] present,
 			ValueStoreFacade valueStore) throws QueryEvaluationException {
-		MapBindingSet bs = new MapBindingSet(variableOrder.size());
+		MutableBindingSet bs = bindingSetSupplier.get();
 		for (int i = 0; i < variableOrder.size(); i++) {
 			if (!present[i]) {
 				continue;
 			}
 			try {
-				bs.addBinding(variableOrder.get(i), valueStore.getValue(values[i]));
+				String variable = variableOrder.get(i);
+				BiConsumer<Value, MutableBindingSet> setter = bindingSetterFactory.apply(variable);
+				setter.accept(valueStore.getValue(values[i]), bs);
 			} catch (IOException e) {
 				throw new QueryEvaluationException(e);
 			}
