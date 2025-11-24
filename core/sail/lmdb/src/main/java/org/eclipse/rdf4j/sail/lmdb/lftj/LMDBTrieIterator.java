@@ -161,7 +161,22 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 		return order;
 	}
 
+	boolean printed = false;
+
 	private void positionCursor(long s, long p, long o, long c) {
+		if(!printed){
+			order.printOrder();
+			order.printBound(s, p, o, c);
+			boolean optimal = order.isOptimal(s,p,o,c);
+			if(optimal){
+				System.out.println("Order is optimal for this binding pattern.");
+			} else {
+				System.out.println("Order is NOT optimal for this binding pattern.");
+			}
+			System.out.println();
+			printed = true;
+		}
+
 		seekKeyBuffer.clear();
 		int encodedLength = QuadKeyEncoding.encodeFieldsInto(s, p, o, c, order, seekKeyBuffer);
 		seekKeyBuffer.flip();
