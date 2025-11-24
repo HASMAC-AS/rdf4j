@@ -23,10 +23,12 @@ public final class QuadKeyOrder {
 
 	private final Slot[] positions;
 	private final String fieldSequence;
+	private final QuadKeyEncoding.QuadKeyDecoder decoder;
 
 	private QuadKeyOrder(Slot[] positions) {
 		this.positions = positions;
 		this.fieldSequence = buildFieldSequence(positions);
+		this.decoder = QuadKeyEncoding.decoderFor(fieldSequence);
 	}
 
 	public static QuadKeyOrder of(Slot... positions) {
@@ -88,6 +90,10 @@ public final class QuadKeyOrder {
 
 	public String fieldSequence() {
 		return fieldSequence;
+	}
+
+	QuadKeyEncoding.QuadKeyDecoder decoder() {
+		return decoder;
 	}
 
 	private static String buildFieldSequence(Slot[] positions) {

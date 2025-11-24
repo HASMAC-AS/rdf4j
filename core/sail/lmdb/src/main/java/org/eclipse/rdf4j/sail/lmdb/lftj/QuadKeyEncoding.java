@@ -25,6 +25,11 @@ public final class QuadKeyEncoding {
 		void set(long s, long p, long o, long c);
 	}
 
+	@FunctionalInterface
+	public interface QuadKeyDecoder {
+		void decode(ByteBuffer buffer, QuadKeySink sink);
+	}
+
 	private QuadKeyEncoding() {
 	}
 
@@ -112,6 +117,61 @@ public final class QuadKeyEncoding {
 		decodeInto(buffer, order, sink);
 	}
 
+	static QuadKeyDecoder decoderFor(String sequence) {
+		switch (sequence) {
+		case "spoc":
+			return QuadKeyEncoding::decodeSpocInto;
+		case "spco":
+			return QuadKeyEncoding::decodeSpcoInto;
+		case "sopc":
+			return QuadKeyEncoding::decodeSopcInto;
+		case "socp":
+			return QuadKeyEncoding::decodeSocpInto;
+		case "scpo":
+			return QuadKeyEncoding::decodeScpoInto;
+		case "scop":
+			return QuadKeyEncoding::decodeScopInto;
+		case "psoc":
+			return QuadKeyEncoding::decodePsocInto;
+		case "psco":
+			return QuadKeyEncoding::decodePscoInto;
+		case "posc":
+			return QuadKeyEncoding::decodePoscInto;
+		case "pocs":
+			return QuadKeyEncoding::decodePocsInto;
+		case "pcso":
+			return QuadKeyEncoding::decodePcsoInto;
+		case "pcos":
+			return QuadKeyEncoding::decodePcosInto;
+		case "ospc":
+			return QuadKeyEncoding::decodeOspcInto;
+		case "oscp":
+			return QuadKeyEncoding::decodeOscpInto;
+		case "opsc":
+			return QuadKeyEncoding::decodeOpscInto;
+		case "opcs":
+			return QuadKeyEncoding::decodeOpcsInto;
+		case "ocsp":
+			return QuadKeyEncoding::decodeOcspInto;
+		case "ocps":
+			return QuadKeyEncoding::decodeOcpsInto;
+		case "cspo":
+			return QuadKeyEncoding::decodeCspoInto;
+		case "csop":
+			return QuadKeyEncoding::decodeCsopInto;
+		case "cpso":
+			return QuadKeyEncoding::decodeCpsoInto;
+		case "cpos":
+			return QuadKeyEncoding::decodeCposInto;
+		case "cosp":
+			return QuadKeyEncoding::decodeCospInto;
+		case "cops":
+			return QuadKeyEncoding::decodeCopsInto;
+		default:
+			throw new IllegalArgumentException("Unsupported quad key order: " + sequence);
+		}
+	}
+
 	public static QuadKey decode(ByteBuffer buffer, QuadKeyOrder order) {
 		Objects.requireNonNull(buffer, "buffer");
 		Objects.requireNonNull(order, "order");
@@ -171,57 +231,10 @@ public final class QuadKeyEncoding {
 	}
 
 	public static void decodeInto(ByteBuffer buffer, QuadKeyOrder order, QuadKeySink sink) {
-		int startPos = buffer.position();
-		String sequence = order.fieldSequence();
-
-		long v1 = Varint.readUnsigned(buffer);
-		long v2 = Varint.readUnsigned(buffer);
-		long v3 = Varint.readUnsigned(buffer);
-		long v4 = Varint.readUnsigned(buffer);
-		ensureFullyConsumed(buffer);
-
-		long s = 0;
-		long p = 0;
-		long o = 0;
-		long c = 0;
-
-		for (int i = 0; i < 4; i++) {
-			long value;
-			switch (i) {
-			case 0:
-				value = v1;
-				break;
-			case 1:
-				value = v2;
-				break;
-			case 2:
-				value = v3;
-				break;
-			default:
-				value = v4;
-				break;
-			}
-
-			switch (sequence.charAt(i)) {
-			case 's':
-				s = value;
-				break;
-			case 'p':
-				p = value;
-				break;
-			case 'o':
-				o = value;
-				break;
-			case 'c':
-				c = value;
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported quad key order: " + sequence);
-			}
-		}
-
-		sink.set(s, p, o, c);
-		buffer.position(startPos);
+		Objects.requireNonNull(buffer, "buffer");
+		Objects.requireNonNull(order, "order");
+		Objects.requireNonNull(sink, "sink");
+		order.decoder().decode(buffer, sink);
 	}
 
 	public static byte[] encodeSpoc(QuadKey key) {
@@ -745,6 +758,270 @@ public final class QuadKeyEncoding {
 		long s = Varint.readUnsigned(buffer);
 		ensureFullyConsumed(buffer);
 		return new QuadKey(s, p, o, c);
+	}
+
+	private static void decodeSpocInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long s = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeSpcoInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long s = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeSopcInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long s = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeSocpInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long s = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeScpoInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long s = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeScopInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long s = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodePsocInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long p = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodePscoInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long p = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodePoscInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long p = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodePocsInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long p = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodePcsoInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long p = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodePcosInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long p = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeOspcInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long o = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeOscpInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long o = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeOpscInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long o = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeOpcsInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long o = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeOcspInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long o = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeOcpsInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long o = Varint.readUnsigned(buffer);
+		long c = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeCspoInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long c = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeCsopInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long c = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeCpsoInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long c = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeCposInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long c = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeCospInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long c = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
+	}
+
+	private static void decodeCopsInto(ByteBuffer buffer, QuadKeySink sink) {
+		int startPos = buffer.position();
+		long c = Varint.readUnsigned(buffer);
+		long o = Varint.readUnsigned(buffer);
+		long p = Varint.readUnsigned(buffer);
+		long s = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
 	}
 
 	private static byte[] encodeSequence(long first, long second, long third, long fourth) {
