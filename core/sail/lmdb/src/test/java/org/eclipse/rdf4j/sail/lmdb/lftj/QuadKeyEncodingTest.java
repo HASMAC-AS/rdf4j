@@ -12,7 +12,6 @@ package org.eclipse.rdf4j.sail.lmdb.lftj;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -85,16 +84,14 @@ class QuadKeyEncodingTest {
 	}
 
 	@Test
-	void positionsReturnsDefensiveSnapshot() throws Exception {
+	void positionsReturnsDefensiveSnapshot() {
 		QuadKeyOrder order = QuadKeyOrder.of(Slot.S, Slot.P, Slot.O, Slot.C);
 
 		List<Slot> snapshot = order.positions();
+		List<Slot> mutated = new ArrayList<>(snapshot);
+		mutated.set(0, Slot.C);
 
-		Field field = QuadKeyOrder.class.getDeclaredField("positions");
-		field.setAccessible(true);
-		Slot[] internal = (Slot[]) field.get(order);
-		internal[0] = Slot.C;
-
+		assertThat(order.positions()).containsExactly(Slot.S, Slot.P, Slot.O, Slot.C);
 		assertThat(snapshot).containsExactly(Slot.S, Slot.P, Slot.O, Slot.C);
 	}
 

@@ -30,6 +30,11 @@ public final class QuadKeyEncoding {
 		void decode(ByteBuffer buffer, QuadKeySink sink);
 	}
 
+	@FunctionalInterface
+	public interface QuadKeyEncoder {
+		int encode(long s, long p, long o, long c, ByteBuffer buffer);
+	}
+
 	private QuadKeyEncoding() {
 	}
 
@@ -167,6 +172,61 @@ public final class QuadKeyEncoding {
 			return QuadKeyEncoding::decodeCospInto;
 		case "cops":
 			return QuadKeyEncoding::decodeCopsInto;
+		default:
+			throw new IllegalArgumentException("Unsupported quad key order: " + sequence);
+		}
+	}
+
+	static QuadKeyEncoder encoderFor(String sequence) {
+		switch (sequence) {
+		case "spoc":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, s, p, o, c);
+		case "spco":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, s, p, c, o);
+		case "sopc":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, s, o, p, c);
+		case "socp":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, s, o, c, p);
+		case "scpo":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, s, c, p, o);
+		case "scop":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, s, c, o, p);
+		case "psoc":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, p, s, o, c);
+		case "psco":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, p, s, c, o);
+		case "posc":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, p, o, s, c);
+		case "pocs":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, p, o, c, s);
+		case "pcso":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, p, c, s, o);
+		case "pcos":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, p, c, o, s);
+		case "ospc":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, o, s, p, c);
+		case "oscp":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, o, s, c, p);
+		case "opsc":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, o, p, s, c);
+		case "opcs":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, o, p, c, s);
+		case "ocsp":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, o, c, s, p);
+		case "ocps":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, o, c, p, s);
+		case "cspo":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, c, s, p, o);
+		case "csop":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, c, s, o, p);
+		case "cpso":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, c, p, s, o);
+		case "cpos":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, c, p, o, s);
+		case "cosp":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, c, o, s, p);
+		case "cops":
+			return (s, p, o, c, buffer) -> encodeSequenceInto(buffer, c, o, p, s);
 		default:
 			throw new IllegalArgumentException("Unsupported quad key order: " + sequence);
 		}
@@ -337,115 +397,13 @@ public final class QuadKeyEncoding {
 		Objects.requireNonNull(key, "key");
 		Objects.requireNonNull(order, "order");
 		Objects.requireNonNull(buffer, "buffer");
-		switch (order.fieldSequence()) {
-		case "spoc":
-			return encodeSequenceInto(buffer, key.s(), key.p(), key.o(), key.c());
-		case "spco":
-			return encodeSequenceInto(buffer, key.s(), key.p(), key.c(), key.o());
-		case "sopc":
-			return encodeSequenceInto(buffer, key.s(), key.o(), key.p(), key.c());
-		case "socp":
-			return encodeSequenceInto(buffer, key.s(), key.o(), key.c(), key.p());
-		case "scpo":
-			return encodeSequenceInto(buffer, key.s(), key.c(), key.p(), key.o());
-		case "scop":
-			return encodeSequenceInto(buffer, key.s(), key.c(), key.o(), key.p());
-		case "psoc":
-			return encodeSequenceInto(buffer, key.p(), key.s(), key.o(), key.c());
-		case "psco":
-			return encodeSequenceInto(buffer, key.p(), key.s(), key.c(), key.o());
-		case "posc":
-			return encodeSequenceInto(buffer, key.p(), key.o(), key.s(), key.c());
-		case "pocs":
-			return encodeSequenceInto(buffer, key.p(), key.o(), key.c(), key.s());
-		case "pcso":
-			return encodeSequenceInto(buffer, key.p(), key.c(), key.s(), key.o());
-		case "pcos":
-			return encodeSequenceInto(buffer, key.p(), key.c(), key.o(), key.s());
-		case "ospc":
-			return encodeSequenceInto(buffer, key.o(), key.s(), key.p(), key.c());
-		case "oscp":
-			return encodeSequenceInto(buffer, key.o(), key.s(), key.c(), key.p());
-		case "opsc":
-			return encodeSequenceInto(buffer, key.o(), key.p(), key.s(), key.c());
-		case "opcs":
-			return encodeSequenceInto(buffer, key.o(), key.p(), key.c(), key.s());
-		case "ocsp":
-			return encodeSequenceInto(buffer, key.o(), key.c(), key.s(), key.p());
-		case "ocps":
-			return encodeSequenceInto(buffer, key.o(), key.c(), key.p(), key.s());
-		case "cspo":
-			return encodeSequenceInto(buffer, key.c(), key.s(), key.p(), key.o());
-		case "csop":
-			return encodeSequenceInto(buffer, key.c(), key.s(), key.o(), key.p());
-		case "cpso":
-			return encodeSequenceInto(buffer, key.c(), key.p(), key.s(), key.o());
-		case "cpos":
-			return encodeSequenceInto(buffer, key.c(), key.p(), key.o(), key.s());
-		case "cosp":
-			return encodeSequenceInto(buffer, key.c(), key.o(), key.s(), key.p());
-		case "cops":
-			return encodeSequenceInto(buffer, key.c(), key.o(), key.p(), key.s());
-		default:
-			throw new IllegalArgumentException("Unsupported quad key order: " + order.fieldSequence());
-		}
+		return order.encoder().encode(key.s(), key.p(), key.o(), key.c(), buffer);
 	}
 
 	public static int encodeFieldsInto(long s, long p, long o, long c, QuadKeyOrder order, ByteBuffer buffer) {
 		Objects.requireNonNull(order, "order");
 		Objects.requireNonNull(buffer, "buffer");
-		switch (order.fieldSequence()) {
-		case "spoc":
-			return encodeSequenceInto(buffer, s, p, o, c);
-		case "spco":
-			return encodeSequenceInto(buffer, s, p, c, o);
-		case "sopc":
-			return encodeSequenceInto(buffer, s, o, p, c);
-		case "socp":
-			return encodeSequenceInto(buffer, s, o, c, p);
-		case "scpo":
-			return encodeSequenceInto(buffer, s, c, p, o);
-		case "scop":
-			return encodeSequenceInto(buffer, s, c, o, p);
-		case "psoc":
-			return encodeSequenceInto(buffer, p, s, o, c);
-		case "psco":
-			return encodeSequenceInto(buffer, p, s, c, o);
-		case "posc":
-			return encodeSequenceInto(buffer, p, o, s, c);
-		case "pocs":
-			return encodeSequenceInto(buffer, p, o, c, s);
-		case "pcso":
-			return encodeSequenceInto(buffer, p, c, s, o);
-		case "pcos":
-			return encodeSequenceInto(buffer, p, c, o, s);
-		case "ospc":
-			return encodeSequenceInto(buffer, o, s, p, c);
-		case "oscp":
-			return encodeSequenceInto(buffer, o, s, c, p);
-		case "opsc":
-			return encodeSequenceInto(buffer, o, p, s, c);
-		case "opcs":
-			return encodeSequenceInto(buffer, o, p, c, s);
-		case "ocsp":
-			return encodeSequenceInto(buffer, o, c, s, p);
-		case "ocps":
-			return encodeSequenceInto(buffer, o, c, p, s);
-		case "cspo":
-			return encodeSequenceInto(buffer, c, s, p, o);
-		case "csop":
-			return encodeSequenceInto(buffer, c, s, o, p);
-		case "cpso":
-			return encodeSequenceInto(buffer, c, p, s, o);
-		case "cpos":
-			return encodeSequenceInto(buffer, c, p, o, s);
-		case "cosp":
-			return encodeSequenceInto(buffer, c, o, s, p);
-		case "cops":
-			return encodeSequenceInto(buffer, c, o, p, s);
-		default:
-			throw new IllegalArgumentException("Unsupported quad key order: " + order.fieldSequence());
-		}
+		return order.encoder().encode(s, p, o, c, buffer);
 	}
 
 	public static QuadKey decodeSpoc(byte[] bytes) {

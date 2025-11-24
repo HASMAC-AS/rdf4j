@@ -12,36 +12,74 @@ package org.eclipse.rdf4j.sail.lmdb.lftj;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 /**
  * Describes the positional order of quad components inside an index key.
  */
-public final class QuadKeyOrder {
+public enum QuadKeyOrder {
+	CSOP(Slot.C, Slot.S, Slot.O, Slot.P),
+	CSPO(Slot.C, Slot.S, Slot.P, Slot.O),
+	COSP(Slot.C, Slot.O, Slot.S, Slot.P),
+	COPS(Slot.C, Slot.O, Slot.P, Slot.S),
+	CPSO(Slot.C, Slot.P, Slot.S, Slot.O),
+	CPOS(Slot.C, Slot.P, Slot.O, Slot.S),
+	OSCP(Slot.O, Slot.S, Slot.C, Slot.P),
+	OSPC(Slot.O, Slot.S, Slot.P, Slot.C),
+	OCSP(Slot.O, Slot.C, Slot.S, Slot.P),
+	OCPS(Slot.O, Slot.C, Slot.P, Slot.S),
+	OPSC(Slot.O, Slot.P, Slot.S, Slot.C),
+	OPCS(Slot.O, Slot.P, Slot.C, Slot.S),
+	PSOC(Slot.P, Slot.S, Slot.O, Slot.C),
+	PSCO(Slot.P, Slot.S, Slot.C, Slot.O),
+	POSC(Slot.P, Slot.O, Slot.S, Slot.C),
+	POCS(Slot.P, Slot.O, Slot.C, Slot.S),
+	PCSO(Slot.P, Slot.C, Slot.S, Slot.O),
+	PCOS(Slot.P, Slot.C, Slot.O, Slot.S),
+	SPOC(Slot.S, Slot.P, Slot.O, Slot.C),
+	SPCO(Slot.S, Slot.P, Slot.C, Slot.O),
+	SOPC(Slot.S, Slot.O, Slot.P, Slot.C),
+	SOCP(Slot.S, Slot.O, Slot.C, Slot.P),
+	SCPO(Slot.S, Slot.C, Slot.P, Slot.O),
+	SCOP(Slot.S, Slot.C, Slot.O, Slot.P);
+
 	private static final int KEY_LENGTH = 4;
+	private static final Map<String, QuadKeyOrder> BY_SEQUENCE;
 
 	private final Slot[] positions;
 	private final String fieldSequence;
 	private final QuadKeyEncoding.QuadKeyDecoder decoder;
+	private final QuadKeyEncoding.QuadKeyEncoder encoder;
 
-	private QuadKeyOrder(Slot[] positions) {
-		this.positions = positions;
+	static {
+		Map<String, QuadKeyOrder> bySequence = new HashMap<>();
+		for (QuadKeyOrder order : values()) {
+			bySequence.put(order.fieldSequence, order);
+		}
+		BY_SEQUENCE = Map.copyOf(bySequence);
+	}
+
+	QuadKeyOrder(Slot... positions) {
+		validatePositions(positions);
+		this.positions = positions.clone();
 		this.fieldSequence = buildFieldSequence(positions);
 		this.decoder = QuadKeyEncoding.decoderFor(fieldSequence);
+		this.encoder = QuadKeyEncoding.encoderFor(fieldSequence);
 	}
 
 	public static QuadKeyOrder of(Slot... positions) {
 		Objects.requireNonNull(positions, "positions");
-		if (positions.length != KEY_LENGTH) {
-			throw new IllegalArgumentException("QuadKeyOrder must contain exactly four slots");
-		}
-		EnumSet<Slot> unique = EnumSet.noneOf(Slot.class);
-		unique.addAll(Arrays.asList(positions));
-		if (unique.size() != KEY_LENGTH) {
+		validatePositions(positions);
+		String sequence = buildFieldSequence(positions);
+		QuadKeyOrder order = BY_SEQUENCE.get(sequence);
+		if (order == null) {
 			throw new IllegalArgumentException("QuadKeyOrder must contain each slot exactly once");
 		}
-		return new QuadKeyOrder(Arrays.copyOf(positions, positions.length));
+		return order;
 	}
 
 	public static QuadKeyOrder fromFieldSequence(String sequence) {
@@ -49,11 +87,19 @@ public final class QuadKeyOrder {
 		if (sequence.length() != KEY_LENGTH) {
 			throw new IllegalArgumentException("Field sequence must be four characters: " + sequence);
 		}
-		Slot[] positions = new Slot[KEY_LENGTH];
-		for (int i = 0; i < KEY_LENGTH; i++) {
-			positions[i] = toSlot(sequence.charAt(i));
+		String normalized = sequence.toLowerCase(Locale.ROOT);
+		QuadKeyOrder order = BY_SEQUENCE.get(normalized);
+		if (order != null) {
+			return order;
 		}
-		return of(positions);
+		EnumSet<Slot> unique = EnumSet.noneOf(Slot.class);
+		for (int i = 0; i < KEY_LENGTH; i++) {
+			Slot slot = toSlot(normalized.charAt(i));
+			if (!unique.add(slot)) {
+				throw new IllegalArgumentException("Field sequence must contain each slot exactly once: " + sequence);
+			}
+		}
+		throw new IllegalArgumentException("Unknown field in sequence: " + sequence);
 	}
 
 	private static Slot toSlot(char ch) {
@@ -94,6 +140,21 @@ public final class QuadKeyOrder {
 
 	QuadKeyEncoding.QuadKeyDecoder decoder() {
 		return decoder;
+	}
+
+	QuadKeyEncoding.QuadKeyEncoder encoder() {
+		return encoder;
+	}
+
+	private static void validatePositions(Slot[] positions) {
+		if (positions.length != KEY_LENGTH) {
+			throw new IllegalArgumentException("QuadKeyOrder must contain exactly four slots");
+		}
+		EnumSet<Slot> unique = EnumSet.noneOf(Slot.class);
+		unique.addAll(Arrays.asList(positions));
+		if (unique.size() != KEY_LENGTH) {
+			throw new IllegalArgumentException("QuadKeyOrder must contain each slot exactly once");
+		}
 	}
 
 	private static String buildFieldSequence(Slot[] positions) {

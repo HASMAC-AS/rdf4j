@@ -175,29 +175,9 @@ public final class IndexSelector {
 	}
 
 	private static List<QuadKeyOrder> allOrders() {
-		List<QuadKeyOrder> orders = new ArrayList<>(24);
-		Slot[] slots = Slot.values();
-		permute(slots, 0, orders);
+		List<QuadKeyOrder> orders = new ArrayList<>(List.of(QuadKeyOrder.values()));
 		orders.sort(Comparator.comparing(QuadKeyOrder::fieldSequence));
 		return List.copyOf(orders);
-	}
-
-	private static void permute(Slot[] slots, int index, List<QuadKeyOrder> orders) {
-		if (index == slots.length) {
-			orders.add(QuadKeyOrder.of(slots));
-			return;
-		}
-		for (int i = index; i < slots.length; i++) {
-			swap(slots, index, i);
-			permute(slots, index + 1, orders);
-			swap(slots, index, i);
-		}
-	}
-
-	private static void swap(Slot[] slots, int left, int right) {
-		Slot tmp = slots[left];
-		slots[left] = slots[right];
-		slots[right] = tmp;
 	}
 
 	private static final class Evaluation {
