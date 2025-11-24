@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -211,7 +212,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 		private Map<QuadPattern, QuadKeyOrder> chooseOrders(List<QuadPattern> patterns, List<String> order,
 				Map<QuadKeyOrder, Integer> indexHandles) {
 			List<QuadKeyOrder> candidates = new ArrayList<>(indexHandles.keySet());
-			Map<QuadPattern, QuadKeyOrder> chosen = new java.util.HashMap<>();
+			Map<QuadPattern, QuadKeyOrder> chosen = new HashMap<>();
 			for (QuadPattern pattern : patterns) {
 				QuadKeyOrder selected = IndexSelector.chooseBestOrder(pattern, order, candidates);
 				chosen.put(pattern, selected);
@@ -458,7 +459,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			}
 
 			private Map<String, Integer> indexByName(List<String> order) {
-				Map<String, Integer> index = new java.util.HashMap<>(order.size());
+				Map<String, Integer> index = new HashMap<>(order.size());
 				for (int i = 0; i < order.size(); i++) {
 					index.put(order.get(i), i);
 				}

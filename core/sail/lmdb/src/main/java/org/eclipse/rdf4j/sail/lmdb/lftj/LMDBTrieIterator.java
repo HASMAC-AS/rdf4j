@@ -24,6 +24,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.function.LongConsumer;
+import java.util.function.LongSupplier;
 
 import org.eclipse.rdf4j.sail.lmdb.Varint;
 import org.lwjgl.PointerBuffer;
@@ -45,6 +47,10 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 	private final QuadKeyOrder order;
 
 	private final Slot role;
+
+	private final LongSupplier currentValueSupplier;
+
+	private final LongConsumer roleSeek;
 
 	private final MDBVal keyVal = MDBVal.malloc();
 
@@ -68,6 +74,8 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 		this.dbi = dbi;
 		this.order = Objects.requireNonNull(order, "order");
 		this.role = Objects.requireNonNull(role, "role");
+		this.currentValueSupplier = valueSupplier(role);
+		this.roleSeek = seekFunction(role);
 		try (MemoryStack stack = stackPush()) {
 			PointerBuffer cursorPtr = stack.mallocPointer(1);
 			assertSuccess(mdb_cursor_open(txn, dbi, cursorPtr));
@@ -131,27 +139,7 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 		if (value <= currentValue()) {
 			return;
 		}
-		long s = prefix.hasSubject() ? prefix.subject() : QuadKeyEncoding.MIN_TERM_ID;
-		long p = prefix.hasPredicate() ? prefix.predicate() : QuadKeyEncoding.MIN_TERM_ID;
-		long o = prefix.hasObject() ? prefix.object() : QuadKeyEncoding.MIN_TERM_ID;
-		long c = prefix.hasContext() ? prefix.context() : QuadKeyEncoding.MIN_TERM_ID;
-		switch (role) {
-		case S:
-			s = value;
-			break;
-		case P:
-			p = value;
-			break;
-		case O:
-			o = value;
-			break;
-		case C:
-			c = value;
-			break;
-		default:
-			throw new IllegalStateException("Unexpected slot: " + role);
-		}
-		positionCursor(s, p, o, c);
+		roleSeek.accept(value);
 	}
 
 	@Override
@@ -228,18 +216,53 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 	}
 
 	private long currentValue() {
+		return currentValueSupplier.getAsLong();
+	}
+
+	private LongSupplier valueSupplier(Slot role) {
 		switch (role) {
 		case S:
-			return currentS;
+			return () -> currentS;
 		case P:
-			return currentP;
+			return () -> currentP;
 		case O:
-			return currentO;
+			return () -> currentO;
 		case C:
-			return currentC;
+			return () -> currentC;
 		default:
 			throw new IllegalStateException("Unexpected slot: " + role);
 		}
+	}
+
+	private LongConsumer seekFunction(Slot role) {
+		switch (role) {
+		case S:
+			return value -> positionCursor(value, defaultPredicate(), defaultObject(), defaultContext());
+		case P:
+			return value -> positionCursor(defaultSubject(), value, defaultObject(), defaultContext());
+		case O:
+			return value -> positionCursor(defaultSubject(), defaultPredicate(), value, defaultContext());
+		case C:
+			return value -> positionCursor(defaultSubject(), defaultPredicate(), defaultObject(), value);
+		default:
+			throw new IllegalStateException("Unexpected slot: " + role);
+		}
+	}
+
+	private long defaultSubject() {
+		return prefix.hasSubject() ? prefix.subject() : QuadKeyEncoding.MIN_TERM_ID;
+	}
+
+	private long defaultPredicate() {
+		return prefix.hasPredicate() ? prefix.predicate() : QuadKeyEncoding.MIN_TERM_ID;
+	}
+
+	private long defaultObject() {
+		return prefix.hasObject() ? prefix.object() : QuadKeyEncoding.MIN_TERM_ID;
+	}
+
+	private long defaultContext() {
+		return prefix.hasContext() ? prefix.context() : QuadKeyEncoding.MIN_TERM_ID;
 	}
 
 	@Override
