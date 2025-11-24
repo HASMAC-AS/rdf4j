@@ -57,7 +57,7 @@ public final class IndexSelector {
 
 		for (int i = 0; i < candidates.size(); i++) {
 			QuadKeyOrder candidate = candidates.get(i);
-			Compatibility compatibility = compatibilityScore(candidate, variableSlots, orderIndex);
+			Compatibility compatibility = compatibilityScore(candidate, pattern, variableSlots, orderIndex);
 			Evaluation evaluation = new Evaluation(candidate, compatibility);
 			evaluations.add(evaluation);
 			if (bestScore == null || isBetter(compatibility, bestScore)) {
@@ -65,42 +65,51 @@ public final class IndexSelector {
 				bestScore = compatibility;
 				bestIndex = i;
 				chosenEvaluation = evaluation;
-			} else if (compatibility.equals(bestScore) && i < bestIndex) {
-				bestOrder = candidate;
-				bestScore = compatibility;
-				bestIndex = i;
-				chosenEvaluation = evaluation;
 			}
 		}
 
-//		Evaluation bestPossible = bestPossibleOrder(variableSlots, orderIndex);
+		Evaluation bestPossible = bestPossibleOrder(pattern, variableSlots, orderIndex);
+		if (bestPossible != null && bestPossible.order != chosenEvaluation.order && isBetter(bestPossible.compatibility, chosenEvaluation.compatibility)) {
+			throw new IllegalStateException(
+					"Missing required index for pattern " + pattern + ". Best possible order "
+							+ bestPossible.order.fieldSequence() + " (score=" + bestPossible.compatibility.score()
+							+ ") is not available in configured index set " + candidates);
+		}
+
 //		logSelection(variableOrder, variableSlots, evaluations, chosenEvaluation, bestPossible);
 
 		return bestOrder;
 	}
 
-	private static Evaluation bestPossibleOrder(Map<String, Slot> variableSlots, Map<String, Integer> orderIndex) {
-		Evaluation best = null;
+	private static Evaluation bestPossibleOrder(QuadPattern pattern, Map<String, Slot> variableSlots, Map<String, Integer> orderIndex) {
+		Evaluation bestScore = null;
 		int bestIndex = Integer.MAX_VALUE;
 		for (int i = 0; i < ALL_ORDERS.size(); i++) {
 			QuadKeyOrder order = ALL_ORDERS.get(i);
-			Compatibility compatibility = compatibilityScore(order, variableSlots, orderIndex);
-			if (best == null || isBetter(compatibility, best.compatibility)) {
-				best = new Evaluation(order, compatibility);
-				bestIndex = i;
-			} else if (compatibility.equals(best.compatibility) && i < bestIndex) {
-				best = new Evaluation(order, compatibility);
-				bestIndex = i;
+			Compatibility compatibility = compatibilityScore(order, pattern, variableSlots, orderIndex);
+			Evaluation evaluation = new Evaluation(order, compatibility);
+			if (bestScore == null || isBetter(compatibility, bestScore.compatibility)) {
+				bestScore = evaluation;
 			}
 		}
-		return best;
+		return bestScore;
 	}
 
-	private static Compatibility compatibilityScore(QuadKeyOrder order, Map<String, Slot> variableSlots,
-			Map<String, Integer> orderIndex) {
+	private static Compatibility compatibilityScore(QuadKeyOrder order, QuadPattern pattern,
+			Map<String, Slot> variableSlots, Map<String, Integer> orderIndex) {
 		int satisfied = 0;
 		int positionSum = 0;
+		int boundPositionSum = 0;
 		Set<String> variables = variableSlots.keySet();
+
+		if (pattern != null) {
+			for (Slot slot : Slot.values()) {
+				QuadPatternTerm term = pattern.term(slot);
+				if (term.isConstant()) {
+					boundPositionSum += order.indexOf(slot);
+				}
+			}
+		}
 
 		for (String variable : variables) {
 			Slot slot = variableSlots.get(variable);
@@ -114,7 +123,7 @@ public final class IndexSelector {
 				satisfied++;
 			}
 		}
-		return new Compatibility(satisfied, positionSum);
+		return new Compatibility(satisfied, positionSum, boundPositionSum);
 	}
 
 	private static boolean allEarlierVariablesBeforeSlot(int variablePosition, int slotPosition, QuadKeyOrder order,
@@ -143,6 +152,11 @@ public final class IndexSelector {
 		if (candidate.score != best.score) {
 			return candidate.score > best.score;
 		}
+
+		if (candidate.boundPositionSum != best.boundPositionSum) {
+			return candidate.boundPositionSum < best.boundPositionSum;
+		}
+
 		return candidate.positionSum < best.positionSum;
 	}
 
@@ -171,7 +185,8 @@ public final class IndexSelector {
 
 	private static String formatEvaluation(Evaluation evaluation) {
 		return evaluation.order.fieldSequence() + "(score=" + evaluation.compatibility.score() + ", positionSum="
-				+ evaluation.compatibility.positionSum() + ")";
+				+ evaluation.compatibility.positionSum() + ", boundPositionSum="
+				+ evaluation.compatibility.boundPositionSum() + ")";
 	}
 
 	private static List<QuadKeyOrder> allOrders() {
@@ -193,10 +208,12 @@ public final class IndexSelector {
 	private static final class Compatibility {
 		private final int score;
 		private final int positionSum;
+		private final int boundPositionSum;
 
-		private Compatibility(int score, int positionSum) {
+		private Compatibility(int score, int positionSum, int boundPositionSum) {
 			this.score = score;
 			this.positionSum = positionSum;
+			this.boundPositionSum = boundPositionSum;
 		}
 
 		@Override
@@ -208,12 +225,13 @@ public final class IndexSelector {
 				return false;
 			}
 			Compatibility other = (Compatibility) obj;
-			return score == other.score && positionSum == other.positionSum;
+			return score == other.score && positionSum == other.positionSum
+					&& boundPositionSum == other.boundPositionSum;
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(score, positionSum);
+			return Objects.hash(score, positionSum, boundPositionSum);
 		}
 
 		int score() {
@@ -222,6 +240,10 @@ public final class IndexSelector {
 
 		int positionSum() {
 			return positionSum;
+		}
+
+		int boundPositionSum() {
+			return boundPositionSum;
 		}
 	}
 }

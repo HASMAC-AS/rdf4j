@@ -20,7 +20,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.util.Values;
 import org.eclipse.rdf4j.model.vocabulary.FOAF;
+import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.query.TupleQueryResult;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategyFactory;
 import org.eclipse.rdf4j.query.explanation.Explanation;
@@ -88,7 +90,7 @@ public class LmdbCliqueBenchmark {
 
 		dataDir = Files.createTempDirectory("lmdb-clique-benchmark").toFile();
 
-		LmdbStore store = new LmdbStore(dataDir, new LmdbStoreConfig("spoc,posc,opsc,cosp,sopc,cpso,oscp"));
+		LmdbStore store = new LmdbStore(dataDir, new LmdbStoreConfig("psoc,posc"));
 		if ("standard".equalsIgnoreCase(joinStrategy)) {
 			store.setEvaluationStrategyFactory(new DefaultEvaluationStrategyFactory());
 		}
@@ -118,6 +120,8 @@ public class LmdbCliqueBenchmark {
 					continue;
 				}
 				connection.add(subject, FOAF.KNOWS, nodes.get(j));
+
+				connection.add(subject, RDF.TYPE, FOAF.PERSON);
 			}
 		}
 		connection.commit();
@@ -167,6 +171,11 @@ public class LmdbCliqueBenchmark {
 				throw new IllegalStateException("Unexpected result size: " + count + " (expected " + 117600 + ')');
 			}
 		}
+		if (nodeCount == 100 && cliqueSize == 3 && queryCliqueSize == 3) {
+			if (count != 970200) {
+				throw new IllegalStateException("Unexpected result size: " + count + " (expected " + 970200 + ')');
+			}
+		}
 		return count;
 	}
 
@@ -189,7 +198,7 @@ public class LmdbCliqueBenchmark {
 
 	public static void main(String[] args) throws RunnerException, IOException {
 		Options options = new OptionsBuilder()
-				.include(".*" + LmdbCliqueBenchmark.class.getSimpleName() + ".*")
+				.include(LmdbCliqueBenchmark.class.getSimpleName() + ".*")
 				.forks(0)
 				.build();
 		new Runner(options).run();

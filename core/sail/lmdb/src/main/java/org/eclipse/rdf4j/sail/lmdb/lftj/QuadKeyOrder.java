@@ -104,16 +104,16 @@ public enum QuadKeyOrder {
 
 	private static Slot toSlot(char ch) {
 		switch (Character.toLowerCase(ch)) {
-			case 's':
-				return Slot.S;
-			case 'p':
-				return Slot.P;
-			case 'o':
-				return Slot.O;
-			case 'c':
-				return Slot.C;
-			default:
-				throw new IllegalArgumentException("Unknown field in sequence: " + ch);
+		case 's':
+			return Slot.S;
+		case 'p':
+			return Slot.P;
+		case 'o':
+			return Slot.O;
+		case 'c':
+			return Slot.C;
+		default:
+			throw new IllegalArgumentException("Unknown field in sequence: " + ch);
 		}
 	}
 
@@ -161,20 +161,20 @@ public enum QuadKeyOrder {
 		StringBuilder builder = new StringBuilder(KEY_LENGTH);
 		for (Slot position : positions) {
 			switch (position) {
-				case S:
-					builder.append('s');
-					break;
-				case P:
-					builder.append('p');
-					break;
-				case O:
-					builder.append('o');
-					break;
-				case C:
-					builder.append('c');
-					break;
-				default:
-					throw new IllegalStateException("Unexpected slot: " + position);
+			case S:
+				builder.append('s');
+				break;
+			case P:
+				builder.append('p');
+				break;
+			case O:
+				builder.append('o');
+				break;
+			case C:
+				builder.append('c');
+				break;
+			default:
+				throw new IllegalStateException("Unexpected slot: " + position);
 			}
 		}
 		return builder.toString();
@@ -191,45 +191,45 @@ public enum QuadKeyOrder {
 	public void printBound(long s, long p, long o, long c) {
 		for (Slot position : positions) {
 			switch (position) {
-				case S:
-					System.out.print("S:");
-					if (s > 0) {
-						System.out.print("Bound");
-					} else {
-						System.out.print("Unbound");
-					}
-					System.out.print("  ");
-					break;
-				case P:
-					System.out.print("P:");
-					if (p > 0) {
-						System.out.print("Bound");
-					} else {
-						System.out.print("Unbound");
-					}
-					System.out.print("  ");
+			case S:
+				System.out.print("S:");
+				if (s > 0) {
+					System.out.print("Bound");
+				} else {
+					System.out.print("Unbound");
+				}
+				System.out.print("  ");
+				break;
+			case P:
+				System.out.print("P:");
+				if (p > 0) {
+					System.out.print("Bound");
+				} else {
+					System.out.print("Unbound");
+				}
+				System.out.print("  ");
 
-					break;
-				case O:
-					System.out.print("O:");
-					if (o > 0) {
-						System.out.print("Bound");
-					} else {
-						System.out.print("Unbound");
-					}
-					System.out.print("  ");
+				break;
+			case O:
+				System.out.print("O:");
+				if (o > 0) {
+					System.out.print("Bound");
+				} else {
+					System.out.print("Unbound");
+				}
+				System.out.print("  ");
 
-					break;
-				case C:
-					System.out.print("C:");
-					if (c > 0) {
-						System.out.print("Bound");
-					} else {
-						System.out.print("Unbound");
-					}
-					System.out.print("  ");
+				break;
+			case C:
+				System.out.print("C:");
+				if (c > 0) {
+					System.out.print("Bound");
+				} else {
+					System.out.print("Unbound");
+				}
+				System.out.print("  ");
 
-					break;
+				break;
 			}
 		}
 		System.out.println();
@@ -242,26 +242,28 @@ public enum QuadKeyOrder {
 			// if the value for the position is <= 0, it is unbound, e.g. for position S: s <= 0
 			boolean isBound;
 			switch (position) {
-				case S:
-					isBound = s > 0;
-					break;
-				case P:
-					isBound = p > 0;
-					break;
-				case O:
-					isBound = o > 0;
-					break;
-				case C:
-					isBound = c > 0;
-					break;
-				default:
-					throw new IllegalStateException("Unexpected slot: " + position);
+			case S:
+				isBound = s > 0;
+				break;
+			case P:
+				isBound = p > 0;
+				break;
+			case O:
+				isBound = o > 0;
+				break;
+			case C:
+				isBound = c > 0;
+				break;
+			default:
+				throw new IllegalStateException("Unexpected slot: " + position);
 			}
 
-			if(unboundFound == isBound) {
+			// Once we have encountered an unbound slot, any later bound slot means the order
+			// is not optimal (bound-after-unbound).
+			if (unboundFound && isBound) {
 				return false;
 			}
-			if(!isBound) {
+			if (!isBound) {
 				unboundFound = true;
 			}
 
