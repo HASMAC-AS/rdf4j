@@ -114,6 +114,9 @@ class TripleStore implements Closeable {
 	 * Constants *
 	 *-----------*/
 
+	private static final int CONTEXT_DB_COUNT = 1;
+	private static final int DBI_PER_INDEX = 2;
+
 	// triples are represented by 4 varints for subject, predicate, object and context
 	static final int SUBJ_IDX = 0;
 	static final int PRED_IDX = 1;
@@ -200,6 +203,8 @@ class TripleStore implements Closeable {
 		this.forceSync = config.getForceSync();
 		this.autoGrow = config.getAutoGrow();
 		this.valueStore = valueStore;
+		File propFile = new File(this.dir, PROPERTIES_FILE);
+		String indexSpecStr = config.getTripleIndexes();
 
 		// create directory if it not exists
 		this.dir.mkdirs();
@@ -210,8 +215,7 @@ class TripleStore implements Closeable {
 			env = pp.get(0);
 		}
 
-		// 1 for contexts, 12 for triple indexes (2 per index)
-		E(mdb_env_set_maxdbs(env, 13));
+		E(mdb_env_set_maxdbs(env, calculateMaxDbs(propFile, indexSpecStr)));
 		E(mdb_env_set_maxreaders(env, 256));
 
 		// Open environment
@@ -232,8 +236,6 @@ class TripleStore implements Closeable {
 
 		txnManager = new TxnManager(env, Mode.RESET);
 
-		File propFile = new File(this.dir, PROPERTIES_FILE);
-		String indexSpecStr = config.getTripleIndexes();
 		if (!propFile.exists()) {
 			// newly created lmdb store
 			properties = new Properties();
@@ -348,6 +350,25 @@ class TripleStore implements Closeable {
 		}
 
 		return indexes;
+	}
+
+	private int calculateMaxDbs(File propFile, String configIndexSpec) throws IOException, SailException {
+		int configuredIndexes = parseIndexSpecList(configIndexSpec).size();
+		if (configuredIndexes == 0) {
+			configuredIndexes = parseIndexSpecList(DEFAULT_INDEXES).size();
+		}
+
+		int existingIndexes = 0;
+		if (propFile.exists()) {
+			Properties existingProperties = loadProperties(propFile);
+			String persistedIndexSpec = existingProperties.getProperty(INDEXES_KEY);
+			if (persistedIndexSpec != null) {
+				existingIndexes = parseIndexSpecList(persistedIndexSpec).size();
+			}
+		}
+
+		int indexCount = Math.max(configuredIndexes, existingIndexes);
+		return CONTEXT_DB_COUNT + (indexCount * DBI_PER_INDEX);
 	}
 
 	private void initIndexes(Set<String> indexSpecs, long tripleDbSize) throws IOException {

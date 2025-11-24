@@ -88,7 +88,7 @@ public class LmdbCliqueBenchmark {
 
 		dataDir = Files.createTempDirectory("lmdb-clique-benchmark").toFile();
 
-		LmdbStore store = new LmdbStore(dataDir, new LmdbStoreConfig("spoc,posc,opsc,cosp,sopc,cpso"));
+		LmdbStore store = new LmdbStore(dataDir, new LmdbStoreConfig("spoc,posc,opsc,cosp,sopc,cpso,oscp"));
 		if ("standard".equalsIgnoreCase(joinStrategy)) {
 			store.setEvaluationStrategyFactory(new DefaultEvaluationStrategyFactory());
 		}

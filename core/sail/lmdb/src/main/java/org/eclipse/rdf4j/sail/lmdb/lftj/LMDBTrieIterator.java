@@ -33,7 +33,7 @@ import org.lwjgl.util.lmdb.MDBVal;
 /**
  * LMDB-backed implementation of {@link TrieIterator} for quad indexes.
  */
-public class LMDBTrieIterator implements TrieIterator, Closeable {
+public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.QuadKeySink {
 
 	private static final int MAX_ENCODED_KEY_LENGTH = Varint
 			.calcListLengthUnsigned(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
@@ -56,7 +56,13 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 
 	private Prefix prefix = Prefix.builder().build();
 
-	private QuadKey currentKey;
+	private long currentS;
+
+	private long currentP;
+
+	private long currentO;
+
+	private long currentC;
 
 	public LMDBTrieIterator(long txn, int dbi, QuadKeyOrder order, Slot role) throws IOException {
 		this.dbi = dbi;
@@ -75,7 +81,7 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 		this.prefix = prefix;
 		end = false;
 		QuadKey startKey = QuadKeyEncoding.minimalKeyForPrefix(prefix);
-		positionCursor(startKey);
+		positionCursor(startKey.s(), startKey.p(), startKey.o(), startKey.c());
 	}
 
 	@Override
@@ -88,7 +94,7 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 		if (end) {
 			throw new IllegalStateException("Iterator is at end");
 		}
-		return QuadKeyEncoding.componentForRole(currentKey, role);
+		return currentValue();
 	}
 
 	@Override
@@ -97,7 +103,7 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 			return;
 		}
 
-		long currentValue = QuadKeyEncoding.componentForRole(currentKey, role);
+		long currentValue = currentValue();
 		while (true) {
 			int rc = mdb_cursor_get(cursor, keyVal, dataVal, MDB_NEXT);
 			if (rc == MDB_NOTFOUND) {
@@ -106,11 +112,11 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 			}
 			assertSuccess(rc);
 			loadCurrentKey();
-			if (!QuadKeyEncoding.matchesPrefix(currentKey, prefix)) {
+			if (!matchesPrefix()) {
 				end = true;
 				return;
 			}
-			long newValue = QuadKeyEncoding.componentForRole(currentKey, role);
+			long newValue = currentValue();
 			if (newValue != currentValue) {
 				return;
 			}
@@ -122,23 +128,9 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 		if (end) {
 			return;
 		}
-		if (value <= QuadKeyEncoding.componentForRole(currentKey, role)) {
+		if (value <= currentValue()) {
 			return;
 		}
-		QuadKey seekKey = buildSeekKey(value);
-		positionCursor(seekKey);
-	}
-
-	@Override
-	public void close() {
-		mdb_cursor_close(cursor);
-	}
-
-	public Slot slot() {
-		return role;
-	}
-
-	private QuadKey buildSeekKey(long value) {
 		long s = prefix.hasSubject() ? prefix.subject() : QuadKeyEncoding.MIN_TERM_ID;
 		long p = prefix.hasPredicate() ? prefix.predicate() : QuadKeyEncoding.MIN_TERM_ID;
 		long o = prefix.hasObject() ? prefix.object() : QuadKeyEncoding.MIN_TERM_ID;
@@ -159,16 +151,34 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 		default:
 			throw new IllegalStateException("Unexpected slot: " + role);
 		}
-		return new QuadKey(s, p, o, c);
+		positionCursor(s, p, o, c);
 	}
 
-	private void positionCursor(QuadKey targetKey) {
-		byte[] encoded = QuadKeyEncoding.encode(targetKey, order);
+	@Override
+	public void close() {
+		mdb_cursor_close(cursor);
+	}
+
+	public Slot slot() {
+		return role;
+	}
+
+	@Override
+	public int slotDbi() {
+		return dbi;
+	}
+
+	@Override
+	public QuadKeyOrder slotOrder() {
+		return order;
+	}
+
+	private void positionCursor(long s, long p, long o, long c) {
 		seekKeyBuffer.clear();
-		seekKeyBuffer.put(encoded);
+		int encodedLength = QuadKeyEncoding.encodeFieldsInto(s, p, o, c, order, seekKeyBuffer);
 		seekKeyBuffer.flip();
 		keyVal.mv_data(seekKeyBuffer);
-		keyVal.mv_size(seekKeyBuffer.remaining());
+		keyVal.mv_size(encodedLength);
 		dataVal.mv_data((ByteBuffer) null);
 		dataVal.mv_size(0);
 		int rc = mdb_cursor_get(cursor, keyVal, dataVal, MDB_SET_RANGE);
@@ -179,7 +189,7 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 			}
 			assertSuccess(rc);
 			loadCurrentKey();
-			if (QuadKeyEncoding.matchesPrefix(currentKey, prefix)) {
+			if (matchesPrefix()) {
 				end = false;
 				return;
 			}
@@ -190,15 +200,53 @@ public class LMDBTrieIterator implements TrieIterator, Closeable {
 	private void loadCurrentKey() {
 		ByteBuffer buffer = keyVal.mv_data();
 		int len = (int) keyVal.mv_size();
-		ByteBuffer slice = buffer.duplicate();
-		slice.limit(len);
-		slice.position(0);
-		currentKey = QuadKeyEncoding.decode(slice, order);
+		buffer.limit(len);
+		buffer.position(0);
+		QuadKeyEncoding.decodeInto(buffer, order, this);
 	}
 
 	private void assertSuccess(int rc) {
 		if (rc != MDB_SUCCESS) {
 			throw new IllegalStateException(mdb_strerror(rc));
 		}
+	}
+
+	private boolean matchesPrefix() {
+		if (prefix.hasSubject() && currentS != prefix.subject()) {
+			return false;
+		}
+		if (prefix.hasPredicate() && currentP != prefix.predicate()) {
+			return false;
+		}
+		if (prefix.hasObject() && currentO != prefix.object()) {
+			return false;
+		}
+		if (prefix.hasContext() && currentC != prefix.context()) {
+			return false;
+		}
+		return true;
+	}
+
+	private long currentValue() {
+		switch (role) {
+		case S:
+			return currentS;
+		case P:
+			return currentP;
+		case O:
+			return currentO;
+		case C:
+			return currentC;
+		default:
+			throw new IllegalStateException("Unexpected slot: " + role);
+		}
+	}
+
+	@Override
+	public void set(long s, long p, long o, long c) {
+		this.currentS = s;
+		this.currentP = p;
+		this.currentO = o;
+		this.currentC = c;
 	}
 }

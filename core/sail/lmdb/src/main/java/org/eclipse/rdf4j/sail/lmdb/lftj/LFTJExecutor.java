@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.sail.lmdb.lftj;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -29,12 +30,19 @@ public final class LFTJExecutor {
 
 	private final Map<QuadKeyOrder, Integer> indexMapping;
 
+	private final TrieIteratorProvider iteratorProvider;
+
 	public LFTJExecutor(long txn, Map<QuadKeyOrder, Integer> indexMapping) {
+		this(txn, indexMapping, defaultIteratorProvider());
+	}
+
+	LFTJExecutor(long txn, Map<QuadKeyOrder, Integer> indexMapping, TrieIteratorProvider iteratorProvider) {
 		this.txn = txn;
 		this.indexMapping = Map.copyOf(Objects.requireNonNull(indexMapping, "indexMapping"));
 		if (this.indexMapping.isEmpty()) {
 			throw new IllegalArgumentException("At least one index must be provided");
 		}
+		this.iteratorProvider = Objects.requireNonNull(iteratorProvider, "iteratorProvider");
 	}
 
 	public List<Map<String, Long>> evaluate(List<QuadPattern> patterns) throws IOException {
@@ -50,14 +58,12 @@ public final class LFTJExecutor {
 		Map<QuadPattern, QuadKeyOrder> chosenOrders = chooseOrders(patterns, variableOrder);
 		Map<String, Integer> variableOrderIndex = indexVariableOrder(variableOrder);
 		Map<String, List<QuadPattern>> participating = groupByVariable(patterns);
-		Map<IteratorKey, LMDBTrieIterator> iteratorCache = new HashMap<>();
+		IteratorPool iteratorPool = new IteratorPool();
 		try {
-			recurse(variableOrder, variableOrderIndex, participating, 0, chosenOrders, iteratorCache, new HashMap<>(),
+			recurse(variableOrder, variableOrderIndex, participating, 0, chosenOrders, iteratorPool, new HashMap<>(),
 					consumer);
 		} finally {
-			for (LMDBTrieIterator iterator : iteratorCache.values()) {
-				iterator.close();
-			}
+			iteratorPool.closeAll();
 		}
 	}
 
@@ -122,8 +128,7 @@ public final class LFTJExecutor {
 
 	private void recurse(List<String> variableOrder, Map<String, Integer> variableOrderIndex,
 			Map<String, List<QuadPattern>> participatingByVariable, int depth,
-			Map<QuadPattern, QuadKeyOrder> chosenOrders, Map<IteratorKey, LMDBTrieIterator> iteratorCache,
-			Map<String, Long> bindings,
+			Map<QuadPattern, QuadKeyOrder> chosenOrders, IteratorPool iteratorPool, Map<String, Long> bindings,
 			Consumer<Map<String, Long>> consumer) throws IOException {
 		if (depth >= variableOrder.size()) {
 			consumer.accept(Map.copyOf(bindings));
@@ -136,7 +141,7 @@ public final class LFTJExecutor {
 			throw new IllegalArgumentException("Variable not found in any pattern: " + variable);
 		}
 		int currentIndex = variableOrderIndex.get(variable);
-		List<LMDBTrieIterator> iterators = new ArrayList<>(participating.size());
+		List<CloseableTrieIterator> iterators = new ArrayList<>(participating.size());
 		for (QuadPattern pattern : participating) {
 			QuadKeyOrder order = chosenOrders.get(pattern);
 			Integer dbi = indexMapping.get(order);
@@ -145,14 +150,10 @@ public final class LFTJExecutor {
 			}
 			Slot slot = pattern.variableSlots().get(variable);
 			Prefix prefix = PrefixBuilder.buildPrefix(pattern, variableOrderIndex, currentIndex, bindings);
-			IteratorKey key = new IteratorKey(pattern, slot);
-			LMDBTrieIterator iterator = iteratorCache.get(key);
-			if (iterator == null) {
-				iterator = new LMDBTrieIterator(txn, dbi.intValue(), order, slot);
-				iteratorCache.put(key, iterator);
-			}
+			CloseableTrieIterator iterator = iteratorPool.acquire(dbi.intValue(), order, slot);
 			iterator.open(prefix);
 			if (iterator.atEnd()) {
+				iteratorPool.release(iterator);
 				return;
 			}
 			iterators.add(iterator);
@@ -163,7 +164,7 @@ public final class LFTJExecutor {
 				bindings.put(variable, value);
 				try {
 					recurse(variableOrder, variableOrderIndex, participatingByVariable, depth + 1, chosenOrders,
-							iteratorCache, bindings, consumer);
+							iteratorPool, bindings, consumer);
 				} catch (IOException e) {
 					throw new EvaluationException(e);
 				}
@@ -171,7 +172,69 @@ public final class LFTJExecutor {
 		} catch (EvaluationException e) {
 			throw e.ioException;
 		}
+		for (CloseableTrieIterator iterator : iterators) {
+			iteratorPool.release(iterator);
+		}
 		bindings.remove(variable);
+	}
+
+	private final class IteratorPool {
+		private final Map<PoolKey, ArrayDeque<CloseableTrieIterator>> pool = new HashMap<>();
+
+		CloseableTrieIterator acquire(int dbi, QuadKeyOrder order, Slot slot) throws IOException {
+			PoolKey key = new PoolKey(dbi, order, slot);
+			ArrayDeque<CloseableTrieIterator> deque = pool.get(key);
+			if (deque != null) {
+				CloseableTrieIterator iterator = deque.pollFirst();
+				if (iterator != null) {
+					return iterator;
+				}
+			}
+			return iteratorProvider.create(txn, dbi, order, slot);
+		}
+
+		void release(CloseableTrieIterator iterator) {
+			PoolKey key = new PoolKey(iterator.slotDbi(), iterator.slotOrder(), iterator.slot());
+			pool.computeIfAbsent(key, k -> new ArrayDeque<>()).addFirst(iterator);
+		}
+
+		void closeAll() {
+			for (ArrayDeque<CloseableTrieIterator> deque : pool.values()) {
+				for (CloseableTrieIterator iterator : deque) {
+					iterator.close();
+				}
+			}
+			pool.clear();
+		}
+	}
+
+	private static final class PoolKey {
+		private final int dbi;
+		private final QuadKeyOrder order;
+		private final Slot slot;
+
+		PoolKey(int dbi, QuadKeyOrder order, Slot slot) {
+			this.dbi = dbi;
+			this.order = order;
+			this.slot = slot;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null || getClass() != obj.getClass()) {
+				return false;
+			}
+			PoolKey other = (PoolKey) obj;
+			return dbi == other.dbi && order.equals(other.order) && slot == other.slot;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(dbi, order, slot);
+		}
 	}
 
 	private static final class IteratorKey {
@@ -234,12 +297,21 @@ public final class LFTJExecutor {
 		}
 	}
 
-	private void leapfrog(List<LMDBTrieIterator> iterators, LongConsumer consumer) {
+	private void leapfrog(List<CloseableTrieIterator> iterators, LongConsumer consumer) {
 		LeapfrogIteratorCursor cursor = new LeapfrogIteratorCursor(iterators);
 		while (cursor.hasValue()) {
 			consumer.accept(cursor.current());
 			cursor.advance();
 		}
+	}
+
+	@FunctionalInterface
+	interface TrieIteratorProvider {
+		CloseableTrieIterator create(long txn, int dbi, QuadKeyOrder order, Slot slot) throws IOException;
+	}
+
+	private static TrieIteratorProvider defaultIteratorProvider() {
+		return (txn, dbi, order, slot) -> new LMDBTrieIterator(txn, dbi, order, slot);
 	}
 
 	private Map<String, Integer> indexVariableOrder(List<String> variableOrder) {

@@ -21,6 +21,10 @@ import org.eclipse.rdf4j.sail.lmdb.Varint;
 public final class QuadKeyEncoding {
 	public static final long MIN_TERM_ID = 0L;
 
+	public interface QuadKeySink {
+		void set(long s, long p, long o, long c);
+	}
+
 	private QuadKeyEncoding() {
 	}
 
@@ -97,6 +101,17 @@ public final class QuadKeyEncoding {
 		return decode(buffer, order);
 	}
 
+	public static void decodeInto(byte[] bytes, int offset, int length, QuadKeyOrder order, QuadKeySink sink) {
+		Objects.requireNonNull(bytes, "bytes");
+		Objects.requireNonNull(order, "order");
+		Objects.requireNonNull(sink, "sink");
+		if (offset < 0 || length < 0 || offset + length > bytes.length) {
+			throw new IllegalArgumentException("Invalid offset/length for key decode");
+		}
+		ByteBuffer buffer = ByteBuffer.wrap(bytes, offset, length);
+		decodeInto(buffer, order, sink);
+	}
+
 	public static QuadKey decode(ByteBuffer buffer, QuadKeyOrder order) {
 		Objects.requireNonNull(buffer, "buffer");
 		Objects.requireNonNull(order, "order");
@@ -153,6 +168,60 @@ public final class QuadKeyEncoding {
 		default:
 			throw new IllegalArgumentException("Unsupported quad key order: " + order.fieldSequence());
 		}
+	}
+
+	public static void decodeInto(ByteBuffer buffer, QuadKeyOrder order, QuadKeySink sink) {
+		int startPos = buffer.position();
+		String sequence = order.fieldSequence();
+
+		long v1 = Varint.readUnsigned(buffer);
+		long v2 = Varint.readUnsigned(buffer);
+		long v3 = Varint.readUnsigned(buffer);
+		long v4 = Varint.readUnsigned(buffer);
+		ensureFullyConsumed(buffer);
+
+		long s = 0;
+		long p = 0;
+		long o = 0;
+		long c = 0;
+
+		for (int i = 0; i < 4; i++) {
+			long value;
+			switch (i) {
+			case 0:
+				value = v1;
+				break;
+			case 1:
+				value = v2;
+				break;
+			case 2:
+				value = v3;
+				break;
+			default:
+				value = v4;
+				break;
+			}
+
+			switch (sequence.charAt(i)) {
+			case 's':
+				s = value;
+				break;
+			case 'p':
+				p = value;
+				break;
+			case 'o':
+				o = value;
+				break;
+			case 'c':
+				c = value;
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported quad key order: " + sequence);
+			}
+		}
+
+		sink.set(s, p, o, c);
+		buffer.position(startPos);
 	}
 
 	public static byte[] encodeSpoc(QuadKey key) {
@@ -249,6 +318,121 @@ public final class QuadKeyEncoding {
 
 	public static byte[] encodeCops(QuadKey key) {
 		return encodeSequence(key.c(), key.o(), key.p(), key.s());
+	}
+
+	public static int encodeInto(QuadKey key, QuadKeyOrder order, ByteBuffer buffer) {
+		Objects.requireNonNull(key, "key");
+		Objects.requireNonNull(order, "order");
+		Objects.requireNonNull(buffer, "buffer");
+		switch (order.fieldSequence()) {
+		case "spoc":
+			return encodeSequenceInto(buffer, key.s(), key.p(), key.o(), key.c());
+		case "spco":
+			return encodeSequenceInto(buffer, key.s(), key.p(), key.c(), key.o());
+		case "sopc":
+			return encodeSequenceInto(buffer, key.s(), key.o(), key.p(), key.c());
+		case "socp":
+			return encodeSequenceInto(buffer, key.s(), key.o(), key.c(), key.p());
+		case "scpo":
+			return encodeSequenceInto(buffer, key.s(), key.c(), key.p(), key.o());
+		case "scop":
+			return encodeSequenceInto(buffer, key.s(), key.c(), key.o(), key.p());
+		case "psoc":
+			return encodeSequenceInto(buffer, key.p(), key.s(), key.o(), key.c());
+		case "psco":
+			return encodeSequenceInto(buffer, key.p(), key.s(), key.c(), key.o());
+		case "posc":
+			return encodeSequenceInto(buffer, key.p(), key.o(), key.s(), key.c());
+		case "pocs":
+			return encodeSequenceInto(buffer, key.p(), key.o(), key.c(), key.s());
+		case "pcso":
+			return encodeSequenceInto(buffer, key.p(), key.c(), key.s(), key.o());
+		case "pcos":
+			return encodeSequenceInto(buffer, key.p(), key.c(), key.o(), key.s());
+		case "ospc":
+			return encodeSequenceInto(buffer, key.o(), key.s(), key.p(), key.c());
+		case "oscp":
+			return encodeSequenceInto(buffer, key.o(), key.s(), key.c(), key.p());
+		case "opsc":
+			return encodeSequenceInto(buffer, key.o(), key.p(), key.s(), key.c());
+		case "opcs":
+			return encodeSequenceInto(buffer, key.o(), key.p(), key.c(), key.s());
+		case "ocsp":
+			return encodeSequenceInto(buffer, key.o(), key.c(), key.s(), key.p());
+		case "ocps":
+			return encodeSequenceInto(buffer, key.o(), key.c(), key.p(), key.s());
+		case "cspo":
+			return encodeSequenceInto(buffer, key.c(), key.s(), key.p(), key.o());
+		case "csop":
+			return encodeSequenceInto(buffer, key.c(), key.s(), key.o(), key.p());
+		case "cpso":
+			return encodeSequenceInto(buffer, key.c(), key.p(), key.s(), key.o());
+		case "cpos":
+			return encodeSequenceInto(buffer, key.c(), key.p(), key.o(), key.s());
+		case "cosp":
+			return encodeSequenceInto(buffer, key.c(), key.o(), key.s(), key.p());
+		case "cops":
+			return encodeSequenceInto(buffer, key.c(), key.o(), key.p(), key.s());
+		default:
+			throw new IllegalArgumentException("Unsupported quad key order: " + order.fieldSequence());
+		}
+	}
+
+	public static int encodeFieldsInto(long s, long p, long o, long c, QuadKeyOrder order, ByteBuffer buffer) {
+		Objects.requireNonNull(order, "order");
+		Objects.requireNonNull(buffer, "buffer");
+		switch (order.fieldSequence()) {
+		case "spoc":
+			return encodeSequenceInto(buffer, s, p, o, c);
+		case "spco":
+			return encodeSequenceInto(buffer, s, p, c, o);
+		case "sopc":
+			return encodeSequenceInto(buffer, s, o, p, c);
+		case "socp":
+			return encodeSequenceInto(buffer, s, o, c, p);
+		case "scpo":
+			return encodeSequenceInto(buffer, s, c, p, o);
+		case "scop":
+			return encodeSequenceInto(buffer, s, c, o, p);
+		case "psoc":
+			return encodeSequenceInto(buffer, p, s, o, c);
+		case "psco":
+			return encodeSequenceInto(buffer, p, s, c, o);
+		case "posc":
+			return encodeSequenceInto(buffer, p, o, s, c);
+		case "pocs":
+			return encodeSequenceInto(buffer, p, o, c, s);
+		case "pcso":
+			return encodeSequenceInto(buffer, p, c, s, o);
+		case "pcos":
+			return encodeSequenceInto(buffer, p, c, o, s);
+		case "ospc":
+			return encodeSequenceInto(buffer, o, s, p, c);
+		case "oscp":
+			return encodeSequenceInto(buffer, o, s, c, p);
+		case "opsc":
+			return encodeSequenceInto(buffer, o, p, s, c);
+		case "opcs":
+			return encodeSequenceInto(buffer, o, p, c, s);
+		case "ocsp":
+			return encodeSequenceInto(buffer, o, c, s, p);
+		case "ocps":
+			return encodeSequenceInto(buffer, o, c, p, s);
+		case "cspo":
+			return encodeSequenceInto(buffer, c, s, p, o);
+		case "csop":
+			return encodeSequenceInto(buffer, c, s, o, p);
+		case "cpso":
+			return encodeSequenceInto(buffer, c, p, s, o);
+		case "cpos":
+			return encodeSequenceInto(buffer, c, p, o, s);
+		case "cosp":
+			return encodeSequenceInto(buffer, c, o, s, p);
+		case "cops":
+			return encodeSequenceInto(buffer, c, o, p, s);
+		default:
+			throw new IllegalArgumentException("Unsupported quad key order: " + order.fieldSequence());
+		}
 	}
 
 	public static QuadKey decodeSpoc(byte[] bytes) {
@@ -571,6 +755,15 @@ public final class QuadKeyEncoding {
 		Varint.writeUnsigned(buffer, third);
 		Varint.writeUnsigned(buffer, fourth);
 		return buffer.array();
+	}
+
+	private static int encodeSequenceInto(ByteBuffer buffer, long first, long second, long third, long fourth) {
+		int startPosition = buffer.position();
+		Varint.writeUnsigned(buffer, first);
+		Varint.writeUnsigned(buffer, second);
+		Varint.writeUnsigned(buffer, third);
+		Varint.writeUnsigned(buffer, fourth);
+		return buffer.position() - startPosition;
 	}
 
 	private static void ensureFullyConsumed(ByteBuffer buffer) {
