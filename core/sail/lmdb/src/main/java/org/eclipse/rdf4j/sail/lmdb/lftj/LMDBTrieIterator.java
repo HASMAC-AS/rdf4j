@@ -58,9 +58,21 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 
 	private final ByteBuffer seekKeyBuffer = ByteBuffer.allocateDirect(MAX_ENCODED_KEY_LENGTH);
 
+	private final Slot[] decodeOrder;
+
 	private boolean end = true;
 
 	private Prefix prefix = Prefix.builder().build();
+
+	private boolean needSubject;
+
+	private boolean needPredicate;
+
+	private boolean needObject;
+
+	private boolean needContext;
+
+	private int maxDecodeIndex;
 
 	private long currentS;
 
@@ -74,6 +86,7 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 		this.dbi = dbi;
 		this.order = Objects.requireNonNull(order, "order");
 		this.role = Objects.requireNonNull(role, "role");
+		this.decodeOrder = order.positions().toArray(new Slot[0]);
 		this.currentValueSupplier = valueSupplier(role);
 		this.roleSeek = seekFunction(role);
 		try (MemoryStack stack = stackPush()) {
@@ -87,6 +100,7 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 	public void open(Prefix prefix) {
 		Objects.requireNonNull(prefix, "prefix");
 		this.prefix = prefix;
+		updateDecodePlan();
 		end = false;
 		QuadKey startKey = QuadKeyEncoding.minimalKeyForPrefix(prefix);
 		positionCursor(startKey.s(), startKey.p(), startKey.o(), startKey.c());
@@ -206,7 +220,34 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 		int len = (int) keyVal.mv_size();
 		buffer.limit(len);
 		buffer.position(0);
-		QuadKeyEncoding.decodeInto(buffer, order, this);
+		for (int i = 0; i <= maxDecodeIndex; i++) {
+			long value = Varint.readUnsigned(buffer);
+			Slot slot = decodeOrder[i];
+			switch (slot) {
+			case S:
+				if (needSubject) {
+					currentS = value;
+				}
+				break;
+			case P:
+				if (needPredicate) {
+					currentP = value;
+				}
+				break;
+			case O:
+				if (needObject) {
+					currentO = value;
+				}
+				break;
+			case C:
+				if (needContext) {
+					currentC = value;
+				}
+				break;
+			default:
+				throw new IllegalStateException("Unexpected slot while decoding: " + slot);
+			}
+		}
 	}
 
 	private void assertSuccess(int rc) {
@@ -279,6 +320,39 @@ public class LMDBTrieIterator implements CloseableTrieIterator, QuadKeyEncoding.
 
 	private long defaultContext() {
 		return prefix.hasContext() ? prefix.context() : QuadKeyEncoding.MIN_TERM_ID;
+	}
+
+	private void updateDecodePlan() {
+		needSubject = prefix.hasSubject() || role == Slot.S;
+		needPredicate = prefix.hasPredicate() || role == Slot.P;
+		needObject = prefix.hasObject() || role == Slot.O;
+		needContext = prefix.hasContext() || role == Slot.C;
+
+		maxDecodeIndex = -1;
+		for (int i = 0; i < decodeOrder.length; i++) {
+			if (slotNeeded(decodeOrder[i])) {
+				maxDecodeIndex = i;
+			}
+		}
+		if (maxDecodeIndex < 0) {
+			// Should never happen because the iterator's role is always needed.
+			maxDecodeIndex = order.indexOf(role);
+		}
+	}
+
+	private boolean slotNeeded(Slot slot) {
+		switch (slot) {
+		case S:
+			return needSubject;
+		case P:
+			return needPredicate;
+		case O:
+			return needObject;
+		case C:
+			return needContext;
+		default:
+			return false;
+		}
 	}
 
 	@Override
