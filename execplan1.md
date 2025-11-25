@@ -6,7 +6,11 @@ This plan must be maintained in accordance with `PLANS.md` at the repository roo
 
 ## Purpose / Big Picture
 
-Today, the LMDB-backed Leapfrog Triejoin (LFTJ) implementation decodes all four quad components (subject, predicate, object, context) from each LMDB key on every iterator move. Even after avoiding per-step `byte[]` allocation, `LMDBTrieIterator` still runs each key through `QuadKeyEncoding.decode*` which reads four varints and reconstructs a full `QuadKey` representation into `currentS/currentP/currentO/currentC`. For LFTJ, at recursion depth `x_i` we only need a single component per iterator – the slot (S, P, O, or C) that the current variable is joining on – plus enough information to enforce any bound constants and previously bound variables in the pattern prefix.
+Today, the LMDB-backed Leapfrog Triejoin (LFTJ) implementation decodes all four quad components (subject, predicate, object, context) from each LMDB key on every iterator move.
+
+LMDB is an embedded key-value store. In this module, each quad is stored as a key made up of four term identifiers encoded as “varints”: variable-length integers where smaller values use fewer bytes. Leapfrog Triejoin (LFTJ) is a join algorithm that treats each index as a trie (a tree where every level corresponds to one component of the key) and walks several of these tries in lockstep to compute joins efficiently. A “TrieArray iterator” is an iterator over such a trie-like structure: at level 1 it moves over all values of the first component; once a prefix is fixed, deeper levels move over the next component within that prefix.
+
+Even after avoiding per-step `byte[]` allocation, `LMDBTrieIterator` still runs each key through `QuadKeyEncoding.decode*` which reads four varints and reconstructs a full `QuadKey` representation into `currentS/currentP/currentO/currentC`. For LFTJ, at each recursion depth we only need a single component per iterator – the slot (S, P, O, or C) that the current variable is joining on – plus enough information to enforce any bound constants and previously bound variables in the pattern prefix.
 
 The goal of this plan is to make each `LMDBTrieIterator` behave more like a classic TrieArray iterator: at depth 1 you step through values of attribute 1 only; at depth 2 you index into the slice for the fixed prefix and step through attribute 2, and so on. Concretely, we will redesign key decoding so that, for each LMDB cursor position, we varint-decode only:
 
@@ -93,6 +97,10 @@ After implementation, summarize here:
 ## Context and Orientation
 
 This section explains the relevant parts of the repository and terminology for a novice.
+
+LMDB (Lightning Memory-Mapped Database) is an embedded key-value store used here to store RDF quads. Each quad is represented by four numeric term identifiers (subject, predicate, object, and optional context). These identifiers are encoded into LMDB keys using varints so that small numbers take fewer bytes on disk. LFTJ (Leapfrog Triejoin) is a join algorithm that models each index as a trie and “leapfrogs” iterators over those tries to compute joins with good worst-case performance.
+
+Benchmarks such as `LMDBTrieIteratorBenchmark` use JMH (the Java Microbenchmark Harness) to measure throughput and Java Flight Recorder (JFR) to capture low-level performance profiles when enabled. The helper script `scripts/run-single-benchmark.sh` wraps these tools so a novice can run a single benchmark method without knowing JMH’s full command-line syntax.
 
 The LMDB-backed LFTJ implementation lives under:
 
@@ -237,7 +245,7 @@ This section describes the sequence of edits and design steps needed to implemen
 
    - Using the same parameters as the baseline (e.g., orders, entry counts, and prefixes), run `LMDBTrieIteratorBenchmark.iteratePrefix` and `.seekWithinPrefix` and record the results.
    - Optionally, run `LmdbCliqueBenchmark` and other LMDB-related benchmarks that exercise LFTJ for real SPARQL workloads.
-   - Compare results to the baseline and summarize the improvements (e.g., “iteratePrefix throughput increased by 40% for 100,000 entries in SPOC order; seekWithinPrefix latency decreased by X%”).
+   - Compare results to the baseline and summarize the improvements (for example, “iteratePrefix throughput increased by 40% for 100,000 entries in SPOC order; seekWithinPrefix latency decreased by X%”).
 
    Capture these observations both in this ExecPlan (in `Outcomes & Retrospective`) and, if appropriate, in the project’s documentation or benchmark notes.
 
@@ -268,7 +276,7 @@ This section gives concrete commands and where to run them. Adjust paths if your
 
 2. **Baseline LMDBTrieIterator benchmarks.**
 
-   Use the benchmark harness described in `AGENTS.md`:
+   Use the benchmark harness described in `AGENTS.md`. These commands run JMH microbenchmarks and will report operations per time unit; they can also emit a JFR recording when requested so you can inspect CPU profiles in a JFR viewer.
 
    - For iteration:
 
@@ -337,10 +345,18 @@ To accept the implementation as complete, verify the following:
     - `LFTJExecutionTest`
     - `LFTJDeterministicCorrectnessTest`
     - Any LFTJ-related ITs or other tests that rely on LMDB indexes.
+  - You can run the key tests individually from the repository root with commands such as:
+
+        mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Dtest=LMDBTrieIteratorTest verify | tail -500
+
+        mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Dtest=LFTJExecutionTest verify | tail -500
+
+        mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Dtest=LFTJDeterministicCorrectnessTest verify | tail -500
+
   - For specifically constructed test cases where prefixes constrain various combinations of S, P, O, C and the iterator’s `role` varies, `LMDBTrieIterator` yields the same sequences of `key()` values as before, and `atEnd()` transitions at the same logical points.
 
 - **Performance:**
-  - `LMDBTrieIteratorBenchmark.iteratePrefix` and `.seekWithinPrefix` show equal or better throughput for the default configurations (e.g., order `spoc`, entry counts `1000` and `100000`).
+  - `LMDBTrieIteratorBenchmark.iteratePrefix` and `.seekWithinPrefix` show equal or better throughput for the default configurations (for example, order `spoc`, entry counts `1000` and `100000`).
   - Any regression in a particular configuration should be investigated; if unavoidable, it should be documented here with an explanation.
 
 - **Stability:**
@@ -424,3 +440,5 @@ No new external dependencies (libraries) should be required; everything can be i
 ---
 
 2025-11-25: Initial version of this ExecPlan created by Codex agent to guide optimization of LMDB LFTJ iterators toward decoding only necessary quad components per step.
+
+2025-11-25: Clarified definitions for LMDB, LFTJ, varints, JMH, and JFR so that a novice reader can understand the terminology without referring to external documentation.

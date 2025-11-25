@@ -69,11 +69,12 @@ public final class IndexSelector {
 		}
 
 		Evaluation bestPossible = bestPossibleOrder(pattern, variableSlots, orderIndex);
-		if (bestPossible != null && bestPossible.order != chosenEvaluation.order && isBetter(bestPossible.compatibility, chosenEvaluation.compatibility)) {
-			throw new IllegalStateException(
-					"Missing required index for pattern " + pattern + ". Best possible order "
-							+ bestPossible.order.fieldSequence() + " (score=" + bestPossible.compatibility.score()
-							+ ") is not available in configured index set " + candidates);
+		if (bestPossible != null && bestPossible.order != chosenEvaluation.order
+				&& isBetter(bestPossible.compatibility, chosenEvaluation.compatibility) && LOGGER.isDebugEnabled()) {
+			LOGGER.debug(
+					"Better index {} (score={}) not available for pattern {}; using {} from candidates {}",
+					bestPossible.order.fieldSequence(), bestPossible.compatibility.score(), pattern,
+					chosenEvaluation.order.fieldSequence(), candidates);
 		}
 
 //		logSelection(variableOrder, variableSlots, evaluations, chosenEvaluation, bestPossible);
@@ -81,7 +82,8 @@ public final class IndexSelector {
 		return bestOrder;
 	}
 
-	private static Evaluation bestPossibleOrder(QuadPattern pattern, Map<String, Slot> variableSlots, Map<String, Integer> orderIndex) {
+	private static Evaluation bestPossibleOrder(QuadPattern pattern, Map<String, Slot> variableSlots,
+			Map<String, Integer> orderIndex) {
 		Evaluation bestScore = null;
 		int bestIndex = Integer.MAX_VALUE;
 		for (int i = 0; i < ALL_ORDERS.size(); i++) {

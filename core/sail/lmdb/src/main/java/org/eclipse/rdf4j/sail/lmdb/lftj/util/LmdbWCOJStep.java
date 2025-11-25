@@ -235,8 +235,8 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			private final Map<QuadKeyOrder, Integer> indexHandles;
 			private final List<String> variableOrder;
 			private final Map<QuadPattern, QuadKeyOrder> orders;
-			private final Map<String, Integer> variableIndex;
-			private final List<List<QuadPattern>> participatingByDepth;
+			private final PatternMetadata[] patternMetadata;
+			private final List<VarParticipation>[] participatingByDepth;
 			private final long[] bindingValues;
 			private final boolean[] bindingPresent;
 			private final ArrayDeque<Frame> stack = new ArrayDeque<>();
@@ -249,11 +249,12 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 				this.patterns = patterns;
 				this.indexHandles = indexHandles;
 				this.variableOrder = LFTJExecutor.chooseVariableOrder(patterns, indexHandles.keySet());
-				this.variableIndex = indexByName(variableOrder);
-				this.participatingByDepth = groupPatternsByVariable(patterns, variableOrder);
+				this.orders = chooseOrders(patterns, variableOrder, indexHandles);
+				Precompiled precompiled = precompile(patterns, orders, variableOrder);
+				this.patternMetadata = precompiled.patternMetadata();
+				this.participatingByDepth = precompiled.participatingByVariable();
 				this.bindingValues = new long[variableOrder.size()];
 				this.bindingPresent = new boolean[variableOrder.size()];
-				this.orders = chooseOrders(patterns, variableOrder, indexHandles);
 				pushFrame(0);
 			}
 
@@ -328,7 +329,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 			private final class Frame {
 				private final String variable;
 				private final int variableIndex;
-				private final List<QuadPattern> participating;
+				private final List<VarParticipation> participating;
 				private List<LMDBTrieIterator> iterators = List.of();
 				private LeapfrogCursor cursor;
 				private boolean initialized;
@@ -338,7 +339,7 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 				Frame(int depth) {
 					this.variable = variableOrder.get(depth);
 					this.variableIndex = depth;
-					this.participating = participatingByDepth.get(depth);
+					this.participating = participatingByDepth[depth];
 				}
 
 				void initialize() throws IOException, QueryEvaluationException {
@@ -346,14 +347,16 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 						return;
 					}
 					List<LMDBTrieIterator> iters = new ArrayList<>(participating.size());
-					for (QuadPattern pattern : participating) {
+					for (VarParticipation participation : participating) {
+						QuadPattern pattern = patterns.get(participation.patternIndex());
 						QuadKeyOrder order = orders.get(pattern);
 						Integer dbi = FrameCursor.this.indexHandles.get(order);
 						if (dbi == null) {
 							throw new IllegalStateException("No DBI registered for order " + order);
 						}
-						Prefix prefix = buildPrefix(pattern, variableIndex);
-						Slot slot = pattern.variableSlots().get(variable);
+						PatternMetadata metadata = patternMetadata[participation.patternIndex()];
+						Prefix prefix = buildPrefix(metadata, variableIndex, bindingValues, bindingPresent);
+						Slot slot = participation.slot();
 						LMDBTrieIterator iterator = new LMDBTrieIterator(valueStore.txnId(), dbi.intValue(), order,
 								slot);
 						iterator.open(prefix);
@@ -422,29 +425,19 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 				}
 			}
 
-			private Prefix buildPrefix(QuadPattern pattern, int currentIndex) {
+			private Prefix buildPrefix(PatternMetadata metadata, int currentIndex, long[] values, boolean[] present) {
 				Prefix.Builder prefix = Prefix.builder();
-				assignSlot(prefix, Slot.S, pattern.term(Slot.S), currentIndex);
-				assignSlot(prefix, Slot.P, pattern.term(Slot.P), currentIndex);
-				assignSlot(prefix, Slot.O, pattern.term(Slot.O), currentIndex);
-				assignSlot(prefix, Slot.C, pattern.term(Slot.C), currentIndex);
+				for (SlotDescriptor descriptor : metadata.slots()) {
+					if (descriptor.isConstant()) {
+						write(prefix, descriptor.slot(), descriptor.constant());
+						continue;
+					}
+					if (descriptor.isVariable() && descriptor.variableId() < currentIndex
+							&& present[descriptor.variableId()]) {
+						write(prefix, descriptor.slot(), values[descriptor.variableId()]);
+					}
+				}
 				return prefix.build();
-			}
-
-			private void assignSlot(Prefix.Builder prefix, Slot slot, QuadPatternTerm term, int currentIndex) {
-				if (term.isUnbound()) {
-					return;
-				}
-
-				if (term.isConstant()) {
-					write(prefix, slot, term.constant());
-					return;
-				}
-
-				Integer idx = variableIndex.get(term.variable());
-				if (idx != null && idx < currentIndex && bindingPresent[idx]) {
-					write(prefix, slot, bindingValues[idx]);
-				}
 			}
 
 			private void write(Prefix.Builder prefix, Slot slot, long value) {
@@ -474,22 +467,143 @@ public class LmdbWCOJStep implements QueryEvaluationStep {
 				return index;
 			}
 
-			private List<List<QuadPattern>> groupPatternsByVariable(List<QuadPattern> patterns,
+			private Precompiled precompile(List<QuadPattern> patterns, Map<QuadPattern, QuadKeyOrder> chosenOrders,
 					List<String> variableOrder) {
-				List<List<QuadPattern>> grouped = new ArrayList<>(variableOrder.size());
-				for (String variable : variableOrder) {
-					List<QuadPattern> participating = new ArrayList<>();
-					for (QuadPattern pattern : patterns) {
-						if (pattern.variables().contains(variable)) {
-							participating.add(pattern);
+				Map<String, Integer> variableIndex = indexByName(variableOrder);
+				PatternMetadata[] metadata = new PatternMetadata[patterns.size()];
+				@SuppressWarnings("unchecked")
+				List<VarParticipation>[] participating = new List[variableOrder.size()];
+
+				for (int i = 0; i < patterns.size(); i++) {
+					QuadPattern pattern = patterns.get(i);
+					QuadKeyOrder order = chosenOrders.get(pattern);
+					SlotDescriptor[] slots = new SlotDescriptor[Slot.values().length];
+					for (Slot slot : Slot.values()) {
+						QuadPatternTerm term = pattern.term(slot);
+						if (term.isConstant()) {
+							slots[slot.ordinal()] = new SlotDescriptor(slot, true, false, term.constant(), -1);
+							continue;
 						}
+						if (term.isVariable()) {
+							Integer varId = variableIndex.get(term.variable());
+							if (varId == null) {
+								throw new IllegalArgumentException("Variable not present in order: " + term.variable());
+							}
+							slots[slot.ordinal()] = new SlotDescriptor(slot, false, true, 0L, varId.intValue());
+							participating[varId.intValue()] = addParticipation(participating[varId.intValue()], i,
+									slot);
+							continue;
+						}
+						slots[slot.ordinal()] = new SlotDescriptor(slot, false, false, 0L, -1);
 					}
-					if (participating.isEmpty()) {
-						throw new IllegalArgumentException("Variable not found in any pattern: " + variable);
-					}
-					grouped.add(participating);
+					metadata[i] = new PatternMetadata(order, slots);
 				}
-				return grouped;
+
+				for (int i = 0; i < participating.length; i++) {
+					if (participating[i] == null) {
+						participating[i] = List.of();
+					}
+				}
+
+				return new Precompiled(metadata, participating);
+			}
+
+			private List<VarParticipation> addParticipation(List<VarParticipation> existing, int patternIndex,
+					Slot slot) {
+				List<VarParticipation> list = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
+				list.add(new VarParticipation(patternIndex, slot));
+				return list;
+			}
+
+			private final class Precompiled {
+				private final PatternMetadata[] patternMetadata;
+				private final List<VarParticipation>[] participatingByVariable;
+
+				Precompiled(PatternMetadata[] patternMetadata, List<VarParticipation>[] participatingByVariable) {
+					this.patternMetadata = patternMetadata;
+					this.participatingByVariable = participatingByVariable;
+				}
+
+				PatternMetadata[] patternMetadata() {
+					return patternMetadata;
+				}
+
+				List<VarParticipation>[] participatingByVariable() {
+					return participatingByVariable;
+				}
+			}
+
+			private final class PatternMetadata {
+				private final QuadKeyOrder order;
+				private final SlotDescriptor[] slots;
+
+				PatternMetadata(QuadKeyOrder order, SlotDescriptor[] slots) {
+					this.order = order;
+					this.slots = slots;
+				}
+
+				QuadKeyOrder order() {
+					return order;
+				}
+
+				SlotDescriptor[] slots() {
+					return slots;
+				}
+			}
+
+			private final class VarParticipation {
+				private final int patternIndex;
+				private final Slot slot;
+
+				VarParticipation(int patternIndex, Slot slot) {
+					this.patternIndex = patternIndex;
+					this.slot = slot;
+				}
+
+				int patternIndex() {
+					return patternIndex;
+				}
+
+				Slot slot() {
+					return slot;
+				}
+			}
+
+			private final class SlotDescriptor {
+				private final Slot slot;
+				private final boolean constant;
+				private final boolean variable;
+				private final long constantValue;
+				private final int variableId;
+
+				private SlotDescriptor(Slot slot, boolean constant, boolean variable, long constantValue,
+						int variableId) {
+					this.slot = slot;
+					this.constant = constant;
+					this.variable = variable;
+					this.constantValue = constantValue;
+					this.variableId = variableId;
+				}
+
+				Slot slot() {
+					return slot;
+				}
+
+				boolean isConstant() {
+					return constant;
+				}
+
+				boolean isVariable() {
+					return variable;
+				}
+
+				long constant() {
+					return constantValue;
+				}
+
+				int variableId() {
+					return variableId;
+				}
 			}
 
 			private void closeIterators(List<LMDBTrieIterator> iterators) {

@@ -56,12 +56,14 @@ public final class LFTJExecutor {
 		Objects.requireNonNull(consumer, "consumer");
 		List<String> variableOrder = chooseVariableOrder(patterns, indexMapping.keySet());
 		Map<QuadPattern, QuadKeyOrder> chosenOrders = chooseOrders(patterns, variableOrder);
-		Map<String, Integer> variableOrderIndex = indexVariableOrder(variableOrder);
-		Map<String, List<QuadPattern>> participating = groupByVariable(patterns);
+		PrecompiledPatterns precompiled = precompile(patterns, chosenOrders, variableOrder);
+		long[] values = new long[variableOrder.size()];
+		boolean[] bound = new boolean[variableOrder.size()];
 		IteratorPool iteratorPool = new IteratorPool();
 		try {
-			recurse(variableOrder, variableOrderIndex, participating, 0, chosenOrders, iteratorPool, new HashMap<>(),
-					consumer);
+			recurse(variableOrder, precompiled.participatingByVariable(), 0, precompiled.patternMetadata(),
+					iteratorPool,
+					values, bound, consumer);
 		} finally {
 			iteratorPool.closeAll();
 		}
@@ -126,31 +128,29 @@ public final class LFTJExecutor {
 		return chosen;
 	}
 
-	private void recurse(List<String> variableOrder, Map<String, Integer> variableOrderIndex,
-			Map<String, List<QuadPattern>> participatingByVariable, int depth,
-			Map<QuadPattern, QuadKeyOrder> chosenOrders, IteratorPool iteratorPool, Map<String, Long> bindings,
+	private void recurse(List<String> variableOrder, List<VarParticipation>[] participatingByVariable, int depth,
+			PatternMetadata[] patternMetadata, IteratorPool iteratorPool, long[] values, boolean[] bound,
 			Consumer<Map<String, Long>> consumer) throws IOException {
 		if (depth >= variableOrder.size()) {
-			consumer.accept(Map.copyOf(bindings));
+			consumer.accept(toResult(variableOrder, values, bound));
 			return;
 		}
 
-		String variable = variableOrder.get(depth);
-		List<QuadPattern> participating = participatingByVariable.get(variable);
+		List<VarParticipation> participating = participatingByVariable[depth];
 		if (participating == null || participating.isEmpty()) {
-			throw new IllegalArgumentException("Variable not found in any pattern: " + variable);
+			throw new IllegalArgumentException("Variable not found in any pattern: " + variableOrder.get(depth));
 		}
-		int currentIndex = variableOrderIndex.get(variable);
+
 		List<CloseableTrieIterator> iterators = new ArrayList<>(participating.size());
-		for (QuadPattern pattern : participating) {
-			QuadKeyOrder order = chosenOrders.get(pattern);
+		for (VarParticipation participation : participating) {
+			PatternMetadata metadata = patternMetadata[participation.patternIndex];
+			QuadKeyOrder order = metadata.order;
 			Integer dbi = indexMapping.get(order);
 			if (dbi == null) {
 				throw new IllegalStateException("No DBI registered for order " + order);
 			}
-			Slot slot = pattern.variableSlots().get(variable);
-			Prefix prefix = PrefixBuilder.buildPrefix(pattern, variableOrderIndex, currentIndex, bindings);
-			CloseableTrieIterator iterator = iteratorPool.acquire(dbi.intValue(), order, slot);
+			Prefix prefix = buildPrefix(metadata, depth, values, bound);
+			CloseableTrieIterator iterator = iteratorPool.acquire(dbi.intValue(), order, participation.slot);
 			iterator.open(prefix);
 			if (iterator.atEnd()) {
 				iteratorPool.release(iterator);
@@ -161,10 +161,11 @@ public final class LFTJExecutor {
 
 		try {
 			leapfrog(iterators, value -> {
-				bindings.put(variable, value);
+				values[depth] = value;
+				bound[depth] = true;
 				try {
-					recurse(variableOrder, variableOrderIndex, participatingByVariable, depth + 1, chosenOrders,
-							iteratorPool, bindings, consumer);
+					recurse(variableOrder, participatingByVariable, depth + 1, patternMetadata, iteratorPool, values,
+							bound, consumer);
 				} catch (IOException e) {
 					throw new EvaluationException(e);
 				}
@@ -175,7 +176,7 @@ public final class LFTJExecutor {
 		for (CloseableTrieIterator iterator : iterators) {
 			iteratorPool.release(iterator);
 		}
-		bindings.remove(variable);
+		bound[depth] = false;
 	}
 
 	private final class IteratorPool {
@@ -237,33 +238,6 @@ public final class LFTJExecutor {
 		}
 	}
 
-	private static final class IteratorKey {
-		private final QuadPattern pattern;
-		private final Slot slot;
-
-		IteratorKey(QuadPattern pattern, Slot slot) {
-			this.pattern = Objects.requireNonNull(pattern, "pattern");
-			this.slot = Objects.requireNonNull(slot, "slot");
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) {
-				return true;
-			}
-			if (obj == null || getClass() != obj.getClass()) {
-				return false;
-			}
-			IteratorKey other = (IteratorKey) obj;
-			return pattern.equals(other.pattern) && slot == other.slot;
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(pattern, slot);
-		}
-	}
-
 	private static final class EvaluationException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
@@ -314,21 +288,183 @@ public final class LFTJExecutor {
 		return (txn, dbi, order, slot) -> new LMDBTrieIterator(txn, dbi, order, slot);
 	}
 
-	private Map<String, Integer> indexVariableOrder(List<String> variableOrder) {
-		Map<String, Integer> index = new HashMap<>(variableOrder.size());
+	private PrecompiledPatterns precompile(List<QuadPattern> patterns, Map<QuadPattern, QuadKeyOrder> chosenOrders,
+			List<String> variableOrder) {
+		Map<String, Integer> variableIndex = new HashMap<>(variableOrder.size());
 		for (int i = 0; i < variableOrder.size(); i++) {
-			index.put(variableOrder.get(i), i);
+			variableIndex.put(variableOrder.get(i), i);
 		}
-		return index;
-	}
 
-	private Map<String, List<QuadPattern>> groupByVariable(List<QuadPattern> patterns) {
-		Map<String, List<QuadPattern>> mapping = new HashMap<>();
-		for (QuadPattern pattern : patterns) {
-			for (String variable : pattern.variables()) {
-				mapping.computeIfAbsent(variable, v -> new ArrayList<>()).add(pattern);
+		PatternMetadata[] metadata = new PatternMetadata[patterns.size()];
+		@SuppressWarnings("unchecked")
+		List<VarParticipation>[] participating = new List[variableOrder.size()];
+
+		for (int i = 0; i < patterns.size(); i++) {
+			QuadPattern pattern = patterns.get(i);
+			QuadKeyOrder order = chosenOrders.get(pattern);
+			SlotDescriptor[] slots = new SlotDescriptor[Slot.values().length];
+			for (Slot slot : Slot.values()) {
+				QuadPatternTerm term = pattern.term(slot);
+				if (term.isConstant()) {
+					slots[slot.ordinal()] = SlotDescriptor.constant(slot, term.constant());
+					continue;
+				}
+				if (term.isVariable()) {
+					Integer varId = variableIndex.get(term.variable());
+					if (varId == null) {
+						throw new IllegalArgumentException("Variable not present in order: " + term.variable());
+					}
+					slots[slot.ordinal()] = SlotDescriptor.variable(slot, varId.intValue());
+					participating[varId.intValue()] = addParticipation(participating[varId.intValue()], i, slot);
+					continue;
+				}
+				slots[slot.ordinal()] = SlotDescriptor.unbound(slot);
+			}
+			metadata[i] = new PatternMetadata(order, slots);
+		}
+
+		for (int i = 0; i < participating.length; i++) {
+			if (participating[i] == null) {
+				participating[i] = List.of();
 			}
 		}
-		return mapping;
+
+		return new PrecompiledPatterns(metadata, participating);
+	}
+
+	private List<VarParticipation> addParticipation(List<VarParticipation> existing, int patternIndex, Slot slot) {
+		List<VarParticipation> list = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
+		list.add(new VarParticipation(patternIndex, slot));
+		return list;
+	}
+
+	private Prefix buildPrefix(PatternMetadata metadata, int currentVarIndex, long[] values, boolean[] bound) {
+		Prefix.Builder prefix = Prefix.builder();
+		for (SlotDescriptor descriptor : metadata.slots) {
+			if (descriptor.isConstant()) {
+				write(prefix, descriptor.slot(), descriptor.constant());
+				continue;
+			}
+			if (descriptor.isVariable() && descriptor.variableId() < currentVarIndex
+					&& bound[descriptor.variableId()]) {
+				write(prefix, descriptor.slot(), values[descriptor.variableId()]);
+			}
+		}
+		return prefix.build();
+	}
+
+	private Map<String, Long> toResult(List<String> variableOrder, long[] values, boolean[] bound) {
+		Map<String, Long> result = new HashMap<>(variableOrder.size());
+		for (int i = 0; i < variableOrder.size(); i++) {
+			if (bound[i]) {
+				result.put(variableOrder.get(i), values[i]);
+			}
+		}
+		return result;
+	}
+
+	private void write(Prefix.Builder prefix, Slot slot, long value) {
+		switch (slot) {
+		case S:
+			prefix.subject(value);
+			break;
+		case P:
+			prefix.predicate(value);
+			break;
+		case O:
+			prefix.object(value);
+			break;
+		case C:
+			prefix.context(value);
+			break;
+		default:
+			throw new IllegalArgumentException("Unknown slot: " + slot);
+		}
+	}
+
+	private static final class PrecompiledPatterns {
+		private final PatternMetadata[] patternMetadata;
+		private final List<VarParticipation>[] participatingByVariable;
+
+		PrecompiledPatterns(PatternMetadata[] patternMetadata, List<VarParticipation>[] participatingByVariable) {
+			this.patternMetadata = patternMetadata;
+			this.participatingByVariable = participatingByVariable;
+		}
+
+		PatternMetadata[] patternMetadata() {
+			return patternMetadata;
+		}
+
+		List<VarParticipation>[] participatingByVariable() {
+			return participatingByVariable;
+		}
+	}
+
+	private static final class PatternMetadata {
+		private final QuadKeyOrder order;
+		private final SlotDescriptor[] slots;
+
+		PatternMetadata(QuadKeyOrder order, SlotDescriptor[] slots) {
+			this.order = order;
+			this.slots = slots;
+		}
+	}
+
+	private static final class VarParticipation {
+		private final int patternIndex;
+		private final Slot slot;
+
+		VarParticipation(int patternIndex, Slot slot) {
+			this.patternIndex = patternIndex;
+			this.slot = slot;
+		}
+	}
+
+	private static final class SlotDescriptor {
+		private final Slot slot;
+		private final boolean constant;
+		private final boolean variable;
+		private final long constantValue;
+		private final int variableId;
+
+		private SlotDescriptor(Slot slot, boolean constant, boolean variable, long constantValue, int variableId) {
+			this.slot = slot;
+			this.constant = constant;
+			this.variable = variable;
+			this.constantValue = constantValue;
+			this.variableId = variableId;
+		}
+
+		static SlotDescriptor constant(Slot slot, long value) {
+			return new SlotDescriptor(slot, true, false, value, -1);
+		}
+
+		static SlotDescriptor variable(Slot slot, int varId) {
+			return new SlotDescriptor(slot, false, true, 0L, varId);
+		}
+
+		static SlotDescriptor unbound(Slot slot) {
+			return new SlotDescriptor(slot, false, false, 0L, -1);
+		}
+
+		Slot slot() {
+			return slot;
+		}
+
+		boolean isConstant() {
+			return constant;
+		}
+
+		boolean isVariable() {
+			return variable;
+		}
+
+		long constant() {
+			return constantValue;
+		}
+
+		int variableId() {
+			return variableId;
+		}
 	}
 }
