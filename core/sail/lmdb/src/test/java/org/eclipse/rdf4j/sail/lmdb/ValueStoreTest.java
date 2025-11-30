@@ -18,6 +18,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -59,6 +60,46 @@ public class ValueStoreTest {
 
 	private ValueStore createValueStore() throws IOException {
 		return new ValueStore(new File(dataDir, "values"), new LmdbStoreConfig());
+	}
+
+	@Test
+	public void bulkGetLazyValuesMatchesScalar() throws Exception {
+		Value[] values = new Value[] {
+				Values.iri("ex:a"),
+				Values.iri("ex:b"),
+				Values.literal("foo"),
+				Values.bnode("n1")
+		};
+		long[] ids = new long[values.length];
+
+		valueStore.startTransaction(true);
+		for (int i = 0; i < values.length; i++) {
+			ids[i] = valueStore.storeValue(values[i]);
+		}
+		valueStore.commit();
+
+		Value[] expected = new Value[values.length];
+		for (int i = 0; i < ids.length; i++) {
+			expected[i] = valueStore.getLazyValue(ids[i]);
+		}
+
+		Method bulkMethod;
+		try {
+			bulkMethod = ValueStore.class.getMethod("bulkGetLazyValues", long[].class, int.class, int.class,
+					Value[].class);
+		} catch (NoSuchMethodException e) {
+			throw new AssertionError(
+					"ValueStore.bulkGetLazyValues(long[], int, int, Value[]) is required for vectorised lookup",
+					e);
+		}
+
+		Value[] actual = new Value[values.length];
+		Object resolved = bulkMethod.invoke(valueStore, ids, 0, ids.length, actual);
+
+		assertEquals("All values should be resolved", ids.length, ((Integer) resolved).intValue());
+		for (int i = 0; i < expected.length; i++) {
+			assertEquals(expected[i], actual[i]);
+		}
 	}
 
 	@Test

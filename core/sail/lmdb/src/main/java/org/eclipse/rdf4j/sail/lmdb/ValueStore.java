@@ -551,6 +551,56 @@ class ValueStore extends AbstractValueFactory {
 		return resultValue;
 	}
 
+	public int bulkGetLazyValues(long[] ids, int offset, int length, Value[] target) throws IOException {
+		if (length <= 0) {
+			return 0;
+		}
+
+		if (ids == null || target == null) {
+			throw new IllegalArgumentException("ids and target must not be null");
+		}
+
+		if (offset < 0 || length < 0 || offset + length > ids.length) {
+			throw new IllegalArgumentException("Requested range is outside the ids array");
+		}
+
+		if (length > target.length) {
+			throw new IllegalArgumentException("Target array is too small for requested number of values");
+		}
+
+		int resolved = 0;
+		int limit = offset + length;
+		for (int i = offset, out = 0; i < limit; i++, out++) {
+			long id = ids[i];
+			if (id == 0) {
+				target[out] = null;
+				resolved++;
+				continue;
+			}
+
+			LmdbValue value = cachedValue(id);
+			if (value == null) {
+				switch ((byte) (id & 0x3)) {
+				case URI_VALUE:
+					value = new LmdbIRI(lazyRevision, id);
+					break;
+				case LITERAL_VALUE:
+					value = new LmdbLiteral(lazyRevision, id);
+					break;
+				case BNODE_VALUE:
+					value = new LmdbBNode(lazyRevision, id);
+					break;
+				default:
+					throw new IOException("Unsupported value with type id " + (id & 0x3));
+				}
+				cacheValue(id, value);
+			}
+			target[out] = value;
+			resolved++;
+		}
+		return resolved;
+	}
+
 	/**
 	 * Gets the value for the specified ID.
 	 *
