@@ -28,8 +28,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Predicate;
 
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHeaders;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Statement;
@@ -41,7 +41,6 @@ import org.eclipse.rdf4j.sail.lucene.LuceneSail;
 import org.eclipse.rdf4j.sail.lucene.SearchDocument;
 import org.eclipse.rdf4j.sail.lucene.SearchFields;
 import org.eclipse.rdf4j.sail.memory.MemoryStore;
-import org.elasticsearch.client.RestClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +52,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
 import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 public class ElasticsearchIndexTest extends AbstractElasticsearchTest {
 
@@ -149,7 +149,7 @@ public class ElasticsearchIndexTest extends AbstractElasticsearchTest {
 		index = new ElasticsearchIndex();
 		index.initialize(sailProperties);
 
-		RestClient lowLevel = getLowLevelClient(index);
+		Rest5Client lowLevel = getLowLevelClient(index);
 		List<Header> defaultHeaders = getDefaultHeaders(lowLevel);
 
 		String expectedValue = "Basic "
@@ -443,15 +443,15 @@ public class ElasticsearchIndexTest extends AbstractElasticsearchTest {
 		return resp.hits().total().value();
 	}
 
-	private RestClient getLowLevelClient(ElasticsearchIndex elasticsearchIndex) throws Exception {
+	private Rest5Client getLowLevelClient(ElasticsearchIndex elasticsearchIndex) throws Exception {
 		var field = ElasticsearchIndex.class.getDeclaredField("lowLevelClient");
 		field.setAccessible(true);
-		return (RestClient) field.get(elasticsearchIndex);
+		return (Rest5Client) field.get(elasticsearchIndex);
 	}
 
 	@SuppressWarnings("unchecked")
-	private List<Header> getDefaultHeaders(RestClient restClient) throws Exception {
-		var field = RestClient.class.getDeclaredField("defaultHeaders");
+	private List<Header> getDefaultHeaders(Rest5Client restClient) throws Exception {
+		var field = Rest5Client.class.getDeclaredField("defaultHeaders");
 		field.setAccessible(true);
 		return (List<Header>) field.get(restClient);
 	}

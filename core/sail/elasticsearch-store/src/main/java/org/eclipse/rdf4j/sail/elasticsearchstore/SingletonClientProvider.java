@@ -12,21 +12,21 @@ package org.eclipse.rdf4j.sail.elasticsearchstore;
 
 import java.io.IOException;
 
-import org.apache.http.HttpHost;
+import org.apache.hc.core5.http.HttpHost;
 import org.eclipse.rdf4j.sail.SailException;
-import org.elasticsearch.client.RestClient;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 /**
  * @author Håvard Mikkelsen Ottestad
  */
 public class SingletonClientProvider implements ClientProvider {
 
-	private transient RestClient lowLevelClient;
+	private transient Rest5Client lowLevelClient;
 	private transient ElasticsearchTransport transport;
 	private transient ElasticsearchClient client;
 	private transient boolean closed = false;
@@ -51,8 +51,8 @@ public class SingletonClientProvider implements ClientProvider {
 				throw new IllegalStateException("Elasticsearch Client Provider is closed!");
 			}
 
-			lowLevelClient = RestClient.builder(new HttpHost(hostname, port, "http")).build();
-			transport = new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+			lowLevelClient = Rest5Client.builder(new HttpHost("http", hostname, port)).build();
+			transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
 			client = new ElasticsearchClient(transport);
 
 		}

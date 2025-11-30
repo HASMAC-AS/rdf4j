@@ -83,7 +83,7 @@ public abstract class AbstractElasticsearchStoreIT {
 			return TestHelpers.getClient()
 					.indices()
 					.get(g -> g.index("*"))
-					.result()
+					.indices()
 					.keySet()
 					.toArray(new String[0]);
 		} catch (IOException e) {

@@ -13,8 +13,7 @@ package org.eclipse.rdf4j.sail.elasticsearch;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.http.HttpHost;
-import org.elasticsearch.client.RestClient;
+import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -28,7 +27,8 @@ import co.elastic.clients.elasticsearch._types.HealthStatus;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 @Testcontainers(disabledWithoutDocker = true)
 public abstract class AbstractElasticsearchTest {
@@ -39,6 +39,7 @@ public abstract class AbstractElasticsearchTest {
 	public static final GenericContainer<?> elasticsearch = new GenericContainer<>(dockerImageName())
 			.withEnv("discovery.type", "single-node")
 			.withEnv("cluster.name", CLUSTER_NAME)
+			.withEnv("xpack.security.enabled", "false")
 			.withEnv("ES_JAVA_OPTS",
 					"-Djdk.disableLastUsageTracking=true -XX:-UseContainerSupport -Xms512m -Xmx512m")
 			.withEnv("JDK_JAVA_OPTIONS",
@@ -47,7 +48,7 @@ public abstract class AbstractElasticsearchTest {
 					"-Djdk.disableLastUsageTracking=true -XX:-UseContainerSupport -Xms512m -Xmx512m")
 			.withExposedPorts(9200, 9300);
 
-	protected static RestClient lowLevelClient;
+	protected static Rest5Client lowLevelClient;
 	protected static ElasticsearchTransport transport;
 	protected static ElasticsearchClient client;
 	protected static String host;
@@ -66,8 +67,8 @@ public abstract class AbstractElasticsearchTest {
 		host = elasticsearch.getHost();
 		httpPort = elasticsearch.getMappedPort(9200);
 
-		lowLevelClient = RestClient.builder(new HttpHost(host, httpPort, "http")).build();
-		transport = new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+		lowLevelClient = Rest5Client.builder(new HttpHost("http", host, httpPort)).build();
+		transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
 		client = new ElasticsearchClient(transport);
 
 		waitForClusterReady(client);
@@ -89,7 +90,7 @@ public abstract class AbstractElasticsearchTest {
 
 	private static DockerImageName dockerImageName() {
 		String esVersion = System.getProperty("elasticsearch.docker.version",
-				System.getProperty("elasticsearch.version", "7.15.2"));
+				System.getProperty("elasticsearch.version", "9.2.1"));
 
 		return DockerImageName
 				.parse("docker.elastic.co/elasticsearch/elasticsearch:" + esVersion)

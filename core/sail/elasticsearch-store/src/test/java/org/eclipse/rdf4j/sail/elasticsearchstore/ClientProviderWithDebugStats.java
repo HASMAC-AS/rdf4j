@@ -14,20 +14,21 @@ package org.eclipse.rdf4j.sail.elasticsearchstore;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.http.HttpRequest;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.protocol.HttpContext;
-import org.elasticsearch.client.RestClient;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
+import org.apache.hc.core5.http.EntityDetails;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.HttpRequest;
+import org.apache.hc.core5.http.protocol.HttpContext;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 public class ClientProviderWithDebugStats implements ClientProvider {
 
-	private transient RestClient lowLevelClient;
+	private transient Rest5Client lowLevelClient;
 	private transient ElasticsearchTransport transport;
 	private transient ElasticsearchClient client;
 	private transient boolean closed = false;
@@ -35,22 +36,21 @@ public class ClientProviderWithDebugStats implements ClientProvider {
 	private final AtomicLong bulkCalls = new AtomicLong();
 
 	public ClientProviderWithDebugStats(String hostname, int port, String clusterName) {
-		lowLevelClient = RestClient.builder(new org.apache.http.HttpHost(hostname, port, "http"))
+		lowLevelClient = Rest5Client.builder(new HttpHost("http", hostname, port))
 				.setHttpClientConfigCallback(this::configureHttpClient)
 				.build();
-		transport = new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+		transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
 		client = new ElasticsearchClient(transport);
 	}
 
 	private HttpAsyncClientBuilder configureHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
-		return httpClientBuilder.addInterceptorLast((HttpRequest request, HttpContext context) -> {
-			if (request instanceof HttpUriRequest) {
-				String uri = ((HttpUriRequest) request).getURI().getPath();
-				if (uri != null && uri.contains("_bulk")) {
-					bulkCalls.incrementAndGet();
-				}
-			}
-		});
+		return httpClientBuilder.addRequestInterceptorLast(
+				(HttpRequest request, EntityDetails entity, HttpContext context) -> {
+					String uri = request.getRequestUri();
+					if (uri != null && uri.contains("_bulk")) {
+						bulkCalls.incrementAndGet();
+					}
+				});
 	}
 
 	@Override

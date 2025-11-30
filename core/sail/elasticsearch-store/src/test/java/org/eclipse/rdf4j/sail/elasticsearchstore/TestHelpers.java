@@ -12,20 +12,20 @@ package org.eclipse.rdf4j.sail.elasticsearchstore;
 
 import java.io.IOException;
 
-import org.apache.http.HttpHost;
-import org.elasticsearch.client.RestClient;
+import org.apache.hc.core5.http.HttpHost;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 
 public class TestHelpers {
 	public static String CLUSTER = "test";
 	public static int PORT = 9200;
 	public static String HOST = "localhost";
 
-	private static RestClient LOW_LEVEL_CLIENT;
+	private static Rest5Client LOW_LEVEL_CLIENT;
 	private static ElasticsearchTransport TRANSPORT;
 	private static ElasticsearchClient CLIENT;
 
@@ -40,10 +40,10 @@ public class TestHelpers {
 		PORT = ElasticsearchStoreTestContainerSupport.getHttpPort();
 		HOST = ElasticsearchStoreTestContainerSupport.getHost();
 
-		LOW_LEVEL_CLIENT = RestClient
-				.builder(new HttpHost(HOST, ElasticsearchStoreTestContainerSupport.getHttpPort(), "http"))
+		LOW_LEVEL_CLIENT = Rest5Client
+				.builder(new HttpHost("http", HOST, ElasticsearchStoreTestContainerSupport.getHttpPort()))
 				.build();
-		TRANSPORT = new RestClientTransport(LOW_LEVEL_CLIENT, new JacksonJsonpMapper());
+		TRANSPORT = new Rest5ClientTransport(LOW_LEVEL_CLIENT, new JacksonJsonpMapper());
 		CLIENT = new ElasticsearchClient(TRANSPORT);
 	}
 

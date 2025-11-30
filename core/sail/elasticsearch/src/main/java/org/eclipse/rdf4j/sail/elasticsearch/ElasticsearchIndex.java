@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.sail.elasticsearch;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Type;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -25,12 +26,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpHost;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.message.BasicHeader;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
+import org.apache.hc.core5.util.Timeout;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.vocabulary.GEOF;
@@ -45,8 +49,6 @@ import org.eclipse.rdf4j.sail.lucene.LuceneSail;
 import org.eclipse.rdf4j.sail.lucene.QuerySpec;
 import org.eclipse.rdf4j.sail.lucene.SearchDocument;
 import org.eclipse.rdf4j.sail.lucene.SearchFields;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.distance.DistanceUtils;
@@ -62,6 +64,8 @@ import com.google.common.base.Functions;
 import com.google.common.collect.Iterables;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.GeoLocation;
 import co.elastic.clients.elasticsearch._types.GeoShapeRelation;
 import co.elastic.clients.elasticsearch._types.HealthStatus;
 import co.elastic.clients.elasticsearch._types.WaitForActiveShards;
@@ -78,6 +82,7 @@ import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Highlight;
+import co.elastic.clients.elasticsearch.core.search.HighlightField;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.TrackHits;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
@@ -86,11 +91,15 @@ import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import co.elastic.clients.elasticsearch.indices.RefreshRequest;
 import co.elastic.clients.elasticsearch.indices.RefreshResponse;
+import co.elastic.clients.elasticsearch.indices.get_mapping.IndexMappingRecord;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
-import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
+import co.elastic.clients.util.NamedValue;
 
 /**
  * Requires an Elasticsearch cluster with the DeleteByQuery plugin.
@@ -189,6 +198,8 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 
 	public static final long UNASSIGNED_PRIMARY_TERM = 0L;
 
+	private static final Pattern FUZZY_SIMILARITY_PATTERN = Pattern.compile("~(\\d+\\.\\d+)");
+
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private static final Type MAP_TYPE = new TypeReference<Map<String, Object>>() {
@@ -196,7 +207,7 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 
 	private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
-	private volatile RestClient lowLevelClient;
+	private volatile Rest5Client lowLevelClient;
 
 	private volatile ElasticsearchTransport transport;
 
@@ -243,13 +254,13 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 		geoContextMapper = createSpatialContextMapper((Map<String, String>) (Map<?, ?>) parameters);
 
 		HttpHost[] httpHosts = createHttpHosts(parameters);
-		RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+		Rest5ClientBuilder restClientBuilder = Rest5Client.builder(httpHosts);
 		configurePathPrefix(parameters, restClientBuilder);
 		configureDefaultHeaders(parameters, restClientBuilder);
 		configureRequestTimeouts(parameters, restClientBuilder);
 
 		lowLevelClient = restClientBuilder.build();
-		transport = new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+		transport = new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
 		client = new ElasticsearchClient(transport);
 
 		clusterName = parameters.getProperty(ELASTICSEARCH_KEY_PREFIX + "cluster.name");
@@ -306,12 +317,21 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 	private HttpHost buildHttpHost(String spec, String defaultScheme) {
 		String cleanedSpec = spec.trim();
 		if (cleanedSpec.contains("://")) {
-			return HttpHost.create(cleanedSpec);
+			try {
+				return HttpHost.create(cleanedSpec);
+			} catch (URISyntaxException e) {
+				throw new IllegalArgumentException("Invalid host specification: " + cleanedSpec, e);
+			}
 		}
 		String[] hostPort = cleanedSpec.split(":");
 		String host = hostPort[0];
 		int port = hostPort.length > 1 ? Integer.parseInt(hostPort[1]) : 9200;
-		return new HttpHost(host, port, defaultScheme);
+		String uri = defaultScheme + "://" + host + ":" + port;
+		try {
+			return HttpHost.create(uri);
+		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException("Invalid host specification: " + uri, e);
+		}
 	}
 
 	private String resolveScheme(Properties parameters) {
@@ -331,13 +351,13 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 		return value != null && Boolean.parseBoolean(value);
 	}
 
-	private void configurePathPrefix(Properties parameters, RestClientBuilder restClientBuilder) {
+	private void configurePathPrefix(Properties parameters, Rest5ClientBuilder restClientBuilder) {
 		Optional.ofNullable(parameters.getProperty(ES_HTTP_PATH_PREFIX_KEY))
 				.filter(prefix -> !prefix.isBlank())
 				.ifPresent(restClientBuilder::setPathPrefix);
 	}
 
-	private void configureDefaultHeaders(Properties parameters, RestClientBuilder restClientBuilder) {
+	private void configureDefaultHeaders(Properties parameters, Rest5ClientBuilder restClientBuilder) {
 		List<Header> headers = new ArrayList<>();
 		createAuthorizationHeader(parameters).ifPresent(headers::add);
 		if (!headers.isEmpty()) {
@@ -356,16 +376,16 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 		return Optional.of(new BasicHeader(HttpHeaders.AUTHORIZATION, authValue));
 	}
 
-	private void configureRequestTimeouts(Properties parameters, RestClientBuilder restClientBuilder) {
+	private void configureRequestTimeouts(Properties parameters, Rest5ClientBuilder restClientBuilder) {
 		if (parameters.containsKey(ES_HTTP_CONNECT_TIMEOUT_KEY) || parameters.containsKey(ES_HTTP_SOCKET_TIMEOUT_KEY)
 				|| parameters.containsKey(ES_HTTP_CONNECTION_REQUEST_TIMEOUT_KEY)) {
-			restClientBuilder.setRequestConfigCallback(config -> {
-				RequestConfig.Builder builder = config;
-				parseTimeout(parameters, ES_HTTP_CONNECT_TIMEOUT_KEY).ifPresent(builder::setConnectTimeout);
-				parseTimeout(parameters, ES_HTTP_SOCKET_TIMEOUT_KEY).ifPresent(builder::setSocketTimeout);
+			restClientBuilder.setRequestConfigCallback((RequestConfig.Builder config) -> {
+				parseTimeout(parameters, ES_HTTP_CONNECT_TIMEOUT_KEY)
+						.ifPresent(timeout -> config.setConnectTimeout(Timeout.ofMilliseconds(timeout)));
+				parseTimeout(parameters, ES_HTTP_SOCKET_TIMEOUT_KEY)
+						.ifPresent(timeout -> config.setResponseTimeout(Timeout.ofMilliseconds(timeout)));
 				parseTimeout(parameters, ES_HTTP_CONNECTION_REQUEST_TIMEOUT_KEY)
-						.ifPresent(builder::setConnectionRequestTimeout);
-				return builder;
+						.ifPresent(timeout -> config.setConnectionRequestTimeout(Timeout.ofMilliseconds(timeout)));
 			});
 		}
 	}
@@ -393,11 +413,12 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 
 	public Map<String, Object> getMappings() throws IOException {
 		GetMappingResponse resp = client.indices().getMapping(g -> g.index(indexName));
-		if (resp.result() == null || resp.result().get(indexName) == null) {
+		IndexMappingRecord mappingRecord = resp.get(indexName);
+		if (mappingRecord == null || mappingRecord.mappings() == null) {
 			return Map.of();
 		}
-		TypeMapping mapping = resp.result().get(indexName).mappings();
-		if (mapping == null || mapping.meta() == null) {
+		TypeMapping mapping = mappingRecord.mappings();
+		if (mapping.meta() == null) {
 			return Map.of();
 		}
 		Map<String, Object> meta = new HashMap<>();
@@ -421,17 +442,13 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 		}
 
 		Map<String, Object> properties = new HashMap<>();
-		properties.put(SearchFields.CONTEXT_FIELD_NAME,
-				Map.of("type", "keyword", "index", true, "copy_to", "_all"));
-		properties.put(SearchFields.URI_FIELD_NAME,
-				Map.of("type", "keyword", "index", true, "copy_to", "_all"));
-		properties.put(SearchFields.TEXT_FIELD_NAME,
-				Map.of("type", "text", "index", true, "copy_to", "_all"));
+		properties.put(SearchFields.CONTEXT_FIELD_NAME, Map.of("type", "keyword", "index", true));
+		properties.put(SearchFields.URI_FIELD_NAME, Map.of("type", "keyword", "index", true));
+		properties.put(SearchFields.TEXT_FIELD_NAME, Map.of("type", "text", "index", true));
 		for (String wktField : wktFields) {
 			properties.put(toGeoPointFieldName(wktField), Map.of("type", "geo_point"));
 			if (supportsShapes(wktField)) {
-				properties.put(toGeoShapeFieldName(wktField),
-						Map.of("type", "geo_shape", "copy_to", "_all"));
+				properties.put(toGeoShapeFieldName(wktField), Map.of("type", "geo_shape"));
 			}
 		}
 
@@ -461,7 +478,7 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 
 	@Override
 	public void shutDown() throws IOException {
-		RestClient toCloseClient = lowLevelClient;
+		Rest5Client toCloseClient = lowLevelClient;
 		lowLevelClient = null;
 		transport = null;
 		client = null;
@@ -653,11 +670,11 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 					? toPropertyFieldName(SearchFields.getPropertyField(propertyURI))
 					: ALL_PROPERTY_FIELDS;
 			boolean requireFieldMatch = propertyURI != null;
+			HighlightField highlightField = HighlightField.of(hf -> hf.preTags(SearchFields.HIGHLIGHTER_PRE_TAG)
+					.postTags(SearchFields.HIGHLIGHTER_POST_TAG)
+					.numberOfFragments(0));
 			highlightConfig = Highlight.of(h -> {
-				h.fields(field,
-						hf -> hf.preTags(SearchFields.HIGHLIGHTER_PRE_TAG)
-								.postTags(SearchFields.HIGHLIGHTER_POST_TAG)
-								.numberOfFragments(0));
+				h.fields(List.of(NamedValue.of(field, highlightField)));
 				h.numberOfFragments(0);
 				if (!requireFieldMatch) {
 					h.requireFieldMatch(false);
@@ -713,9 +730,10 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 		Query distanceQuery = QueryBuilders.geoDistance(g -> g.field(fieldName)
 				.location(l -> l.latlon(ll -> ll.lat(lat).lon(lon)))
 				.distance(distanceString));
-		FunctionScore decayFunction = FunctionScore.of(f -> f.linear(l -> l.field(fieldName)
-				.placement(pBuilder -> pBuilder.origin(JsonData.of(Map.of("lat", lat, "lon", lon)))
-						.scale(JsonData.of(distanceString)))));
+		GeoLocation origin = GeoLocation.of(location -> location.latlon(ll -> ll.lat(lat).lon(lon)));
+		FunctionScore decayFunction = FunctionScore.of(f -> f.linear(
+				l -> l.geo(geo -> geo.field(fieldName)
+						.placement(pBuilder -> pBuilder.origin(origin).scale(distanceString)))));
 		Query qb = QueryBuilders.functionScore(fs -> fs.query(distanceQuery)
 				.functions(decayFunction)
 				.scoreMode(FunctionScoreMode.Multiply));
@@ -818,19 +836,27 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 		if (defaultNumDocs >= 0) {
 			return Math.min(maxDocs, defaultNumDocs);
 		}
-		SearchResponse<Map<String, Object>> countResponse = client.search(
-				s -> s.index(indexName)
-						.size(0)
-						.query(query)
-						.trackTotalHits(TrackHits.of(th -> th.enabled(true))),
-				MAP_TYPE);
+		SearchResponse<Map<String, Object>> countResponse;
+		try {
+			countResponse = client.search(
+					s -> s.index(indexName)
+							.size(0)
+							.query(query)
+							.trackTotalHits(TrackHits.of(th -> th.enabled(true))),
+					MAP_TYPE);
+		} catch (ElasticsearchException e) {
+			logger.error("Elasticsearch search failed while resolving size: {}", e.error() != null ? e.error().reason()
+					: e.getMessage(), e);
+			throw e;
+		}
 		long docCount = countResponse.hits().total() != null ? countResponse.hits().total().value() : 0;
 		return Math.max((int) Math.min(docCount, maxDocs), 1);
 	}
 
 	private Query prepareQuery(IRI propertyURI, String query) {
+		String normalizedQuery = normalizeFuzzyQuerySyntax(query);
 		return QueryBuilders.queryString(qb -> {
-			qb.query(query).analyzer(queryAnalyzer);
+			qb.query(normalizedQuery).analyzer(queryAnalyzer);
 			if (propertyURI == null) {
 				qb.defaultField(SearchFields.TEXT_FIELD_NAME);
 			} else {
@@ -838,6 +864,18 @@ public class ElasticsearchIndex extends AbstractSearchIndex {
 			}
 			return qb;
 		});
+	}
+
+	private String normalizeFuzzyQuerySyntax(String query) {
+		Matcher matcher = FUZZY_SIMILARITY_PATTERN.matcher(query);
+		StringBuffer buffer = new StringBuffer();
+		while (matcher.find()) {
+			// Elasticsearch 9.x rejects Lucene-style float fuzziness (e.g. "~0.8"); rewrite to an
+			// integer edit distance that the query_string parser accepts.
+			matcher.appendReplacement(buffer, "~1");
+		}
+		matcher.appendTail(buffer);
+		return buffer.toString();
 	}
 
 	/**
