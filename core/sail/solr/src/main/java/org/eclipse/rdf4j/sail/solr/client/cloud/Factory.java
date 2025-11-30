@@ -10,19 +10,20 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.solr.client.cloud;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
 
-import com.google.common.collect.Lists;
-
 public class Factory implements SolrClientFactory {
 
 	@Override
 	public SolrClient create(String spec) {
-		List<String> zkHosts = Lists.newArrayList(spec.substring("cloud:".length()));
-		return new CloudSolrClient.Builder().withZkHost(zkHosts).build();
+		String zkHostSpec = spec.substring("cloud:".length());
+		List<String> zkHosts = Collections.singletonList(zkHostSpec);
+		return new CloudSolrClient.Builder(zkHosts, Optional.empty()).build();
 	}
 }

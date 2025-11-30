@@ -9,6 +9,67 @@
 	<artifactId>rdf4j-solr-compliance</artifactId>
 	<name>RDF4J: Solr Sail Tests</name>
 	<description>Tests for Solr Sail.</description>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.fasterxml.jackson</groupId>
+				<artifactId>jackson-bom</artifactId>
+				<version>2.18.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-client</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-http</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-io</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-util</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-alpn-client</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-alpn-java-client</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty.http2</groupId>
+				<artifactId>http2-client</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty.http2</groupId>
+				<artifactId>http2-common</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty.http2</groupId>
+				<artifactId>http2-hpack</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+			<dependency>
+				<groupId>org.eclipse.jetty.http2</groupId>
+				<artifactId>http2-http-client-transport</artifactId>
+				<version>10.0.26</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<properties>
 		<!-- used to set up embedded solr server in integration tests -->
 		<test.solr.home>${project.basedir}/solr</test.solr.home>
@@ -70,7 +131,59 @@
 					<groupId>jdk.tools</groupId>
 					<artifactId>jdk.tools</artifactId>
 				</exclusion>
+				<exclusion>
+					<groupId>javax.servlet</groupId>
+					<artifactId>javax.servlet-api</artifactId>
+				</exclusion>
 			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-client</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-http</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-io</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-util</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-alpn-client</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-alpn-java-client</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty.http2</groupId>
+			<artifactId>http2-client</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty.http2</groupId>
+			<artifactId>http2-http-client-transport</artifactId>
+			<version>10.0.26</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<build>
