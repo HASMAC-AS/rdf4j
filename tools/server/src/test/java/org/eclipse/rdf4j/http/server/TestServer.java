@@ -69,7 +69,7 @@ public class TestServer {
 		jetty.addConnector(conn);
 
 		WebAppContext webapp = new WebAppContext();
-		webapp.getServerClasspathPattern().add("org.slf4j.", "ch.qos.logback.");
+		WebAppContext.addServerClasses(jetty, "org.slf4j.", "ch.qos.logback.");
 		webapp.setContextPath(RDF4J_CONTEXT);
 		// warPath configured in pom.xml maven-war-plugin configuration
 		webapp.setWar("./target/rdf4j-server");

@@ -64,7 +64,7 @@ public class SPARQLEmbeddedServer {
 		jetty = new Server(PORT);
 
 		WebAppContext webapp = new WebAppContext();
-		webapp.getServerClasspathPattern().add("org.slf4j.", "ch.qos.logback.");
+		WebAppContext.addServerClasses(jetty, "org.slf4j.", "ch.qos.logback.");
 		webapp.setContextPath(SERVER_CONTEXT);
 		// warPath configured in pom.xml maven-war-plugin configuration
 		webapp.setWar(webappDir);

@@ -10,14 +10,17 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.repository.util;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.eclipse.rdf4j.model.util.Statements.statement;
 import static org.eclipse.rdf4j.model.util.Values.getValueFactory;
 import static org.eclipse.rdf4j.model.util.Values.iri;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockserver.model.HttpRequest.request;
-import static org.mockserver.model.HttpResponse.response;
 
 import java.net.ProtocolException;
 import java.net.URL;
@@ -39,66 +42,51 @@ import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.rio.ParserConfig;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFHandler;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.jupiter.MockServerExtension;
-import org.mockserver.model.MediaType;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 /**
  * Unit tests for {@link RDFLoader}.
  *
  * @author Manuel Fiorelli
  */
-@ExtendWith(MockServerExtension.class)
 public class RDFLoaderTest {
+	private static WireMockServer server;
+	private static String baseUrl;
+
 	@BeforeAll
-	static void defineMockServerBehavior(MockServerClient client) {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/Socrates.ttl")
-		)
-				.respond(
-						response()
-								.withContentType(MediaType.parse(RDFFormat.TURTLE.getDefaultMIMEType()))
-								.withBody("<http://example.org/Socrates> a <http://xmlns.com/foaf/0.1/Person> .")
+	static void defineMockServerBehavior() {
+		server = new WireMockServer(WireMockConfiguration.options().dynamicPort().templatingEnabled(false));
+		server.start();
+		configureFor("localhost", server.port());
+		baseUrl = "http://localhost:" + server.port();
+		stubFor(get(urlEqualTo("/Socrates.ttl"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", RDFFormat.TURTLE.getDefaultMIMEType())
+						.withBody("<http://example.org/Socrates> a <http://xmlns.com/foaf/0.1/Person> .")));
+		stubFor(get(urlEqualTo("/Socrates"))
+				.willReturn(aResponse()
+						.withStatus(301)
+						.withHeader("Location", "/Socrates.ttl")));
+		stubFor(get(urlEqualTo("/Socrates1"))
+				.willReturn(aResponse()
+						.withStatus(301)
+						.withHeader("Location", "/Socrates2")));
+		stubFor(get(urlEqualTo("/Socrates2"))
+				.willReturn(aResponse()
+						.withStatus(301)
+						.withHeader("Location", "/Socrates.ttl")));
+	}
 
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/Socrates")
-		)
-				.respond(
-						response()
-								.withStatusCode(301)
-								.withHeader("Location", "/Socrates.ttl")
-
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/Socrates1")
-		)
-				.respond(
-						response()
-								.withStatusCode(301)
-								.withHeader("Location", "/Socrates2")
-
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/Socrates2")
-		)
-				.respond(
-						response()
-								.withStatusCode(301)
-								.withHeader("Location", "/Socrates.ttl")
-
-				);
+	@AfterAll
+	static void stopServer() {
+		if (server != null) {
+			server.stop();
+		}
 	}
 
 	@Test
@@ -118,13 +106,12 @@ public class RDFLoaderTest {
 	}
 
 	@Test
-	public void testTurtleDocument(MockServerClient client) throws Exception {
+	public void testTurtleDocument() throws Exception {
 		RDFLoader rdfLoader = new RDFLoader(new ParserConfig(), getValueFactory());
 
 		RDFHandler rdfHandler = mock(RDFHandler.class);
 
-		rdfLoader.load(new URL("http://localhost:" + client.getPort() + "/Socrates.ttl"), null, null,
-				rdfHandler);
+		rdfLoader.load(new URL(baseUrl + "/Socrates.ttl"), null, null, rdfHandler);
 
 		verify(rdfHandler).startRDF();
 		verify(rdfHandler)
@@ -135,13 +122,12 @@ public class RDFLoaderTest {
 	}
 
 	@Test
-	public void testMultipleRedirects(MockServerClient client) throws Exception {
+	public void testMultipleRedirects() throws Exception {
 		RDFLoader rdfLoader = new RDFLoader(new ParserConfig(), getValueFactory());
 
 		RDFHandler rdfHandler = mock(RDFHandler.class);
 
-		rdfLoader.load(new URL("http://localhost:" + client.getPort() + "/Socrates1"), null, null,
-				rdfHandler);
+		rdfLoader.load(new URL(baseUrl + "/Socrates1"), null, null, rdfHandler);
 
 		verify(rdfHandler).startRDF();
 		verify(rdfHandler)
@@ -152,7 +138,7 @@ public class RDFLoaderTest {
 	}
 
 	@Test
-	public void testAbortOverMaxRedirects(MockServerClient client) throws Exception {
+	public void testAbortOverMaxRedirects() throws Exception {
 		/* nullable */
 		String oldMaxRedirects = System.getProperty("http.maxRedirects");
 		try {
@@ -164,8 +150,7 @@ public class RDFLoaderTest {
 
 			RDFHandler rdfHandler = mock(RDFHandler.class);
 			try {
-				rdfLoader.load(new URL("http://localhost:" + client.getPort() + "/Socrates1"), null, null,
-						rdfHandler);
+				rdfLoader.load(new URL(baseUrl + "/Socrates1"), null, null, rdfHandler);
 			} catch (ProtocolException e) {
 				actualException = e;
 			}
@@ -182,7 +167,7 @@ public class RDFLoaderTest {
 	}
 
 	@Test
-	public void testNonInformationResource(MockServerClient client) throws Exception {
+	public void testNonInformationResource() throws Exception {
 		final SSLSocketFactory toRestoreSocketFactory = disableSSLCertificatCheck();
 		try {
 			final HostnameVerifier toRestoreHostnameVerifier = disableHostnameVerifier();
@@ -191,8 +176,7 @@ public class RDFLoaderTest {
 
 				RDFHandler rdfHandler = mock(RDFHandler.class);
 
-				rdfLoader.load(new URL("http://localhost:" + client.getPort() + "/Socrates"), null, null,
-						rdfHandler);
+				rdfLoader.load(new URL(baseUrl + "/Socrates"), null, null, rdfHandler);
 
 				verify(rdfHandler).startRDF();
 				verify(rdfHandler)

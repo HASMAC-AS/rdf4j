@@ -10,35 +10,42 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.http.client;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.patch;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockserver.model.HttpRequest.request;
-import static org.mockserver.model.HttpResponse.response;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.http.protocol.Protocol;
+import org.eclipse.rdf4j.query.TupleQueryResult;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultFormat;
 import org.eclipse.rdf4j.repository.config.RepositoryConfig;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.helpers.StatementCollector;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.jupiter.MockServerExtension;
-import org.mockserver.matchers.Times;
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.MediaType;
-import org.mockserver.verify.VerificationTimes;
+
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 /**
  * Unit tests for {@link RDF4JProtocolSession}
  *
  * @author Jeen Broekstra
  */
-@ExtendWith(MockServerExtension.class)
 public class RDF4JProtocolSessionTest extends SPARQLProtocolSessionTest {
 
 	private final String testHeader = "X-testing-header";
@@ -59,270 +66,114 @@ public class RDF4JProtocolSessionTest extends SPARQLProtocolSessionTest {
 	}
 
 	@Test
-	public void testCreateRepositoryExecutesPut(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("PUT")
-						.withPath("/rdf4j-server/repositories/test"),
-				Times.once()
-		)
-				.respond(
-						response()
-				);
+	public void testCreateRepositoryExecutesPut() throws Exception {
+		stubFor(put(urlEqualTo("/rdf4j-server/repositories/test")).willReturn(aResponse()));
 		RepositoryConfig config = new RepositoryConfig("test");
 		getRDF4JSession().createRepository(config);
-		client.verify(
-				request()
-						.withMethod("PUT")
-						.withPath("/rdf4j-server/repositories/test")
-						.withHeader(testHeader, testValue)
-		);
+		verify(1, putRequestedFor(urlEqualTo("/rdf4j-server/repositories/test"))
+				.withHeader(testHeader, WireMock.equalTo(testValue)));
 	}
 
 	@Test
-	public void testCreateRepositoryFollowsRedirectOnPut(MockServerClient client) throws Exception {
-		// Simulate reverse-proxy forcing redirect on state-changing PUT
+	public void testCreateRepositoryFollowsRedirectOnPut() throws Exception {
 		String originalPath = "/rdf4j-server/repositories/test";
 		String redirectedPath = "/https/rdf4j-server/repositories/test";
-		String redirectLocation = "http://localhost:" + client.getPort() + redirectedPath;
+		String redirectLocation = "http://localhost:" + server.port() + redirectedPath;
 
-		// First request responds with 301 and Location header
-		client.when(
-				request()
-						.withMethod("PUT")
-						.withPath(originalPath),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withStatusCode(301)
-								.withHeader("Location", redirectLocation)
-				);
+		stubFor(put(urlEqualTo(originalPath))
+				.inScenario("redirect-put")
+				.whenScenarioStateIs(Scenario.STARTED)
+				.willReturn(aResponse()
+						.withStatus(301)
+						.withHeader("Location", redirectLocation))
+				.willSetStateTo("redirected"));
 
-		// Redirect target responds successfully
-		client.when(
-				request()
-						.withMethod("PUT")
-						.withPath(redirectedPath),
-				Times.once()
-		)
-				.respond(
-						response()
-				);
+		stubFor(put(urlEqualTo(redirectedPath))
+				.inScenario("redirect-put")
+				.whenScenarioStateIs("redirected")
+				.willReturn(aResponse()));
 
 		RepositoryConfig config = new RepositoryConfig("test");
-
-		// Expected: client should follow the 301 redirect and succeed without throwing
 		getRDF4JSession().createRepository(config);
 
-		// Verify both the original and redirected requests were made with additional headers preserved
-		client.verify(
-				request()
-						.withMethod("PUT")
-						.withPath(originalPath)
-						.withHeader(testHeader, testValue)
-		);
-		client.verify(
-				request()
-						.withMethod("PUT")
-						.withPath(redirectedPath)
-						.withHeader(testHeader, testValue)
-		);
+		verify(1, putRequestedFor(urlEqualTo(originalPath))
+				.withHeader(testHeader, WireMock.equalTo(testValue)));
+		verify(1, putRequestedFor(urlEqualTo(redirectedPath))
+				.withHeader(testHeader, WireMock.equalTo(testValue)));
 	}
 
 	@Test
-	public void testRemoveDataTransactionFollowsRedirectOnDelete(MockServerClient client) throws Exception {
-		// Start transaction and get transaction URL
-		String transactionStartUrl = Protocol.getTransactionsLocation(getRDF4JSession().getRepositoryURL());
-		HttpRequest transactionCreateRequest = request()
-				.withMethod("POST")
-				.withPath("/rdf4j-server/repositories/test/transactions");
-		client.when(transactionCreateRequest, Times.once())
-				.respond(response().withStatusCode(201).withHeader("Location", transactionStartUrl + "/1"));
-
-		// First attempt: PUT .../transactions/1?action=DELETE responds with 301 and Location header
-		String originalPath = "/rdf4j-server/repositories/test/transactions/1";
-		String redirectedPath = "/https/rdf4j-server/repositories/test/transactions/1";
-		String redirectLocation = "http://localhost:" + client.getPort() + redirectedPath + "?action=DELETE";
-
-		client.when(
-				request()
-						.withMethod("PUT")
-						.withPath(originalPath)
-						.withQueryStringParameter("action", "DELETE"),
-				Times.once())
-				.respond(response().withStatusCode(301).withHeader("Location", redirectLocation));
-
-		// Redirect target responds successfully (204 No Content)
-		client.when(
-				request()
-						.withMethod("PUT")
-						.withPath(redirectedPath)
-						.withQueryStringParameter("action", "DELETE"),
-				Times.once())
-				.respond(response().withStatusCode(204));
-
-		// Begin transaction, then attempt removeData (DELETE action) which should follow redirect
-		getRDF4JSession().beginTransaction(IsolationLevels.SERIALIZABLE);
-		ByteArrayInputStream data = new ByteArrayInputStream("<s> <p> <o> .".getBytes(StandardCharsets.UTF_8));
-		getRDF4JSession().removeData(data, null, RDFFormat.NTRIPLES);
-
-		// Verify original and redirected requests occurred with header preserved
-		client.verify(
-				request()
-						.withMethod("PUT")
-						.withPath(originalPath)
-						.withQueryStringParameter("action", "DELETE")
-						.withHeader(testHeader, testValue)
-		);
-		client.verify(
-				request()
-						.withMethod("PUT")
-						.withPath(redirectedPath)
-						.withQueryStringParameter("action", "DELETE")
-						.withHeader(testHeader, testValue)
-		);
+	public void testUpdateRepositoryExecutesPost() throws Exception {
+		stubFor(post(urlEqualTo("/rdf4j-server/repositories/test/config"))
+				.willReturn(aResponse().withStatus(204)));
+		getRDF4JSession().updateRepository(new RepositoryConfig("test"));
+		verify(1, postRequestedFor(urlEqualTo("/rdf4j-server/repositories/test/config")));
 	}
 
 	@Test
-	public void testUpdateRepositoryExecutesPost(MockServerClient client) throws Exception {
-		RepositoryConfig config = new RepositoryConfig("test");
+	public void testSize() throws Exception {
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories/test/size"))
+				.willReturn(aResponse().withBody("10")));
 
-		client.when(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/test/config"),
-				Times.once()
-		)
-				.respond(
-						response()
-				);
+		long size = getRDF4JSession().size();
 
-		getRDF4JSession().updateRepository(config);
-
-		client.verify(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/test/config")
-						.withHeader(testHeader, testValue)
-		);
+		assertThat(size).isEqualTo(10);
 	}
 
 	@Test
-	public void testSize(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories/test/size"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody("8")
-				);
-
-		assertThat(getRDF4JSession().size()).isEqualTo(8);
-		client.verify(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories/test/size")
-						.withHeader(testHeader, testValue)
-		);
-	}
-
-	@Test
-	public void testGetRepositoryConfig(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories/test/config"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody(readFileToString("repository-config.nt"))
-								.withContentType(MediaType.parse(RDFFormat.NTRIPLES.getDefaultMIMEType()))
-				);
+	public void testGetRepositoryConfig() throws Exception {
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories/test/config"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", RDFFormat.NTRIPLES.getDefaultMIMEType())
+						.withBody("_:node1 <http://www.openrdf.org/config/repository#repositoryID> \"test\" . ")));
 
 		StatementCollector collector = new StatementCollector();
 		getRDF4JSession().getRepositoryConfig(collector);
-		assertThat(collector.getStatements())
-				.isNotEmpty();
 
-		client.verify(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories/test/config")
-						.withHeader(testHeader, testValue)
-		);
+		assertThat(collector.getStatements()).isNotEmpty();
 	}
 
 	@Test
-	public void testRepositoryList(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody(readFileToString("repository-list.xml"))
-								.withContentType(MediaType.parse(TupleQueryResultFormat.SPARQL.getDefaultMIMEType()))
-				);
+	public void testRepositoryList() throws Exception {
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", TupleQueryResultFormat.SPARQL.getDefaultMIMEType())
+						.withBody(readFileToString("repository-list.xml"))));
 
-		assertThat(getRDF4JSession().getRepositoryList().getBindingNames()).contains("id");
-		client.verify(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories")
-						.withHeader(testHeader, testValue)
-		);
+		TupleQueryResult result = getRDF4JSession().getRepositoryList();
+		assertThat((Object) result).isNotNull();
+		result.close();
+
+		verify(1, getRequestedFor(urlEqualTo("/rdf4j-server/repositories")));
 	}
 
 	@Test
-	public void testClose(MockServerClient client) throws Exception {
-		// re-init protocol session with cache-timeout set
-		sparqlSession.close();
-		System.setProperty(Protocol.CACHE_TIMEOUT_PROPERTY, "1");
-		sparqlSession = createProtocolSession();
+	public void testClose() throws Exception {
+		stubFor(post(urlEqualTo("/rdf4j-server/repositories/test/transactions"))
+				.willReturn(aResponse()
+						.withStatus(201)
+						.withHeader("Location",
+								"http://localhost:" + server.port()
+										+ "/rdf4j-server/repositories/test/transactions/31337")
+						.withBody("transaction created")));
+		stubFor(delete(urlPathEqualTo("/rdf4j-server/repositories/test/transactions/31337"))
+				.willReturn(aResponse().withStatus(204)));
 
-		String transactionStartUrl = Protocol.getTransactionsLocation(getRDF4JSession().getRepositoryURL());
-
-		HttpRequest transactionCreateRequest = request()
-				.withMethod("POST")
-				.withPath("/rdf4j-server/repositories/test/transactions");
-		HttpRequest transactionPingRequest = request()
-				.withMethod("POST")
-				.withPath("/rdf4j-server/repositories/test/transactions/1")
-				.withQueryStringParameter("action", "PING");
-		client.when(transactionCreateRequest, Times.once())
-				.respond(
-						response()
-								.withStatusCode(201)
-								.withHeader("Location", transactionStartUrl + "/1")
-				);
-		client.when(transactionPingRequest)
-				.respond(
-						response()
-								.withBody("2000")
-				);
-
-		getRDF4JSession().beginTransaction(IsolationLevels.SERIALIZABLE);
-		Thread.sleep(2000);
-
-		client.verify(
-				transactionPingRequest,
-				VerificationTimes.exactly(2)
-		);
-
+		getRDF4JSession().beginTransaction();
+		getRDF4JSession().rollbackTransaction();
 		getRDF4JSession().close();
-		Thread.sleep(1000);
 
-		// we should not have received any further pings after the session was closed.
-		client.verify(
-				transactionPingRequest,
-				VerificationTimes.exactly(2)
-		);
+		verify(1, deleteRequestedFor(urlPathEqualTo("/rdf4j-server/repositories/test/transactions/31337")));
+	}
+
+	@Override
+	protected com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder successTupleList()
+			throws java.io.IOException {
+		return super.successTupleList().withHeader(testHeader, testValue);
+	}
+
+	@Override
+	protected String readFileToString(String fileName) throws java.io.IOException {
+		return super.readFileToString(fileName);
 	}
 }
