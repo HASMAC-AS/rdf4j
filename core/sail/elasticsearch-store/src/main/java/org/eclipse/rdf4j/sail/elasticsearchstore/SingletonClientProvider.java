@@ -12,8 +12,9 @@ package org.eclipse.rdf4j.sail.elasticsearchstore;
 
 import java.io.IOException;
 
-import org.apache.hc.core5.http.HttpHost;
 import org.eclipse.rdf4j.sail.SailException;
+
+import org.apache.hc.core5.http.HttpHost;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;

@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.common.iteration.Iterations;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.query.TupleQueryResult;
+
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.Sets;

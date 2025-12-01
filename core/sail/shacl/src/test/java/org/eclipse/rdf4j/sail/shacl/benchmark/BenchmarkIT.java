@@ -12,6 +12,7 @@
 package org.eclipse.rdf4j.sail.shacl.benchmark;
 
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.ParentReferenceChecker;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;

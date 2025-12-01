@@ -25,6 +25,7 @@ import org.eclipse.rdf4j.workbench.base.TupleServlet;
 import org.eclipse.rdf4j.workbench.exceptions.BadRequestException;
 import org.eclipse.rdf4j.workbench.util.TupleResultBuilder;
 import org.eclipse.rdf4j.workbench.util.WorkbenchRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -19,13 +19,14 @@ import java.util.Optional;
 
 import javax.xml.datatype.XMLGregorianCalendar;
 
-import org.apache.commons.codec.binary.Hex;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.base.CoreDatatype;
 import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
 import org.eclipse.rdf4j.sail.nativerdf.ValueStoreRevision;
+
+import org.apache.commons.codec.binary.Hex;
 
 /**
  * CorruptUnknownValue is used when a NativeValue cannot be read from the ValueStore and if soft failure is enabled

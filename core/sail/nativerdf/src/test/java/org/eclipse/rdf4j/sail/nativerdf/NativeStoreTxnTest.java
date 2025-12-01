@@ -11,7 +11,6 @@
 package org.eclipse.rdf4j.sail.nativerdf;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -35,6 +34,7 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.nativerdf.btree.RecordIterator;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalConfig;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

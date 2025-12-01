@@ -11,7 +11,6 @@
 package org.eclipse.rdf4j.sail.federation;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.eclipse.rdf4j.federated.FedXFactory;
 import org.eclipse.rdf4j.federated.repository.FedXRepository;
@@ -26,6 +25,7 @@ import org.eclipse.rdf4j.repository.manager.RepositoryProvider;
 import org.eclipse.rdf4j.repository.sail.config.SailRepositoryConfig;
 import org.eclipse.rdf4j.sail.memory.config.MemoryStoreConfig;
 import org.eclipse.rdf4j.testsuite.query.parser.sparql.manifest.SPARQL11QueryComplianceTest;
+
 import org.junit.jupiter.api.io.TempDir;
 
 /**

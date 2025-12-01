@@ -36,6 +36,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents.ConstraintComponent
 import org.eclipse.rdf4j.sail.shacl.ast.paths.Path;
 import org.eclipse.rdf4j.sail.shacl.ast.paths.SimplePath;
 import org.eclipse.rdf4j.sail.shacl.results.ValidationResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

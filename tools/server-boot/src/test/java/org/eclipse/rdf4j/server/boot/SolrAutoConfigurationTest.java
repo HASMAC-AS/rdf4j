@@ -13,8 +13,9 @@ package org.eclipse.rdf4j.server.boot;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.apache.solr.client.solrj.SolrClient;
 import org.eclipse.rdf4j.tools.serverboot.Rdf4jServerWorkbenchApplication;
+
+import org.apache.solr.client.solrj.SolrClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;

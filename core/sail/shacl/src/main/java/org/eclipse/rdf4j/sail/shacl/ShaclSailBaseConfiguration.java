@@ -19,6 +19,7 @@ import org.eclipse.rdf4j.sail.NotifyingSail;
 import org.eclipse.rdf4j.sail.helpers.NotifyingSailWrapper;
 import org.eclipse.rdf4j.sail.inferencer.fc.SchemaCachingRDFSInferencer;
 import org.eclipse.rdf4j.sail.shacl.config.ShaclSailConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

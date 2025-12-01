@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.Shape;
 import org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents.ConstraintComponent;
 import org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents.SparqlConstraintComponent;
 import org.eclipse.rdf4j.sail.shacl.results.ValidationResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

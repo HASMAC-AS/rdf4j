@@ -23,6 +23,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 
 import org.eclipse.rdf4j.rio.helpers.ContextStatementCollector;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

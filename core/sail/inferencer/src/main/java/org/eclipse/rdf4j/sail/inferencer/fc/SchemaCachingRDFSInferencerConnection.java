@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.sail.UnknownSailTransactionStateException;
 import org.eclipse.rdf4j.sail.UpdateContext;
 import org.eclipse.rdf4j.sail.inferencer.InferencerConnection;
 import org.eclipse.rdf4j.sail.inferencer.InferencerConnectionWrapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

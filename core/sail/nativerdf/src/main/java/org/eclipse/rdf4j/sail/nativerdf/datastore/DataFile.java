@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.io.NioFile;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

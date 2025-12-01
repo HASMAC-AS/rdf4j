@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.repository.sail.config.SailRepositoryConfig;
 import org.eclipse.rdf4j.sail.inferencer.fc.config.SchemaCachingRDFSInferencerConfig;
 import org.eclipse.rdf4j.sail.memory.config.MemoryStoreConfig;
 import org.eclipse.rdf4j.sail.shacl.config.ShaclSailConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

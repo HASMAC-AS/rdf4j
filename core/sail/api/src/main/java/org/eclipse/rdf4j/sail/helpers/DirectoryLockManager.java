@@ -11,7 +11,6 @@
 package org.eclipse.rdf4j.sail.helpers;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -25,6 +24,7 @@ import java.security.AccessControlException;
 import org.eclipse.rdf4j.common.concurrent.locks.Lock;
 import org.eclipse.rdf4j.sail.LockManager;
 import org.eclipse.rdf4j.sail.SailLockedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

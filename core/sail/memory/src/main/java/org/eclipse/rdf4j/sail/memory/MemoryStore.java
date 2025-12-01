@@ -33,6 +33,7 @@ import org.eclipse.rdf4j.sail.base.SailStore;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSail;
 import org.eclipse.rdf4j.sail.helpers.DirectoryLockManager;
 import org.eclipse.rdf4j.sail.memory.model.MemValueFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

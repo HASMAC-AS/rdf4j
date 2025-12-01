@@ -20,6 +20,7 @@ import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
+
 import org.junit.jupiter.api.Test;
 
 public class ElasticsearchStoreHttpIT {

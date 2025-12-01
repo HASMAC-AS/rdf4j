@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.ValueFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

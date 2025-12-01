@@ -12,6 +12,7 @@ package org.eclipse.rdf4j.model.impl;
 
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.ValueFactoryTest;
+
 import org.junit.jupiter.api.BeforeEach;
 
 /**

@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.http.server.readonly;
 
 import org.eclipse.rdf4j.common.annotation.Experimental;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 

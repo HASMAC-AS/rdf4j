@@ -14,6 +14,7 @@ import java.io.File;
 
 import org.eclipse.rdf4j.sail.NotifyingSail;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
+
 import org.junit.jupiter.api.io.TempDir;
 
 public class NativeStoreCustomInferencingTest extends CustomGraphQueryInferencerTest {

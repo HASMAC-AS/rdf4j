@@ -15,6 +15,7 @@ import java.util.Arrays;
 import org.eclipse.rdf4j.federated.QueryManager;
 import org.eclipse.rdf4j.federated.SPARQLBaseTest;
 import org.eclipse.rdf4j.query.MalformedQueryException;
+
 import org.junit.jupiter.api.Test;
 
 public class PrefixTests extends SPARQLBaseTest {

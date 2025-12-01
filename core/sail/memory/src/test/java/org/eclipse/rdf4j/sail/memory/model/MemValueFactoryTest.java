@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.sail.memory.model;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.rdf4j.model.IRI;
+
 import org.junit.jupiter.api.Test;
 
 public class MemValueFactoryTest {

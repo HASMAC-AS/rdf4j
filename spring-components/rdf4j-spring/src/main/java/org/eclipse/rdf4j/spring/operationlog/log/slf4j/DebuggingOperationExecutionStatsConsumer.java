@@ -15,6 +15,7 @@ import java.lang.invoke.MethodHandles;
 
 import org.eclipse.rdf4j.spring.operationlog.log.OperationExecutionStats;
 import org.eclipse.rdf4j.spring.operationlog.log.OperationExecutionStatsConsumer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.eclipse.rdf4j.common.app.AppConfiguration;
+
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.Controller;
 

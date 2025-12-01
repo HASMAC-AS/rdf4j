@@ -12,9 +12,10 @@ package org.eclipse.rdf4j.sail.lucene.impl;
 
 import java.io.IOException;
 
+import org.eclipse.rdf4j.sail.lucene.LuceneSail;
+
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.store.ByteBuffersDirectory;
-import org.eclipse.rdf4j.sail.lucene.LuceneSail;
 
 public class LuceneSailTest extends AbstractGenericLuceneTest {
 

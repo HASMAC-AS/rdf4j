@@ -13,11 +13,12 @@ package org.eclipse.rdf4j.sail.solr.client.embedded;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
+
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.SolrXmlConfig;
-import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
 
 public class Factory implements SolrClientFactory {
 

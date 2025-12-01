@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.spring.demo.TestConfig;
 import org.eclipse.rdf4j.spring.demo.model.Artist;
 import org.eclipse.rdf4j.spring.demo.model.EX;
 import org.eclipse.rdf4j.spring.support.DataInserter;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

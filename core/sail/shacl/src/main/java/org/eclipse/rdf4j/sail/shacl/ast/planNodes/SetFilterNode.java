@@ -14,10 +14,11 @@ package org.eclipse.rdf4j.sail.shacl.ast.planNodes;
 import java.util.Objects;
 import java.util.Set;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
+import org.apache.commons.text.StringEscapeUtils;
 
 public class SetFilterNode implements PlanNode {
 

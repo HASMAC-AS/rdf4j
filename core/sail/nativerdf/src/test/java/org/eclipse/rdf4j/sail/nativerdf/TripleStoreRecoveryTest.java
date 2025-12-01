@@ -17,6 +17,7 @@ import java.io.File;
 
 import org.eclipse.rdf4j.sail.nativerdf.TxnStatusFile.TxnStatus;
 import org.eclipse.rdf4j.sail.nativerdf.btree.RecordIterator;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

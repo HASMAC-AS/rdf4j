@@ -17,6 +17,7 @@ import java.util.Map;
 import org.eclipse.rdf4j.federated.SPARQLBaseTest;
 import org.eclipse.rdf4j.federated.generator.DataGenerator;
 import org.eclipse.rdf4j.federated.generator.ResultGenerator;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 

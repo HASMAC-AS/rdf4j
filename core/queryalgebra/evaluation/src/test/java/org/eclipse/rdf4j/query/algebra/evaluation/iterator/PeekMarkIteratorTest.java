@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

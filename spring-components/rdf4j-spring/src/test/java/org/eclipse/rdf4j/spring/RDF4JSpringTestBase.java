@@ -12,6 +12,7 @@
 package org.eclipse.rdf4j.spring;
 
 import org.eclipse.rdf4j.spring.support.DataInserter;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;

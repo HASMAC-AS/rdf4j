@@ -12,10 +12,11 @@ package org.eclipse.rdf4j.sail.lucene.impl;
 
 import java.util.Set;
 
-import org.apache.lucene.document.Document;
-import org.apache.lucene.search.ScoreDoc;
 import org.eclipse.rdf4j.sail.lucene.DocumentResult;
 import org.eclipse.rdf4j.sail.lucene.SearchDocument;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.search.ScoreDoc;
 
 public class LuceneDocumentResult implements DocumentResult {
 

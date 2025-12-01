@@ -16,6 +16,7 @@ import java.io.IOException;
 
 import org.eclipse.rdf4j.common.io.ResourceUtil;
 import org.eclipse.rdf4j.query.QueryLanguage;
+
 import org.junit.jupiter.api.Test;
 
 /**

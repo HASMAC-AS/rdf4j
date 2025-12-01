@@ -17,6 +17,7 @@ import static org.eclipse.rdf4j.model.util.Values.namespace;
 import java.util.Arrays;
 
 import org.eclipse.rdf4j.model.vocabulary.RDF;
+
 import org.junit.jupiter.api.Test;
 
 public class SPARQLQueriesTest {

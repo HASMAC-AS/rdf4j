@@ -14,12 +14,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.rdf4j.sail.lucene.BulkUpdater;
+import org.eclipse.rdf4j.sail.lucene.SearchDocument;
+
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrInputDocument;
-import org.eclipse.rdf4j.sail.lucene.BulkUpdater;
-import org.eclipse.rdf4j.sail.lucene.SearchDocument;
 
 public class SolrBulkUpdater implements BulkUpdater {
 

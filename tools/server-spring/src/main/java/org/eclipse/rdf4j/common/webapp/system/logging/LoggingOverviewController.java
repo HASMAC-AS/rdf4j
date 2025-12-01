@@ -20,6 +20,7 @@ import java.util.Map;
 import org.eclipse.rdf4j.common.app.AppConfiguration;
 import org.eclipse.rdf4j.common.logging.LogLevel;
 import org.eclipse.rdf4j.common.logging.LogReader;
+
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.Controller;
 

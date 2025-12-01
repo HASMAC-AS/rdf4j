@@ -16,9 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.solr.common.SolrDocument;
 import org.eclipse.rdf4j.sail.lucene.SearchDocument;
 import org.eclipse.rdf4j.sail.lucene.SearchFields;
+
+import org.apache.solr.common.SolrDocument;
 
 public class SolrSearchDocument implements SearchDocument {
 

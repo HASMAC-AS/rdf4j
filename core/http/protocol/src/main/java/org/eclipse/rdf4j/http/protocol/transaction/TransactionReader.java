@@ -17,6 +17,7 @@ import java.util.Collection;
 
 import org.eclipse.rdf4j.common.xml.SimpleSAXParser;
 import org.eclipse.rdf4j.http.protocol.transaction.operations.TransactionOperation;
+
 import org.xml.sax.SAXException;
 
 public class TransactionReader {

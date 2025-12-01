@@ -58,6 +58,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.Shape;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.CombinedShapeSource;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.Rdf4jShaclShapeGraphShapeSource;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.ShapeSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

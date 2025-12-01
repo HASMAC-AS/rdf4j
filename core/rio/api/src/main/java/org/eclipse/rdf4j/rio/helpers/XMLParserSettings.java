@@ -14,6 +14,7 @@ import javax.xml.XMLConstants;
 
 import org.eclipse.rdf4j.rio.RioConfig;
 import org.eclipse.rdf4j.rio.RioSetting;
+
 import org.xml.sax.XMLReader;
 
 /**

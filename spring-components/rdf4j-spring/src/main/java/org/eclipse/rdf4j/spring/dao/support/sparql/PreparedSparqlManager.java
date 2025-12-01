@@ -14,9 +14,10 @@ package org.eclipse.rdf4j.spring.dao.support.sparql;
 import java.lang.invoke.MethodHandles;
 import java.util.function.Function;
 
-import org.apache.commons.collections4.map.LRUMap;
 import org.eclipse.rdf4j.query.Operation;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
+
+import org.apache.commons.collections4.map.LRUMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

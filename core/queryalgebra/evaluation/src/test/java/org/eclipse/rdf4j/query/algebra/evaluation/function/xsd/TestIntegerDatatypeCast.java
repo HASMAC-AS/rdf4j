@@ -21,6 +21,7 @@ import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.algebra.evaluation.ValueExprEvaluationException;
+
 import org.junit.jupiter.api.Test;
 
 public abstract class TestIntegerDatatypeCast<T extends IntegerCastFunction> {

@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 
 import org.eclipse.rdf4j.common.net.ParsedIRI;
+
 import org.junit.jupiter.api.Test;
 
 /**

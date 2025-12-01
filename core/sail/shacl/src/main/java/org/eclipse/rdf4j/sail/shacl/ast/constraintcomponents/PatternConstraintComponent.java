@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.planNodes.FilterPlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PatternFilter;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNode;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

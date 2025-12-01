@@ -13,11 +13,12 @@ package org.eclipse.rdf4j.sail.solr;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.commons.io.FileUtils;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.sail.lucene.LuceneSail;
 import org.eclipse.rdf4j.sail.solr.SolrIndexTest.PropertiesReader;
 import org.eclipse.testsuite.rdf4j.sail.lucene.AbstractLuceneSailIndexedPropertiesTest;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 

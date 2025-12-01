@@ -26,6 +26,7 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.workbench.exceptions.BadRequestException;
 import org.eclipse.rdf4j.workbench.util.WorkbenchRequest;
+
 import org.junit.jupiter.api.Test;
 
 import jakarta.servlet.http.HttpServletResponse;

@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.SparqlFragment;
 import org.eclipse.rdf4j.sail.shacl.ast.SparqlQueryParserCache;
 import org.eclipse.rdf4j.sail.shacl.ast.StatementMatcher;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

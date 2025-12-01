@@ -10,11 +10,12 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.query.algebra.evaluation.function.aggregate.stdev;
 
-import org.apache.commons.math3.util.FastMath;
 import org.eclipse.rdf4j.common.annotation.Experimental;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.aggregate.StatisticCollector;
+
+import org.apache.commons.math3.util.FastMath;
 
 /**
  * {@link org.eclipse.rdf4j.query.parser.sparql.aggregate.AggregateCollector} that can compute both sample and

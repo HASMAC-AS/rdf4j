@@ -26,6 +26,7 @@ import java.util.IdentityHashMap;
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.LmdbUtil.Transaction;
+
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 

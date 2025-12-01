@@ -25,6 +25,7 @@ import org.eclipse.rdf4j.federated.evaluation.join.ControlledWorkerJoin;
 import org.eclipse.rdf4j.federated.evaluation.union.ControlledWorkerUnion;
 import org.eclipse.rdf4j.federated.exception.ExceptionUtil;
 import org.eclipse.rdf4j.federated.exception.FedXRuntimeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

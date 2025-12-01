@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 import org.eclipse.rdf4j.query.GraphQuery;
 import org.eclipse.rdf4j.spring.dao.support.operation.GraphQueryResultConverter;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

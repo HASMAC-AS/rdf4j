@@ -15,6 +15,7 @@ import org.eclipse.rdf4j.spring.RDF4JConfig;
 import org.eclipse.rdf4j.spring.dao.RDF4JDao;
 import org.eclipse.rdf4j.spring.demo.support.InitialDataInserter;
 import org.eclipse.rdf4j.spring.support.DataInserter;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

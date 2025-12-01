@@ -14,9 +14,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
+
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
 
 public class Factory implements SolrClientFactory {
 

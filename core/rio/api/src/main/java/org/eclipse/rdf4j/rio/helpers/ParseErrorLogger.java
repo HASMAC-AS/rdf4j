@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.rio.helpers;
 
 import org.eclipse.rdf4j.rio.ParseErrorListener;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

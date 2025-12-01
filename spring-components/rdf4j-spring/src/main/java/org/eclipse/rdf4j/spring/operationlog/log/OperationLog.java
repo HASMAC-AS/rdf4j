@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 
 import org.eclipse.rdf4j.query.Operation;
 import org.eclipse.rdf4j.spring.operationlog.log.slf4j.DebuggingOperationExecutionStatsConsumer;
+
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**

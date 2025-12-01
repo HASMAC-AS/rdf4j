@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.transaction.IsolationLevel;
 import org.eclipse.rdf4j.common.transaction.TransactionSetting;
@@ -52,6 +51,8 @@ import org.eclipse.rdf4j.rio.RDFHandlerException;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.SailReadOnlyException;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * An implementation of the {@link RepositoryConnection} interface that wraps a {@link SailConnection}.

@@ -18,8 +18,9 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.annotation.Experimental;
+
+import org.apache.commons.text.StringEscapeUtils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 

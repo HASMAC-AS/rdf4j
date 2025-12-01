@@ -27,7 +27,6 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.rdf4j.common.io.GZipUtil;
 import org.eclipse.rdf4j.common.io.UncloseableInputStream;
 import org.eclipse.rdf4j.common.io.ZipUtil;
@@ -42,6 +41,8 @@ import org.eclipse.rdf4j.rio.RDFParserRegistry;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.UnsupportedRDFormatException;
 import org.eclipse.rdf4j.rio.helpers.ParseErrorLogger;
+
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Handles common I/O to retrieve and parse RDF.

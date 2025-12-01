@@ -13,13 +13,14 @@ package org.eclipse.rdf4j.spin.function.spif;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.text.StringSubstitutor;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.SPIF;
 import org.eclipse.rdf4j.query.algebra.evaluation.ValueExprEvaluationException;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.Function;
+
+import org.apache.commons.text.StringSubstitutor;
 
 public class BuildString implements Function {
 

@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.sail.elasticsearchstore.ElasticsearchStoreTestContainer
 import org.eclipse.rdf4j.sail.elasticsearchstore.SingletonClientProvider;
 import org.eclipse.rdf4j.sail.elasticsearchstore.TestHelpers;
 import org.eclipse.rdf4j.testsuite.sail.RDFNotifyingStoreTest;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.GenericContainer;

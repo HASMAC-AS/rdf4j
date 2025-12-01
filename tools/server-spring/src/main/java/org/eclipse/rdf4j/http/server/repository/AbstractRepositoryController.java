@@ -12,6 +12,7 @@ package org.eclipse.rdf4j.http.server.repository;
 
 import org.eclipse.rdf4j.http.server.repository.handler.QueryRequestHandler;
 import org.eclipse.rdf4j.http.server.repository.handler.RepositoryRequestHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextException;

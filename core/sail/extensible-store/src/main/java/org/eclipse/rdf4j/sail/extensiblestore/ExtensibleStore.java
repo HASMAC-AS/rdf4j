@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.extensiblestore.evaluationstatistics.EvaluationStatisticsEnum;
 import org.eclipse.rdf4j.sail.extensiblestore.valuefactory.ExtensibleStatementHelper;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSail;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

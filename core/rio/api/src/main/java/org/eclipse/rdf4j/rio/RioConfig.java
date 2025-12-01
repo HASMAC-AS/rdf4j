@@ -13,13 +13,13 @@ package org.eclipse.rdf4j.rio;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.eclipse.rdf4j.rio.helpers.RioConfigurationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

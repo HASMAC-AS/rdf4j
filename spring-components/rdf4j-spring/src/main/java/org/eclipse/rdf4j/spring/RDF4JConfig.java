@@ -13,7 +13,6 @@ package org.eclipse.rdf4j.spring;
 
 import java.lang.invoke.MethodHandles;
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.eclipse.rdf4j.common.annotation.Experimental;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
@@ -33,6 +32,8 @@ import org.eclipse.rdf4j.spring.support.connectionfactory.DirectRepositoryConnec
 import org.eclipse.rdf4j.spring.support.connectionfactory.RepositoryConnectionFactory;
 import org.eclipse.rdf4j.spring.tx.TransactionalRepositoryConnectionFactory;
 import org.eclipse.rdf4j.spring.tx.TxProperties;
+
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

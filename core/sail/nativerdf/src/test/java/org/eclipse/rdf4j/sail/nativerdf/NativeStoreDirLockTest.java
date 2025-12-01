@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 
 import org.eclipse.rdf4j.sail.SailLockedException;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -15,7 +15,6 @@ import static org.eclipse.rdf4j.http.protocol.Protocol.QUERY_PARAM_NAME;
 
 import java.io.IOException;
 
-import org.apache.http.HttpStatus;
 import org.eclipse.rdf4j.common.exception.RDF4JException;
 import org.eclipse.rdf4j.common.webapp.views.EmptySuccessView;
 import org.eclipse.rdf4j.http.protocol.error.ErrorInfo;
@@ -28,6 +27,8 @@ import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.repository.config.RepositoryConfig;
 import org.eclipse.rdf4j.repository.config.RepositoryConfigException;
 import org.eclipse.rdf4j.rio.Rio;
+
+import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.ModelAndView;

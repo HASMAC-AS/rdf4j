@@ -60,6 +60,7 @@ import org.eclipse.rdf4j.sail.helpers.NotifyingSailConnectionWrapper;
 import org.eclipse.rdf4j.sail.lucene.LuceneSailBuffer.AddRemoveOperation;
 import org.eclipse.rdf4j.sail.lucene.LuceneSailBuffer.ClearContextOperation;
 import org.eclipse.rdf4j.sail.lucene.LuceneSailBuffer.Operation;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

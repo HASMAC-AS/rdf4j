@@ -15,6 +15,7 @@ import org.eclipse.rdf4j.repository.sail.config.SailRepositoryConfig;
 import org.eclipse.rdf4j.repository.sail.config.SailRepositoryFactory;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreFactory;
 import org.eclipse.rdf4j.testsuite.repository.OptimisticIsolationTest;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 

@@ -16,6 +16,7 @@ import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.eclipse.rdf4j.testsuite.repository.SparqlOrderByTest;
+
 import org.junit.jupiter.api.io.TempDir;
 
 public class LmdbSparqlOrderByTest extends SparqlOrderByTest {

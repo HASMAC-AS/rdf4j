@@ -60,7 +60,6 @@ import org.eclipse.rdf4j.federated.evaluation.iterator.FederatedDescribeIteratio
 import org.eclipse.rdf4j.federated.evaluation.iterator.FilteringIteration;
 import org.eclipse.rdf4j.federated.evaluation.iterator.SingleBindingSetIteration;
 import org.eclipse.rdf4j.federated.evaluation.join.ControlledWorkerBindJoin;
-import org.eclipse.rdf4j.federated.evaluation.join.ControlledWorkerBoundJoin;
 import org.eclipse.rdf4j.federated.evaluation.join.ControlledWorkerJoin;
 import org.eclipse.rdf4j.federated.evaluation.join.SynchronousBoundJoin;
 import org.eclipse.rdf4j.federated.evaluation.join.SynchronousJoin;
@@ -121,7 +120,6 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.LeftJoinQ
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.BadlyDesignedLeftJoinIterator;
 import org.eclipse.rdf4j.query.algebra.evaluation.iterator.HashJoinIteration;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.ConstantOptimizer;
-import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.DisjunctiveConstraintOptimizer;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.StandardQueryOptimizerPipeline;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.QueryEvaluationUtil;
 import org.eclipse.rdf4j.query.algebra.helpers.TupleExprs;
@@ -131,6 +129,7 @@ import org.eclipse.rdf4j.query.impl.FallbackDataset;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.sparql.federation.CollectionIteration;
 import org.eclipse.rdf4j.repository.sparql.federation.RepositoryFederatedService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

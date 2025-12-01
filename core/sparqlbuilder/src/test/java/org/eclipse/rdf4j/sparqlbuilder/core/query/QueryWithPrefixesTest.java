@@ -22,6 +22,7 @@ import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.eclipse.rdf4j.sparqlbuilder.constraint.Expressions;
 import org.eclipse.rdf4j.sparqlbuilder.core.Variable;
 import org.eclipse.rdf4j.sparqlbuilder.examples.BaseExamples;
+
 import org.junit.jupiter.api.Test;
 
 public class QueryWithPrefixesTest extends BaseExamples {

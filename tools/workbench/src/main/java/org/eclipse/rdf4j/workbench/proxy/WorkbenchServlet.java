@@ -41,6 +41,7 @@ import org.eclipse.rdf4j.workbench.exceptions.MissingInitParameterException;
 import org.eclipse.rdf4j.workbench.util.BasicServletConfig;
 import org.eclipse.rdf4j.workbench.util.DynamicHttpRequest;
 import org.eclipse.rdf4j.workbench.util.TupleResultBuilder;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

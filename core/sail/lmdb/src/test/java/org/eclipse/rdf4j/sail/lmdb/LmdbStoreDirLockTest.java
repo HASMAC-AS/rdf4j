@@ -17,6 +17,7 @@ import java.io.File;
 
 import org.eclipse.rdf4j.sail.SailLockedException;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

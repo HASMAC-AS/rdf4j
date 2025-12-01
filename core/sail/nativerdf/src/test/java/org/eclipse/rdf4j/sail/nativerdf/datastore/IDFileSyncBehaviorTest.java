@@ -20,6 +20,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
 import org.eclipse.rdf4j.common.io.NioFile;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

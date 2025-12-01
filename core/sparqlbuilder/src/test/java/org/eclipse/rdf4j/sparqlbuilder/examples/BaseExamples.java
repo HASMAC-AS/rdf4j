@@ -11,14 +11,15 @@
 
 package org.eclipse.rdf4j.sparqlbuilder.examples;
 
-import org.assertj.core.api.Condition;
-import org.assertj.core.api.HamcrestCondition;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.DC;
 import org.eclipse.rdf4j.model.vocabulary.FOAF;
 import org.eclipse.rdf4j.sparqlbuilder.core.query.Queries;
 import org.eclipse.rdf4j.sparqlbuilder.core.query.SelectQuery;
+
+import org.assertj.core.api.Condition;
+import org.assertj.core.api.HamcrestCondition;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.jupiter.api.BeforeEach;

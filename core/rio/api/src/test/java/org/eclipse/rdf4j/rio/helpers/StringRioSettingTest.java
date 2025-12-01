@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.rio.helpers;
 
 import org.eclipse.rdf4j.rio.RioSetting;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 

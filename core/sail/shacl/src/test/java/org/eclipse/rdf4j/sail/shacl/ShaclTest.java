@@ -12,6 +12,7 @@
 package org.eclipse.rdf4j.sail.shacl;
 
 import org.eclipse.rdf4j.common.transaction.IsolationLevel;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 

@@ -13,7 +13,6 @@ package org.eclipse.rdf4j.benchmark.rio;
 
 import static java.nio.charset.StandardCharsets.UTF_16;
 import static java.nio.charset.StandardCharsets.UTF_8;
-
 import static org.apache.commons.io.output.NullOutputStream.NULL_OUTPUT_STREAM;
 import static org.eclipse.rdf4j.rio.helpers.BasicParserSettings.VERIFY_LANGUAGE_TAGS;
 import static org.eclipse.rdf4j.rio.helpers.BasicParserSettings.VERIFY_RELATIVE_URIS;
@@ -31,8 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.io.output.CountingOutputStream;
-import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.rdf4j.rio.ParserConfig;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParser;
@@ -40,6 +37,9 @@ import org.eclipse.rdf4j.rio.RDFWriter;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.WriterConfig;
 import org.eclipse.rdf4j.rio.helpers.BinaryRDFWriterSettings;
+
+import org.apache.commons.io.output.CountingOutputStream;
+import org.apache.commons.lang3.tuple.Pair;
 
 /**
  * <p>

@@ -26,6 +26,7 @@ import org.eclipse.rdf4j.common.transaction.QueryEvaluationMode;
 import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.SailException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

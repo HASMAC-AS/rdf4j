@@ -18,6 +18,7 @@ import java.util.List;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.query.parser.ParsedQuery;
+
 import org.junit.jupiter.api.Test;
 
 public class QuerySpecTest extends SearchQueryEvaluatorTest {

@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.eclipse.rdf4j.common.xml.SimpleSAXAdapter;
 import org.eclipse.rdf4j.query.resultio.QueryResultParseException;
+
 import org.xml.sax.SAXException;
 
 class SPARQLBooleanSAXParser extends SimpleSAXAdapter {

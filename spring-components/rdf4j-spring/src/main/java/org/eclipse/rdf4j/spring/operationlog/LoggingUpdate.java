@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.query.Update;
 import org.eclipse.rdf4j.query.UpdateExecutionException;
 import org.eclipse.rdf4j.spring.operationlog.log.OperationLog;
 import org.eclipse.rdf4j.spring.support.query.DelegatingUpdate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

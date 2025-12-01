@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.sail.SailChangedEvent;
 import org.eclipse.rdf4j.sail.SailChangedListener;
 import org.eclipse.rdf4j.sail.SailConnectionListener;
 import org.eclipse.rdf4j.sail.SailException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

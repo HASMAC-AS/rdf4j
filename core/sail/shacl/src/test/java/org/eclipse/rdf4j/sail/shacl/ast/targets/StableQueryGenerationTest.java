@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.util.Values;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.ValueComparator;
 import org.eclipse.rdf4j.sail.shacl.ast.StatementMatcher;
+
 import org.junit.jupiter.api.Test;
 
 public class StableQueryGenerationTest {

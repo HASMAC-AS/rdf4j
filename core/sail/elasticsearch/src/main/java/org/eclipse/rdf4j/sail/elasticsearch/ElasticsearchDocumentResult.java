@@ -14,6 +14,7 @@ import java.util.Map;
 
 import org.eclipse.rdf4j.sail.lucene.DocumentResult;
 import org.eclipse.rdf4j.sail.lucene.SearchDocument;
+
 import org.locationtech.spatial4j.context.SpatialContext;
 
 import com.google.common.base.Function;

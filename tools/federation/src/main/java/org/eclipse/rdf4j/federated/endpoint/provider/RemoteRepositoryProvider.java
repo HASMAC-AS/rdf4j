@@ -10,16 +10,15 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.federated.endpoint.provider;
 
-import org.apache.http.client.config.CookieSpecs;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.eclipse.rdf4j.federated.endpoint.Endpoint;
 import org.eclipse.rdf4j.federated.endpoint.EndpointClassification;
 import org.eclipse.rdf4j.federated.endpoint.ManagedRepositoryEndpoint;
 import org.eclipse.rdf4j.federated.exception.FedXException;
 import org.eclipse.rdf4j.http.client.SharedHttpClientSessionManager;
 import org.eclipse.rdf4j.repository.http.HTTPRepository;
+
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
 
 /**
  * Provider for an Endpoint that uses a RDF4J {@link HTTPRepository} as underlying repository. All SPARQL endpoints are

@@ -17,7 +17,6 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.base.AbstractStatement;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
@@ -27,6 +26,8 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
+
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

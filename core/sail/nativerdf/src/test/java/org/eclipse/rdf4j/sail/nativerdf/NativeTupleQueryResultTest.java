@@ -15,6 +15,7 @@ import java.io.File;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.testsuite.repository.TupleQueryResultTest;
+
 import org.junit.jupiter.api.io.TempDir;
 
 public class NativeTupleQueryResultTest extends TupleQueryResultTest {

@@ -20,6 +20,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.testsuite.repository.RepositoryConnectionTest;
+
 import org.junit.jupiter.api.Test;
 
 public class MemoryStoreConnectionTest extends RepositoryConnectionTest {

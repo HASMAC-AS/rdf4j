@@ -14,10 +14,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.highlight.Highlighter;
 import org.eclipse.rdf4j.sail.lucene.DocumentScore;
 import org.eclipse.rdf4j.sail.lucene.SearchFields;
+
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.highlight.Highlighter;
 
 import com.google.common.collect.Iterables;
 

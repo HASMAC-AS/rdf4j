@@ -12,6 +12,7 @@ package org.eclipse.rdf4j.query.algebra.evaluation.function.geosparql;
 
 import org.eclipse.rdf4j.model.vocabulary.GEOF;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.Function;
+
 import org.locationtech.spatial4j.shape.Shape;
 
 /**

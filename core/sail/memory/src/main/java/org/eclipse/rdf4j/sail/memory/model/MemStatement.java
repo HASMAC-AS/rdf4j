@@ -14,6 +14,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import org.eclipse.rdf4j.model.impl.GenericStatement;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

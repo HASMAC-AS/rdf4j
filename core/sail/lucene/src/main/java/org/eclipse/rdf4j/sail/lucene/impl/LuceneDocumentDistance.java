@@ -14,11 +14,12 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.lucene.search.ScoreDoc;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.sail.lucene.DocumentDistance;
 import org.eclipse.rdf4j.sail.lucene.SearchFields;
 import org.eclipse.rdf4j.sail.lucene.util.GeoUnits;
+
+import org.apache.lucene.search.ScoreDoc;
 import org.locationtech.spatial4j.shape.Point;
 import org.locationtech.spatial4j.shape.Shape;
 

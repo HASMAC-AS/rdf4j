@@ -22,6 +22,7 @@ import java.util.zip.CRC32C;
 import java.util.zip.GZIPOutputStream;
 
 import org.eclipse.rdf4j.model.Value;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

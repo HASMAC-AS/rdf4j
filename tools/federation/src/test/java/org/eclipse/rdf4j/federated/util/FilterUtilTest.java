@@ -19,6 +19,7 @@ import org.eclipse.rdf4j.query.algebra.Compare.CompareOp;
 import org.eclipse.rdf4j.query.algebra.ValueConstant;
 import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.query.algebra.Var;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

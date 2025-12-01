@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.common.concurrent.locks.benchmarks;
 import org.eclipse.rdf4j.common.concurrent.locks.AbstractReadWriteLockManager;
 import org.eclipse.rdf4j.common.concurrent.locks.ReadPrefReadWriteLockManager;
 import org.eclipse.rdf4j.common.concurrent.locks.diagnostics.LockDiagnostics;
+
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;

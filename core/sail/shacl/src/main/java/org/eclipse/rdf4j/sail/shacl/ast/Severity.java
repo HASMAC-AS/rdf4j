@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.sail.shacl.ast;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.vocabulary.SHACL;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

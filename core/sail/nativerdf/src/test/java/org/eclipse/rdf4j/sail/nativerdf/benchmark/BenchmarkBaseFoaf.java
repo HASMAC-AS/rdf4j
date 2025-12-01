@@ -16,13 +16,14 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Random;
 
-import org.apache.commons.io.FileUtils;
-import org.assertj.core.util.Files;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
+
+import org.apache.commons.io.FileUtils;
+import org.assertj.core.util.Files;
 
 public class BenchmarkBaseFoaf {
 

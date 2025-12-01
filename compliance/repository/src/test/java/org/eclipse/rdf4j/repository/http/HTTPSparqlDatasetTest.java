@@ -12,6 +12,7 @@ package org.eclipse.rdf4j.repository.http;
 
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.testsuite.repository.SparqlDatasetTest;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 

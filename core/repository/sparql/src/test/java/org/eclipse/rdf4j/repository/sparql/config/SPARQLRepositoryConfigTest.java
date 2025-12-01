@@ -20,6 +20,7 @@ import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.impl.BooleanLiteral;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
 import org.eclipse.rdf4j.repository.config.RepositoryConfigSchema;
+
 import org.junit.jupiter.api.Test;
 
 /**

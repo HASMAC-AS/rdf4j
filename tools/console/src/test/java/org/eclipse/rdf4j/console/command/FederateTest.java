@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.repository.http.config.HTTPRepositoryFactory;
 import org.eclipse.rdf4j.repository.manager.LocalRepositoryManager;
 import org.eclipse.rdf4j.repository.sail.config.ProxyRepositoryFactory;
 import org.eclipse.rdf4j.repository.sparql.config.SPARQLRepositoryFactory;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

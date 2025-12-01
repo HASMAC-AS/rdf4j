@@ -26,6 +26,7 @@ import org.eclipse.rdf4j.model.util.Values;
 import org.eclipse.rdf4j.model.vocabulary.SHACL;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.ValueComparator;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.ShapeSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

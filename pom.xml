@@ -299,24 +299,42 @@
 			<build>
 				<plugins>
 					<plugin>
-						<groupId>net.revelc.code.formatter</groupId>
-						<artifactId>formatter-maven-plugin</artifactId>
+						<groupId>com.diffplug.spotless</groupId>
+						<artifactId>spotless-maven-plugin</artifactId>
+						<version>3.1.0</version>
+						<!-- or latest -->
+						<configuration>
+							<java>
+								<!-- what to format -->
+								<includes>
+									<include>src/main/java/**/*.java</include>
+									<include>src/test/java/**/*.java</include>
+								</includes>
+								<!-- 1) Use your Eclipse formatter profile -->
+								<eclipse>
+									<!-- adjust path if you put the file elsewhere -->
+									<file>${maven.multiModuleProjectDirectory}/eclipse-settings/eclipse-rdf4j-conventions.xml</file>
+								</eclipse>
+								<!-- 2) Import ordering (see next section) -->
+								<importOrder>
+									<!-- either inline order... -->
+									<order>java,javax,org.eclipse,org,com</order>
+									<!-- Or use a file: <file>${maven.multiModuleProjectDirectory}/build-tools/eclipse-rdf4j.importorder</file> -->
+								</importOrder>
+								<!-- 3) Cleanups similar to what you had via impsort -->
+								<removeUnusedImports/>
+								<trimTrailingWhitespace/>
+								<endWithNewline/>
+							</java>
+						</configuration>
 						<executions>
 							<execution>
+								<id>spotless-check</id>
 								<goals>
-									<goal>format</goal>
+									<goal>check</goal>
 								</goals>
-							</execution>
-						</executions>
-					</plugin>
-					<plugin>
-						<groupId>net.revelc.code</groupId>
-						<artifactId>impsort-maven-plugin</artifactId>
-						<executions>
-							<execution>
-								<goals>
-									<goal>sort</goal>
-								</goals>
+								<!-- hook wherever you want; verify is common -->
+								<phase>verify</phase>
 							</execution>
 						</executions>
 					</plugin>
@@ -378,7 +396,7 @@
 		</profile>
 	</profiles>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>25</java.version>
 		<maven.compiler.release>${java.version}</maven.compiler.release>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

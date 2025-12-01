@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.rdf4j.sail.lmdb.util.GroupMatcher;
+
 import org.junit.jupiter.api.Test;
 
 class GroupMatcherTest {

@@ -21,6 +21,7 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.util.Repositories;
 import org.eclipse.rdf4j.sail.lucene.impl.LuceneIndex;
 import org.eclipse.testsuite.rdf4j.sail.lucene.AbstractLuceneSailTest;
+
 import org.junit.jupiter.api.Test;
 
 /**

@@ -15,12 +15,13 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
 
+import org.eclipse.rdf4j.http.client.HttpClientDependent;
+
 import org.apache.http.client.HttpClient;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
-import org.eclipse.rdf4j.http.client.HttpClientDependent;
 
 /**
  * Convenience utility class offering helper methods to configure {@link HttpClient}s and {@link HttpClientBuilders}.

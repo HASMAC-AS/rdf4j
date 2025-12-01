@@ -26,6 +26,7 @@ import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.eclipse.rdf4j.testsuite.rio.FailureMode;
 import org.eclipse.rdf4j.testsuite.rio.NegativeParserTest;
 import org.eclipse.rdf4j.testsuite.rio.PositiveParserTest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

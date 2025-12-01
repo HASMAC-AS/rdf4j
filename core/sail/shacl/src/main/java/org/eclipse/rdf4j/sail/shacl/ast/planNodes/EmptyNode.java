@@ -11,9 +11,10 @@
 
 package org.eclipse.rdf4j.sail.shacl.ast.planNodes;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.EmptyIteration;
+
+import org.apache.commons.text.StringEscapeUtils;
 
 public class EmptyNode implements PlanNode {
 

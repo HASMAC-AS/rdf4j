@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.federated.monitoring.MonitoringService;
 import org.eclipse.rdf4j.federated.structures.SubQuery;
 import org.eclipse.rdf4j.model.vocabulary.FOAF;
 import org.eclipse.rdf4j.query.TupleQueryResult;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

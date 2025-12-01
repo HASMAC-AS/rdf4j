@@ -51,6 +51,7 @@ import org.eclipse.rdf4j.console.setting.QueryPrefix;
 import org.eclipse.rdf4j.console.setting.SaveHistory;
 import org.eclipse.rdf4j.console.setting.ShowPrefix;
 import org.eclipse.rdf4j.console.setting.WorkDir;
+
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;

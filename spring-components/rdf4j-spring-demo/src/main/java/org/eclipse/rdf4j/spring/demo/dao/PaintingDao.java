@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.spring.demo.model.EX;
 import org.eclipse.rdf4j.spring.demo.model.Painting;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
 import org.eclipse.rdf4j.spring.util.QueryResultUtils;
+
 import org.springframework.stereotype.Component;
 
 /**

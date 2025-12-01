@@ -15,6 +15,7 @@ import java.util.concurrent.Future;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.EmptyIteration;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

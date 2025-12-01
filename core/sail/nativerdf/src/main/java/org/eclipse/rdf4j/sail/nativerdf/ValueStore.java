@@ -66,6 +66,7 @@ import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalRecord;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalRecovery;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalSearch;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalValueKind;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

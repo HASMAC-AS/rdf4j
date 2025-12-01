@@ -90,6 +90,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.targets.TargetSubjectsOf;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.RdfsSubClassOfReasoner;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.ShapeSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

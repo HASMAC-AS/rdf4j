@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.spring.operationlog.log.jmx;
 import java.util.Map;
 
 import org.eclipse.rdf4j.spring.operationlog.log.OperationLog;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

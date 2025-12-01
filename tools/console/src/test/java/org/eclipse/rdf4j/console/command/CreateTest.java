@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import org.eclipse.rdf4j.common.exception.RDF4JException;
 import org.eclipse.rdf4j.console.ConsoleIO;
 import org.eclipse.rdf4j.repository.manager.LocalRepositoryManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

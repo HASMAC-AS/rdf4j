@@ -38,6 +38,7 @@ import org.eclipse.rdf4j.spring.domain.model.EX;
 import org.eclipse.rdf4j.spring.domain.model.Painting;
 import org.eclipse.rdf4j.spring.util.QueryResultUtils;
 import org.eclipse.rdf4j.spring.util.TypeMappingUtils;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

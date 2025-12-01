@@ -10,9 +10,10 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.solr.client.http;
 
+import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
+
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
-import org.eclipse.rdf4j.sail.solr.SolrClientFactory;
 
 public class Factory implements SolrClientFactory {
 

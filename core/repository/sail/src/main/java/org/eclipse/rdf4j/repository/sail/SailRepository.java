@@ -12,7 +12,6 @@ package org.eclipse.rdf4j.repository.sail;
 
 import java.io.File;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.http.client.HttpClientDependent;
 import org.eclipse.rdf4j.http.client.HttpClientSessionManager;
 import org.eclipse.rdf4j.http.client.SessionManagerDependent;
@@ -29,6 +28,8 @@ import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.SailLockedException;
 import org.eclipse.rdf4j.sail.StackableSail;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * An implementation of the {@link Repository} interface that operates on a (stack of) {@link Sail Sail} object(s). The
