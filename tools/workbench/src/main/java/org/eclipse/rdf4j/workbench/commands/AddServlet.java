@@ -30,6 +30,7 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.query.QueryResultHandlerException;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParseException;
 import org.eclipse.rdf4j.rio.Rio;
@@ -228,41 +229,21 @@ public class AddServlet extends TransformationServlet {
 			return List.of();
 		}
 		Set<String> supported = new LinkedHashSet<>();
-		try (RepositoryConnection connection = repository.getConnection()) {
-			IsolationLevel original = connection.getIsolationLevel();
-			for (IsolationLevels level : IsolationLevels.values()) {
-				if (supportsIsolationLevel(connection, level)) {
-					supported.add(isolationLevelName(level));
-				}
+		if (repository instanceof SailRepository) {
+			List<IsolationLevel> supportedIsolationLevels = ((SailRepository) repository).getSail()
+					.getSupportedIsolationLevels();
+			for (IsolationLevel level : supportedIsolationLevels) {
+				String levelName = isolationLevelName(level);
+				supported.add(levelName);
 			}
-			if (original != null) {
-				String originalName = isolationLevelName(original);
-				if (!supported.contains(originalName)) {
-					supported.add(originalName);
-				}
+		} else {
+			for (IsolationLevel level : IsolationLevels.values()) {
+				String levelName = isolationLevelName(level);
+				supported.add(levelName);
 			}
-		} catch (RepositoryException e) {
-			logger.warn("Unable to determine supported isolation levels", e);
 		}
-		return new ArrayList<>(supported);
-	}
 
-	private boolean supportsIsolationLevel(RepositoryConnection connection, IsolationLevel level) {
-		try {
-			connection.begin(level);
-			connection.rollback();
-			return true;
-		} catch (RepositoryException e) {
-			try {
-				if (connection.isActive()) {
-					connection.rollback();
-				}
-			} catch (RepositoryException ex) {
-				logger.debug("Unable to rollback after failed isolation test", ex);
-			}
-			logger.debug("Isolation level {} is not supported by {}", level, repository.getClass().getSimpleName(), e);
-			return false;
-		}
+		return new ArrayList<>(supported);
 	}
 
 	private String isolationLevelName(IsolationLevel level) {
