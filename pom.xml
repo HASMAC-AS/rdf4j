@@ -329,12 +329,18 @@
 						</configuration>
 						<executions>
 							<execution>
+								<id>spotless-apply</id>
+								<phase>process-sources</phase>
+								<goals>
+									<goal>apply</goal>
+								</goals>
+							</execution>
+							<execution>
 								<id>spotless-check</id>
+								<phase>verify</phase>
 								<goals>
 									<goal>check</goal>
 								</goals>
-								<!-- hook wherever you want; verify is common -->
-								<phase>verify</phase>
 							</execution>
 						</executions>
 					</plugin>
