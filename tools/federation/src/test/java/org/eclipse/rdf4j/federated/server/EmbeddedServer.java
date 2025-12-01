@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.federated.server;
 
 import java.io.File;
+import java.nio.file.Paths;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -21,7 +22,9 @@ public class EmbeddedServer {
 	public static final String HOST = "localhost";
 	public static final int PORT = 18080;
 	public static final String CONTEXT_PATH = "/";
-	public static final String WAR_PATH = "./build/test/rdf4j-server/";
+	public static final String WAR_PATH = Paths.get("build", "test", "rdf4j-server")
+			.toAbsolutePath()
+			.toString();
 
 	private final Server jetty;
 

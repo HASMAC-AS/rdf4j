@@ -43,6 +43,7 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 	 * The {@link RepositoryResolver} supplied at runtime by {@link FedXRepositoryResolverBean}
 	 */
 	private RepositoryResolver repositoryResolver;
+	private RemoteRepositoryManager fallbackRepoManager;
 	/**
 	 * The data directory populated at runtime
 	 */
@@ -80,6 +81,11 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 		super.start();
 
 		repositoryResolver = FedXRepositoryResolverBean.getRepositoryResolver();
+		if (repositoryResolver == null) {
+			fallbackRepoManager = RemoteRepositoryManager.getInstance(getServerUrl());
+			fallbackRepoManager.init();
+			repositoryResolver = fallbackRepoManager;
+		}
 
 		createTestRepositories();
 	}
@@ -87,14 +93,15 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 	@Override
 	public void stop()
 			throws Exception {
-		RemoteRepositoryManager repoManager = RemoteRepositoryManager.getInstance(getServerUrl());
+		RemoteRepositoryManager repoManager = fallbackRepoManager != null ? fallbackRepoManager
+				: RemoteRepositoryManager.getInstance(getServerUrl());
 		try {
-			repoManager.init();
 			for (String repId : repositoryIds) {
 				repoManager.removeRepository(repId);
 			}
 		} finally {
 			repoManager.shutDown();
+			fallbackRepoManager = null;
 		}
 
 		super.stop();
@@ -106,9 +113,12 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 	private void createTestRepositories()
 			throws RepositoryException, RepositoryConfigException {
 
-		RemoteRepositoryManager repoManager = RemoteRepositoryManager.getInstance(getServerUrl());
+		RemoteRepositoryManager repoManager = fallbackRepoManager != null ? fallbackRepoManager
+				: RemoteRepositoryManager.getInstance(getServerUrl());
 		try {
-			repoManager.init();
+			if (fallbackRepoManager == null) {
+				repoManager.init();
+			}
 
 			// create a memory store for each provided repository id
 			for (String repId : repositoryIds) {
@@ -120,7 +130,9 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 				repoManager.addRepositoryConfig(repConfig);
 			}
 		} finally {
-			repoManager.shutDown();
+			if (fallbackRepoManager == null) {
+				repoManager.shutDown();
+			}
 		}
 
 	}

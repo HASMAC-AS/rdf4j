@@ -25,7 +25,6 @@ import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.config.RepositoryConfigException;
 import org.eclipse.rdf4j.repository.manager.RepositoryManager;
 import org.eclipse.rdf4j.rio.helpers.BasicParserSettings;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,7 @@ public class RepositoryInterceptor extends ServerInterceptor {
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse respons, Object handler) throws Exception {
-		String pathInfoStr = request.getPathInfo();
+		String pathInfoStr = resolveRequestPath(request);
 		logger.debug("path info: {}", pathInfoStr);
 
 		repositoryID = null;
@@ -112,7 +111,8 @@ public class RepositoryInterceptor extends ServerInterceptor {
 			try {
 				// For requests to delete a repository, we must not attempt to initialize the repository. Otherwise a
 				// corrupt/invalid configuration can block deletion.
-				if ("DELETE".equals(request.getMethod()) && request.getPathInfo().equals("/" + nextRepositoryID)) {
+				String requestPath = resolveRequestPath(request);
+				if ("DELETE".equals(request.getMethod()) && normalised(requestPath).equals("/" + nextRepositoryID)) {
 					request.setAttribute(REPOSITORY_ID_KEY, nextRepositoryID);
 					return;
 				}
@@ -154,5 +154,23 @@ public class RepositoryInterceptor extends ServerInterceptor {
 		conn.getParserConfig().addNonFatalError(BasicParserSettings.VERIFY_DATATYPE_VALUES);
 		conn.getParserConfig().addNonFatalError(BasicParserSettings.VERIFY_LANGUAGE_TAGS);
 		return conn;
+	}
+
+	private String resolveRequestPath(HttpServletRequest request) {
+		String pathInfoStr = request.getPathInfo();
+		if (pathInfoStr == null || pathInfoStr.isEmpty()) {
+			pathInfoStr = request.getServletPath();
+		}
+		if ((pathInfoStr == null || pathInfoStr.isEmpty()) && request.getRequestURI() != null) {
+			pathInfoStr = request.getRequestURI().substring(request.getContextPath().length());
+		}
+		return pathInfoStr;
+	}
+
+	private String normalised(String requestPath) {
+		if (requestPath == null || requestPath.isEmpty()) {
+			return "/";
+		}
+		return requestPath.startsWith("/") ? requestPath : "/" + requestPath;
 	}
 }
