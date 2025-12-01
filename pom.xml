@@ -272,8 +272,9 @@
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.13</version>
+                        <version>0.8.13   </version>
                         <executions>
+
                             <execution>
                                 <goals>
                                     <goal>prepare-agent</goal>
@@ -327,14 +328,6 @@
                                 <trimTrailingWhitespace />
                                 <endWithNewline />
                             </java>
-                            <pom>
-                                <includes>
-                                    <!-- all module POMs -->
-                                    <include>**/pom.xml</include>
-                                    <!-- shade-generated POMs, e.g. the ones xml-format complained about -->
-                                    <include>**/dependency-reduced-pom.xml</include>
-                                </includes>
-                            </pom>
                             <formats>
                                 <format>
                                     <!-- All XML files, except those excluded below -->
@@ -364,9 +357,16 @@
                         <executions>
                             <execution>
                                 <id>spotless-apply</id>
-                                <phase>process-sources</phase>
+                                <phase>process-resources</phase>
                                 <goals>
                                     <goal>apply</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>spotless-check</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
                                 </goals>
                             </execution>
                         </executions>
