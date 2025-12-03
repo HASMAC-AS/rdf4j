@@ -812,7 +812,6 @@ rdf4j: root project
     │   ├── lmdb: Sail implementation that stores data to disk using LMDB.
     │   ├── lucene-api: StackableSail API offering full-text search on literals, based on Apache Lucene.
     │   ├── lucene: StackableSail implementation offering full-text search on literals, based on Apache Lucene.
-    │   ├── solr: StackableSail implementation offering full-text search on literals, based on Solr.
     │   ├── elasticsearch: StackableSail implementation offering full-text search on literals, based on Elastic Search.
     │   ├── elasticsearch-store: Store for utilizing Elasticsearch as a triplestore.
     │   └── extensible-store: Store that can be extended with a simple user-made backend.
@@ -852,7 +851,6 @@ rdf4j: root project
     ├── model: RDF4J: Model compliance tests
     ├── sparql: Tests for the SPARQL query language implementation
     ├── lucene: Compliance Tests for LuceneSail.
-    ├── solr: Tests for Solr Sail.
     ├── elasticsearch: Tests for Elasticsearch.
     └── geosparql: Tests for the GeoSPARQL query language implementation
 ├── examples: Examples and HowTos for use of RDF4J in Java

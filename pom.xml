@@ -407,14 +407,13 @@
         <jaxb.version>2.3.8</jaxb.version>
         <lwjgl.version>3.3.6</lwjgl.version>
         <lucene.version>10.3.2</lucene.version>
-        <solr.version>9.10.0</solr.version>
         <elasticsearch.version>9.2.1</elasticsearch.version>
         <spring.version>6.2.14</spring.version>
         <guava.version>32.1.3-jre</guava.version>
         <jmhVersion>1.37</jmhVersion>
-        <servlet.version>6.0.0</servlet.version>
-        <jakarta.jsp.version>3.1.1</jakarta.jsp.version>
-        <jakarta.jstl.version>3.0.2</jakarta.jstl.version>
+        <servlet.version>5.0.0</servlet.version>
+        <jakarta.jsp.version>3.0.0</jakarta.jsp.version>
+        <jakarta.jstl.version>2.0.0</jakarta.jstl.version>
         <junit.version>5.9.3</junit.version>
         <wiremock.version>3.13.2</wiremock.version>
         <jetty.version>11.0.26</jetty.version>
@@ -808,18 +807,11 @@
                     <version>3.11.3</version>
                     <configuration>
                         <encoding>utf8</encoding>
-                        <source>21</source>
+                        <source>25</source>
                         <doclint>none</doclint>
                         <additionalOptions>
                             <additionalOption>-html5</additionalOption>
                         </additionalOptions>
-                        <additionalDependencies>
-                            <additionalDependency>
-                                <groupId>org.apache.solr</groupId>
-                                <artifactId>solr-core</artifactId>
-                                <version>${solr.version}</version>
-                            </additionalDependency>
-                        </additionalDependencies>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -1013,10 +1005,6 @@
                                         <includes>
                                             <include>org.apache.logging.log4j:log4j-to-slf4j</include>
                                             <include>org.apache.logging.log4j:log4j-api</include>
-                                            <!-- elasticsearch-cluster-runner needs log4j-core -->
-                                            <include>org.apache.logging.log4j:log4j-core:*:*:test</include>
-                                            <!-- Solr embedded server apparently needs log4j-web -->
-                                            <include>org.apache.logging.log4j:log4j-web</include>
                                         </includes>
                                     </bannedDependencies>
                                 </rules>

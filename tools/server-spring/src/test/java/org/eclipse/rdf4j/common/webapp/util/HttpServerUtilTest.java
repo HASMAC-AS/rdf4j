@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import jakarta.servlet.AsyncContext;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.ServletConnection;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletInputStream;
@@ -166,15 +165,6 @@ public class HttpServerUtilTest {
 			return null;
 		}
 
-		@Override
-		public String getRequestId() {
-			return null;
-		}
-
-		@Override
-		public String getProtocolRequestId() {
-			return null;
-		}
 
 		@Override
 		public void setCharacterEncoding(String env) {
@@ -440,6 +430,11 @@ public class HttpServerUtilTest {
 		}
 
 		@Override
+		public String getRealPath(String path) {
+			return null;
+		}
+
+		@Override
 		public HttpSession getSession(boolean create) {
 			// TODO Auto-generated method stub
 			return null;
@@ -466,6 +461,11 @@ public class HttpServerUtilTest {
 		@Override
 		public boolean isRequestedSessionIdFromURL() {
 			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean isRequestedSessionIdFromUrl() {
 			return false;
 		}
 
@@ -545,11 +545,6 @@ public class HttpServerUtilTest {
 		@Override
 		public DispatcherType getDispatcherType() {
 			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public ServletConnection getServletConnection() {
 			return null;
 		}
 

@@ -56,6 +56,8 @@ public class TestServer {
 
 	private final Server jetty;
 
+	private final WebAppContext webapp;
+
 	public TestServer() throws IOException {
 		System.clearProperty("DEBUG");
 		PropertiesReader reader = new PropertiesReader("maven-config.properties");
@@ -69,7 +71,7 @@ public class TestServer {
 		conn.setPort(PORT);
 		jetty.addConnector(conn);
 
-		WebAppContext webapp = new WebAppContext();
+		webapp = new WebAppContext();
 		WebAppContext.addServerClasses(jetty, "org.slf4j.", "ch.qos.logback.");
 		webapp.setContextPath(RDF4J_CONTEXT);
 		// warPath configured in pom.xml maven-war-plugin configuration
@@ -85,6 +87,9 @@ public class TestServer {
 		System.setProperty("org.eclipse.rdf4j.appdata.basedir", dataDir.getAbsolutePath());
 
 		jetty.start();
+		if (!webapp.isAvailable()) {
+			throw new IllegalStateException("Webapp failed to start", webapp.getUnavailableException());
+		}
 		createTestRepositories();
 	}
 
