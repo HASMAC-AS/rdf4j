@@ -68,7 +68,7 @@ public class RepositoryInterceptor extends ServerInterceptor {
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse respons, Object handler) throws Exception {
-		String pathInfoStr = resolveRequestPath(request);
+		String pathInfoStr = request.getPathInfo();
 		logger.debug("path info: {}", pathInfoStr);
 
 		repositoryID = null;
@@ -76,11 +76,7 @@ public class RepositoryInterceptor extends ServerInterceptor {
 		if (pathInfoStr != null && !pathInfoStr.equals("/")) {
 			String[] pathInfo = pathInfoStr.substring(1).split("/");
 			if (pathInfo.length > 0) {
-				if (Protocol.REPOSITORIES.equals(pathInfo[0]) && pathInfo.length > 1) {
-					repositoryID = pathInfo[1];
-				} else {
-					repositoryID = pathInfo[0];
-				}
+				repositoryID = pathInfo[0];
 				logger.debug("repositoryID is '{}'", repositoryID);
 			}
 		}
@@ -112,8 +108,7 @@ public class RepositoryInterceptor extends ServerInterceptor {
 			try {
 				// For requests to delete a repository, we must not attempt to initialize the repository. Otherwise a
 				// corrupt/invalid configuration can block deletion.
-				String requestPath = resolveRequestPath(request);
-				if ("DELETE".equals(request.getMethod()) && normalised(requestPath).equals("/" + nextRepositoryID)) {
+				if ("DELETE".equals(request.getMethod()) && request.getPathInfo().equals("/" + nextRepositoryID)) {
 					request.setAttribute(REPOSITORY_ID_KEY, nextRepositoryID);
 					return;
 				}
@@ -157,21 +152,4 @@ public class RepositoryInterceptor extends ServerInterceptor {
 		return conn;
 	}
 
-	private String resolveRequestPath(HttpServletRequest request) {
-		String pathInfoStr = request.getPathInfo();
-		if (pathInfoStr == null || pathInfoStr.isEmpty()) {
-			pathInfoStr = request.getServletPath();
-		}
-		if ((pathInfoStr == null || pathInfoStr.isEmpty()) && request.getRequestURI() != null) {
-			pathInfoStr = request.getRequestURI().substring(request.getContextPath().length());
-		}
-		return pathInfoStr;
-	}
-
-	private String normalised(String requestPath) {
-		if (requestPath == null || requestPath.isEmpty()) {
-			return "/";
-		}
-		return requestPath.startsWith("/") ? requestPath : "/" + requestPath;
-	}
 }

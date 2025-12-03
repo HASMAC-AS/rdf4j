@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd">
-    <!-- PROPERTIES -->
+	<!-- PROPERTIES -->
     <bean class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer">
         <property name="locations">
             <list>
@@ -9,7 +9,7 @@
         </property>
         <property name="ignoreUnresolvablePlaceholders" value="true" />
     </bean>
-    <!-- RESOURCES -->
+	<!-- RESOURCES -->
     <bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource">
         <property name="basenames">
             <list>
@@ -38,12 +38,12 @@
             <bean factory-bean="commonAppConfig" factory-method="getDataDir" />
         </constructor-arg>
     </bean>
-    <!-- INTERCEPTORS -->
+	<!-- INTERCEPTORS -->
     <bean id="rdf4jRepositoryInterceptor" class="org.eclipse.rdf4j.http.server.repository.RepositoryInterceptor" scope="request">
         <property name="repositoryManager" ref="rdf4jRepositoryManager" />
         <aop:scoped-proxy />
     </bean>
-    <!-- MAPPINGS -->
+	<!-- MAPPINGS -->
     <bean id="rdf4jProtocolUrlMapping" class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
         <property name="order" value="0" />
         <property name="alwaysUseFullPath" value="true" />
@@ -107,9 +107,9 @@
             </list>
         </property>
     </bean>
-    <!-- EXCEPTION RESOLVERS -->
+	<!-- EXCEPTION RESOLVERS -->
     <bean id="rdf4jHandlerExceptionResolver" class="org.eclipse.rdf4j.http.server.ProtocolExceptionResolver" />
-    <!-- CONTROLLERS -->
+	<!-- CONTROLLERS -->
     <bean id="rdf4jProtocolController" class="org.eclipse.rdf4j.http.server.protocol.ProtocolController" />
     <bean id="rdf4jRepositoryListController" class="org.eclipse.rdf4j.http.server.repository.RepositoryListController">
         <property name="repositoryManager" ref="rdf4jRepositoryManager" />

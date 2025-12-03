@@ -165,7 +165,6 @@ public class HttpServerUtilTest {
 			return null;
 		}
 
-
 		@Override
 		public void setCharacterEncoding(String env) {
 			// TODO Auto-generated method stub

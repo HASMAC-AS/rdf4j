@@ -30,6 +30,10 @@ import org.eclipse.rdf4j.sail.shacl.config.ShaclSailConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.servlet.FrameworkServlet;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
 
 /**
  * @author Herko ter Horst
@@ -87,6 +91,25 @@ public class TestServer {
 		System.setProperty("org.eclipse.rdf4j.appdata.basedir", dataDir.getAbsolutePath());
 
 		jetty.start();
+
+		// Diagnostic: log registered handler mappings to confirm endpoints are exposed
+		WebApplicationContext wac = (WebApplicationContext) webapp.getServletContext()
+				.getAttribute(FrameworkServlet.SERVLET_CONTEXT_PREFIX + "rdf4j-http-server");
+		if (wac != null) {
+			var mappings = wac.getBeansOfType(HandlerMapping.class);
+			logger.warn("Discovered {} HandlerMapping beans", mappings.size());
+			mappings.forEach((name, mapping) -> {
+				if (mapping instanceof AbstractUrlHandlerMapping) {
+					var urlMapping = (AbstractUrlHandlerMapping) mapping;
+					logger.warn("HandlerMapping '{}': paths={}", name, urlMapping.getHandlerMap().keySet());
+				} else {
+					logger.warn("HandlerMapping '{}': type={}", name, mapping.getClass().getSimpleName());
+				}
+			});
+		} else {
+			logger.warn("WebApplicationContext not found for diagnostics");
+		}
+
 		if (!webapp.isAvailable()) {
 			throw new IllegalStateException("Webapp failed to start", webapp.getUnavailableException());
 		}
