@@ -8,22 +8,22 @@
             </list>
         </property>
     </bean>
-    <!-- Version information for the application. Intended to be overriden by
-        webapps based on this one. -->
+    <!-- Version information for the application. Intended to be overriden by webapps based on this one. -->
     <bean id="commonAppVersion" class="org.eclipse.rdf4j.common.app.AppVersion">
         <property name="major" value="3" />
         <property name="minor" value="2" />
         <property name="modifier" value="SNAPSHOT" />
     </bean>
-    <!-- Configuration information for the application. Intended to be overridden
-        by webapps based on this one. -->
+    <!-- Configuration information for the application. Intended to be overridden by webapps based on this one. -->
     <bean id="commonAppConfig" class="org.eclipse.rdf4j.common.app.AppConfiguration" init-method="init" destroy-method="destroy">
         <property name="applicationId" value="webapp-base" />
         <property name="version" ref="commonAppVersion" />
     </bean>
-    <!-- Navigation model for the application. Intended to be extended by webapps
-        based on this one. To do so, add the navigation models from the list below
-        at the end of the list of navigation models of the extending webapp. -->
+	<!--
+		Navigation model for the application. Intended to be extended by webapps based on this one.
+		To do so, add the navigation models from the list below at the end of the list of navigation models
+		of the extending webapp.
+	-->
     <bean id="commonWebappNavigation" class="org.eclipse.rdf4j.common.webapp.navigation.NavigationModel">
         <property name="navigationModels">
             <list>
