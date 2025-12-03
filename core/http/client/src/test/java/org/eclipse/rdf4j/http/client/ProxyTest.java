@@ -11,11 +11,12 @@
 package org.eclipse.rdf4j.http.client;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.any;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 /**
  * Unit tests for {@link SPARQLProtocolSession} using standard Java properties for proxy configuration.
@@ -63,7 +65,6 @@ public class ProxyTest {
 		server = new WireMockServer(WireMockConfiguration.options().dynamicPort().templatingEnabled(false));
 		server.start();
 		WireMock.configureFor("localhost", server.port());
-		serverURL = "http://localhost:" + server.port() + "/rdf4j-server";
 
 		// Set the system properties related to (non-secured) HTTP proxy.
 		// Keep a copy of the old value, if any, to restore it after the execution of the test.
@@ -109,7 +110,22 @@ public class ProxyTest {
 		String serverCredentialsEncoded = Base64.getEncoder()
 				.encodeToString((serverUser + ":" + serverPassword).getBytes(StandardCharsets.US_ASCII));
 
-		stubFor(any(urlMatching(".*"))
+		String scenarioName = "Proxy auth";
+
+		stubFor(post(urlPathEqualTo("/rdf4j-server/repositories/test"))
+				.inScenario(scenarioName)
+				.whenScenarioStateIs(Scenario.STARTED)
+				.withHeader("Proxy-Authorization", absent())
+				.willSetStateTo("PROXY_CHALLENGED")
+				.willReturn(aResponse()
+						.withStatus(407)
+						.withHeader("Proxy-Authenticate", "Basic realm=\"rdf4j\"")));
+
+		stubFor(post(urlPathEqualTo("/rdf4j-server/repositories/test"))
+				.inScenario(scenarioName)
+				.whenScenarioStateIs("PROXY_CHALLENGED")
+				.withHeader("Proxy-Authorization", equalTo("Basic " + proxyCredentialsEncoded))
+				.withHeader("Authorization", equalTo("Basic " + serverCredentialsEncoded))
 				.willReturn(aResponse()
 						.withStatus(200)
 						.withHeader("Content-Type", "application/sparql-results+xml;charset=UTF-8")
@@ -128,8 +144,9 @@ public class ProxyTest {
 
 		// Verifications
 		assertThat(response).isTrue();
-		verify(1, postRequestedFor(urlMatching(".*"))
-				.withHeader("Authorization", equalTo("Basic " + serverCredentialsEncoded)));
+		verify(1, postRequestedFor(urlPathEqualTo("/rdf4j-server/repositories/test"))
+				.withHeader("Authorization", equalTo("Basic " + serverCredentialsEncoded))
+				.withHeader("Proxy-Authorization", equalTo("Basic " + proxyCredentialsEncoded)));
 
 	}
 
