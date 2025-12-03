@@ -86,7 +86,9 @@ public class TestServer {
 		webapp.setContextPath(RDF4J_CONTEXT);
 		// warPath configured in pom.xml maven-war-plugin configuration
 		webapp.setWar("./target/rdf4j-server");
-		webapp.addFilter(RequestDebugFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
+		if (Boolean.getBoolean("rdf4j.testserver.logRequests")) {
+			webapp.addFilter(RequestDebugFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
+		}
 		jetty.setHandler(webapp);
 
 		manager = RemoteRepositoryManager.getInstance(SERVER_URL);
@@ -101,6 +103,42 @@ public class TestServer {
 
 		if (!webapp.isAvailable()) {
 			throw new IllegalStateException("Webapp failed to start", webapp.getUnavailableException());
+		}
+		try {
+			Object dispatcherContext = webapp.getServletContext().getAttribute(DISPATCHER_CONTEXT_ATTRIBUTE);
+			if (dispatcherContext != null) {
+				ClassLoader webappClassLoader = dispatcherContext.getClass().getClassLoader();
+				Class<?> handlerMappingClass = Class.forName("org.springframework.web.servlet.HandlerMapping", false,
+						webappClassLoader);
+				@SuppressWarnings("unchecked")
+				Map<String, ?> handlerMappings = (Map<String, ?>) dispatcherContext.getClass()
+						.getMethod("getBeansOfType", Class.class)
+						.invoke(dispatcherContext, handlerMappingClass);
+				logger.warn("Handler mappings detected: {}", handlerMappings.keySet());
+				for (Map.Entry<String, ?> entry : handlerMappings.entrySet()) {
+					Class<?> mappingClass = entry.getValue().getClass();
+					java.lang.reflect.Field handlerMapField = null;
+					while (mappingClass != null && handlerMapField == null) {
+						try {
+							handlerMapField = mappingClass.getDeclaredField("handlerMap");
+						} catch (NoSuchFieldException ignore) {
+							mappingClass = mappingClass.getSuperclass();
+						}
+					}
+					if (handlerMapField != null) {
+						handlerMapField.setAccessible(true);
+						Object handlerMap = handlerMapField.get(entry.getValue());
+						logger.warn("Mapping {} handler map: {}", entry.getKey(), handlerMap);
+						System.out.println("Handler mapping " + entry.getKey() + " -> " + handlerMap);
+					} else {
+						logger.warn("Mapping {} has no handlerMap field", entry.getKey());
+					}
+				}
+			} else {
+				logger.warn("No dispatcher context found at attribute {}", DISPATCHER_CONTEXT_ATTRIBUTE);
+			}
+		} catch (Throwable t) {
+			logger.warn("Unable to inspect handler mappings", t);
 		}
 		createTestRepositories();
 	}
@@ -124,18 +162,9 @@ public class TestServer {
 			try {
 				if (request instanceof HttpServletRequest) {
 					HttpServletRequest http = (HttpServletRequest) request;
-					String lookup = null;
-
-					Class<?> utils = Class.forName("org.springframework.web.util.ServletRequestPathUtils",
-							false, http.getClass().getClassLoader());
-					utils.getMethod("parseAndCache", HttpServletRequest.class).invoke(null, http);
-					Object requestPath = utils.getMethod("getParsedRequestPath", HttpServletRequest.class)
-							.invoke(null,
-									http);
-					if (requestPath != null) {
-						var pathWithin = requestPath.getClass().getMethod("pathWithinApplication");
-						Object pathContainer = pathWithin.invoke(requestPath);
-						lookup = String.valueOf(pathContainer.getClass().getMethod("value").invoke(pathContainer));
+					String lookup = http.getRequestURI();
+					if (http.getContextPath() != null && lookup.startsWith(http.getContextPath())) {
+						lookup = lookup.substring(http.getContextPath().length());
 					}
 
 					String msg = String.format("Request uri=%s contextPath=%s servletPath=%s pathInfo=%s lookup=%s",
@@ -143,6 +172,38 @@ public class TestServer {
 							lookup);
 					filterLogger.warn(msg);
 					System.out.println(msg);
+					try {
+						ClassLoader cl = http.getClass().getClassLoader();
+						Class<?> urlPathHelperClass = Class.forName("org.springframework.web.util.UrlPathHelper", false,
+								cl);
+						Object urlPathHelper = urlPathHelperClass.getConstructor().newInstance();
+						String pathWithinApp = (String) urlPathHelperClass
+								.getMethod("getPathWithinApplication", HttpServletRequest.class)
+								.invoke(urlPathHelper, http);
+						filterLogger.warn("UrlPathHelper pathWithinApplication={}", pathWithinApp);
+						System.out.println("UrlPathHelper pathWithinApplication=" + pathWithinApp);
+					} catch (Throwable e) {
+						filterLogger.warn("Unable to compute pathWithinApplication for {}", lookup, e);
+					}
+					try {
+						Object dispatcherContext = http.getServletContext().getAttribute(DISPATCHER_CONTEXT_ATTRIBUTE);
+						if (dispatcherContext != null) {
+							Object mapping = dispatcherContext.getClass()
+									.getMethod("getBean", String.class)
+									.invoke(dispatcherContext, "rdf4jProtocolUrlMapping");
+							Object handlerMap = mapping.getClass().getMethod("getHandlerMap").invoke(mapping);
+							filterLogger.warn("Handler map keys: {}", handlerMap);
+							Object handler = mapping.getClass()
+									.getMethod("getHandler", HttpServletRequest.class)
+									.invoke(mapping, http);
+							filterLogger.warn("Handler lookup for {} -> {}", lookup, handler);
+							System.out.println("Handler lookup " + lookup + " -> " + handler);
+						} else {
+							filterLogger.warn("No dispatcher context at {}", DISPATCHER_CONTEXT_ATTRIBUTE);
+						}
+					} catch (Throwable e) {
+						filterLogger.warn("Unable to resolve handler for {}", lookup, e);
+					}
 				}
 			} catch (Throwable e) {
 				// ignore
