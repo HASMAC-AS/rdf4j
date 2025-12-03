@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.repository.config.RepositoryConfig;
 import org.eclipse.rdf4j.repository.config.RepositoryConfigException;
 import org.eclipse.rdf4j.repository.http.HTTPRepository;
 import org.eclipse.rdf4j.repository.manager.RemoteRepositoryManager;
+import org.eclipse.rdf4j.repository.manager.RepositoryManager;
 import org.eclipse.rdf4j.repository.sail.config.SailRepositoryConfig;
 import org.eclipse.rdf4j.sail.memory.config.MemoryStoreConfig;
 
@@ -73,6 +74,24 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 		return "http://" + HOST + ":" + PORT + CONTEXT_PATH;
 	}
 
+	private RepositoryManager getRepositoryManager() throws RepositoryException {
+		if (repositoryResolver instanceof RepositoryManager) {
+			RepositoryManager manager = (RepositoryManager) repositoryResolver;
+			if (!manager.isInitialized()) {
+				manager.init();
+			}
+			return manager;
+		}
+
+		if (fallbackRepoManager == null) {
+			fallbackRepoManager = RemoteRepositoryManager.getInstance(getServerUrl());
+		}
+		if (!fallbackRepoManager.isInitialized()) {
+			fallbackRepoManager.init();
+		}
+		return fallbackRepoManager;
+	}
+
 	@Override
 	public void start()
 			throws Exception {
@@ -93,18 +112,33 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 	@Override
 	public void stop()
 			throws Exception {
-		RemoteRepositoryManager repoManager = fallbackRepoManager != null ? fallbackRepoManager
-				: RemoteRepositoryManager.getInstance(getServerUrl());
+		RepositoryManager repoManager = null;
+		RepositoryException repositoryException = null;
 		try {
-			for (String repId : repositoryIds) {
-				repoManager.removeRepository(repId);
+			if (repositoryResolver != null || fallbackRepoManager != null) {
+				repoManager = getRepositoryManager();
+			}
+			if (repoManager != null) {
+				for (String repId : repositoryIds) {
+					try {
+						repoManager.removeRepository(repId);
+					} catch (RepositoryException e) {
+						repositoryException = e;
+					}
+				}
 			}
 		} finally {
-			repoManager.shutDown();
-			fallbackRepoManager = null;
+			if (fallbackRepoManager != null) {
+				fallbackRepoManager.shutDown();
+				fallbackRepoManager = null;
+			}
+
+			super.stop();
 		}
 
-		super.stop();
+		if (repositoryException != null) {
+			throw repositoryException;
+		}
 	}
 
 	/**
@@ -113,26 +147,16 @@ public class SPARQLEmbeddedServer extends EmbeddedServer implements Server {
 	private void createTestRepositories()
 			throws RepositoryException, RepositoryConfigException {
 
-		RemoteRepositoryManager repoManager = fallbackRepoManager != null ? fallbackRepoManager
-				: RemoteRepositoryManager.getInstance(getServerUrl());
-		try {
-			if (fallbackRepoManager == null) {
-				repoManager.init();
-			}
+		RepositoryManager repoManager = getRepositoryManager();
 
-			// create a memory store for each provided repository id
-			for (String repId : repositoryIds) {
-				MemoryStoreConfig memStoreConfig = new MemoryStoreConfig();
-				SailRepositoryConfig sailRepConfig = new ConfigurableSailRepositoryFactory.ConfigurableSailRepositoryConfig(
-						memStoreConfig);
-				RepositoryConfig repConfig = new RepositoryConfig(repId, sailRepConfig);
+		// create a memory store for each provided repository id
+		for (String repId : repositoryIds) {
+			MemoryStoreConfig memStoreConfig = new MemoryStoreConfig();
+			SailRepositoryConfig sailRepConfig = new ConfigurableSailRepositoryFactory.ConfigurableSailRepositoryConfig(
+					memStoreConfig);
+			RepositoryConfig repConfig = new RepositoryConfig(repId, sailRepConfig);
 
-				repoManager.addRepositoryConfig(repConfig);
-			}
-		} finally {
-			if (fallbackRepoManager == null) {
-				repoManager.shutDown();
-			}
+			repoManager.addRepositoryConfig(repConfig);
 		}
 
 	}
