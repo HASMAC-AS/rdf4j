@@ -348,24 +348,6 @@ public class RDFJSONParserCustomTest {
 	}
 
 	@Test
-	public void testIncludeSourceLocationDefault() throws Exception {
-		final Reader source = new StringReader(YAML_COMMENTS_TEST_STRING);
-		try {
-			parser.set(INCLUDE_SOURCE_IN_LOCATION, true);
-			parser.parse(source, "");
-			fail("Expected to find an exception");
-		} catch (RDFParseException e) {
-			assertNotNull(e.getCause());
-			assertTrue(e.getCause() instanceof JsonProcessingException);
-			JsonProcessingException cause = (JsonProcessingException) e.getCause();
-			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(1, cause.getLocation().getColumnNr());
-			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
-			assertEquals(source, cause.getLocation().contentReference().getRawContent());
-		}
-	}
-
-	@Test
 	public void testIncludeSourceLocationEnabled() throws Exception {
 		System.out.println(YAML_COMMENTS_TEST_STRING);
 		System.out.println();

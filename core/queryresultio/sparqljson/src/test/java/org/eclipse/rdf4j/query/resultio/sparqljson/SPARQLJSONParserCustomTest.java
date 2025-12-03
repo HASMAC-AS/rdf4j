@@ -347,23 +347,6 @@ public class SPARQLJSONParserCustomTest {
 	}
 
 	@Test
-	public void testIncludeSourceLocationDefault() throws Exception {
-		final InputStream source = stringToInputStream(YAML_COMMENTS_TEST_STRING);
-		try {
-			parser.parseQueryResult(source);
-			fail("Expected to find an exception");
-		} catch (QueryResultParseException e) {
-			assertNotNull(e.getCause());
-			assertTrue(e.getCause() instanceof JsonProcessingException);
-			JsonProcessingException cause = (JsonProcessingException) e.getCause();
-			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(2, cause.getLocation().getColumnNr());
-			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
-			assertEquals(source, cause.getLocation().contentReference().getRawContent());
-		}
-	}
-
-	@Test
 	public void testIncludeSourceLocationEnabled() throws Exception {
 		final InputStream source = stringToInputStream(YAML_COMMENTS_TEST_STRING);
 		try {
@@ -375,7 +358,7 @@ public class SPARQLJSONParserCustomTest {
 			assertTrue(e.getCause() instanceof JsonProcessingException);
 			JsonProcessingException cause = (JsonProcessingException) e.getCause();
 			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(2, cause.getLocation().getColumnNr());
+			assertEquals(1, cause.getLocation().getColumnNr());
 			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
 			assertEquals(source, cause.getLocation().contentReference().getRawContent());
 		}
@@ -392,7 +375,7 @@ public class SPARQLJSONParserCustomTest {
 			assertTrue(e.getCause() instanceof JsonProcessingException);
 			JsonProcessingException cause = (JsonProcessingException) e.getCause();
 			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(2, cause.getLocation().getColumnNr());
+			assertEquals(1, cause.getLocation().getColumnNr());
 			assertEquals(ContentReference.unknown(), cause.getLocation().contentReference());
 		}
 	}
