@@ -2,15 +2,15 @@
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd" version="5.0">
     <display-name>RDF4J Server</display-name>
     <description>RDF4J Server</description>
-	<!-- Uncomment this and the associated filter-mapping to enable cross-origin requests.
-	See https://github.com/eBay/cors-filter to change default configuration settings.
-	<filter>
-		<filter-name>CORSFilter</filter-name>
-		<filter-class>
-			org.ebaysf.web.cors.CORSFilter
-		</filter-class>
-	</filter>
-	 -->
+    <!-- Uncomment this and the associated filter-mapping to enable cross-origin requests.
+    See https://github.com/eBay/cors-filter to change default configuration settings.
+    <filter>
+        <filter-name>CORSFilter</filter-name>
+        <filter-class>
+            org.ebaysf.web.cors.CORSFilter
+        </filter-class>
+    </filter>
+     -->
     <!-- HTTP response compression should be configured at the servlet container level (ziplet has no Jakarta release) -->
     <filter>
         <filter-name>PathFilter</filter-name>
@@ -28,12 +28,12 @@
             <param-value>false</param-value>
         </init-param>
     </filter>
-	<!-- Uncomment this and the associated filter definition to enable cross-origin requests.
-	<filter-mapping>
-		<filter-name>CORSFilter</filter-name>
-		<url-pattern>/*</url-pattern>
-	</filter-mapping>
-	 -->
+    <!-- Uncomment this and the associated filter definition to enable cross-origin requests.
+    <filter-mapping>
+        <filter-name>CORSFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+     -->
     <filter-mapping>
         <filter-name>UrlRewriteFilter</filter-name>
         <url-pattern>/</url-pattern>
@@ -58,15 +58,7 @@
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>rdf4j-http-server</servlet-name>
-        <url-pattern>/protocol</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>rdf4j-http-server</servlet-name>
         <url-pattern>/repositories/*</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>rdf4j-http-server</servlet-name>
-        <url-pattern>/repositories</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>rdf4j-http-server</servlet-name>
@@ -76,29 +68,29 @@
         <servlet-name>rdf4j-http-server</servlet-name>
         <url-pattern>*.form</url-pattern>
     </servlet-mapping>
-	<!--
-	<security-constraint>
-		<web-resource-collection>
-			<web-resource-name>config</web-resource-name>
-			<url-pattern>/repositories/SYSTEM</url-pattern>
-			<url-pattern>/repositories/SYSTEM/*</url-pattern>
-		</web-resource-collection>
-		<auth-constraint>
-			<role-name>rdf4j-admin</role-name>
-		</auth-constraint>
-	</security-constraint>
+    <!--
+    <security-constraint>
+        <web-resource-collection>
+            <web-resource-name>config</web-resource-name>
+            <url-pattern>/repositories/SYSTEM</url-pattern>
+            <url-pattern>/repositories/SYSTEM/*</url-pattern>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>rdf4j-admin</role-name>
+        </auth-constraint>
+    </security-constraint>
 
-	<login-config>
-		<auth-method>BASIC</auth-method>
-		<realm-name>RDF4J Server configuration</realm-name>
-	</login-config>
+    <login-config>
+        <auth-method>BASIC</auth-method>
+        <realm-name>RDF4J Server configuration</realm-name>
+    </login-config>
 
-	<security-role>
-		<description>
-			The role that is required to access the RDF4J server configuration
-		</description>
-		<role-name>rdf4j-admin</role-name>
-	</security-role>
+    <security-role>
+        <description>
+            The role that is required to access the RDF4J server configuration
+        </description>
+        <role-name>rdf4j-admin</role-name>
+    </security-role>
 -->
     <session-config>
         <session-timeout>30</session-timeout>

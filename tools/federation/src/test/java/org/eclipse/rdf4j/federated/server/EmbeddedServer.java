@@ -13,9 +13,9 @@ package org.eclipse.rdf4j.federated.server;
 import java.io.File;
 import java.nio.file.Paths;
 
+import org.eclipse.jetty.ee11.webapp.WebAppContext;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.webapp.WebAppContext;
 
 public class EmbeddedServer {
 

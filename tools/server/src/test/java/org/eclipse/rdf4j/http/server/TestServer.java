@@ -100,8 +100,6 @@ public class TestServer {
 
 		jetty.start();
 
-		logHandlerMappings();
-
 		if (!webapp.isAvailable()) {
 			throw new IllegalStateException("Webapp failed to start", webapp.getUnavailableException());
 		}
@@ -118,66 +116,17 @@ public class TestServer {
 		}
 	}
 
-	private void logHandlerMappings() {
-		Object wac = webapp.getServletContext().getAttribute(DISPATCHER_CONTEXT_ATTRIBUTE);
-		if (wac == null) {
-			logger.warn("WebApplicationContext not found for diagnostics");
-			return;
-		}
-		ClassLoader contextLoader = wac.getClass().getClassLoader();
-		try {
-			Class<?> handlerMappingClass = Class.forName("org.springframework.web.servlet.HandlerMapping", false,
-					contextLoader);
-			Class<?> abstractUrlHandlerMappingClass = Class
-					.forName("org.springframework.web.servlet.handler.AbstractUrlHandlerMapping", false, contextLoader);
-			Class<?> urlPathHelperClass = Class.forName("org.springframework.web.util.UrlPathHelper", false,
-					contextLoader);
-			var getBeansOfType = wac.getClass().getMethod("getBeansOfType", Class.class);
-			@SuppressWarnings("unchecked")
-			Map<String, Object> mappings = (Map<String, Object>) getBeansOfType.invoke(wac, handlerMappingClass);
-			logger.warn("Discovered {} HandlerMapping beans", mappings.size());
-			for (Map.Entry<String, Object> entry : mappings.entrySet()) {
-				Object mapping = entry.getValue();
-				if (mapping == null) {
-					logger.warn("HandlerMapping '{}' is null", entry.getKey());
-					continue;
-				}
-				if (abstractUrlHandlerMappingClass.isInstance(mapping)) {
-					try {
-						var getUrlPathHelper = abstractUrlHandlerMappingClass.getMethod("getUrlPathHelper");
-						Object helper = getUrlPathHelper.invoke(mapping);
-						if (helper != null && urlPathHelperClass.isInstance(helper)) {
-							var isFull = urlPathHelperClass.getMethod("isAlwaysUseFullPath");
-							boolean full = (boolean) isFull.invoke(helper);
-							logger.warn("HandlerMapping '{}': urlPathHelper={} alwaysUseFullPath={}", entry.getKey(),
-									helper.getClass().getSimpleName(), full);
-						}
-					} catch (Exception e) {
-						logger.warn("HandlerMapping '{}': unable to inspect UrlPathHelper", entry.getKey(), e);
-					}
-					var getHandlerMap = abstractUrlHandlerMappingClass.getMethod("getHandlerMap");
-					@SuppressWarnings("unchecked")
-					Map<?, ?> handlerMap = (Map<?, ?>) getHandlerMap.invoke(mapping);
-					logger.warn("HandlerMapping '{}': paths={}", entry.getKey(), handlerMap.keySet());
-				} else {
-					logger.warn("HandlerMapping '{}': type={}", entry.getKey(), mapping.getClass().getSimpleName());
-				}
-			}
-		} catch (Exception e) {
-			logger.warn("Unable to inspect handler mappings", e);
-		}
-	}
-
 	public static class RequestDebugFilter implements Filter {
 		private static final Logger filterLogger = LoggerFactory.getLogger(RequestDebugFilter.class);
 
 		@Override
 		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 				throws IOException, ServletException {
+            try {
 			if (request instanceof HttpServletRequest) {
 				HttpServletRequest http = (HttpServletRequest) request;
 				String lookup = null;
-				try {
+
 					Class<?> utils = Class.forName("org.springframework.web.util.ServletRequestPathUtils",
 							false, http.getClass().getClassLoader());
 					utils.getMethod("parseAndCache", HttpServletRequest.class).invoke(null, http);
@@ -189,14 +138,15 @@ public class TestServer {
 						Object pathContainer = pathWithin.invoke(requestPath);
 						lookup = String.valueOf(pathContainer.getClass().getMethod("value").invoke(pathContainer));
 					}
-				} catch (Throwable e) {
-					// ignore
-				}
+
 				String msg = String.format("Request uri=%s contextPath=%s servletPath=%s pathInfo=%s lookup=%s",
 						http.getRequestURI(), http.getContextPath(), http.getServletPath(), http.getPathInfo(), lookup);
 				filterLogger.warn(msg);
 				System.out.println(msg);
 			}
+            } catch (Throwable e) {
+                // ignore
+            }
 			chain.doFilter(request, response);
 		}
 	}
