@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.http.server;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Properties;
 
@@ -31,6 +32,14 @@ import org.eclipse.rdf4j.sail.shacl.config.ShaclSailConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * @author Herko ter Horst
@@ -78,6 +87,7 @@ public class TestServer {
 		webapp.setContextPath(RDF4J_CONTEXT);
 		// warPath configured in pom.xml maven-war-plugin configuration
 		webapp.setWar("./target/rdf4j-server");
+		webapp.addFilter(RequestDebugFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
 		jetty.setHandler(webapp);
 
 		manager = RemoteRepositoryManager.getInstance(SERVER_URL);
@@ -120,6 +130,8 @@ public class TestServer {
 					contextLoader);
 			Class<?> abstractUrlHandlerMappingClass = Class
 					.forName("org.springframework.web.servlet.handler.AbstractUrlHandlerMapping", false, contextLoader);
+			Class<?> urlPathHelperClass = Class.forName("org.springframework.web.util.UrlPathHelper", false,
+					contextLoader);
 			var getBeansOfType = wac.getClass().getMethod("getBeansOfType", Class.class);
 			@SuppressWarnings("unchecked")
 			Map<String, Object> mappings = (Map<String, Object>) getBeansOfType.invoke(wac, handlerMappingClass);
@@ -131,6 +143,18 @@ public class TestServer {
 					continue;
 				}
 				if (abstractUrlHandlerMappingClass.isInstance(mapping)) {
+					try {
+						var getUrlPathHelper = abstractUrlHandlerMappingClass.getMethod("getUrlPathHelper");
+						Object helper = getUrlPathHelper.invoke(mapping);
+						if (helper != null && urlPathHelperClass.isInstance(helper)) {
+							var isFull = urlPathHelperClass.getMethod("isAlwaysUseFullPath");
+							boolean full = (boolean) isFull.invoke(helper);
+							logger.warn("HandlerMapping '{}': urlPathHelper={} alwaysUseFullPath={}", entry.getKey(),
+									helper.getClass().getSimpleName(), full);
+						}
+					} catch (Exception e) {
+						logger.warn("HandlerMapping '{}': unable to inspect UrlPathHelper", entry.getKey(), e);
+					}
 					var getHandlerMap = abstractUrlHandlerMappingClass.getMethod("getHandlerMap");
 					@SuppressWarnings("unchecked")
 					Map<?, ?> handlerMap = (Map<?, ?>) getHandlerMap.invoke(mapping);
@@ -141,6 +165,39 @@ public class TestServer {
 			}
 		} catch (Exception e) {
 			logger.warn("Unable to inspect handler mappings", e);
+		}
+	}
+
+	public static class RequestDebugFilter implements Filter {
+		private static final Logger filterLogger = LoggerFactory.getLogger(RequestDebugFilter.class);
+
+		@Override
+		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+				throws IOException, ServletException {
+			if (request instanceof HttpServletRequest) {
+				HttpServletRequest http = (HttpServletRequest) request;
+				String lookup = null;
+				try {
+					Class<?> utils = Class.forName("org.springframework.web.util.ServletRequestPathUtils",
+							false, http.getClass().getClassLoader());
+					utils.getMethod("parseAndCache", HttpServletRequest.class).invoke(null, http);
+					Object requestPath = utils.getMethod("getParsedRequestPath", HttpServletRequest.class)
+							.invoke(null,
+									http);
+					if (requestPath != null) {
+						var pathWithin = requestPath.getClass().getMethod("pathWithinApplication");
+						Object pathContainer = pathWithin.invoke(requestPath);
+						lookup = String.valueOf(pathContainer.getClass().getMethod("value").invoke(pathContainer));
+					}
+				} catch (Exception e) {
+					// ignore
+				}
+				String msg = String.format("Request uri=%s contextPath=%s servletPath=%s pathInfo=%s lookup=%s",
+						http.getRequestURI(), http.getContextPath(), http.getServletPath(), http.getPathInfo(), lookup);
+				filterLogger.warn(msg);
+				System.out.println(msg);
+			}
+			chain.doFilter(request, response);
 		}
 	}
 
