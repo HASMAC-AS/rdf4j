@@ -14,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.EnumSet;
-import java.util.Map;
 import java.util.Properties;
 
 import org.eclipse.jetty.ee11.webapp.WebAppContext;
@@ -122,10 +121,10 @@ public class TestServer {
 		@Override
 		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 				throws IOException, ServletException {
-            try {
-			if (request instanceof HttpServletRequest) {
-				HttpServletRequest http = (HttpServletRequest) request;
-				String lookup = null;
+			try {
+				if (request instanceof HttpServletRequest) {
+					HttpServletRequest http = (HttpServletRequest) request;
+					String lookup = null;
 
 					Class<?> utils = Class.forName("org.springframework.web.util.ServletRequestPathUtils",
 							false, http.getClass().getClassLoader());
@@ -139,14 +138,15 @@ public class TestServer {
 						lookup = String.valueOf(pathContainer.getClass().getMethod("value").invoke(pathContainer));
 					}
 
-				String msg = String.format("Request uri=%s contextPath=%s servletPath=%s pathInfo=%s lookup=%s",
-						http.getRequestURI(), http.getContextPath(), http.getServletPath(), http.getPathInfo(), lookup);
-				filterLogger.warn(msg);
-				System.out.println(msg);
+					String msg = String.format("Request uri=%s contextPath=%s servletPath=%s pathInfo=%s lookup=%s",
+							http.getRequestURI(), http.getContextPath(), http.getServletPath(), http.getPathInfo(),
+							lookup);
+					filterLogger.warn(msg);
+					System.out.println(msg);
+				}
+			} catch (Throwable e) {
+				// ignore
 			}
-            } catch (Throwable e) {
-                // ignore
-            }
 			chain.doFilter(request, response);
 		}
 	}
