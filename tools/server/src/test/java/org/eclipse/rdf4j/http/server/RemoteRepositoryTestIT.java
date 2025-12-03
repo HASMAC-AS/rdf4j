@@ -45,7 +45,11 @@ public class RemoteRepositoryTestIT {
 		try {
 			server.start();
 		} catch (Exception e) {
-			server.stop();
+			try {
+				server.stop();
+			} catch (Exception stopError) {
+				e.addSuppressed(stopError);
+			}
 			throw e;
 		}
 	}

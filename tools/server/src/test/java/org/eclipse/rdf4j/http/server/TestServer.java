@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.http.server;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 
 import org.eclipse.jetty.server.Server;
@@ -30,10 +31,6 @@ import org.eclipse.rdf4j.sail.shacl.config.ShaclSailConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.servlet.FrameworkServlet;
-import org.springframework.web.servlet.HandlerMapping;
-import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
 
 /**
  * @author Herko ter Horst
@@ -61,6 +58,7 @@ public class TestServer {
 	private final Server jetty;
 
 	private final WebAppContext webapp;
+	private static final String DISPATCHER_CONTEXT_ATTRIBUTE = "org.springframework.web.servlet.FrameworkServlet.CONTEXT.rdf4j-http-server";
 
 	public TestServer() throws IOException {
 		System.clearProperty("DEBUG");
@@ -92,23 +90,7 @@ public class TestServer {
 
 		jetty.start();
 
-		// Diagnostic: log registered handler mappings to confirm endpoints are exposed
-		WebApplicationContext wac = (WebApplicationContext) webapp.getServletContext()
-				.getAttribute(FrameworkServlet.SERVLET_CONTEXT_PREFIX + "rdf4j-http-server");
-		if (wac != null) {
-			var mappings = wac.getBeansOfType(HandlerMapping.class);
-			logger.warn("Discovered {} HandlerMapping beans", mappings.size());
-			mappings.forEach((name, mapping) -> {
-				if (mapping instanceof AbstractUrlHandlerMapping) {
-					var urlMapping = (AbstractUrlHandlerMapping) mapping;
-					logger.warn("HandlerMapping '{}': paths={}", name, urlMapping.getHandlerMap().keySet());
-				} else {
-					logger.warn("HandlerMapping '{}': type={}", name, mapping.getClass().getSimpleName());
-				}
-			});
-		} else {
-			logger.warn("WebApplicationContext not found for diagnostics");
-		}
+		logHandlerMappings();
 
 		if (!webapp.isAvailable()) {
 			throw new IllegalStateException("Webapp failed to start", webapp.getUnavailableException());
@@ -123,6 +105,42 @@ public class TestServer {
 		} finally {
 			jetty.stop();
 			System.clearProperty("org.mortbay.log.class");
+		}
+	}
+
+	private void logHandlerMappings() {
+		Object wac = webapp.getServletContext().getAttribute(DISPATCHER_CONTEXT_ATTRIBUTE);
+		if (wac == null) {
+			logger.warn("WebApplicationContext not found for diagnostics");
+			return;
+		}
+		ClassLoader contextLoader = wac.getClass().getClassLoader();
+		try {
+			Class<?> handlerMappingClass = Class.forName("org.springframework.web.servlet.HandlerMapping", false,
+					contextLoader);
+			Class<?> abstractUrlHandlerMappingClass = Class
+					.forName("org.springframework.web.servlet.handler.AbstractUrlHandlerMapping", false, contextLoader);
+			var getBeansOfType = wac.getClass().getMethod("getBeansOfType", Class.class);
+			@SuppressWarnings("unchecked")
+			Map<String, Object> mappings = (Map<String, Object>) getBeansOfType.invoke(wac, handlerMappingClass);
+			logger.warn("Discovered {} HandlerMapping beans", mappings.size());
+			for (Map.Entry<String, Object> entry : mappings.entrySet()) {
+				Object mapping = entry.getValue();
+				if (mapping == null) {
+					logger.warn("HandlerMapping '{}' is null", entry.getKey());
+					continue;
+				}
+				if (abstractUrlHandlerMappingClass.isInstance(mapping)) {
+					var getHandlerMap = abstractUrlHandlerMappingClass.getMethod("getHandlerMap");
+					@SuppressWarnings("unchecked")
+					Map<?, ?> handlerMap = (Map<?, ?>) getHandlerMap.invoke(mapping);
+					logger.warn("HandlerMapping '{}': paths={}", entry.getKey(), handlerMap.keySet());
+				} else {
+					logger.warn("HandlerMapping '{}': type={}", entry.getKey(), mapping.getClass().getSimpleName());
+				}
+			}
+		} catch (Exception e) {
+			logger.warn("Unable to inspect handler mappings", e);
 		}
 	}
 
