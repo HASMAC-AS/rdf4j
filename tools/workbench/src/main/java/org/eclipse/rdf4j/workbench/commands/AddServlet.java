@@ -225,6 +225,13 @@ public class AddServlet extends TransformationServlet {
 		}
 	}
 
+	/**
+	 * Determine the list of isolation levels to show in the UI. For local {@link SailRepository} instances we ask the
+	 * Sail which isolation levels it actually supports. For non-Sail repositories (for example HTTP-based
+	 * implementations) we deliberately expose the full list of known isolation levels instead of probing support by
+	 * starting transactions. The old behaviour (trying a transaction per level) was very slow and unreliable for remote
+	 * repositories, so for those we prefer a fast, best-effort list and let the server reject unsupported levels.
+	 */
 	List<String> determineIsolationLevels() {
 		if (repository == null) {
 			return List.of();
