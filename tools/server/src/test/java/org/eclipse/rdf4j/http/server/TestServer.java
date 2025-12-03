@@ -17,9 +17,9 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Properties;
 
+import org.eclipse.jetty.ee11.webapp.WebAppContext;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.rdf4j.http.protocol.Protocol;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.config.RepositoryConfig;
@@ -189,7 +189,7 @@ public class TestServer {
 						Object pathContainer = pathWithin.invoke(requestPath);
 						lookup = String.valueOf(pathContainer.getClass().getMethod("value").invoke(pathContainer));
 					}
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					// ignore
 				}
 				String msg = String.format("Request uri=%s contextPath=%s servletPath=%s pathInfo=%s lookup=%s",
