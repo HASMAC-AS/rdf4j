@@ -63,4 +63,17 @@ public final class ValueStoreWalRecord {
 	public int hash() {
 		return hash;
 	}
+
+	@Override
+	public String toString() {
+		return "ValueStoreWalRecord{" +
+				"lsn=" + lsn +
+				", id=" + id +
+				", valueKind=" + valueKind +
+				", lexical='" + lexical + '\'' +
+				", datatype='" + datatype + '\'' +
+				", language='" + language + '\'' +
+				", hash=" + hash +
+				'}';
+	}
 }

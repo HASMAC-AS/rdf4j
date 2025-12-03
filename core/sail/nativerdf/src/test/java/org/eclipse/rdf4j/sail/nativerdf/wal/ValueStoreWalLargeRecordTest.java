@@ -38,6 +38,7 @@ class ValueStoreWalLargeRecordTest {
 		Files.createDirectories(walDir);
 		ValueStoreWalConfig config = ValueStoreWalConfig.builder()
 				.walDirectory(walDir)
+				.syncPolicy(ValueStoreWalConfig.SyncPolicy.ALWAYS)
 				.storeUuid(UUID.randomUUID().toString())
 				.build();
 
@@ -57,7 +58,6 @@ class ValueStoreWalLargeRecordTest {
 				OptionalLong lsn = store.drainPendingWalHighWaterMark();
 				assertThat(lsn).isPresent();
 
-				// This currently fails due to BufferOverflowException in the writer thread
 				wal.awaitDurable(lsn.getAsLong());
 			}
 		}
@@ -77,6 +77,7 @@ class ValueStoreWalLargeRecordTest {
 		ValueStoreWalConfig config = ValueStoreWalConfig.builder()
 				.walDirectory(walDir)
 				.storeUuid(UUID.randomUUID().toString())
+				.syncPolicy(ValueStoreWalConfig.SyncPolicy.ALWAYS)
 				.maxSegmentBytes(32 * 1024)
 				.build();
 
