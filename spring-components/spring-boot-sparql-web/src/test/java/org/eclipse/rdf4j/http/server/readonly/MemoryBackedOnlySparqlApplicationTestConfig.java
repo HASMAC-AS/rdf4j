@@ -19,6 +19,9 @@ import org.eclipse.rdf4j.sail.memory.MemoryStore;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.web.client.MockMvcClientHttpRequestFactory;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.client.RestTemplate;
 
 @TestConfiguration
 public class MemoryBackedOnlySparqlApplicationTestConfig {
@@ -32,5 +35,10 @@ public class MemoryBackedOnlySparqlApplicationTestConfig {
 		}
 
 		return sailRepository;
+	}
+
+	@Bean
+	public RestTemplate restTemplate(MockMvc mockMvc) {
+		return new RestTemplate(new MockMvcClientHttpRequestFactory(mockMvc));
 	}
 }

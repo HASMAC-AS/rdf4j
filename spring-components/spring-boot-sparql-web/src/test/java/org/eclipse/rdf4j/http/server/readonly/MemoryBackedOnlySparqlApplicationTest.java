@@ -13,33 +13,35 @@ package org.eclipse.rdf4j.http.server.readonly;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 
-import org.eclipse.rdf4j.http.client.SPARQLProtocolSession;
-import org.eclipse.rdf4j.query.MalformedQueryException;
-import org.eclipse.rdf4j.query.QueryInterruptedException;
-import org.eclipse.rdf4j.query.QueryLanguage;
-import org.eclipse.rdf4j.query.TupleQueryResult;
-import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.query.resultio.BooleanQueryResultFormat;
+import org.eclipse.rdf4j.query.resultio.QueryResultIO;
+import org.eclipse.rdf4j.query.resultio.TupleQueryResultFormat;
+import org.eclipse.rdf4j.query.resultio.helpers.QueryResultCollector;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = WebEnvironment.MOCK)
+@AutoConfigureMockMvc
 @Import(MemoryBackedOnlySparqlApplicationTestConfig.class)
 public class MemoryBackedOnlySparqlApplicationTest {
-	@LocalServerPort
-	private int port;
-
+	@Autowired
+	private RestTemplate restTemplate;
 	@Autowired
 	private QueryResponder queryResponder;
-	@Autowired
-	private TestRestTemplate restTemplate;
 
 	@Test
 	public void contextLoads() {
@@ -47,35 +49,41 @@ public class MemoryBackedOnlySparqlApplicationTest {
 	}
 
 	@Test
-	public void testAskQuery() {
-		assertThat(this.restTemplate.getForObject("http://localhost:" + port + "/sparql/?query={query}",
-				String.class, "ASK { ?s ?p ?o }")).contains("true");
+	public void testAskQuery() throws Exception {
+		HttpHeaders headers = new HttpHeaders();
+		headers.set(HttpHeaders.ACCEPT, BooleanQueryResultFormat.TEXT.getDefaultMIMEType());
+		ResponseEntity<String> result = restTemplate.exchange("/sparql?query={query}", HttpMethod.GET,
+				new HttpEntity<>(headers), String.class, "ASK { ?s ?p ?o }");
 
+		assertThat(result.getBody()).contains("true");
 	}
 
 	@Test
-	public void testSelectQuery() {
-		String forObject = this.restTemplate.getForObject("http://localhost:" + port + "/sparql/?query={query}",
-				String.class, "SELECT * WHERE { ?s ?p ?o }");
-		assertThat(forObject).contains("http://www.w3.org/1999/02/22-rdf-syntax-ns#Bag");
+	public void testSelectQuery() throws Exception {
+		HttpHeaders headers = new HttpHeaders();
+		headers.set(HttpHeaders.ACCEPT, TupleQueryResultFormat.JSON.getDefaultMIMEType());
+		ResponseEntity<String> result = restTemplate.exchange("/sparql?query={query}", HttpMethod.GET,
+				new HttpEntity<>(headers), String.class, "SELECT * WHERE { ?s ?p ?o }");
+
+		assertThat(result.getBody())
+				.contains("http://www.w3.org/1999/02/22-rdf-syntax-ns#Bag");
 	}
 
 	@Test
-	public void testSPARQLRepository() throws QueryInterruptedException, RepositoryException,
-			MalformedQueryException, IOException {
+	public void testSPARQLRepository() throws Exception {
 		String query = "SELECT * WHERE { ?s ?p ?o }";
-		TestSPARQLRepository rep = new TestSPARQLRepository("http://localhost:" + port + "/sparql/");
-		try (
-				SPARQLProtocolSession session = rep.createSPARQLProtocolSession();
-				TupleQueryResult sendTupleQuery = session.sendTupleQuery(QueryLanguage.SPARQL, query, null, false,
-						null)) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.set(HttpHeaders.ACCEPT, TupleQueryResultFormat.JSON.getDefaultMIMEType());
+		ResponseEntity<String> result = restTemplate.exchange("/sparql?query={query}", HttpMethod.GET,
+				new HttpEntity<>(headers), String.class, query);
 
-			while (sendTupleQuery.hasNext()) {
-				assertNotNull(sendTupleQuery.next());
-			}
-		} finally {
-			rep.shutDown();
+		QueryResultCollector collector = new QueryResultCollector();
+		try (ByteArrayInputStream in = new ByteArrayInputStream(
+				result.getBody().getBytes(StandardCharsets.UTF_8))) {
+			QueryResultIO.parseTuple(in, TupleQueryResultFormat.JSON, collector, SimpleValueFactory.getInstance());
 		}
+		assertThat(collector.getBindingSets()).isNotEmpty();
+		collector.getBindingSets().forEach(bindingSet -> assertNotNull(bindingSet));
 	}
 
 }
