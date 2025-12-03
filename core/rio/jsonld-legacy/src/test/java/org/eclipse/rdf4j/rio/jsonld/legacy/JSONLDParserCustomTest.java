@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.rio.jsonld.legacy;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.eclipse.rdf4j.rio.helpers.JSONSettings.INCLUDE_SOURCE_IN_LOCATION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -355,6 +356,7 @@ public class JSONLDParserCustomTest {
 	public void testIncludeSourceLocationDefault() throws Exception {
 		final Reader source = new StringReader(YAML_COMMENTS_TEST_STRING);
 		try {
+			parser.set(INCLUDE_SOURCE_IN_LOCATION, true);
 			parser.parse(source, "");
 			fail("Expected to find an exception");
 		} catch (RDFParseException e) {
