@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.impl.DynamicModelFactory;
 import org.eclipse.rdf4j.model.util.ModelBuilder;
 import org.eclipse.rdf4j.model.vocabulary.CONFIG;
+
 import org.junit.jupiter.api.Test;
 
 public class RepositoryConfigTest {

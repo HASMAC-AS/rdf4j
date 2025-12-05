@@ -21,13 +21,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import org.apache.commons.io.input.BOMInputStream;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFHandlerException;
 import org.eclipse.rdf4j.rio.RDFParseException;
 import org.eclipse.rdf4j.rio.jsonld.JSONLDParser;
+
+import org.apache.commons.io.input.BOMInputStream;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;

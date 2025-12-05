@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.query.TupleQueryResult;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.testsuite.repository.OptimisticIsolationTest;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

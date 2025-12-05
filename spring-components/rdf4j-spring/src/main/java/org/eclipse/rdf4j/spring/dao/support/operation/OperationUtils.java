@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.Operation;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf;
 import org.eclipse.rdf4j.spring.dao.exception.IncorrectResultSetSizeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

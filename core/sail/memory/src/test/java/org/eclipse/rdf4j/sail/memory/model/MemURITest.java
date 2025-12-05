@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.sail.memory.model;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

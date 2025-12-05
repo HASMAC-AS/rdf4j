@@ -18,7 +18,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: 11
+          java-version: 25
           distribution: 'temurin'
           cache: maven
 
@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-m2-repo-
 
       - name: Validate formatting configuration
-        run: mvn -B -T 2C -Dmaven.repo.local=.m2_repo formatter:validate impsort:check xml-format:xml-check
+        run: mvn -B -T 2C -Dmaven.repo.local=.m2_repo -Pformatting spotless:check 
 
       - name: Quick compile (skip tests)
         run: mvn -B -T 2C -Dmaven.repo.local=.m2_repo compile -DskipTests -Pquick

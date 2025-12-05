@@ -21,6 +21,7 @@ import org.eclipse.rdf4j.common.io.ByteArrayUtil;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
 import org.eclipse.rdf4j.sail.nativerdf.ValueStore;
 import org.eclipse.rdf4j.sail.nativerdf.model.NativeValue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

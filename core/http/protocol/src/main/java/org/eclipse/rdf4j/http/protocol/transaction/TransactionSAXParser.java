@@ -35,6 +35,7 @@ import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.impl.SimpleBinding;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
 import org.eclipse.rdf4j.rio.helpers.RDFStarUtil;
+
 import org.xml.sax.SAXException;
 
 /**

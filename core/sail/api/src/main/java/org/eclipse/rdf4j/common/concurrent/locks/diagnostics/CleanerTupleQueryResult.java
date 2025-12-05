@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.TupleQueryResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

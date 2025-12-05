@@ -14,10 +14,11 @@ package org.eclipse.rdf4j.spring.pool;
 import java.lang.invoke.MethodHandles;
 import java.util.Objects;
 
-import org.apache.commons.pool2.ObjectPool;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.base.RepositoryConnectionWrapper;
+
+import org.apache.commons.pool2.ObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.testsuite.query.algebra.geosparql;
 import java.util.Collection;
 
 import org.eclipse.rdf4j.testsuite.query.parser.sparql.manifest.SPARQLQueryComplianceTest;
+
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 

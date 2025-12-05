@@ -56,6 +56,7 @@ import org.eclipse.rdf4j.query.impl.ListBindingSet;
 import org.eclipse.rdf4j.query.resultio.AbstractTupleQueryResultParser;
 import org.eclipse.rdf4j.query.resultio.QueryResultParseException;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultFormat;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

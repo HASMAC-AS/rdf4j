@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.query.GraphQueryResult;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

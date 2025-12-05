@@ -15,6 +15,7 @@ import java.io.IOException;
 import org.eclipse.rdf4j.collection.factory.api.BindingSetKey;
 import org.eclipse.rdf4j.collection.factory.mapdb.MapDb3CollectionFactory.RDF4jMapDB3Exception;
 import org.eclipse.rdf4j.model.Value;
+
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
 import org.mapdb.Serializer;

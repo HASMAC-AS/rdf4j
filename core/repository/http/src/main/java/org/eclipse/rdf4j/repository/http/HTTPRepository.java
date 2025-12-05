@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.http.client.HttpClientDependent;
 import org.eclipse.rdf4j.http.client.HttpClientSessionManager;
 import org.eclipse.rdf4j.http.client.RDF4JProtocolSession;
@@ -38,6 +37,8 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.base.AbstractRepository;
 import org.eclipse.rdf4j.rio.RDFFormat;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * A repository that serves as a client for a remote repository on an RDF4J Server. Methods in this class may throw the

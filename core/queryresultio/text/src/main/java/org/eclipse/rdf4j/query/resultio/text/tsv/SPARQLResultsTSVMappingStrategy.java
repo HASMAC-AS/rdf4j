@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Value;
@@ -25,6 +24,8 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.impl.ListBindingSet;
 import org.eclipse.rdf4j.query.resultio.text.SPARQLResultsXSVMappingStrategy;
 import org.eclipse.rdf4j.rio.helpers.NTriplesUtil;
+
+import org.apache.commons.lang3.StringUtils;
 
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.util.Values;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 

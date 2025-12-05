@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.spring.dao.exception.IncorrectResultSetSizeException;
 import org.eclipse.rdf4j.spring.domain.model.EX;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
 import org.eclipse.rdf4j.spring.util.QueryResultUtils;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

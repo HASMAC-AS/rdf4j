@@ -14,9 +14,10 @@ package org.eclipse.rdf4j.sail.shacl.ast.planNodes;
 import java.util.Objects;
 import java.util.function.Function;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
+import org.apache.commons.text.StringEscapeUtils;
 
 public class TupleMapper implements PlanNode {
 	PlanNode parent;

@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import org.eclipse.rdf4j.common.io.FileUtil;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -19,6 +19,7 @@ import java.util.Set;
 
 import org.eclipse.rdf4j.federated.endpoint.Endpoint;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

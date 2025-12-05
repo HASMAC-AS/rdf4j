@@ -30,6 +30,7 @@ import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.sail.evaluation.TupleFunctionEvaluationMode;
 import org.eclipse.rdf4j.sail.memory.MemoryStore;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;

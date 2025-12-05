@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.rdf4j.common.concurrent.locks.AbstractReadWriteLockManager;
 import org.eclipse.rdf4j.common.concurrent.locks.Lock;
 import org.eclipse.rdf4j.common.concurrent.locks.ReadPrefReadWriteLockManager;
+
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;

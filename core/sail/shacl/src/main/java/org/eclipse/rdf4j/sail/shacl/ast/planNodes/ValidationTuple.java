@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.util.ValueComparator;
 import org.eclipse.rdf4j.sail.InterruptedSailException;
 import org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents.ConstraintComponent;
 import org.eclipse.rdf4j.sail.shacl.results.ValidationResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

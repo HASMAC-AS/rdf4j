@@ -43,6 +43,8 @@ import org.eclipse.rdf4j.sail.memory.config.MemoryStoreConfig;
 import org.eclipse.rdf4j.sail.shacl.ShaclSailValidationException;
 import org.eclipse.rdf4j.sail.shacl.config.ShaclSailConfig;
 import org.eclipse.rdf4j.workbench.proxy.WorkbenchGateway;
+
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,10 +52,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -80,6 +83,10 @@ class Rdf4jServerWorkbenchApplicationTest {
 
 	@BeforeEach
 	void attachLoggingAppender() throws RepositoryException {
+		HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(
+				HttpClients.custom().disableRedirectHandling().build());
+		restTemplate.getRestTemplate().setRequestFactory(requestFactory);
+
 		loggingFilterLogger = (Logger) LoggerFactory.getLogger(ErrorLoggingFilter.class);
 		loggingAppender = new ListAppender<>();
 		loggingAppender.start();
@@ -103,6 +110,18 @@ class Rdf4jServerWorkbenchApplicationTest {
 
 		assertThat(response.getStatusCode()).as("HTTP status for /rdf4j-server/repositories")
 				.isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	void serverProtocolEndpointResponds() {
+		ResponseEntity<String> response = restTemplate.getForEntity(
+				"http://localhost:" + port + "/rdf4j-server/protocol", String.class);
+
+		assertThat(response.getStatusCode()).as("HTTP status for /rdf4j-server/protocol")
+				.isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody()).as("Protocol response body")
+				.isNotNull()
+				.isNotEmpty();
 	}
 
 	@Test

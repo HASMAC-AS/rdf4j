@@ -53,6 +53,7 @@ import org.eclipse.rdf4j.sail.UpdateContext;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSailConnection;
 import org.eclipse.rdf4j.sail.helpers.AbstractSail;
 import org.eclipse.rdf4j.sail.inferencer.InferencerConnection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

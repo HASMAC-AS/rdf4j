@@ -20,6 +20,7 @@ import java.util.List;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
+
 import org.junit.jupiter.api.Test;
 
 /**

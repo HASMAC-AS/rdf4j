@@ -85,6 +85,7 @@ import org.eclipse.rdf4j.sail.lmdb.model.LmdbIRI;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbLiteral;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbResource;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
+
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.lmdb.MDBEnvInfo;

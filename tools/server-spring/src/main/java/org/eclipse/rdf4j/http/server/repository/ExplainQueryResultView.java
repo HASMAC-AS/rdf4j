@@ -14,12 +14,13 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.http.HttpStatus;
 import org.eclipse.rdf4j.http.protocol.Protocol;
 import org.eclipse.rdf4j.query.explanation.Explanation;
+
+import org.apache.http.HttpStatus;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class ExplainQueryResultView extends QueryResultView {
 

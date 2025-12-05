@@ -21,6 +21,7 @@ import java.nio.file.Files;
 
 import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.sail.base.SailStore;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 

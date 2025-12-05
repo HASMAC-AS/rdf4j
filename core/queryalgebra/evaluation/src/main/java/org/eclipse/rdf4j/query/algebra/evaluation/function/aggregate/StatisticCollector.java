@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.query.algebra.evaluation.function.aggregate;
 
-import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.eclipse.rdf4j.common.annotation.Experimental;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Value;
@@ -18,6 +17,8 @@ import org.eclipse.rdf4j.model.base.CoreDatatype;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.algebra.evaluation.ValueExprEvaluationException;
 import org.eclipse.rdf4j.query.parser.sparql.aggregate.AggregateCollector;
+
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 
 /**
  * {@link AggregateCollector} implementation that processes SPARQL statistical functions based on input {@link Literal}

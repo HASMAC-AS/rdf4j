@@ -18,8 +18,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 
-import javax.servlet.http.HttpServletResponse;
-
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.QueryResultHandlerException;
@@ -28,7 +26,10 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.workbench.exceptions.BadRequestException;
 import org.eclipse.rdf4j.workbench.util.WorkbenchRequest;
+
 import org.junit.jupiter.api.Test;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Unit and regression tests for {@link RemoteServlet}.

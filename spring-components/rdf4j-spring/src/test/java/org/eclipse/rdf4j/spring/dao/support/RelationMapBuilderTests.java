@@ -14,9 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.eclipse.rdf4j.model.vocabulary.SKOS;
 import org.eclipse.rdf4j.spring.RDF4JSpringTestBase;
-import org.eclipse.rdf4j.spring.dao.support.RelationMapBuilder;
 import org.eclipse.rdf4j.spring.domain.model.EX;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

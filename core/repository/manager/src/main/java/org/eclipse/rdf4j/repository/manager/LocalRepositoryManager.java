@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.common.io.FileUtil;
 import org.eclipse.rdf4j.http.client.HttpClientDependent;
 import org.eclipse.rdf4j.http.client.SessionManagerDependent;
@@ -55,6 +54,8 @@ import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.UnsupportedRDFormatException;
 import org.eclipse.rdf4j.rio.WriterConfig;
 import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * An implementation of the {@link RepositoryManager} interface that operates directly on the repository data files in

@@ -17,6 +17,7 @@ import java.util.Optional;
 import org.eclipse.rdf4j.common.transaction.TransactionSetting;
 import org.eclipse.rdf4j.common.transaction.TransactionSettingFactory;
 import org.eclipse.rdf4j.common.transaction.TransactionSettingRegistry;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;

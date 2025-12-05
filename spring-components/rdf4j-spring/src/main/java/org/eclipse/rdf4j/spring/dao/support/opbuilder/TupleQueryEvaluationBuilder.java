@@ -19,6 +19,7 @@ import java.lang.invoke.MethodHandles;
 import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.spring.dao.support.operation.TupleQueryResultConverter;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -21,7 +21,6 @@ import java.util.Stack;
 
 import javax.xml.transform.sax.SAXResult;
 
-import org.apache.commons.io.input.BOMInputStream;
 import org.eclipse.rdf4j.common.net.ParsedIRI;
 import org.eclipse.rdf4j.common.xml.XMLUtil;
 import org.eclipse.rdf4j.model.IRI;
@@ -39,6 +38,8 @@ import org.eclipse.rdf4j.rio.RioSetting;
 import org.eclipse.rdf4j.rio.helpers.AbstractRDFParser;
 import org.eclipse.rdf4j.rio.helpers.XMLParserSettings;
 import org.eclipse.rdf4j.rio.helpers.XMLReaderBasedParser;
+
+import org.apache.commons.io.input.BOMInputStream;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.Locator;

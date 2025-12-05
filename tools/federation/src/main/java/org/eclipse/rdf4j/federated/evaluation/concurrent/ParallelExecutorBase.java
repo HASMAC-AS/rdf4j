@@ -22,6 +22,7 @@ import org.eclipse.rdf4j.federated.exception.ExceptionUtil;
 import org.eclipse.rdf4j.federated.structures.QueryInfo;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryInterruptedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

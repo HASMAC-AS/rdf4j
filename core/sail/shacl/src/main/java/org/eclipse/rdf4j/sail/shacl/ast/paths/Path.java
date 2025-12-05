@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNode;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNodeWrapper;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.ShapeSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

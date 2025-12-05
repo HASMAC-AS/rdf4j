@@ -85,6 +85,7 @@ public class RDFJSONParser extends AbstractRDFParser {
 			}
 
 			jp = configureNewJsonFactory().createParser(inputStream);
+
 			rdfJsonToHandlerInternal(this.rdfHandler, this.valueFactory, jp);
 		} catch (final IOException e) {
 			if (jp != null) {

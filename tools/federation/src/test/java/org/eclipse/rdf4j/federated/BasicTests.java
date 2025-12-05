@@ -40,6 +40,7 @@ import org.eclipse.rdf4j.query.impl.SimpleDataset;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.util.Repositories;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

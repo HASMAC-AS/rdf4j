@@ -14,6 +14,7 @@ import java.util.Arrays;
 
 import org.eclipse.rdf4j.common.text.ASCIIUtil;
 import org.eclipse.rdf4j.model.util.URIUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

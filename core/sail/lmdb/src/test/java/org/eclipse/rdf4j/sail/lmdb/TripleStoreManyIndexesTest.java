@@ -15,6 +15,7 @@ import static org.junit.Assert.assertNotNull;
 import java.io.File;
 
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

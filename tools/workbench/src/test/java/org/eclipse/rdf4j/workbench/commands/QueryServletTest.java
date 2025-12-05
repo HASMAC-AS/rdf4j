@@ -20,15 +20,16 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.Collections;
 
-import javax.servlet.ServletException;
-
 import org.eclipse.rdf4j.common.exception.RDF4JException;
 import org.eclipse.rdf4j.common.io.ResourceUtil;
 import org.eclipse.rdf4j.workbench.exceptions.BadRequestException;
 import org.eclipse.rdf4j.workbench.util.QueryStorage;
 import org.eclipse.rdf4j.workbench.util.WorkbenchRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import jakarta.servlet.ServletException;
 
 /**
  * @author Dale Visser

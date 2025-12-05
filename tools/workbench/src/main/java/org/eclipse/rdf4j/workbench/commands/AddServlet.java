@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletResponse;
-
 import org.eclipse.rdf4j.common.transaction.IsolationLevel;
 import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.common.transaction.TransactionSetting;
@@ -32,6 +30,7 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.query.QueryResultHandlerException;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParseException;
 import org.eclipse.rdf4j.rio.Rio;
@@ -39,8 +38,11 @@ import org.eclipse.rdf4j.workbench.base.TransformationServlet;
 import org.eclipse.rdf4j.workbench.exceptions.BadRequestException;
 import org.eclipse.rdf4j.workbench.util.TupleResultBuilder;
 import org.eclipse.rdf4j.workbench.util.WorkbenchRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 public class AddServlet extends TransformationServlet {
 
@@ -223,46 +225,33 @@ public class AddServlet extends TransformationServlet {
 		}
 	}
 
+	/**
+	 * Determine the list of isolation levels to show in the UI. For local {@link SailRepository} instances we ask the
+	 * Sail which isolation levels it actually supports. For non-Sail repositories (for example HTTP-based
+	 * implementations) we deliberately expose the full list of known isolation levels instead of probing support by
+	 * starting transactions. The old behaviour (trying a transaction per level) was very slow and unreliable for remote
+	 * repositories, so for those we prefer a fast, best-effort list and let the server reject unsupported levels.
+	 */
 	List<String> determineIsolationLevels() {
 		if (repository == null) {
 			return List.of();
 		}
 		Set<String> supported = new LinkedHashSet<>();
-		try (RepositoryConnection connection = repository.getConnection()) {
-			IsolationLevel original = connection.getIsolationLevel();
-			for (IsolationLevels level : IsolationLevels.values()) {
-				if (supportsIsolationLevel(connection, level)) {
-					supported.add(isolationLevelName(level));
-				}
+		if (repository instanceof SailRepository) {
+			List<IsolationLevel> supportedIsolationLevels = ((SailRepository) repository).getSail()
+					.getSupportedIsolationLevels();
+			for (IsolationLevel level : supportedIsolationLevels) {
+				String levelName = isolationLevelName(level);
+				supported.add(levelName);
 			}
-			if (original != null) {
-				String originalName = isolationLevelName(original);
-				if (!supported.contains(originalName)) {
-					supported.add(originalName);
-				}
+		} else {
+			for (IsolationLevel level : IsolationLevels.values()) {
+				String levelName = isolationLevelName(level);
+				supported.add(levelName);
 			}
-		} catch (RepositoryException e) {
-			logger.warn("Unable to determine supported isolation levels", e);
 		}
-		return new ArrayList<>(supported);
-	}
 
-	private boolean supportsIsolationLevel(RepositoryConnection connection, IsolationLevel level) {
-		try {
-			connection.begin(level);
-			connection.rollback();
-			return true;
-		} catch (RepositoryException e) {
-			try {
-				if (connection.isActive()) {
-					connection.rollback();
-				}
-			} catch (RepositoryException ex) {
-				logger.debug("Unable to rollback after failed isolation test", ex);
-			}
-			logger.debug("Isolation level {} is not supported by {}", level, repository.getClass().getSimpleName(), e);
-			return false;
-		}
+		return new ArrayList<>(supported);
 	}
 
 	private String isolationLevelName(IsolationLevel level) {

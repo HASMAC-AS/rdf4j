@@ -15,6 +15,7 @@ import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
 import org.eclipse.rdf4j.spring.support.UUIDSource;
 import org.eclipse.rdf4j.spring.util.QueryResultUtils;
+
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**

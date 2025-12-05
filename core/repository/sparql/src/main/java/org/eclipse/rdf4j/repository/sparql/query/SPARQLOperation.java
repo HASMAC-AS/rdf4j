@@ -17,7 +17,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.common.net.ParsedIRI;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
@@ -28,6 +27,8 @@ import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.Operation;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * @author jeen

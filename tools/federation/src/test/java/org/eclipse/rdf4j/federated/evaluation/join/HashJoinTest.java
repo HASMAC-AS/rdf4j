@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.impl.SimpleBinding;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

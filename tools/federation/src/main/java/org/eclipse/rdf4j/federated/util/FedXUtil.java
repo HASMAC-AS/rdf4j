@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.StatementPattern.Scope;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
 import org.eclipse.rdf4j.repository.sail.SailQuery;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

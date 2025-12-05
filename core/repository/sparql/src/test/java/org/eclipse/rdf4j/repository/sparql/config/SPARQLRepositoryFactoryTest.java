@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.repository.sparql.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.rdf4j.repository.sparql.SPARQLRepository;
+
 import org.junit.jupiter.api.Test;
 
 public class SPARQLRepositoryFactoryTest {

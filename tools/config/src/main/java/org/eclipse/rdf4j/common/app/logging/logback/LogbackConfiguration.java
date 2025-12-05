@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.common.app.util.ConfigurationUtil;
 import org.eclipse.rdf4j.common.io.IOUtil;
 import org.eclipse.rdf4j.common.logging.LogReader;
 import org.eclipse.rdf4j.common.logging.file.logback.FileLogReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class LogbackConfiguration extends AbstractLogConfiguration {
 			configurator = new LogConfigurator();
 			configurator.setContext(lc);
 			lc.reset();
-			configurator.doConfigure(configFile);
+			configurator.configure(configFile);
 		} catch (JoranException je) {
 			System.out.println("Logback configuration error");
 			je.printStackTrace();

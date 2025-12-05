@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.rdf4j.rio.helpers.AbstractRioSetting;
 import org.eclipse.rdf4j.rio.helpers.BooleanRioSetting;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -20,7 +20,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.apache.commons.io.FileUtils;
 import org.eclipse.rdf4j.collection.factory.api.CollectionFactory;
 import org.eclipse.rdf4j.collection.factory.mapdb.MapDb3CollectionFactory;
 import org.eclipse.rdf4j.common.annotation.Experimental;
@@ -45,6 +44,8 @@ import org.eclipse.rdf4j.sail.base.SnapshotSailStore;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSail;
 import org.eclipse.rdf4j.sail.helpers.DirectoryLockManager;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

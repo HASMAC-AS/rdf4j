@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.LeftJoin;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryBindingSet;
 import org.eclipse.rdf4j.query.algebra.evaluation.ValueExprEvaluationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

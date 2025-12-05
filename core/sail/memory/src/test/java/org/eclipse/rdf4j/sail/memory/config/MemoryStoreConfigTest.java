@@ -19,6 +19,7 @@ import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.util.ModelBuilder;
 import org.eclipse.rdf4j.sail.base.config.BaseSailSchema;
+
 import org.junit.jupiter.api.Test;
 
 /**

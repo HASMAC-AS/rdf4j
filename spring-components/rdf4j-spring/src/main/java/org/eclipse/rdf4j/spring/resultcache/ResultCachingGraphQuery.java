@@ -19,6 +19,7 @@ import org.eclipse.rdf4j.query.GraphQuery;
 import org.eclipse.rdf4j.query.GraphQueryResult;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.spring.support.query.DelegatingGraphQuery;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -15,7 +15,6 @@ import java.lang.ref.Cleaner;
 import java.util.Collections;
 import java.util.Map;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.common.concurrent.locks.diagnostics.ConcurrentCleaner;
 import org.eclipse.rdf4j.http.client.HttpClientDependent;
 import org.eclipse.rdf4j.http.client.HttpClientSessionManager;
@@ -27,6 +26,8 @@ import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.base.AbstractRepository;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * A proxy class to access any SPARQL 1.1 endpoint.

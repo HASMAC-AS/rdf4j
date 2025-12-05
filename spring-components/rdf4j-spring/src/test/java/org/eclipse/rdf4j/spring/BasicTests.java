@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
 import org.eclipse.rdf4j.spring.util.QueryResultUtils;
 import org.eclipse.rdf4j.spring.util.TypeMappingUtils;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

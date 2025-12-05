@@ -10,10 +10,9 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.http.server.repository.statements;
 
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_SERVICE_UNAVAILABLE;
-import static javax.servlet.http.HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE;
-
+import static jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+import static jakarta.servlet.http.HttpServletResponse.SC_SERVICE_UNAVAILABLE;
+import static jakarta.servlet.http.HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE;
 import static org.eclipse.rdf4j.http.protocol.Protocol.BASEURI_PARAM_NAME;
 import static org.eclipse.rdf4j.http.protocol.Protocol.BINDING_PREFIX;
 import static org.eclipse.rdf4j.http.protocol.Protocol.CONTEXT_PARAM_NAME;
@@ -33,10 +32,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.commons.io.IOUtils;
 import org.eclipse.rdf4j.common.webapp.util.HttpServerUtil;
 import org.eclipse.rdf4j.common.webapp.views.EmptySuccessView;
 import org.eclipse.rdf4j.http.protocol.Protocol;
@@ -69,6 +64,8 @@ import org.eclipse.rdf4j.rio.RDFWriterRegistry;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.UnsupportedRDFormatException;
 import org.eclipse.rdf4j.rio.helpers.BasicParserSettings;
+
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextException;
@@ -76,6 +73,9 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.AbstractController;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Handles requests for manipulating the statements in a repository.

@@ -16,7 +16,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Function;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.query.BindingSet;
@@ -30,6 +29,8 @@ import org.eclipse.rdf4j.sail.memory.MemoryStoreConnection;
 import org.eclipse.rdf4j.sail.shacl.ast.SparqlFragment;
 import org.eclipse.rdf4j.sail.shacl.ast.SparqlQueryParserCache;
 import org.eclipse.rdf4j.sail.shacl.ast.StatementMatcher;
+
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

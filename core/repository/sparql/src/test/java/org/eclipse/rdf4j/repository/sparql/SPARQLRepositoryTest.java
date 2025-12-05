@@ -14,11 +14,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.Executors;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.http.client.HttpClientSessionManager;
 import org.eclipse.rdf4j.http.client.RDF4JProtocolSession;
 import org.eclipse.rdf4j.http.client.SPARQLProtocolSession;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultFormat;
+
+import org.apache.http.client.HttpClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

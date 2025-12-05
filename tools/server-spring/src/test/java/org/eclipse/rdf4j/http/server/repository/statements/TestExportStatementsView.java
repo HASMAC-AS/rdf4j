@@ -10,8 +10,7 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.http.server.repository.statements;
 
-import static javax.servlet.http.HttpServletResponse.SC_OK;
-
+import static jakarta.servlet.http.HttpServletResponse.SC_OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +20,7 @@ import java.util.Map;
 import org.eclipse.rdf4j.http.server.ServerHTTPException;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.rio.turtle.TurtleWriterFactory;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

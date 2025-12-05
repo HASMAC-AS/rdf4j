@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.eclipse.rdf4j.sail.shacl.ast.ContextWithShape;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.PlanNode;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

@@ -14,7 +14,6 @@ package org.eclipse.rdf4j.sail.elasticsearchstore.benchmark;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
-import org.assertj.core.util.Files;
 import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
@@ -22,6 +21,8 @@ import org.eclipse.rdf4j.sail.elasticsearchstore.ElasticsearchStore;
 import org.eclipse.rdf4j.sail.elasticsearchstore.SingletonClientProvider;
 import org.eclipse.rdf4j.sail.elasticsearchstore.TestHelpers;
 import org.eclipse.rdf4j.sail.extensiblestore.ExtensibleStore;
+
+import org.assertj.core.util.Files;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -57,7 +58,7 @@ public class InitBenchmark {
 		// PATH
 		TestHelpers.openClient();
 
-		clientPool = new SingletonClientProvider("localhost", TestHelpers.PORT, TestHelpers.CLUSTER);
+		clientPool = new SingletonClientProvider(TestHelpers.HOST, TestHelpers.PORT, TestHelpers.CLUSTER);
 		System.gc();
 	}
 
@@ -71,7 +72,7 @@ public class InitBenchmark {
 	public void initWithElasticsearchClientCreation() {
 
 		SailRepository elasticsearchStore = new SailRepository(
-				new ElasticsearchStore("localhost", TestHelpers.PORT, TestHelpers.CLUSTER, "testindex",
+				new ElasticsearchStore(TestHelpers.HOST, TestHelpers.PORT, TestHelpers.CLUSTER, "testindex",
 						ExtensibleStore.Cache.NONE));
 
 		try (SailRepositoryConnection connection = elasticsearchStore.getConnection()) {

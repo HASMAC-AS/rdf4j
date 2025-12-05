@@ -16,13 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.net.URL;
 import java.util.Collection;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.model.ModelFactory;
 import org.eclipse.rdf4j.model.impl.LinkedHashModelFactory;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.config.RepositoryConfig;
 import org.eclipse.rdf4j.repository.config.RepositoryConfigException;
+
+import org.apache.http.client.HttpClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

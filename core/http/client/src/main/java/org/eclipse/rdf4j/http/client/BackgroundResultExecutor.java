@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.query.impl.BackgroundGraphResult;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultParser;
 import org.eclipse.rdf4j.query.resultio.helpers.BackgroundTupleResult;
 import org.eclipse.rdf4j.rio.RDFParser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

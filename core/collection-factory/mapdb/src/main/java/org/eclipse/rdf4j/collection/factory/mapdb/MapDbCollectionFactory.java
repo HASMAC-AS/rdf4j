@@ -34,6 +34,7 @@ import org.eclipse.rdf4j.common.exception.RDF4JException;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.MutableBindingSet;
+
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 

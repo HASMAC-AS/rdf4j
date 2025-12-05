@@ -19,6 +19,7 @@ import java.util.Properties;
 
 import org.eclipse.rdf4j.common.io.FileUtil;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

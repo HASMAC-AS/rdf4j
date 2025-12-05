@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.sparqlbuilder.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf;
+
 import org.junit.jupiter.api.Test;
 
 public class PrefixDeclarationsTest {

@@ -10,8 +10,6 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.federated.endpoint.provider;
 
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.eclipse.rdf4j.federated.endpoint.Endpoint;
 import org.eclipse.rdf4j.federated.endpoint.EndpointClassification;
 import org.eclipse.rdf4j.federated.endpoint.EndpointConfiguration;
@@ -21,6 +19,9 @@ import org.eclipse.rdf4j.federated.exception.FedXException;
 import org.eclipse.rdf4j.http.client.SharedHttpClientSessionManager;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.sparql.SPARQLRepository;
+
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
 
 /**
  * Provider for an Endpoint that uses a RDF4j {@link SPARQLRepository} as underlying repository. All SPARQL endpoints

@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.eclipse.rdf4j.model.impl.SimpleNamespace;
 import org.eclipse.rdf4j.model.util.Namespaces;
+
 import org.junit.jupiter.api.Test;
 
 public class BasicParserSettingsTest {

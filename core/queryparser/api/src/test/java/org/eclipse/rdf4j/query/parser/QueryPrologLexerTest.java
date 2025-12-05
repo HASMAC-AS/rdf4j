@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.eclipse.rdf4j.query.parser.QueryPrologLexer.Token;
 import org.eclipse.rdf4j.query.parser.QueryPrologLexer.TokenType;
+
 import org.junit.jupiter.api.Test;
 
 /**

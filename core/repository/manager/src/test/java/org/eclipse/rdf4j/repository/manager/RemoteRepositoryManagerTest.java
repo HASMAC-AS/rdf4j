@@ -10,203 +10,124 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.repository.manager;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockserver.model.HttpRequest.request;
-import static org.mockserver.model.HttpResponse.response;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import org.apache.commons.io.IOUtils;
 import org.eclipse.rdf4j.http.protocol.Protocol;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultFormat;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.config.RepositoryConfig;
 import org.eclipse.rdf4j.repository.config.RepositoryConfigSchema;
 import org.eclipse.rdf4j.rio.RDFFormat;
+
+import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.jupiter.MockServerExtension;
-import org.mockserver.matchers.Times;
-import org.mockserver.model.MediaType;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 /**
  * Unit tests for {@link RemoteRepositoryManager}
  *
  * @author Jeen Broekstra
  */
-@ExtendWith(MockServerExtension.class)
 public class RemoteRepositoryManagerTest extends RepositoryManagerTest {
 
+	private WireMockServer server;
+
 	@BeforeEach
-	public void setUp(MockServerClient client) {
-		subject = new RemoteRepositoryManager("http://localhost:" + client.getPort() + "/rdf4j-server");
+	public void setUp() {
+		server = new WireMockServer(WireMockConfiguration.options().dynamicPort().templatingEnabled(false));
+		server.start();
+		configureFor("localhost", server.port());
+		subject = new RemoteRepositoryManager("http://localhost:" + server.port() + "/rdf4j-server");
+	}
+
+	@AfterEach
+	public void tearDown() {
+		if (server != null) {
+			server.stop();
+		}
 	}
 
 	@Test
-	public void testAddRepositoryConfig(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/protocol"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody(Protocol.VERSION)
-				);
-		client.when(
-				request()
-						.withMethod("PUT")
-						.withPath("/rdf4j-server/repositories/test"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withStatusCode(204)
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withContentType(MediaType.parse(TupleQueryResultFormat.SPARQL.getDefaultMIMEType()))
-								.withBody(readFileToString("repository-list-response.srx"))
-				);
+	public void testAddRepositoryConfig() throws Exception {
+		stubFor(get(urlEqualTo("/rdf4j-server/protocol"))
+				.willReturn(aResponse().withBody(Protocol.VERSION)));
+		stubFor(put(urlEqualTo("/rdf4j-server/repositories/test"))
+				.willReturn(aResponse().withStatus(204)));
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", TupleQueryResultFormat.SPARQL.getDefaultMIMEType())
+						.withBody(readFileToString("repository-list-response.srx"))));
 
 		RepositoryConfig config = new RepositoryConfig("test");
 
 		subject.addRepositoryConfig(config);
 
-		client.verify(
-				request()
-						.withMethod("PUT")
-						.withPath("/rdf4j-server/repositories/test")
-						.withContentType(MediaType.parse("application/x-binary-rdf"))
-		// FIXME: Somehow the following assert is failing
-		// .withBody(regex("^BRDF.*"))
-		);
+		verify(1, putRequestedFor(urlEqualTo("/rdf4j-server/repositories/test"))
+				.withHeader("Content-Type", equalTo("application/x-binary-rdf")));
 	}
 
 	@Test
-	public void testAddRepositoryConfigExisting(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/protocol"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody(Protocol.VERSION)
-				);
-		client.when(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/mem-rdf/config"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withStatusCode(204)
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withContentType(MediaType.parse(TupleQueryResultFormat.SPARQL.getDefaultMIMEType()))
-								.withBody(readFileToString("repository-list-response.srx"))
-				);
+	public void testAddRepositoryConfigExisting() throws Exception {
+		stubFor(get(urlEqualTo("/rdf4j-server/protocol"))
+				.willReturn(aResponse().withBody(Protocol.VERSION)));
+		stubFor(post(urlEqualTo("/rdf4j-server/repositories/mem-rdf/config"))
+				.willReturn(aResponse().withStatus(204)));
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", TupleQueryResultFormat.SPARQL.getDefaultMIMEType())
+						.withBody(readFileToString("repository-list-response.srx"))));
 
 		RepositoryConfig config = new RepositoryConfig("mem-rdf"); // this repo already exists
 
 		subject.addRepositoryConfig(config);
 
-		client.verify(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/mem-rdf/config")
-						.withContentType(MediaType.parse("application/x-binary-rdf"))
-		// FIXME: Somehow the following assert is failing
-		// .withBody(regex("^BRDF.*"))
-		);
+		verify(1, postRequestedFor(urlEqualTo("/rdf4j-server/repositories/mem-rdf/config"))
+				.withHeader("Content-Type", equalTo("application/x-binary-rdf")));
 	}
 
 	@Test
-	public void testGetRepositoryConfig(MockServerClient client) {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/protocol"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody(Protocol.VERSION)
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories/test/config"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withContentType(MediaType.parse(RDFFormat.NTRIPLES.getDefaultMIMEType()))
-								.withBody("_:node1 <" + RepositoryConfigSchema.REPOSITORYID + "> \"test\" . ")
-				);
+	public void testGetRepositoryConfig() {
+		stubFor(get(urlEqualTo("/rdf4j-server/protocol"))
+				.willReturn(aResponse().withBody(Protocol.VERSION)));
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories/test/config"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", RDFFormat.NTRIPLES.getDefaultMIMEType())
+						.withBody("_:node1 <" + RepositoryConfigSchema.REPOSITORYID + "> \"test\" . ")));
 
 		subject.getRepositoryConfig("test");
 
-		client.verify(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories/test/config")
-		);
+		verify(1, getRequestedFor(urlEqualTo("/rdf4j-server/repositories/test/config")));
 	}
 
 	@Test
-	public void testAddRepositoryConfigLegacy(MockServerClient client) throws Exception {
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/protocol"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withBody("8")
-				);
-		client.when(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/SYSTEM/statements"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withStatusCode(204)
-				);
-		client.when(
-				request()
-						.withMethod("GET")
-						.withPath("/rdf4j-server/repositories"),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withContentType(MediaType.parse(TupleQueryResultFormat.SPARQL.getDefaultMIMEType()))
-								.withBody(readFileToString("repository-list-response.srx"))
-				);
+	public void testAddRepositoryConfigLegacy() throws Exception {
+		stubFor(get(urlEqualTo("/rdf4j-server/protocol"))
+				.willReturn(aResponse().withBody("8")));
+		stubFor(post(urlEqualTo("/rdf4j-server/repositories/SYSTEM/statements"))
+				.willReturn(aResponse().withStatus(204)));
+		stubFor(get(urlEqualTo("/rdf4j-server/repositories"))
+				.willReturn(aResponse()
+						.withHeader("Content-Type", TupleQueryResultFormat.SPARQL.getDefaultMIMEType())
+						.withBody(readFileToString("repository-list-response.srx"))));
 
 		RepositoryConfig config = new RepositoryConfig("test");
 

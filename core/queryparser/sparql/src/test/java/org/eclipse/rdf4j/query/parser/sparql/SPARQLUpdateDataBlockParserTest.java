@@ -15,6 +15,7 @@ import java.io.StringReader;
 
 import org.eclipse.rdf4j.rio.RDFHandlerException;
 import org.eclipse.rdf4j.rio.RDFParseException;
+
 import org.junit.jupiter.api.Test;
 
 /**

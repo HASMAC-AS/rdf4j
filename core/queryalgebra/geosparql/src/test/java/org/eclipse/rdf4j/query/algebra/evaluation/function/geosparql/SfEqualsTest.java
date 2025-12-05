@@ -16,12 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import org.apache.commons.io.IOUtils;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.BooleanLiteral;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.GEO;
+
+import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 
 public class SfEqualsTest extends GeometricRelationFunctionTest {

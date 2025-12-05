@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.federated;
 import java.util.Arrays;
 
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.MutableBindingSet;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
+
 import org.junit.jupiter.api.Test;
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;

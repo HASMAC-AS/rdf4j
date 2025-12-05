@@ -17,6 +17,7 @@ import java.util.Set;
 import org.eclipse.rdf4j.common.xml.XMLReaderFactory;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.rio.RioSetting;
+
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;

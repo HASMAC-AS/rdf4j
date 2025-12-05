@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import org.eclipse.rdf4j.common.xml.XMLWriter;
 import org.eclipse.rdf4j.model.Literal;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;

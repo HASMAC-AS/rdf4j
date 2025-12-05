@@ -19,6 +19,7 @@ import org.eclipse.rdf4j.common.transaction.QueryEvaluationMode;
 import org.eclipse.rdf4j.model.util.ModelBuilder;
 import org.eclipse.rdf4j.model.vocabulary.CONFIG;
 import org.eclipse.rdf4j.sail.config.SailConfigException;
+
 import org.junit.jupiter.api.Test;
 
 public class BaseSailConfigTest {

@@ -20,6 +20,7 @@ import java.util.Objects;
 
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.TupleQuery;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

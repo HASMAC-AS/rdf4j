@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Model;
@@ -38,6 +37,8 @@ import org.eclipse.rdf4j.sail.shacl.ast.targets.TargetChainRetriever;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.RdfsSubClassOfReasoner;
 import org.eclipse.rdf4j.sail.shacl.wrapper.shape.ShapeSource;
+
+import org.apache.commons.lang3.NotImplementedException;
 
 import com.google.common.collect.Sets;
 

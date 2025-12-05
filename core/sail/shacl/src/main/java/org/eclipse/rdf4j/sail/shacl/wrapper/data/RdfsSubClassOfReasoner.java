@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF4J;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.shacl.ValidationSettings;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,6 +18,7 @@ import java.nio.file.Path;
 
 import org.eclipse.rdf4j.common.io.NioFile;
 import org.eclipse.rdf4j.sail.nativerdf.datastore.DataFile;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

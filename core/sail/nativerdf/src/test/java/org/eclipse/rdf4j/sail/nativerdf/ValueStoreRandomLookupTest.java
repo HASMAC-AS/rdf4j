@@ -53,6 +53,7 @@ import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalRecovery;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalSearch;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalTestUtils;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalValueKind;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

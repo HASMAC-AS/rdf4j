@@ -14,11 +14,12 @@ package org.eclipse.rdf4j.sail.nativerdf.model;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import org.apache.commons.codec.binary.Hex;
 import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
 import org.eclipse.rdf4j.sail.nativerdf.ValueStoreRevision;
+
+import org.apache.commons.codec.binary.Hex;
 
 import com.google.common.net.UrlEscapers;
 

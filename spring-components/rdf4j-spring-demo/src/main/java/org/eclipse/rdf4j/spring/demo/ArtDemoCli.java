@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.spring.demo.model.Artist;
 import org.eclipse.rdf4j.spring.demo.model.Painting;
 import org.eclipse.rdf4j.spring.demo.service.ArtService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;

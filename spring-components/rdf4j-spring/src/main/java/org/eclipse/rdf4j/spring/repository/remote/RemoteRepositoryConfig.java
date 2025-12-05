@@ -16,6 +16,7 @@ import java.lang.invoke.MethodHandles;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.manager.RemoteRepositoryManager;
 import org.eclipse.rdf4j.spring.support.ConfigurationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

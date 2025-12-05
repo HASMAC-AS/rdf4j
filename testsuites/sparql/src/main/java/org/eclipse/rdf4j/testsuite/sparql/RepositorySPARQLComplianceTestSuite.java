@@ -42,6 +42,7 @@ import org.eclipse.rdf4j.testsuite.sparql.tests.SparqlMinusScopingTests;
 import org.eclipse.rdf4j.testsuite.sparql.tests.SubselectTest;
 import org.eclipse.rdf4j.testsuite.sparql.tests.UnionTest;
 import org.eclipse.rdf4j.testsuite.sparql.tests.ValuesTest;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DynamicTest;

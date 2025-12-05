@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.rdf4j.common.concurrent.locks.ExclusiveReentrantLockManager;
 import org.eclipse.rdf4j.common.concurrent.locks.Lock;
 import org.eclipse.rdf4j.common.concurrent.locks.diagnostics.ConcurrentCleaner;
@@ -62,6 +61,8 @@ import org.eclipse.rdf4j.sail.memory.model.MemTripleIterator;
 import org.eclipse.rdf4j.sail.memory.model.MemValue;
 import org.eclipse.rdf4j.sail.memory.model.MemValueFactory;
 import org.eclipse.rdf4j.sail.memory.model.WeakObjectRegistry;
+
+import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

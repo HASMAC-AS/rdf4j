@@ -57,6 +57,7 @@ import org.eclipse.rdf4j.sail.shacl.results.lazy.ValidationResultIterator;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.RdfsSubClassOfReasoner;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.VerySimpleRdfsBackwardsChainingConnection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

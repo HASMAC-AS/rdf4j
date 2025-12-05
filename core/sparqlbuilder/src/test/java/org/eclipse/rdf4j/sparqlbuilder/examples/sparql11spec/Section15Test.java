@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.sparqlbuilder.core.SparqlBuilder;
 import org.eclipse.rdf4j.sparqlbuilder.core.Variable;
 import org.eclipse.rdf4j.sparqlbuilder.examples.BaseExamples;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.TriplePattern;
+
 import org.junit.jupiter.api.Test;
 
 public class Section15Test extends BaseExamples {

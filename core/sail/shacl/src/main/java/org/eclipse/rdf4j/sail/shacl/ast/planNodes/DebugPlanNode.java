@@ -12,9 +12,10 @@ package org.eclipse.rdf4j.sail.shacl.ast.planNodes;
 
 import java.util.function.Consumer;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.sail.SailException;
+
+import org.apache.commons.text.StringEscapeUtils;
 
 /**
  * Used for adding a custom log statement to tuples as they pass through. Should only be used for debugging.

@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.spring.tx.exception.WriteDeniedException;
 import org.eclipse.rdf4j.spring.uuidsource.noveltychecking.NoveltyCheckingUUIDSourceConfig;
 import org.eclipse.rdf4j.spring.uuidsource.sequence.UUIDSequenceConfig;
 import org.eclipse.rdf4j.spring.uuidsource.simple.SimpleRepositoryUUIDSourceConfig;
+
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

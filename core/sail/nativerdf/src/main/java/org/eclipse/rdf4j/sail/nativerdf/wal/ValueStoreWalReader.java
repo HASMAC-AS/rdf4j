@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 
 /**
  * Reader for ValueStore WAL segments that yields minted records in LSN order across segments. It tolerates truncated or
@@ -76,6 +77,11 @@ public final class ValueStoreWalReader implements AutoCloseable {
 		this.summaryMissing = false;
 		this.currentSegmentCompressed = false;
 		this.currentSegmentSummarySeen = false;
+
+		StreamReadConstraints build = StreamReadConstraints.builder()
+				.maxStringLength(ValueStoreWAL.MAX_FRAME_BYTES)
+				.build();
+		jsonFactory.setStreamReadConstraints(build);
 	}
 
 	/**
@@ -348,6 +354,7 @@ public final class ValueStoreWalReader implements AutoCloseable {
 			try {
 				prepareNext();
 			} catch (IOException e) {
+				logger.error("I/O error while reading ValueStore WAL", e);
 				stop = true;
 				next = null;
 			}

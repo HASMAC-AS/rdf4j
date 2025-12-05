@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.elasticsearchstore.ElasticsearchStore;
 import org.eclipse.rdf4j.sail.elasticsearchstore.TestHelpers;
 import org.eclipse.rdf4j.sail.extensiblestore.ExtensibleStore;
+
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -57,7 +58,7 @@ public class TransactionBenchmark {
 		TestHelpers.openClient();
 
 		repository = new SailRepository(
-				new ElasticsearchStore("localhost", TestHelpers.PORT, TestHelpers.CLUSTER, "testindex",
+				new ElasticsearchStore(TestHelpers.HOST, TestHelpers.PORT, TestHelpers.CLUSTER, "testindex",
 						ExtensibleStore.Cache.NONE));
 		try (SailRepositoryConnection connection = repository.getConnection()) {
 			connection.begin(IsolationLevels.NONE);

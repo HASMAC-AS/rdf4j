@@ -14,9 +14,10 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Properties;
 
+import org.eclipse.rdf4j.sail.lucene.LuceneSail;
+
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
-import org.eclipse.rdf4j.sail.lucene.LuceneSail;
 
 /**
  * LuceneIndex which uses a NIOFSDirectory instead of MMapDirectory to avoid the JVM crash (see

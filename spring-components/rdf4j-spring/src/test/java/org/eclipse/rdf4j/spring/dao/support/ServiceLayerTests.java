@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.spring.domain.model.Painting;
 import org.eclipse.rdf4j.spring.domain.service.ArtService;
 import org.eclipse.rdf4j.spring.support.RDF4JTemplate;
 import org.eclipse.rdf4j.spring.tx.TransactionObject;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

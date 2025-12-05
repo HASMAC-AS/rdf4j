@@ -87,6 +87,7 @@ import org.eclipse.rdf4j.sail.lmdb.TxnRecordCache.RecordCacheIterator;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.eclipse.rdf4j.sail.lmdb.util.GroupMatcher;
 import org.eclipse.rdf4j.sail.lmdb.util.IndexKeyWriters;
+
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.lmdb.MDBEnvInfo;

@@ -124,14 +124,14 @@ If you are interested in having more control over which libraries are and aren't
 
 ## Configuring the Java compiler
 
-Unfortunately the default Maven archetype that we used to create our new project uses a very old Java compiler (1.5) by default. Since RDF4J requires Java 8 at a minimum (we actually recommend Java 11 for better performance), we will need to change this.
+RDF4J requires Java 25 at a minimum we will need to change this.
 
-Copy-paste (or type if you prefer) the following section into the xml file (put it just above the `dependencyManagement` section we added in earlier). This will set the version to Java 11.
+Copy-paste (or type if you prefer) the following section into the xml file (put it just above the `dependencyManagement` section we added in earlier). This will set the version to Java 25.
 
 ```xml
 <properties>
-  <maven.compiler.source>11</maven.compiler.source>
-  <maven.compiler.target>11</maven.compiler.target>
+  <maven.compiler.source>25</maven.compiler.source>
+  <maven.compiler.target>25</maven.compiler.target>
 </properties>
 ```
 

@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.eclipse.rdf4j.federated.SPARQLBaseTest;
 import org.eclipse.rdf4j.federated.server.SPARQLEmbeddedServer;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

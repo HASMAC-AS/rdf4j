@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.query.algebra.QueryModelVisitor;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryBindingSet;
 import org.eclipse.rdf4j.repository.RepositoryException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

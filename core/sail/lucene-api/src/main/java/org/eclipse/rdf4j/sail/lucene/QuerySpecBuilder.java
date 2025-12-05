@@ -41,6 +41,7 @@ import org.eclipse.rdf4j.query.algebra.ValueConstant;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
 import org.eclipse.rdf4j.sail.SailException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

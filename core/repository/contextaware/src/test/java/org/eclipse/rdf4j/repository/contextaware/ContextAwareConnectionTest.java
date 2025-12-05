@@ -39,6 +39,7 @@ import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.base.RepositoryConnectionWrapper;
 import org.eclipse.rdf4j.repository.base.RepositoryWrapper;
 import org.eclipse.rdf4j.rio.RDFHandler;
+
 import org.junit.jupiter.api.Test;
 
 public class ContextAwareConnectionTest {

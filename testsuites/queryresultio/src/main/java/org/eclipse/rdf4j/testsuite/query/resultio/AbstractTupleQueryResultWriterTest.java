@@ -36,6 +36,7 @@ import org.eclipse.rdf4j.rio.RioSetting;
 import org.eclipse.rdf4j.rio.helpers.BasicParserSettings;
 import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings;
 import org.eclipse.rdf4j.rio.helpers.RDFStarUtil;
+
 import org.junit.jupiter.api.Test;
 
 /**

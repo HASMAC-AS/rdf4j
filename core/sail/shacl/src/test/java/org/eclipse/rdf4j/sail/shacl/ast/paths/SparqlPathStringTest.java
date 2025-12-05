@@ -17,6 +17,7 @@ import java.util.List;
 
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.util.Values;
+
 import org.junit.Test;
 
 public class SparqlPathStringTest {

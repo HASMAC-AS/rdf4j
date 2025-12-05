@@ -30,6 +30,7 @@ import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.MutableBindingSet;
 import org.eclipse.rdf4j.query.impl.SimpleBinding;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

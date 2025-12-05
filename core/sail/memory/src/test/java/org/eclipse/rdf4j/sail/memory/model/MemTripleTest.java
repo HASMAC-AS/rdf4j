@@ -16,6 +16,7 @@ import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Triple;
 import org.eclipse.rdf4j.model.impl.SimpleTriple;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

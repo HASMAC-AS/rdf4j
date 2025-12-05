@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.testsuite.sparql.AbstractComplianceTest;
+
 import org.junit.jupiter.api.DynamicTest;
 
 /**

@@ -12,11 +12,12 @@ package org.eclipse.rdf4j.sail.lucene.impl;
 
 import java.io.IOException;
 
+import org.eclipse.rdf4j.sail.lucene.AbstractReaderMonitor;
+
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
-import org.eclipse.rdf4j.sail.lucene.AbstractReaderMonitor;
 
 /**
  * ReaderMonitor holds IndexReader and IndexSearcher. When ReaderMonitor is closed it do not close IndexReader and

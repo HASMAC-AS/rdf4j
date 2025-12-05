@@ -25,6 +25,7 @@ import org.eclipse.rdf4j.spring.uuidsource.noveltychecking.NoveltyCheckingUUIDSo
 import org.eclipse.rdf4j.spring.uuidsource.predictable.PredictableUUIDSourceConfig;
 import org.eclipse.rdf4j.spring.uuidsource.sequence.UUIDSequenceConfig;
 import org.eclipse.rdf4j.spring.uuidsource.simple.SimpleRepositoryUUIDSourceConfig;
+
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 

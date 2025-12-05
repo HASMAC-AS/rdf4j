@@ -37,6 +37,7 @@ import org.eclipse.rdf4j.repository.sparql.federation.SPARQLFederatedService;
 import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
 import org.eclipse.rdf4j.repository.util.Repositories;
 import org.eclipse.rdf4j.sail.memory.MemoryStore;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

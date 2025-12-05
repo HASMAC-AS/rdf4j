@@ -20,7 +20,6 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.function.Supplier;
 
-import org.apache.commons.collections4.map.LRUMap;
 import org.eclipse.rdf4j.query.GraphQuery;
 import org.eclipse.rdf4j.query.Operation;
 import org.eclipse.rdf4j.query.TupleQuery;
@@ -32,6 +31,8 @@ import org.eclipse.rdf4j.spring.resultcache.ResultCachingGraphQuery;
 import org.eclipse.rdf4j.spring.resultcache.ResultCachingTupleQuery;
 import org.eclipse.rdf4j.spring.support.DirectOperationInstantiator;
 import org.eclipse.rdf4j.spring.util.RepositoryConnectionWrappingUtils;
+
+import org.apache.commons.collections4.map.LRUMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

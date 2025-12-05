@@ -24,6 +24,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.eclipse.rdf4j.http.client.util.HttpClientBuilders;
+
 import org.apache.http.HttpConnection;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -41,7 +43,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.protocol.HttpContext;
-import org.eclipse.rdf4j.http.client.util.HttpClientBuilders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

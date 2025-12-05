@@ -10,36 +10,41 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.http.client;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockserver.model.Header.header;
-import static org.mockserver.model.HttpRequest.request;
-import static org.mockserver.model.HttpResponse.response;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.rdf4j.http.protocol.Protocol;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
+
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.jupiter.MockServerExtension;
-import org.mockserver.matchers.Times;
-import org.mockserver.model.MediaType;
-import org.mockserver.model.NottableString;
-import org.mockserver.verify.VerificationTimes;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 /**
  * Unit tests for {@link SPARQLProtocolSession} using standard Java properties for proxy configuration.
  *
  * @author Manuel Fiorelli
  */
-@ExtendWith(MockServerExtension.class)
 public class ProxyTest {
+
+	WireMockServer server;
 
 	// the hostname is guaranteed not to exist (https://datatracker.ietf.org/doc/html/rfc6761#section-6.4)
 	String serverURL = "http://rdf4j.invalid/rdf4j-server";
@@ -56,11 +61,15 @@ public class ProxyTest {
 	RDF4JProtocolSession sparqlSession;
 
 	@BeforeEach
-	public void setUp(MockServerClient client) {
+	public void setUp() {
+		server = new WireMockServer(WireMockConfiguration.options().dynamicPort().templatingEnabled(false));
+		server.start();
+		WireMock.configureFor("localhost", server.port());
+
 		// Set the system properties related to (non-secured) HTTP proxy.
 		// Keep a copy of the old value, if any, to restore it after the execution of the test.
 		proxyHostOld = System.setProperty("http.proxyHost", "localhost");
-		proxyPortOld = System.setProperty("http.proxyPort", String.valueOf(client.getPort()));
+		proxyPortOld = System.setProperty("http.proxyPort", String.valueOf(server.port()));
 		proxyUserOld = System.setProperty("http.proxyUser", proxyUser);
 		proxyPasswordOld = System.setProperty("http.proxyPassword", proxyPassword);
 
@@ -73,6 +82,9 @@ public class ProxyTest {
 
 	@AfterEach
 	public void tearDown() {
+		if (server != null) {
+			server.stop();
+		}
 		// Restore previous value of the system properties, if any
 		restoreSystemProperty("http.proxyHost", proxyHostOld);
 		restoreSystemProperty("http.proxyPort", proxyPortOld);
@@ -89,7 +101,7 @@ public class ProxyTest {
 	}
 
 	@Test
-	public void testUserNameAndPassword(MockServerClient client) throws Exception {
+	public void testUserNameAndPassword() throws Exception {
 		String serverUser = "serverUser";
 		String serverPassword = "serverPassword";
 
@@ -98,52 +110,31 @@ public class ProxyTest {
 		String serverCredentialsEncoded = Base64.getEncoder()
 				.encodeToString((serverUser + ":" + serverPassword).getBytes(StandardCharsets.US_ASCII));
 
-		// Mock requests to request proxy and server authentication
+		String scenarioName = "Proxy auth";
 
-		client.when(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/test")
-						.withHeader(header(NottableString.not("Proxy-Authorization")))
-		)
-				.respond(
-						response()
-								.withStatusCode(407)
-								.withHeader("Proxy-Authenticate", "Basic realm=\"rdf4j\"")
-				);
+		stubFor(post(urlPathEqualTo("/rdf4j-server/repositories/test"))
+				.inScenario(scenarioName)
+				.whenScenarioStateIs(Scenario.STARTED)
+				.withHeader("Proxy-Authorization", absent())
+				.willSetStateTo("PROXY_CHALLENGED")
+				.willReturn(aResponse()
+						.withStatus(407)
+						.withHeader("Proxy-Authenticate", "Basic realm=\"rdf4j\"")));
 
-		client.when(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/test")
-						.withHeader("Proxy-Authorization", "Basic " + proxyCredentialsEncoded)
-						.withHeader(header(NottableString.not("Authorization")))
-		)
-				.respond(
-						response()
-								.withStatusCode(401)
-								.withHeader("WWW-Authenticate", "Basic realm=\"rdf4j\"")
-				);
-
-		client.when(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/test")
-						.withHeader("Proxy-Authorization", "Basic " + proxyCredentialsEncoded)
-						.withHeader("Authorization", "Basic " + serverCredentialsEncoded),
-				Times.once()
-		)
-				.respond(
-						response()
-								.withStatusCode(200)
-								.withContentType(MediaType.parse("application/sparql-results+xml;charset=UTF-8"))
-								.withBody("<?xml version='1.0' encoding='UTF-8'?>\n" +
-										"<sparql xmlns='http://www.w3.org/2005/sparql-results#'>\n" +
-										"    <head>\n" +
-										"    </head>\n" +
-										"    <boolean>true</boolean>\n" +
-										"</sparql>")
-				);
+		stubFor(post(urlPathEqualTo("/rdf4j-server/repositories/test"))
+				.inScenario(scenarioName)
+				.whenScenarioStateIs("PROXY_CHALLENGED")
+				.withHeader("Proxy-Authorization", equalTo("Basic " + proxyCredentialsEncoded))
+				.withHeader("Authorization", equalTo("Basic " + serverCredentialsEncoded))
+				.willReturn(aResponse()
+						.withStatus(200)
+						.withHeader("Content-Type", "application/sparql-results+xml;charset=UTF-8")
+						.withBody("<?xml version='1.0' encoding='UTF-8'?>\n" +
+								"<sparql xmlns='http://www.w3.org/2005/sparql-results#'>\n" +
+								"    <head>\n" +
+								"    </head>\n" +
+								"    <boolean>true</boolean>\n" +
+								"</sparql>")));
 
 		// Set server the credentials for the server
 		sparqlSession.setUsernameAndPassword(serverUser, serverPassword);
@@ -153,14 +144,9 @@ public class ProxyTest {
 
 		// Verifications
 		assertThat(response).isTrue();
-		client.verify(
-				request()
-						.withMethod("POST")
-						.withPath("/rdf4j-server/repositories/test")
-						.withHeader("Proxy-Authorization", "Basic " + proxyCredentialsEncoded)
-						.withHeader("Authorization", "Basic " + serverCredentialsEncoded),
-				VerificationTimes.once()
-		);
+		verify(1, postRequestedFor(urlPathEqualTo("/rdf4j-server/repositories/test"))
+				.withHeader("Authorization", equalTo("Basic " + serverCredentialsEncoded))
+				.withHeader("Proxy-Authorization", equalTo("Basic " + proxyCredentialsEncoded)));
 
 	}
 

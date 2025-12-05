@@ -16,9 +16,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

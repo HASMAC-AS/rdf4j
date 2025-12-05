@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.RandomAccessFile;
 
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

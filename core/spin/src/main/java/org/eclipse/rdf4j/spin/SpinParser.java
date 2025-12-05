@@ -146,6 +146,7 @@ import org.eclipse.rdf4j.spin.function.SpinTupleFunctionAsFunctionParser;
 import org.eclipse.rdf4j.spin.function.SpinTupleFunctionParser;
 import org.eclipse.rdf4j.spin.function.SpinxFunctionParser;
 import org.eclipse.rdf4j.spin.function.TupleFunctionParser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

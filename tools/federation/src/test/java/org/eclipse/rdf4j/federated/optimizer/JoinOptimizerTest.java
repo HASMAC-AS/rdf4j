@@ -16,6 +16,7 @@ import org.eclipse.rdf4j.common.iteration.Iterations;
 import org.eclipse.rdf4j.federated.SPARQLBaseTest;
 import org.eclipse.rdf4j.model.vocabulary.FOAF;
 import org.eclipse.rdf4j.query.TupleQueryResult;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

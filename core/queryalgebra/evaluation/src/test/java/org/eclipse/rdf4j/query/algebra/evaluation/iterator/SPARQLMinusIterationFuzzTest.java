@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryResults;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryBindingSet;
+
 import org.junit.jupiter.api.Test;
 
 /**

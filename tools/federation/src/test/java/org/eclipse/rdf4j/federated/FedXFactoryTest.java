@@ -16,6 +16,7 @@ import org.eclipse.rdf4j.federated.repository.FedXRepository;
 import org.eclipse.rdf4j.federated.server.SPARQLEmbeddedServer;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryResolver;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

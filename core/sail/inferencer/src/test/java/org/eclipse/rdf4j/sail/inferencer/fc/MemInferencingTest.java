@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import org.assertj.core.util.Files;
 import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.ValueFactory;
@@ -27,6 +26,8 @@ import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.eclipse.rdf4j.testsuite.sail.InferencingTest;
+
+import org.assertj.core.util.Files;
 import org.junit.jupiter.api.Test;
 
 public class MemInferencingTest extends InferencingTest {

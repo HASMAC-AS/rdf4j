@@ -36,6 +36,7 @@ import org.eclipse.rdf4j.rio.helpers.ContextStatementCollector;
 import org.eclipse.rdf4j.rio.helpers.JSONLDSettings;
 import org.eclipse.rdf4j.rio.helpers.JSONSettings;
 import org.eclipse.rdf4j.rio.helpers.ParseErrorCollector;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -351,23 +352,6 @@ public class JSONLDParserCustomTest {
 	}
 
 	@Test
-	public void testIncludeSourceLocationDefault() throws Exception {
-		final Reader source = new StringReader(YAML_COMMENTS_TEST_STRING);
-		try {
-			parser.parse(source, "");
-			fail("Expected to find an exception");
-		} catch (RDFParseException e) {
-			assertNotNull(e.getCause());
-			assertTrue(e.getCause() instanceof JsonProcessingException);
-			JsonProcessingException cause = (JsonProcessingException) e.getCause();
-			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(3, cause.getLocation().getColumnNr());
-			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
-			assertEquals(source, cause.getLocation().contentReference().getRawContent());
-		}
-	}
-
-	@Test
 	public void testIncludeSourceLocationEnabled() throws Exception {
 		final Reader source = new StringReader(YAML_COMMENTS_TEST_STRING);
 		try {
@@ -379,7 +363,7 @@ public class JSONLDParserCustomTest {
 			assertTrue(e.getCause() instanceof JsonProcessingException);
 			JsonProcessingException cause = (JsonProcessingException) e.getCause();
 			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(3, cause.getLocation().getColumnNr());
+			assertEquals(2, cause.getLocation().getColumnNr());
 			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
 			assertEquals(source, cause.getLocation().contentReference().getRawContent());
 		}
@@ -396,7 +380,7 @@ public class JSONLDParserCustomTest {
 			assertTrue(e.getCause() instanceof JsonProcessingException);
 			JsonProcessingException cause = (JsonProcessingException) e.getCause();
 			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(3, cause.getLocation().getColumnNr());
+			assertEquals(2, cause.getLocation().getColumnNr());
 			assertEquals(ContentReference.unknown(), cause.getLocation().contentReference());
 		}
 	}

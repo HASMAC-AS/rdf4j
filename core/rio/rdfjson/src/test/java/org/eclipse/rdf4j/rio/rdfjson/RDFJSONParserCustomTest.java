@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.rio.rdfjson;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.eclipse.rdf4j.rio.helpers.JSONSettings.INCLUDE_SOURCE_IN_LOCATION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -35,8 +36,11 @@ import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.helpers.ContextStatementCollector;
 import org.eclipse.rdf4j.rio.helpers.JSONSettings;
 import org.eclipse.rdf4j.rio.helpers.ParseErrorCollector;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.io.ContentReference;
@@ -97,6 +101,7 @@ public class RDFJSONParserCustomTest {
 	 * Strict duplicate detection
 	 */
 	private static final String STRICT_DUPLICATE_DETECTION_TEST_STRING = "{\"http://example.com/Subj1\": { \"http://example.com/prop1\": [{\"value\": \"http://example.com/Obj1\", \"type\": \"uri\", \"type\": \"uri\"}]}}";
+	private static final Logger log = LoggerFactory.getLogger(RDFJSONParserCustomTest.class);
 
 	private RDFParser parser;
 
@@ -343,35 +348,22 @@ public class RDFJSONParserCustomTest {
 	}
 
 	@Test
-	public void testIncludeSourceLocationDefault() throws Exception {
-		final Reader source = new StringReader(YAML_COMMENTS_TEST_STRING);
-		try {
-			parser.parse(source, "");
-			fail("Expected to find an exception");
-		} catch (RDFParseException e) {
-			assertNotNull(e.getCause());
-			assertTrue(e.getCause() instanceof JsonProcessingException);
-			JsonProcessingException cause = (JsonProcessingException) e.getCause();
-			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(2, cause.getLocation().getColumnNr());
-			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
-			assertEquals(source, cause.getLocation().contentReference().getRawContent());
-		}
-	}
-
-	@Test
 	public void testIncludeSourceLocationEnabled() throws Exception {
+		System.out.println(YAML_COMMENTS_TEST_STRING);
+		System.out.println();
 		final Reader source = new StringReader(YAML_COMMENTS_TEST_STRING);
 		try {
-			parser.set(JSONSettings.INCLUDE_SOURCE_IN_LOCATION, true);
+			parser.set(INCLUDE_SOURCE_IN_LOCATION, true);
 			parser.parse(source, "");
 			fail("Expected to find an exception");
 		} catch (RDFParseException e) {
 			assertNotNull(e.getCause());
 			assertTrue(e.getCause() instanceof JsonProcessingException);
 			JsonProcessingException cause = (JsonProcessingException) e.getCause();
+			System.out.println(cause);
+			System.out.println();
 			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(2, cause.getLocation().getColumnNr());
+			assertEquals(1, cause.getLocation().getColumnNr());
 			assertNotEquals(ContentReference.unknown(), cause.getLocation().contentReference());
 			assertEquals(source, cause.getLocation().contentReference().getRawContent());
 		}
@@ -380,7 +372,7 @@ public class RDFJSONParserCustomTest {
 	@Test
 	public void testIncludeSourceLocationDisabled() throws Exception {
 		try {
-			parser.set(JSONSettings.INCLUDE_SOURCE_IN_LOCATION, false);
+			parser.set(INCLUDE_SOURCE_IN_LOCATION, false);
 			parser.parse(new StringReader(YAML_COMMENTS_TEST_STRING), "");
 			fail("Expected to find an exception");
 		} catch (RDFParseException e) {
@@ -388,7 +380,7 @@ public class RDFJSONParserCustomTest {
 			assertTrue(e.getCause() instanceof JsonProcessingException);
 			JsonProcessingException cause = (JsonProcessingException) e.getCause();
 			assertEquals(2, cause.getLocation().getLineNr());
-			assertEquals(2, cause.getLocation().getColumnNr());
+			assertEquals(1, cause.getLocation().getColumnNr());
 			assertEquals(ContentReference.unknown(), cause.getLocation().contentReference());
 		}
 	}

@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.util.URIUtil;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.ValueStoreRevision;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

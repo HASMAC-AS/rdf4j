@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.query.TupleQueryResultHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

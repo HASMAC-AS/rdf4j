@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.benchmark.rio.impl;
 import org.eclipse.rdf4j.benchmark.rio.ParserBenchmark;
 import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.jsonld.JSONLDParser;
+
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;

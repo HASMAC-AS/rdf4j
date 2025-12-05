@@ -19,9 +19,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.rdf4j.sail.nativerdf.datastore.HashFile;
+
 import org.apache.commons.io.FileUtils;
 import org.assertj.core.util.Files;
-import org.eclipse.rdf4j.sail.nativerdf.datastore.HashFile;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;

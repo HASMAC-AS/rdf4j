@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.repository.sparql.federation;
 
-import org.apache.http.client.HttpClient;
 import org.eclipse.rdf4j.http.client.HttpClientDependent;
 import org.eclipse.rdf4j.http.client.HttpClientSessionManager;
 import org.eclipse.rdf4j.http.client.SessionManagerDependent;
@@ -18,6 +17,8 @@ import org.eclipse.rdf4j.http.client.SharedHttpClientSessionManager;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.AbstractFederatedServiceResolver;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedService;
+
+import org.apache.http.client.HttpClient;
 
 /**
  * The {@link SPARQLServiceResolver} is used to manage a set of {@link FederatedService} instances, which are used to

@@ -13,7 +13,6 @@ package org.eclipse.rdf4j.federated;
 import java.io.File;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
 import org.eclipse.rdf4j.common.iteration.Iterations;
 import org.eclipse.rdf4j.common.platform.PlatformFactory;
 import org.eclipse.rdf4j.federated.repository.FedXRepository;
@@ -24,6 +23,8 @@ import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.base.RepositoryWrapper;
 import org.eclipse.rdf4j.repository.sparql.SPARQLRepository;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

@@ -17,6 +17,7 @@ import java.util.function.Function;
 
 import org.eclipse.rdf4j.repository.DelegatingRepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

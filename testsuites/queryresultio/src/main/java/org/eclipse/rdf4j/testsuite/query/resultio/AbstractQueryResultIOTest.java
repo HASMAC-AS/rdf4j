@@ -55,6 +55,7 @@ import org.eclipse.rdf4j.query.resultio.TupleQueryResultFormat;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultParser;
 import org.eclipse.rdf4j.query.resultio.TupleQueryResultWriter;
 import org.eclipse.rdf4j.query.resultio.UnsupportedQueryResultFormatException;
+
 import org.junit.jupiter.api.Test;
 
 /**

@@ -45,6 +45,7 @@ import org.eclipse.rdf4j.query.parser.sparql.ast.ParseException;
 import org.eclipse.rdf4j.query.parser.sparql.ast.SyntaxTreeBuilder;
 import org.eclipse.rdf4j.query.parser.sparql.ast.TokenMgrError;
 import org.eclipse.rdf4j.query.parser.sparql.ast.VisitorException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;

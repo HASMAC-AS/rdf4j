@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.sail.SailConflictException;
 import org.eclipse.rdf4j.testsuite.repository.OptimisticIsolationTest;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

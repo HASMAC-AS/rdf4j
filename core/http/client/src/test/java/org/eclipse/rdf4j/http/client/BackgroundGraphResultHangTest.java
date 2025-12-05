@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFHandlerException;
 import org.eclipse.rdf4j.rio.RDFParseException;
 import org.eclipse.rdf4j.rio.helpers.AbstractRDFParser;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 

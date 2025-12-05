@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.spring.demo.dao.ArtistDao;
 import org.eclipse.rdf4j.spring.demo.dao.PaintingDao;
 import org.eclipse.rdf4j.spring.demo.model.Artist;
 import org.eclipse.rdf4j.spring.demo.model.Painting;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

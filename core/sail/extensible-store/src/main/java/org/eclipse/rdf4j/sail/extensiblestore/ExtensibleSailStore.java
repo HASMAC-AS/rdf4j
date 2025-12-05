@@ -23,6 +23,7 @@ import org.eclipse.rdf4j.sail.extensiblestore.evaluationstatistics.EvaluationSta
 import org.eclipse.rdf4j.sail.extensiblestore.evaluationstatistics.ExtensibleEvaluationStatistics;
 import org.eclipse.rdf4j.sail.extensiblestore.valuefactory.ExtensibleStatement;
 import org.eclipse.rdf4j.sail.extensiblestore.valuefactory.ExtensibleStatementHelper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

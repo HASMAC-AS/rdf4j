@@ -15,6 +15,7 @@ import java.lang.ref.Cleaner;
 import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.concurrent.locks.Lock;
 import org.eclipse.rdf4j.common.concurrent.locks.Properties;
+
 import org.slf4j.Logger;
 
 /**

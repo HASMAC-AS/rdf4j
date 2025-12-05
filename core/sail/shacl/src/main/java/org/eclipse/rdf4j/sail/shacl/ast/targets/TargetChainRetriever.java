@@ -56,6 +56,7 @@ import org.eclipse.rdf4j.sail.shacl.ast.planNodes.SingletonBindingSet;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.ValidationExecutionLogger;
 import org.eclipse.rdf4j.sail.shacl.ast.planNodes.ValidationTuple;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.rdf4j.common.concurrent.locks.diagnostics.LockCleaner;
 import org.eclipse.rdf4j.common.concurrent.locks.diagnostics.LockMonitoring;
 import org.eclipse.rdf4j.common.concurrent.locks.diagnostics.LockTracking;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

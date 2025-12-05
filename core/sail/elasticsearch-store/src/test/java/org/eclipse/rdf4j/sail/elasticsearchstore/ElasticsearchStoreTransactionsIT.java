@@ -23,7 +23,6 @@ import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.rdf4j.common.iteration.Iterations;
 import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.model.BNode;
@@ -43,6 +42,8 @@ import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.NotifyingSailConnection;
+
+import org.apache.commons.lang3.time.StopWatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,8 @@ public class ElasticsearchStoreTransactionsIT extends AbstractElasticsearchStore
 
 	@BeforeEach
 	public void before() {
-		elasticsearchStore = new ElasticsearchStore("localhost", TestHelpers.PORT, TestHelpers.CLUSTER, "testindex");
+		elasticsearchStore = new ElasticsearchStore(elasticsearchHost(), elasticsearchPort(), elasticsearchCluster(),
+				"testindex");
 		elasticsearchStore.setElasticsearchScrollTimeout(60000);
 
 		try (NotifyingSailConnection connection = elasticsearchStore.getConnection()) {

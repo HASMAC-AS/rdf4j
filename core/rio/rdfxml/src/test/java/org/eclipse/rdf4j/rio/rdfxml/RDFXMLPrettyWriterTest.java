@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.IOUtils;
 import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
@@ -40,6 +39,8 @@ import org.eclipse.rdf4j.rio.WriterConfig;
 import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings;
 import org.eclipse.rdf4j.rio.rdfxml.util.RDFXMLPrettyWriter;
 import org.eclipse.rdf4j.rio.rdfxml.util.RDFXMLPrettyWriterFactory;
+
+import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 
 public class RDFXMLPrettyWriterTest extends AbstractRDFXMLWriterTest {

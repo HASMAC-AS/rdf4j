@@ -17,6 +17,7 @@ import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class ElasticsearchStoreWalIT extends AbstractElasticsearchStoreIT {
 		assertTrue(transactionFaild);
 
 		SailRepository elasticsearchStore = new SailRepository(
-				new ElasticsearchStore("localhost", TestHelpers.PORT, TestHelpers.CLUSTER, "testindex"));
+				new ElasticsearchStore(elasticsearchHost(), elasticsearchPort(), elasticsearchCluster(), "testindex"));
 
 		try (SailRepositoryConnection connection = elasticsearchStore.getConnection()) {
 
@@ -61,8 +62,8 @@ public class ElasticsearchStoreWalIT extends AbstractElasticsearchStoreIT {
 	}
 
 	private void failedTransactionAdd(int count) {
-		ClientProviderWithDebugStats clientProvider = new ClientProviderWithDebugStats("localhost",
-				TestHelpers.PORT, TestHelpers.CLUSTER);
+		ClientProviderWithDebugStats clientProvider = new ClientProviderWithDebugStats(elasticsearchHost(),
+				elasticsearchPort(), elasticsearchCluster());
 
 		ElasticsearchStore es = new ElasticsearchStore(clientProvider, "testindex");
 		SailRepository elasticsearchStore = new SailRepository(es);
@@ -113,7 +114,7 @@ public class ElasticsearchStoreWalIT extends AbstractElasticsearchStoreIT {
 		assertTrue(transactionFaild);
 
 		SailRepository elasticsearchStore = new SailRepository(
-				new ElasticsearchStore("localhost", TestHelpers.PORT, TestHelpers.CLUSTER, "testindex"));
+				new ElasticsearchStore(elasticsearchHost(), elasticsearchPort(), elasticsearchCluster(), "testindex"));
 
 		try (SailRepositoryConnection connection = elasticsearchStore.getConnection()) {
 
@@ -127,7 +128,7 @@ public class ElasticsearchStoreWalIT extends AbstractElasticsearchStoreIT {
 
 	private void fill(int count) {
 		SailRepository elasticsearchStore = new SailRepository(
-				new ElasticsearchStore("localhost", TestHelpers.PORT, TestHelpers.CLUSTER, "testindex"));
+				new ElasticsearchStore(elasticsearchHost(), elasticsearchPort(), elasticsearchCluster(), "testindex"));
 
 		try (SailRepositoryConnection connection = elasticsearchStore.getConnection()) {
 
@@ -142,8 +143,8 @@ public class ElasticsearchStoreWalIT extends AbstractElasticsearchStoreIT {
 	}
 
 	private void failedTransactionRemove() {
-		ClientProviderWithDebugStats clientProvider = new ClientProviderWithDebugStats("localhost",
-				TestHelpers.PORT, TestHelpers.CLUSTER);
+		ClientProviderWithDebugStats clientProvider = new ClientProviderWithDebugStats(elasticsearchHost(),
+				elasticsearchPort(), elasticsearchCluster());
 
 		ElasticsearchStore es = new ElasticsearchStore(clientProvider, "testindex");
 		SailRepository elasticsearchStore = new SailRepository(es);

@@ -18,6 +18,7 @@ import java.lang.invoke.MethodHandles;
 import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.impl.TreeModelFactory;
 import org.eclipse.rdf4j.query.GraphQueryResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

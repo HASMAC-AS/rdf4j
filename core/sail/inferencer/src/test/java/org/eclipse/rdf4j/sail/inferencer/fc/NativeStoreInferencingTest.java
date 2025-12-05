@@ -16,6 +16,7 @@ import org.eclipse.rdf4j.sail.NotifyingSail;
 import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
 import org.eclipse.rdf4j.testsuite.sail.InferencingTest;
+
 import org.junit.jupiter.api.io.TempDir;
 
 public class NativeStoreInferencingTest extends InferencingTest {

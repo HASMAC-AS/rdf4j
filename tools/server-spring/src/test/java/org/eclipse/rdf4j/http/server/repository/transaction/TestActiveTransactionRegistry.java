@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.http.server.repository.transaction;
 import java.util.UUID;
 
 import org.eclipse.rdf4j.repository.Repository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import org.slf4j.Logger;

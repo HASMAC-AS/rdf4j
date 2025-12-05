@@ -40,6 +40,7 @@ import org.eclipse.rdf4j.repository.RepositoryResolverClient;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.helpers.AbstractSail;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

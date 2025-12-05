@@ -26,6 +26,7 @@ import org.eclipse.rdf4j.sparqlbuilder.rdf.RdfBlankNode;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.RdfBlankNode.PropertiesBlankNode;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.RdfLiteral.StringLiteral;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.RdfPredicate;
+
 import org.junit.jupiter.api.Test;
 
 public class Section4Test extends BaseExamples {

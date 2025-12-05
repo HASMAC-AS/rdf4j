@@ -57,6 +57,7 @@ import org.eclipse.rdf4j.sail.nativerdf.datastore.DataStore;
 import org.eclipse.rdf4j.sail.nativerdf.model.NativeValue;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWAL;
 import org.eclipse.rdf4j.sail.nativerdf.wal.ValueStoreWalConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -16,6 +16,7 @@ import org.eclipse.rdf4j.spring.domain.dao.ArtistDao;
 import org.eclipse.rdf4j.spring.domain.dao.PaintingDao;
 import org.eclipse.rdf4j.spring.domain.model.Artist;
 import org.eclipse.rdf4j.spring.domain.model.Painting;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

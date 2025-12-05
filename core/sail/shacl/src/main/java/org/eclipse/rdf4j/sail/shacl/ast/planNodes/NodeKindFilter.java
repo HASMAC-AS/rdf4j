@@ -16,6 +16,7 @@ import java.util.Objects;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.sail.shacl.ast.constraintcomponents.NodeKindConstraintComponent;
 import org.eclipse.rdf4j.sail.shacl.wrapper.data.ConnectionsGroup;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

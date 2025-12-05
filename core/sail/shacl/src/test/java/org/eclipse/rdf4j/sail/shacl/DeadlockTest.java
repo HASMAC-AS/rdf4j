@@ -13,13 +13,14 @@ package org.eclipse.rdf4j.sail.shacl;
 import java.io.File;
 import java.io.IOException;
 
-import org.assertj.core.util.Files;
 import org.eclipse.rdf4j.common.io.IOUtil;
 import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.ParentReferenceChecker;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
+
+import org.assertj.core.util.Files;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

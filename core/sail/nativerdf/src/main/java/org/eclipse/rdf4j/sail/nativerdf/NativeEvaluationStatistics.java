@@ -19,6 +19,7 @@ import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.sail.nativerdf.model.NativeValue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

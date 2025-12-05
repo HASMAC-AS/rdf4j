@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.federated.optimizer;
 import java.util.Arrays;
 
 import org.eclipse.rdf4j.federated.SPARQLBaseTest;
+
 import org.junit.jupiter.api.Test;
 
 public class OptimizerTest extends SPARQLBaseTest {

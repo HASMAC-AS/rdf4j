@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.query.resultio.AbstractQueryResultParser;
 import org.eclipse.rdf4j.query.resultio.QueryResultParseException;
 import org.eclipse.rdf4j.rio.RioSetting;
 import org.eclipse.rdf4j.rio.helpers.XMLParserSettings;
+
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;

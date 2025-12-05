@@ -39,6 +39,7 @@ import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParseException;
 import org.eclipse.rdf4j.testsuite.sparql.AbstractComplianceTest;
+
 import org.junit.jupiter.api.DynamicTest;
 
 /**
