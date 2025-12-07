@@ -31,9 +31,7 @@ import static org.lwjgl.util.lmdb.LMDB.MDB_PREV;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SET_RANGE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SUCCESS;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cmp;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_get;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_open;
 import static org.lwjgl.util.lmdb.LMDB.mdb_dbi_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_dbi_open;
 import static org.lwjgl.util.lmdb.LMDB.mdb_del;
@@ -567,7 +565,7 @@ class TripleStore implements Closeable {
 
 			MDBVal valueData = MDBVal.mallocStack(stack);
 
-			PointerBuffer pp = stack.mallocPointer(1);
+			Pool pool = Pool.get();
 
 			// test contexts list if it contains the id
 			for (Iterator<Long> it = ids.iterator(); it.hasNext();) {
@@ -600,8 +598,7 @@ class TripleStore implements Closeable {
 
 					long cursor = 0;
 					try {
-						E(mdb_cursor_open(txn, dbi, pp));
-						cursor = pp.get(0);
+						cursor = pool.getCursor(stack, txn, dbi);
 
 						if (fullScan) {
 							long[] quad = new long[4];
@@ -663,9 +660,7 @@ class TripleStore implements Closeable {
 							}
 						}
 					} finally {
-						if (cursor != 0) {
-							mdb_cursor_close(cursor);
-						}
+						pool.freeCursor(cursor, dbi);
 					}
 				}
 			}
@@ -701,8 +696,6 @@ class TripleStore implements Closeable {
 				maxKeyBuf.flip();
 				maxKey.mv_data(maxKeyBuf);
 
-				PointerBuffer pp = stack.mallocPointer(1);
-
 				MDBVal keyData = MDBVal.mallocStack(stack);
 				ByteBuffer keyBuf = stack.malloc(TripleStore.MAX_KEY_LENGTH);
 				MDBVal valueData = MDBVal.mallocStack(stack);
@@ -722,8 +715,7 @@ class TripleStore implements Closeable {
 					long cursor = 0;
 
 					try {
-						E(mdb_cursor_open(txn, dbi, pp));
-						cursor = pp.get(0);
+						cursor = pool.getCursor(stack, txn, dbi);
 
 						// set cursor to min key
 						keyData.mv_data(keyBuf);
@@ -827,9 +819,7 @@ class TripleStore implements Closeable {
 							}
 						}
 					} finally {
-						if (cursor != 0) {
-							mdb_cursor_close(cursor);
-						}
+						pool.freeCursor(cursor, dbi);
 					}
 				}
 				return cardinality;

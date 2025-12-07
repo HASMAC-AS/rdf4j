@@ -26,10 +26,8 @@ import static org.lwjgl.util.lmdb.LMDB.MDB_RDONLY;
 import static org.lwjgl.util.lmdb.LMDB.MDB_RESERVE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SET_RANGE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SUCCESS;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_del;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_get;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_open;
 import static org.lwjgl.util.lmdb.LMDB.mdb_del;
 import static org.lwjgl.util.lmdb.LMDB.mdb_env_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_env_create;
@@ -237,13 +235,12 @@ class ValueStore extends AbstractValueFactory {
 
 		// read maximum id from store
 		readTransaction(env, (stack, txn) -> {
-			long cursor = 0;
-			PointerBuffer pp = stack.mallocPointer(1);
+			Pool pool = Pool.get();
 
 			for (int lookupDbi : new int[] { dbi, freeDbi }) {
+				long cursor = 0;
 				try {
-					E(mdb_cursor_open(txn, lookupDbi, pp));
-					cursor = pp.get(0);
+					cursor = pool.getCursor(stack, txn, lookupDbi);
 
 					MDBVal keyData = MDBVal.calloc(stack);
 					// set cursor after max ID
@@ -262,9 +259,7 @@ class ValueStore extends AbstractValueFactory {
 						nextId = Math.max(nextId, (data2id(keyData.mv_data()) >> 2) + 1);
 					}
 				} finally {
-					if (cursor != 0) {
-						mdb_cursor_close(cursor);
-					}
+					pool.freeCursor(cursor, lookupDbi);
 				}
 			}
 			return null;
@@ -276,12 +271,11 @@ class ValueStore extends AbstractValueFactory {
 
 	private void logValues() throws IOException {
 		readTransaction(env, (stack, txn) -> {
+			Pool pool = Pool.get();
 			long cursor = 0;
-			PointerBuffer pp = stack.mallocPointer(1);
 
 			try {
-				E(mdb_cursor_open(txn, dbi, pp));
-				cursor = pp.get(0);
+				cursor = pool.getCursor(stack, txn, dbi);
 
 				MDBVal keyData = MDBVal.calloc(stack);
 				// set cursor to min key
@@ -298,9 +292,7 @@ class ValueStore extends AbstractValueFactory {
 					rc = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
 				}
 			} finally {
-				if (cursor != 0) {
-					mdb_cursor_close(cursor);
-				}
+				pool.freeCursor(cursor, dbi);
 			}
 			return null;
 		});
@@ -388,11 +380,10 @@ class ValueStore extends AbstractValueFactory {
 		if (freeIdsAvailable) {
 			// next id from store
 			Long reusedId = writeTransaction((stack, txn) -> {
+				Pool pool = Pool.get();
 				long cursor = 0;
 				try {
-					PointerBuffer pp = stack.mallocPointer(1);
-					E(mdb_cursor_open(txn, freeDbi, pp));
-					cursor = pp.get(0);
+					cursor = pool.getCursor(stack, txn, freeDbi);
 
 					MDBVal keyData = MDBVal.calloc(stack);
 					MDBVal valueData = MDBVal.calloc(stack);
@@ -406,9 +397,7 @@ class ValueStore extends AbstractValueFactory {
 					freeIdsAvailable = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT) == MDB_SUCCESS;
 					return null;
 				} finally {
-					if (cursor != 0) {
-						mdb_cursor_close(cursor);
-					}
+					pool.freeCursor(cursor, freeDbi);
 				}
 			});
 			if (reusedId != null) {
@@ -778,11 +767,10 @@ class ValueStore extends AbstractValueFactory {
 				hashBb.put(0, HASHID_KEY);
 				hashVal.mv_data(hashBb);
 
+				Pool pool = Pool.get();
 				long cursor = 0;
 				try {
-					PointerBuffer pp = stack.mallocPointer(1);
-					E(mdb_cursor_open(txn, dbi, pp));
-					cursor = pp.get(0);
+					cursor = pool.getCursor(stack, txn, dbi);
 
 					// iterate all entries for hash value
 					if (mdb_cursor_get(cursor, hashVal, dataVal, MDB_SET_RANGE) == MDB_SUCCESS) {
@@ -803,9 +791,7 @@ class ValueStore extends AbstractValueFactory {
 						} while (mdb_cursor_get(cursor, hashVal, dataVal, MDB_NEXT) == MDB_SUCCESS);
 					}
 				} finally {
-					if (cursor != 0) {
-						mdb_cursor_close(cursor);
-					}
+					pool.freeCursor(cursor, dbi);
 				}
 
 				if (!create) {
@@ -1039,6 +1025,7 @@ class ValueStore extends AbstractValueFactory {
 
 		ByteBuffer refIdBb = idBuffer(stack);
 
+		Pool pool = Pool.get();
 		long valuesCursor = 0;
 		try {
 			for (Long id : ids) {
@@ -1087,9 +1074,7 @@ class ValueStore extends AbstractValueFactory {
 
 							if (valuesCursor == 0) {
 								// initialize cursor
-								PointerBuffer pp = stack.mallocPointer(1);
-								E(mdb_cursor_open(txn, dbi, pp));
-								valuesCursor = pp.get(0);
+								valuesCursor = pool.getCursor(stack, txn, dbi);
 							}
 
 							if (mdb_cursor_get(valuesCursor, hashVal, dataVal, MDB_SET_RANGE) == MDB_SUCCESS) {
@@ -1129,9 +1114,7 @@ class ValueStore extends AbstractValueFactory {
 				}
 			}
 		} finally {
-			if (valuesCursor != 0) {
-				mdb_cursor_close(valuesCursor);
-			}
+			pool.freeCursor(valuesCursor, dbi);
 		}
 	}
 
@@ -1144,11 +1127,10 @@ class ValueStore extends AbstractValueFactory {
 		ByteBuffer revIdBb = stack.malloc(1 + Long.BYTES + 2 + Long.BYTES);
 
 		boolean freeIds = false;
+		Pool pool = Pool.get();
 		long unusedIdsCursor = 0;
 		try {
-			PointerBuffer pp = stack.mallocPointer(1);
-			E(mdb_cursor_open(txn, unusedDbi, pp));
-			unusedIdsCursor = pp.get(0);
+			unusedIdsCursor = pool.getCursor(stack, txn, unusedDbi);
 
 			if (revisionIds == null) {
 				// marker to delete all IDs
@@ -1181,9 +1163,7 @@ class ValueStore extends AbstractValueFactory {
 				}
 			}
 		} finally {
-			if (unusedIdsCursor != 0) {
-				mdb_cursor_close(unusedIdsCursor);
-			}
+			pool.freeCursor(unusedIdsCursor, unusedDbi);
 		}
 		this.freeIdsAvailable |= freeIds;
 	}
