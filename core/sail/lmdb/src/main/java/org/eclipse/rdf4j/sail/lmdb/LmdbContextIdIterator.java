@@ -15,9 +15,7 @@ import static org.lwjgl.util.lmdb.LMDB.MDB_NEXT;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SET;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SET_RANGE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SUCCESS;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_get;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_open;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_renew;
 
 import java.io.Closeable;
@@ -27,7 +25,6 @@ import java.nio.ByteBuffer;
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.TxnManager.Txn;
-import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.lmdb.MDBVal;
 
@@ -85,9 +82,7 @@ class LmdbContextIdIterator implements Closeable {
 			this.txn = txnRef.get();
 
 			try (MemoryStack stack = MemoryStack.stackPush()) {
-				PointerBuffer pp = stack.mallocPointer(1);
-				E(mdb_cursor_open(txn, dbi, pp));
-				cursor = pp.get(0);
+				cursor = pool.getCursor(stack, txn, dbi);
 			}
 		} finally {
 			txnLockManager.unlockRead(readStamp);
@@ -171,7 +166,7 @@ class LmdbContextIdIterator implements Closeable {
 			}
 			try {
 				if (!closed) {
-					mdb_cursor_close(cursor);
+					pool.freeCursor(cursor, dbi);
 					pool.free(keyData);
 					pool.free(valueData);
 					if (minKeyBuf != null) {

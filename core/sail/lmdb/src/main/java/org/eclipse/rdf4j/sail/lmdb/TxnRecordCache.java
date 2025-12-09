@@ -22,9 +22,7 @@ import static org.lwjgl.util.lmdb.LMDB.MDB_NOSYNC;
 import static org.lwjgl.util.lmdb.LMDB.MDB_NOTLS;
 import static org.lwjgl.util.lmdb.LMDB.MDB_RDONLY;
 import static org.lwjgl.util.lmdb.LMDB.MDB_SUCCESS;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_get;
-import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_open;
 import static org.lwjgl.util.lmdb.LMDB.mdb_del;
 import static org.lwjgl.util.lmdb.LMDB.mdb_env_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_env_create;
@@ -184,14 +182,14 @@ final class TxnRecordCache {
 
 		protected RecordCacheIterator(int dbi) throws IOException {
 			this.dbi = dbi;
+			Pool pool = Pool.get();
 			try (MemoryStack stack = MemoryStack.stackPush()) {
 				PointerBuffer pp = stack.mallocPointer(1);
 
 				E(mdb_txn_begin(env, NULL, MDB_RDONLY, pp));
 				txn = pp.get(0);
 
-				E(mdb_cursor_open(txn, dbi, pp));
-				cursor = pp.get(0);
+				cursor = pool.getCursor(stack, txn, dbi);
 			}
 		}
 
@@ -212,7 +210,7 @@ final class TxnRecordCache {
 			if (txn != 0) {
 				keyData.close();
 				valueData.close();
-				mdb_cursor_close(cursor);
+				Pool.get().freeCursor(cursor, dbi);
 				mdb_txn_abort(txn);
 				txn = 0;
 			}
