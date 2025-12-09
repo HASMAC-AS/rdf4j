@@ -11,6 +11,7 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.eclipse.rdf4j.sail.lmdb.LmdbUtil.E;
+import static org.lwjgl.util.lmdb.LMDB.MDB_SUCCESS;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_close;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_open;
 import static org.lwjgl.util.lmdb.LMDB.mdb_cursor_renew;
@@ -92,8 +93,13 @@ class Pool {
 				cursorPool[i] = cursorPool[cursorPoolIndex];
 				cursorDbiPool[i] = cursorDbiPool[cursorPoolIndex];
 				cursorPoolIndex--;
-				E(mdb_cursor_renew(txn, cursor));
-				return cursor;
+
+				int rc = mdb_cursor_renew(txn, cursor);
+				if (rc == MDB_SUCCESS) {
+					return cursor;
+				}
+
+				mdb_cursor_close(cursor);
 			}
 		}
 
