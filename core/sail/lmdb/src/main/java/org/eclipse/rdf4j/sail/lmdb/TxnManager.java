@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.IdentityHashMap;
 
+import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.LmdbUtil.Transaction;
@@ -32,7 +33,8 @@ import org.lwjgl.system.MemoryStack;
 /**
  * Manager for LMDB transactions.
  */
-class TxnManager {
+@InternalUseOnly
+public class TxnManager {
 
 	private final Mode mode;
 	private final IdentityHashMap<Txn, Boolean> active = new IdentityHashMap<>();
@@ -160,7 +162,7 @@ class TxnManager {
 		NONE
 	}
 
-	class Txn implements Closeable, AutoCloseable {
+	public class Txn implements Closeable, AutoCloseable {
 
 		private final long txn;
 		private long version;

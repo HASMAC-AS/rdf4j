@@ -16,7 +16,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
+import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.ConvertingIteration;
@@ -49,6 +52,7 @@ import org.eclipse.rdf4j.sail.base.SailSource;
 import org.eclipse.rdf4j.sail.base.SailStore;
 import org.eclipse.rdf4j.sail.lmdb.TxnManager.Txn;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+import org.eclipse.rdf4j.sail.lmdb.lftj.QuadKeyOrder;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +60,8 @@ import org.slf4j.LoggerFactory;
 /**
  * A disk based {@link SailStore} implementation that keeps committed statements in a {@link TripleStore}.
  */
-class LmdbSailStore implements SailStore {
+@InternalUseOnly
+public class LmdbSailStore implements SailStore {
 
 	final Logger logger = LoggerFactory.getLogger(LmdbSailStore.class);
 
@@ -72,6 +77,9 @@ class LmdbSailStore implements SailStore {
 	private volatile boolean asyncTransactionFinished;
 	private volatile boolean nextTransactionAsync;
 	private volatile boolean mayHaveInferred;
+
+	private volatile Map<QuadKeyOrder, Integer> explicitIndexHandles;
+	private volatile Map<QuadKeyOrder, Integer> inferredIndexHandles;
 
 	boolean enableMultiThreading = true;
 
@@ -284,6 +292,25 @@ class LmdbSailStore implements SailStore {
 	SailException wrapTripleStoreException() {
 		return tripleStoreException instanceof SailException ? (SailException) tripleStoreException
 				: new SailException(tripleStoreException);
+	}
+
+	Map<QuadKeyOrder, Integer> getIndexHandles(boolean explicit) {
+		Map<QuadKeyOrder, Integer> cached = explicit ? explicitIndexHandles : inferredIndexHandles;
+		if (cached != null) {
+			return cached;
+		}
+
+		Map<QuadKeyOrder, Integer> resolved = new LinkedHashMap<>();
+		for (Map.Entry<String, Integer> entry : tripleStore.indexHandles(explicit).entrySet()) {
+			resolved.put(QuadKeyOrder.fromFieldSequence(entry.getKey()), entry.getValue());
+		}
+
+		if (explicit) {
+			explicitIndexHandles = resolved;
+		} else {
+			inferredIndexHandles = resolved;
+		}
+		return resolved;
 	}
 
 	@Override
@@ -891,7 +918,8 @@ class LmdbSailStore implements SailStore {
 		}
 	}
 
-	private final class LmdbSailDataset implements SailDataset {
+	@InternalUseOnly
+	public final class LmdbSailDataset implements SailDataset, LmdbDatasetSnapshot {
 
 		private final boolean explicit;
 		private final Txn txn;
@@ -961,6 +989,26 @@ class LmdbSailStore implements SailStore {
 		@Override
 		public Comparator<Value> getComparator() {
 			return null;
+		}
+
+		@Override
+		public Txn getTxn() {
+			return txn;
+		}
+
+		@Override
+		public Map<QuadKeyOrder, Integer> indexHandles() {
+			return getIndexHandles(explicit);
+		}
+
+		@Override
+		public ValueStore valueStore() {
+			return valueStore;
+		}
+
+		@Override
+		public boolean isExplicit() {
+			return explicit;
 		}
 	}
 }
