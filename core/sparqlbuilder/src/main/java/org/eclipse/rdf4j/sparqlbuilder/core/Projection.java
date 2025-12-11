@@ -94,13 +94,13 @@ public class Projection extends QueryElementCollection<Projectable> {
 		StringBuilder selectStatement = new StringBuilder();
 		selectStatement.append(SELECT).append(" ");
 
+		if (isDistinct) {
+			selectStatement.append(DISTINCT).append(" ");
+		}
+
 		if (selectAll || isEmpty()) {
 			selectStatement.append("*").append(" ");
 		} else {
-			if (isDistinct) {
-				selectStatement.append(DISTINCT).append(" ");
-			}
-
 			selectStatement.append(super.getQueryString());
 		}
 
