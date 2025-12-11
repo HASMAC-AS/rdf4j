@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MemoryStoreConnection extends SailSourceConnection implements ThreadSafetyAware {
 
-private static final Logger logger = LoggerFactory.getLogger(MemoryStoreConnection.class);
+	private static final Logger logger = LoggerFactory.getLogger(MemoryStoreConnection.class);
 
 	/*-----------*
 	 * Variables *
@@ -93,60 +93,60 @@ private static final Logger logger = LoggerFactory.getLogger(MemoryStoreConnecti
 		sailChangedEvent = new DefaultSailChangedEvent(sail);
 	}
 
-@Override
-protected void addStatementInternal(Resource subj, IRI pred, Value obj, Resource... contexts) throws SailException {
+	@Override
+	protected void addStatementInternal(Resource subj, IRI pred, Value obj, Resource... contexts) throws SailException {
 // assume the triple is not yet present in the triple store
-sailChangedEvent.setStatementsAdded(true);
-}
+		sailChangedEvent.setStatementsAdded(true);
+	}
 
-@Override
-protected CloseableIteration<? extends BindingSet> evaluateInternal(TupleExpr tupleExpr, Dataset dataset,
-BindingSet bindings, boolean includeInferred) throws SailException {
+	@Override
+	protected CloseableIteration<? extends BindingSet> evaluateInternal(TupleExpr tupleExpr, Dataset dataset,
+			BindingSet bindings, boolean includeInferred) throws SailException {
 
-logger.trace("Incoming query model:\n{}", tupleExpr);
+		logger.trace("Incoming query model:\n{}", tupleExpr);
 
-if (!(tupleExpr instanceof QueryRoot)) {
+		if (!(tupleExpr instanceof QueryRoot)) {
 // Add a dummy root node to the tuple expressions to allow the optimizers to modify the actual root node
-tupleExpr = new QueryRoot(tupleExpr);
-}
+			tupleExpr = new QueryRoot(tupleExpr);
+		}
 
-SailSource branch = null;
-MemorySailStore.MemorySailDataset rdfDataset = null;
-CloseableIteration<BindingSet> iteration = null;
-boolean allGood = false;
-try {
-branch = branch(IncludeInferred.fromBoolean(includeInferred));
-rdfDataset = (MemorySailStore.MemorySailDataset) branch.dataset(getIsolationLevel());
+		SailSource branch = null;
+		MemorySailStore.MemorySailDataset rdfDataset = null;
+		CloseableIteration<BindingSet> iteration = null;
+		boolean allGood = false;
+		try {
+			branch = branch(IncludeInferred.fromBoolean(includeInferred));
+			rdfDataset = (MemorySailStore.MemorySailDataset) branch.dataset(getIsolationLevel());
 
-MemoryTripleSourceWrapper tripleSource = new MemoryTripleSourceWrapper(rdfDataset, getValueFactory());
-EvaluationStrategy strategy = getEvaluationStrategy(dataset, tripleSource);
-if (isTrackResultSize()) {
-strategy.setTrackResultSize(true);
-}
+			MemoryTripleSourceWrapper tripleSource = new MemoryTripleSourceWrapper(rdfDataset, getValueFactory());
+			EvaluationStrategy strategy = getEvaluationStrategy(dataset, tripleSource);
+			if (isTrackResultSize()) {
+				strategy.setTrackResultSize(true);
+			}
 
-tupleExpr = strategy.optimize(tupleExpr, sail.getSailStore().getEvaluationStatistics(), bindings);
-logger.trace("Optimized query model:\n{}", tupleExpr);
-QueryEvaluationStep qes = strategy.precompile(tupleExpr);
-iteration = qes.evaluate(EmptyBindingSet.getInstance());
-iteration = interlock(iteration, rdfDataset, branch);
-allGood = true;
-return iteration;
-} catch (QueryEvaluationException e) {
-throw new SailException(e);
-} finally {
-if (!allGood) {
-if (iteration != null) {
-iteration.close();
-}
-if (rdfDataset != null) {
-rdfDataset.close();
-}
-if (branch != null) {
-branch.close();
-}
-}
-}
-}
+			tupleExpr = strategy.optimize(tupleExpr, sail.getSailStore().getEvaluationStatistics(), bindings);
+			logger.trace("Optimized query model:\n{}", tupleExpr);
+			QueryEvaluationStep qes = strategy.precompile(tupleExpr);
+			iteration = qes.evaluate(EmptyBindingSet.getInstance());
+			iteration = interlock(iteration, rdfDataset, branch);
+			allGood = true;
+			return iteration;
+		} catch (QueryEvaluationException e) {
+			throw new SailException(e);
+		} finally {
+			if (!allGood) {
+				if (iteration != null) {
+					iteration.close();
+				}
+				if (rdfDataset != null) {
+					rdfDataset.close();
+				}
+				if (branch != null) {
+					branch.close();
+				}
+			}
+		}
+	}
 
 	@Override
 	public boolean addInferredStatement(Resource subj, IRI pred, Value obj, Resource... contexts) throws SailException {

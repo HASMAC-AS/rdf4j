@@ -23,7 +23,6 @@ import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategyFactory;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolver;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolverClient;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategyFactory;
-import org.eclipse.rdf4j.sail.memory.evaluation.MemoryEvaluationStrategyFactory;
 import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
 import org.eclipse.rdf4j.sail.NotifyingSailConnection;
 import org.eclipse.rdf4j.sail.SailChangedEvent;
@@ -33,6 +32,7 @@ import org.eclipse.rdf4j.sail.base.SailSink;
 import org.eclipse.rdf4j.sail.base.SailStore;
 import org.eclipse.rdf4j.sail.helpers.AbstractNotifyingSail;
 import org.eclipse.rdf4j.sail.helpers.DirectoryLockManager;
+import org.eclipse.rdf4j.sail.memory.evaluation.MemoryEvaluationStrategyFactory;
 import org.eclipse.rdf4j.sail.memory.model.MemValueFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -207,14 +207,14 @@ public class MemoryStore extends AbstractNotifyingSail implements FederatedServi
 	/**
 	 * @return Returns the {@link EvaluationStrategy}.
 	 */
-public synchronized EvaluationStrategyFactory getEvaluationStrategyFactory() {
-if (evalStratFactory == null) {
-evalStratFactory = new MemoryEvaluationStrategyFactory(getFederatedServiceResolver());
-}
-evalStratFactory.setQuerySolutionCacheThreshold(getIterationCacheSyncThreshold());
-evalStratFactory.setTrackResultSize(isTrackResultSize());
-return evalStratFactory;
-}
+	public synchronized EvaluationStrategyFactory getEvaluationStrategyFactory() {
+		if (evalStratFactory == null) {
+			evalStratFactory = new MemoryEvaluationStrategyFactory(getFederatedServiceResolver());
+		}
+		evalStratFactory.setQuerySolutionCacheThreshold(getIterationCacheSyncThreshold());
+		evalStratFactory.setTrackResultSize(isTrackResultSize());
+		return evalStratFactory;
+	}
 
 	/**
 	 * Sets the {@link EvaluationStrategy} to use.

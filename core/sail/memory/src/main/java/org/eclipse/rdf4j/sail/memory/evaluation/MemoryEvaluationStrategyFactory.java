@@ -23,40 +23,40 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.AbstractEvaluationStrateg
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.EvaluationStatistics;
 
 public class MemoryEvaluationStrategyFactory extends AbstractEvaluationStrategyFactory
-                implements FederatedServiceResolverClient {
+		implements FederatedServiceResolverClient {
 
-private FederatedServiceResolver serviceResolver;
-protected Supplier<CollectionFactory> collectionFactorySupplier = DefaultCollectionFactory::new;
+	private FederatedServiceResolver serviceResolver;
+	protected Supplier<CollectionFactory> collectionFactorySupplier = DefaultCollectionFactory::new;
 
-public MemoryEvaluationStrategyFactory() {
-}
+	public MemoryEvaluationStrategyFactory() {
+	}
 
-public MemoryEvaluationStrategyFactory(FederatedServiceResolver resolver) {
-this.serviceResolver = resolver;
-}
+	public MemoryEvaluationStrategyFactory(FederatedServiceResolver resolver) {
+		this.serviceResolver = resolver;
+	}
 
-@Override
-public void setFederatedServiceResolver(FederatedServiceResolver resolver) {
-this.serviceResolver = resolver;
-}
+	@Override
+	public void setFederatedServiceResolver(FederatedServiceResolver resolver) {
+		this.serviceResolver = resolver;
+	}
 
-@Override
-public FederatedServiceResolver getFederatedServiceResolver() {
-return serviceResolver;
-}
+	@Override
+	public FederatedServiceResolver getFederatedServiceResolver() {
+		return serviceResolver;
+	}
 
-@Override
-public void setCollectionFactory(Supplier<CollectionFactory> collectionFactory) {
-this.collectionFactorySupplier = collectionFactory;
-}
+	@Override
+	public void setCollectionFactory(Supplier<CollectionFactory> collectionFactory) {
+		this.collectionFactorySupplier = collectionFactory;
+	}
 
-@Override
-public EvaluationStrategy createEvaluationStrategy(Dataset dataset, TripleSource tripleSource,
-EvaluationStatistics evaluationStatistics) {
-MemoryEvaluationStrategy strategy = new MemoryEvaluationStrategy(tripleSource, dataset, serviceResolver,
-getQuerySolutionCacheThreshold(), evaluationStatistics, isTrackResultSize());
-getOptimizerPipeline().ifPresent(strategy::setOptimizerPipeline);
-strategy.setCollectionFactory(collectionFactorySupplier);
-return strategy;
-}
+	@Override
+	public EvaluationStrategy createEvaluationStrategy(Dataset dataset, TripleSource tripleSource,
+			EvaluationStatistics evaluationStatistics) {
+		MemoryEvaluationStrategy strategy = new MemoryEvaluationStrategy(tripleSource, dataset, serviceResolver,
+				getQuerySolutionCacheThreshold(), evaluationStatistics, isTrackResultSize());
+		getOptimizerPipeline().ifPresent(strategy::setOptimizerPipeline);
+		strategy.setCollectionFactory(collectionFactorySupplier);
+		return strategy;
+	}
 }

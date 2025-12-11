@@ -23,20 +23,21 @@ import org.eclipse.rdf4j.sail.memory.MemorySailStore.MemorySailDataset;
 
 public class MemoryTripleSourceWrapper extends SailDatasetTripleSource {
 
-private final MemorySailDataset dataset;
+	private final MemorySailDataset dataset;
 
-public MemoryTripleSourceWrapper(MemorySailDataset dataset, ValueFactory valueFactory) {
-super(valueFactory, dataset);
-this.dataset = dataset;
-}
+	public MemoryTripleSourceWrapper(MemorySailDataset dataset, ValueFactory valueFactory) {
+		super(valueFactory, dataset);
+		this.dataset = dataset;
+	}
 
-public MemorySailDataset getDataset() {
-return dataset;
-}
+	public MemorySailDataset getDataset() {
+		return dataset;
+	}
 
-@Override
-public CloseableIteration<? extends Statement> getStatements(StatementOrder order, Resource subj, IRI pred, Value obj,
-Resource... contexts) throws QueryEvaluationException {
-return super.getStatements(order, subj, pred, obj, contexts);
-}
+	@Override
+	public CloseableIteration<? extends Statement> getStatements(StatementOrder order, Resource subj, IRI pred,
+			Value obj,
+			Resource... contexts) throws QueryEvaluationException {
+		return super.getStatements(order, subj, pred, obj, contexts);
+	}
 }

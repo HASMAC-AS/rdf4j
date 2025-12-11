@@ -39,209 +39,214 @@ import org.eclipse.rdf4j.sail.memory.model.MemStatement;
 
 class MemoryWorstCaseJoinIteration extends LookAheadIteration<BindingSet> {
 
-private final List<StatementPattern> statementPatterns;
-private final MemorySailDataset dataset;
-private final QueryEvaluationContext context;
-private final BindingSet baseBindings;
-private Iterator<BindingSet> materializedResults;
+	private final List<StatementPattern> statementPatterns;
+	private final MemorySailDataset dataset;
+	private final QueryEvaluationContext context;
+	private final BindingSet baseBindings;
+	private Iterator<BindingSet> materializedResults;
 
-MemoryWorstCaseJoinIteration(List<StatementPattern> statementPatterns, MemorySailDataset dataset,
-QueryEvaluationContext context, BindingSet bindings) {
-this.statementPatterns = statementPatterns;
-this.dataset = dataset;
-this.context = context;
-this.baseBindings = bindings;
-}
+	MemoryWorstCaseJoinIteration(List<StatementPattern> statementPatterns, MemorySailDataset dataset,
+			QueryEvaluationContext context, BindingSet bindings) {
+		this.statementPatterns = statementPatterns;
+		this.dataset = dataset;
+		this.context = context;
+		this.baseBindings = bindings;
+	}
 
-@Override
-protected BindingSet getNextElement() throws QueryEvaluationException {
-if (materializedResults == null) {
-materializeResults();
-}
-if (materializedResults.hasNext()) {
-return materializedResults.next();
-}
-return null;
-}
+	@Override
+	protected BindingSet getNextElement() throws QueryEvaluationException {
+		if (materializedResults == null) {
+			materializeResults();
+		}
+		if (materializedResults.hasNext()) {
+			return materializedResults.next();
+		}
+		return null;
+	}
 
-private void materializeResults() throws QueryEvaluationException {
-Set<String> variableOrder = collectVariableOrder();
-List<BindingSet> results = new ArrayList<>();
+	private void materializeResults() throws QueryEvaluationException {
+		Set<String> variableOrder = collectVariableOrder();
+		List<BindingSet> results = new ArrayList<>();
 
-MutableBindingSet seed = new QueryBindingSet();
-for (Binding binding : baseBindings) {
-seed.addBinding(binding);
-}
+		MutableBindingSet seed = new QueryBindingSet();
+		for (Binding binding : baseBindings) {
+			seed.addBinding(binding);
+		}
 
-recurse(new ArrayList<>(variableOrder), 0, seed, results);
-materializedResults = results.iterator();
-}
+		recurse(new ArrayList<>(variableOrder), 0, seed, results);
+		materializedResults = results.iterator();
+	}
 
-private Set<String> collectVariableOrder() {
-Map<String, Integer> counts = new HashMap<>();
-for (StatementPattern pattern : statementPatterns) {
-collect(pattern.getSubjectVar(), counts);
-collect(pattern.getPredicateVar(), counts);
-collect(pattern.getObjectVar(), counts);
-collect(pattern.getContextVar(), counts);
-}
-Set<String> order = new LinkedHashSet<>();
-counts.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-.forEach(e -> order.add(e.getKey()));
-return order;
-}
+	private Set<String> collectVariableOrder() {
+		Map<String, Integer> counts = new HashMap<>();
+		for (StatementPattern pattern : statementPatterns) {
+			collect(pattern.getSubjectVar(), counts);
+			collect(pattern.getPredicateVar(), counts);
+			collect(pattern.getObjectVar(), counts);
+			collect(pattern.getContextVar(), counts);
+		}
+		Set<String> order = new LinkedHashSet<>();
+		counts.entrySet()
+				.stream()
+				.sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+				.forEach(e -> order.add(e.getKey()));
+		return order;
+	}
 
-private void collect(Var var, Map<String, Integer> counts) {
-if (var != null && !var.hasValue()) {
-counts.merge(var.getName(), 1, Integer::sum);
-}
-}
+	private void collect(Var var, Map<String, Integer> counts) {
+		if (var != null && !var.hasValue()) {
+			counts.merge(var.getName(), 1, Integer::sum);
+		}
+	}
 
-private void recurse(List<String> variableOrder, int idx, MutableBindingSet currentBindings,
-Collection<BindingSet> sink) throws QueryEvaluationException {
-if (idx >= variableOrder.size()) {
-if (patternsSatisfied(currentBindings)) {
-sink.add(new QueryBindingSet(currentBindings));
-}
-return;
-}
+	private void recurse(List<String> variableOrder, int idx, MutableBindingSet currentBindings,
+			Collection<BindingSet> sink) throws QueryEvaluationException {
+		if (idx >= variableOrder.size()) {
+			if (patternsSatisfied(currentBindings)) {
+				sink.add(new QueryBindingSet(currentBindings));
+			}
+			return;
+		}
 
-String varName = variableOrder.get(idx);
-if (currentBindings.hasBinding(varName)) {
-recurse(variableOrder, idx + 1, currentBindings, sink);
-return;
-}
+		String varName = variableOrder.get(idx);
+		if (currentBindings.hasBinding(varName)) {
+			recurse(variableOrder, idx + 1, currentBindings, sink);
+			return;
+		}
 
-Set<Value> candidates = intersectCandidates(varName, currentBindings);
-for (Value candidate : candidates) {
-MutableBindingSet next = new QueryBindingSet(currentBindings);
-next.addBinding(varName, candidate);
-recurse(variableOrder, idx + 1, next, sink);
-}
-}
+		Set<Value> candidates = intersectCandidates(varName, currentBindings);
+		for (Value candidate : candidates) {
+			MutableBindingSet next = new QueryBindingSet(currentBindings);
+			next.addBinding(varName, candidate);
+			recurse(variableOrder, idx + 1, next, sink);
+		}
+	}
 
-private boolean patternsSatisfied(MutableBindingSet bindings) throws QueryEvaluationException {
-for (StatementPattern pattern : statementPatterns) {
-if (!hasMatchingStatement(pattern, bindings)) {
-return false;
-}
-}
-return true;
-}
+	private boolean patternsSatisfied(MutableBindingSet bindings) throws QueryEvaluationException {
+		for (StatementPattern pattern : statementPatterns) {
+			if (!hasMatchingStatement(pattern, bindings)) {
+				return false;
+			}
+		}
+		return true;
+	}
 
-private Set<Value> intersectCandidates(String varName, BindingSet bindings) throws QueryEvaluationException {
-Set<Value> intersection = null;
-for (StatementPattern pattern : statementPatterns) {
-if (!usesVariable(pattern, varName)) {
-continue;
-}
+	private Set<Value> intersectCandidates(String varName, BindingSet bindings) throws QueryEvaluationException {
+		Set<Value> intersection = null;
+		for (StatementPattern pattern : statementPatterns) {
+			if (!usesVariable(pattern, varName)) {
+				continue;
+			}
 
-Set<Value> values = collectValues(pattern, varName, bindings);
-if (intersection == null) {
-intersection = values;
-} else {
-intersection.retainAll(values);
-}
+			Set<Value> values = collectValues(pattern, varName, bindings);
+			if (intersection == null) {
+				intersection = values;
+			} else {
+				intersection.retainAll(values);
+			}
 
-if (intersection.isEmpty()) {
-return Collections.emptySet();
-}
-}
+			if (intersection.isEmpty()) {
+				return Collections.emptySet();
+			}
+		}
 
-return intersection != null ? intersection : Collections.emptySet();
-}
+		return intersection != null ? intersection : Collections.emptySet();
+	}
 
-private boolean usesVariable(StatementPattern pattern, String varName) {
-return varName.equals(optionalName(pattern.getSubjectVar())) || varName.equals(optionalName(pattern.getPredicateVar()))
-|| varName.equals(optionalName(pattern.getObjectVar())) || varName.equals(optionalName(pattern.getContextVar()));
-}
+	private boolean usesVariable(StatementPattern pattern, String varName) {
+		return varName.equals(optionalName(pattern.getSubjectVar()))
+				|| varName.equals(optionalName(pattern.getPredicateVar()))
+				|| varName.equals(optionalName(pattern.getObjectVar()))
+				|| varName.equals(optionalName(pattern.getContextVar()));
+	}
 
-private String optionalName(Var var) {
-return var == null ? null : var.getName();
-}
+	private String optionalName(Var var) {
+		return var == null ? null : var.getName();
+	}
 
-private Set<Value> collectValues(StatementPattern pattern, String targetVar, BindingSet bindings)
-throws QueryEvaluationException {
-Set<Value> values = new HashSet<>();
+	private Set<Value> collectValues(StatementPattern pattern, String targetVar, BindingSet bindings)
+			throws QueryEvaluationException {
+		Set<Value> values = new HashSet<>();
 
-Resource subject = resourceValue(pattern.getSubjectVar(), bindings);
-IRI predicate = iriValue(pattern.getPredicateVar(), bindings);
-Value object = value(pattern.getObjectVar(), bindings);
-Resource[] contexts = computeContexts(pattern.getContextVar(), bindings);
-if (contexts == null) {
-return Collections.emptySet();
-}
+		Resource subject = resourceValue(pattern.getSubjectVar(), bindings);
+		IRI predicate = iriValue(pattern.getPredicateVar(), bindings);
+		Value object = value(pattern.getObjectVar(), bindings);
+		Resource[] contexts = computeContexts(pattern.getContextVar(), bindings);
+		if (contexts == null) {
+			return Collections.emptySet();
+		}
 
-try (CloseableIteration<MemStatement> stmts = dataset.getStatements(subject, predicate, object, contexts)) {
-while (stmts.hasNext()) {
-MemStatement st = stmts.next();
-if (targetVar.equals(optionalName(pattern.getSubjectVar()))) {
-values.add(st.getSubject());
-} else if (targetVar.equals(optionalName(pattern.getPredicateVar()))) {
-values.add(st.getPredicate());
-} else if (targetVar.equals(optionalName(pattern.getObjectVar()))) {
-values.add(st.getObject());
-} else if (targetVar.equals(optionalName(pattern.getContextVar()))) {
-values.add(st.getContext());
-}
-}
-} catch (QueryEvaluationException e) {
-throw e;
-} catch (Exception e) {
-throw new QueryEvaluationException(e);
-}
+		try (CloseableIteration<MemStatement> stmts = dataset.getStatements(subject, predicate, object, contexts)) {
+			while (stmts.hasNext()) {
+				MemStatement st = stmts.next();
+				if (targetVar.equals(optionalName(pattern.getSubjectVar()))) {
+					values.add(st.getSubject());
+				} else if (targetVar.equals(optionalName(pattern.getPredicateVar()))) {
+					values.add(st.getPredicate());
+				} else if (targetVar.equals(optionalName(pattern.getObjectVar()))) {
+					values.add(st.getObject());
+				} else if (targetVar.equals(optionalName(pattern.getContextVar()))) {
+					values.add(st.getContext());
+				}
+			}
+		} catch (QueryEvaluationException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new QueryEvaluationException(e);
+		}
 
-return values;
-}
+		return values;
+	}
 
-private boolean hasMatchingStatement(StatementPattern pattern, BindingSet bindings) throws QueryEvaluationException {
-Resource subject = resourceValue(pattern.getSubjectVar(), bindings);
-IRI predicate = iriValue(pattern.getPredicateVar(), bindings);
-Value object = value(pattern.getObjectVar(), bindings);
-Resource[] contexts = computeContexts(pattern.getContextVar(), bindings);
-if (contexts == null) {
-return false;
-}
+	private boolean hasMatchingStatement(StatementPattern pattern, BindingSet bindings)
+			throws QueryEvaluationException {
+		Resource subject = resourceValue(pattern.getSubjectVar(), bindings);
+		IRI predicate = iriValue(pattern.getPredicateVar(), bindings);
+		Value object = value(pattern.getObjectVar(), bindings);
+		Resource[] contexts = computeContexts(pattern.getContextVar(), bindings);
+		if (contexts == null) {
+			return false;
+		}
 
-try (CloseableIteration<MemStatement> stmts = dataset.getStatements(subject, predicate, object, contexts)) {
-return stmts.hasNext();
-} catch (QueryEvaluationException e) {
-throw e;
-} catch (Exception e) {
-throw new QueryEvaluationException(e);
-}
-}
+		try (CloseableIteration<MemStatement> stmts = dataset.getStatements(subject, predicate, object, contexts)) {
+			return stmts.hasNext();
+		} catch (QueryEvaluationException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new QueryEvaluationException(e);
+		}
+	}
 
-private Resource[] computeContexts(Var contextVar, BindingSet bindings) {
-if (contextVar == null || (!contextVar.hasValue() && !bindings.hasBinding(contextVar.getName()))) {
-return new Resource[0];
-}
+	private Resource[] computeContexts(Var contextVar, BindingSet bindings) {
+		if (contextVar == null || (!contextVar.hasValue() && !bindings.hasBinding(contextVar.getName()))) {
+			return new Resource[0];
+		}
 
-Value ctxValue = contextVar.hasValue() ? contextVar.getValue() : bindings.getValue(contextVar.getName());
-if (ctxValue instanceof Resource) {
-return new Resource[] { (Resource) ctxValue };
-}
-return null;
-}
+		Value ctxValue = contextVar.hasValue() ? contextVar.getValue() : bindings.getValue(contextVar.getName());
+		if (ctxValue instanceof Resource) {
+			return new Resource[] { (Resource) ctxValue };
+		}
+		return null;
+	}
 
-private Resource resourceValue(Var var, BindingSet bindings) {
-Value v = value(var, bindings);
-return v instanceof Resource ? (Resource) v : null;
-}
+	private Resource resourceValue(Var var, BindingSet bindings) {
+		Value v = value(var, bindings);
+		return v instanceof Resource ? (Resource) v : null;
+	}
 
-private IRI iriValue(Var var, BindingSet bindings) {
-Value v = value(var, bindings);
-return v instanceof IRI ? (IRI) v : null;
-}
+	private IRI iriValue(Var var, BindingSet bindings) {
+		Value v = value(var, bindings);
+		return v instanceof IRI ? (IRI) v : null;
+	}
 
-private Value value(Var var, BindingSet bindings) {
-if (var == null) {
-return null;
-}
-if (var.hasValue()) {
-return var.getValue();
-}
-Binding existing = bindings.getBinding(var.getName());
-return existing != null ? existing.getValue() : null;
-}
+	private Value value(Var var, BindingSet bindings) {
+		if (var == null) {
+			return null;
+		}
+		if (var.hasValue()) {
+			return var.getValue();
+		}
+		Binding existing = bindings.getBinding(var.getName());
+		return existing != null ? existing.getValue() : null;
+	}
 }

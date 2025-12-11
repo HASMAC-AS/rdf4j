@@ -32,46 +32,46 @@ import org.eclipse.rdf4j.sail.memory.MemorySailStore.MemorySailDataset;
 
 public class MemoryEvaluationStrategy extends DefaultEvaluationStrategy {
 
-public MemoryEvaluationStrategy(TripleSource tripleSource, Dataset dataset,
-FederatedServiceResolver serviceResolver, long iterationCacheSyncTreshold,
-EvaluationStatistics evaluationStatistics, boolean trackResultSize) {
-super(tripleSource, dataset, serviceResolver, iterationCacheSyncTreshold, evaluationStatistics,
-trackResultSize);
-}
+	public MemoryEvaluationStrategy(TripleSource tripleSource, Dataset dataset,
+			FederatedServiceResolver serviceResolver, long iterationCacheSyncTreshold,
+			EvaluationStatistics evaluationStatistics, boolean trackResultSize) {
+		super(tripleSource, dataset, serviceResolver, iterationCacheSyncTreshold, evaluationStatistics,
+				trackResultSize);
+	}
 
-@Override
-protected QueryEvaluationStep prepare(Join node, QueryEvaluationContext context) throws QueryEvaluationException {
-if (tripleSource instanceof MemoryTripleSourceWrapper) {
-MemoryTripleSourceWrapper memoryTripleSource = (MemoryTripleSourceWrapper) tripleSource;
-List<StatementPattern> statementPatterns = new ArrayList<>();
-if (collectStatementPatterns(node, statementPatterns)) {
-node.setAlgorithm("LeapfrogTrieJoin");
-return prepareWorstCaseJoin(statementPatterns, memoryTripleSource.getDataset(), context);
-}
-}
+	@Override
+	protected QueryEvaluationStep prepare(Join node, QueryEvaluationContext context) throws QueryEvaluationException {
+		if (tripleSource instanceof MemoryTripleSourceWrapper) {
+			MemoryTripleSourceWrapper memoryTripleSource = (MemoryTripleSourceWrapper) tripleSource;
+			List<StatementPattern> statementPatterns = new ArrayList<>();
+			if (collectStatementPatterns(node, statementPatterns)) {
+				node.setAlgorithm("LeapfrogTrieJoin");
+				return prepareWorstCaseJoin(statementPatterns, memoryTripleSource.getDataset(), context);
+			}
+		}
 
-return super.prepare(node, context);
-}
+		return super.prepare(node, context);
+	}
 
-private QueryEvaluationStep prepareWorstCaseJoin(List<StatementPattern> statementPatterns,
-MemorySailDataset dataset, QueryEvaluationContext context) {
-return new DelayedEvaluation(bindings -> worstCaseJoin(statementPatterns, dataset, context, bindings), context);
-}
+	private QueryEvaluationStep prepareWorstCaseJoin(List<StatementPattern> statementPatterns,
+			MemorySailDataset dataset, QueryEvaluationContext context) {
+		return new DelayedEvaluation(bindings -> worstCaseJoin(statementPatterns, dataset, context, bindings), context);
+	}
 
-private CloseableIteration<BindingSet> worstCaseJoin(List<StatementPattern> statementPatterns,
-MemorySailDataset dataset, QueryEvaluationContext context, BindingSet bindings) {
-return new MemoryWorstCaseJoinIteration(statementPatterns, dataset, context, bindings);
-}
+	private CloseableIteration<BindingSet> worstCaseJoin(List<StatementPattern> statementPatterns,
+			MemorySailDataset dataset, QueryEvaluationContext context, BindingSet bindings) {
+		return new MemoryWorstCaseJoinIteration(statementPatterns, dataset, context, bindings);
+	}
 
-private boolean collectStatementPatterns(TupleExpr node, List<StatementPattern> statementPatterns) {
-if (node instanceof StatementPattern) {
-statementPatterns.add((StatementPattern) node);
-return true;
-} else if (node instanceof Join) {
-Join join = (Join) node;
-return collectStatementPatterns(join.getLeftArg(), statementPatterns)
-&& collectStatementPatterns(join.getRightArg(), statementPatterns);
-}
-return false;
-}
+	private boolean collectStatementPatterns(TupleExpr node, List<StatementPattern> statementPatterns) {
+		if (node instanceof StatementPattern) {
+			statementPatterns.add((StatementPattern) node);
+			return true;
+		} else if (node instanceof Join) {
+			Join join = (Join) node;
+			return collectStatementPatterns(join.getLeftArg(), statementPatterns)
+					&& collectStatementPatterns(join.getRightArg(), statementPatterns);
+		}
+		return false;
+	}
 }
