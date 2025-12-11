@@ -931,7 +931,7 @@ class MemorySailStore implements SailStore {
 	/**
 	 * @author James Leigh
 	 */
-	private final class MemorySailDataset implements SailDataset {
+final class MemorySailDataset implements SailDataset {
 
 		private final boolean explicit;
 
