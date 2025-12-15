@@ -15,6 +15,12 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.EnumMap;
 
 import org.eclipse.rdf4j.common.io.NioFile;
 
@@ -27,6 +33,7 @@ class TxnStatusFile {
 
 	public void disable() {
 		this.disabled = true;
+		this.currentStatusCache = TxnStatus.NONE;
 	}
 
 	public enum TxnStatus {
@@ -83,7 +90,11 @@ class TxnStatusFile {
 	 */
 	public static final String FILE_NAME = "txn-status";
 
-	private final NioFile nioFile;
+	private final File statusFile;
+	private final Path statusPath;
+	private final EnumMap<TxnStatus, Path> variantPaths = new EnumMap<>(TxnStatus.class);
+	private NioFile nioFile;
+	private TxnStatus currentStatusCache;
 
 	/**
 	 * Creates a new transaction status file. New files are initialized with {@link TxnStatus#NONE}.
@@ -92,8 +103,17 @@ class TxnStatusFile {
 	 * @throws IOException If the file did not yet exist and could not be written to.
 	 */
 	public TxnStatusFile(File dataDir) throws IOException {
-		File statusFile = new File(dataDir, FILE_NAME);
+		this.statusFile = new File(dataDir, FILE_NAME);
+		this.statusPath = statusFile.toPath();
+
+		Files.createDirectories(statusPath.getParent());
+
+		for (TxnStatus status : TxnStatus.values()) {
+			variantPaths.put(status, statusPath.resolveSibling(FILE_NAME + "." + status.name()));
+		}
+
 		nioFile = new NioFile(statusFile, "rwd");
+		initializeVariantFiles();
 	}
 
 	public void close() throws IOException {
@@ -106,15 +126,43 @@ class TxnStatusFile {
 	 * @param txnStatus The transaction status to write.
 	 * @throws IOException If the transaction status could not be written to file.
 	 */
-	public void setTxnStatus(TxnStatus txnStatus) throws IOException {
+	public synchronized void setTxnStatus(TxnStatus txnStatus) throws IOException {
 		if (disabled) {
 			return;
 		}
-		if (txnStatus == TxnStatus.NONE) {
-			nioFile.truncate(0);
-		} else {
-			nioFile.writeBytes(txnStatus.onDisk, 0);
+
+		TxnStatus currentStatus = currentStatusCache != null ? currentStatusCache : getTxnStatus();
+
+		if (currentStatus == txnStatus) {
+			return;
 		}
+
+		Path currentVariant = variantPaths.get(currentStatus);
+		Path newVariant = variantPaths.get(txnStatus);
+
+		ensureVariantFile(newVariant, txnStatus);
+
+		nioFile.close();
+
+		boolean movedCurrent = false;
+		try {
+			move(statusPath, currentVariant);
+			movedCurrent = true;
+			move(newVariant, statusPath);
+		} catch (IOException e) {
+			if (movedCurrent) {
+				try {
+					move(currentVariant, statusPath);
+				} catch (IOException suppressed) {
+					e.addSuppressed(suppressed);
+				}
+			}
+			throw e;
+		} finally {
+			nioFile = new NioFile(statusFile, "rwd");
+		}
+
+		currentStatusCache = txnStatus;
 	}
 
 	/**
@@ -124,16 +172,18 @@ class TxnStatusFile {
 	 *         string.
 	 * @throws IOException If the transaction status file could not be read.
 	 */
-	public TxnStatus getTxnStatus() throws IOException {
+	public synchronized TxnStatus getTxnStatus() throws IOException {
 		if (disabled) {
-			return TxnStatus.NONE;
+			currentStatusCache = TxnStatus.NONE;
+			return currentStatusCache;
 		}
 		byte[] bytes;
 		try {
 			bytes = nioFile.readBytes(0, 1);
 		} catch (EOFException e) {
 			// empty file = NONE status
-			return TxnStatus.NONE;
+			currentStatusCache = TxnStatus.NONE;
+			return currentStatusCache;
 		}
 
 		TxnStatus status;
@@ -161,6 +211,8 @@ class TxnStatusFile {
 			status = getTxnStatusDeprecated();
 		}
 
+		currentStatusCache = status;
+
 		return status;
 
 	}
@@ -184,6 +236,39 @@ class TxnStatusFile {
 			} catch (IllegalArgumentException e2) {
 				return TxnStatus.UNKNOWN;
 			}
+		}
+	}
+
+	private void initializeVariantFiles() throws IOException {
+		currentStatusCache = getTxnStatus();
+
+		for (TxnStatus status : TxnStatus.values()) {
+			Path variantPath = variantPaths.get(status);
+			writeVariantFile(status, variantPath);
+		}
+	}
+
+	private void ensureVariantFile(Path variant, TxnStatus status) throws IOException {
+		if (Files.exists(variant)) {
+			return;
+		}
+
+		writeVariantFile(status, variant);
+	}
+
+	private void writeVariantFile(TxnStatus status, Path variant) throws IOException {
+		Files.createDirectories(variant.getParent());
+
+		byte[] contents = status == TxnStatus.NONE ? new byte[0] : status.getOnDisk();
+
+		Files.write(variant, contents, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+	}
+
+	private void move(Path source, Path target) throws IOException {
+		try {
+			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		} catch (AtomicMoveNotSupportedException e) {
+			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 }
