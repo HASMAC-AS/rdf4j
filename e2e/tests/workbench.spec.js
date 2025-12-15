@@ -33,6 +33,44 @@ async function createRepo(page) {
 
 }
 
+test('Upload form lists isolation levels', async ({page}) => {
+    await page.goto('http://localhost:8080/rdf4j-workbench/');
+
+    await createRepo(page);
+
+    await page.goto('http://localhost:8080/rdf4j-workbench/repositories/testrepo1/add');
+    await expect(page).toHaveTitle('RDF4J Workbench - Add RDF');
+
+    const options = await page.locator('#isolation-level option').evaluateAll(options => options.map(option => ({
+        value: option.value,
+        text: option.textContent.trim(),
+        selected: option.selected
+    })));
+
+    expect(options[0]).toEqual({
+        value: '',
+        text: 'Use repository default',
+        selected: true
+    });
+
+    const expectedLevels = [
+        {value: 'NONE', text: 'None'},
+        {value: 'READ_UNCOMMITTED', text: 'Read Uncommitted'},
+        {value: 'READ_COMMITTED', text: 'Read Committed'},
+        {value: 'SNAPSHOT_READ', text: 'Snapshot Read'},
+        {value: 'SNAPSHOT', text: 'Snapshot'},
+        {value: 'SERIALIZABLE', text: 'Serializable'}
+    ];
+
+    for (const expectedOption of expectedLevels) {
+        const match = options.find(option => option.value === expectedOption.value);
+        if (!match) {
+            throw new Error(`Missing option for isolation level ${expectedOption.value}`);
+        }
+        expect(match.text).toBe(expectedOption.text);
+    }
+});
+
 test('Create repo', async ({page}) => {
     await page.goto('http://localhost:8080/rdf4j-workbench/');
     page.on('dialog', dialog => {
