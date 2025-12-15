@@ -189,7 +189,7 @@ final class TxnRecordCache {
 				E(mdb_txn_begin(env, NULL, MDB_RDONLY, pp));
 				txn = pp.get(0);
 
-				cursor = pool.getCursor(stack, txn, dbi);
+				cursor = pool.getCursor(stack, env, txn, dbi);
 			}
 		}
 
@@ -210,7 +210,7 @@ final class TxnRecordCache {
 			if (txn != 0) {
 				keyData.close();
 				valueData.close();
-				Pool.get().freeCursor(cursor, dbi);
+				Pool.get().freeCursor(cursor, dbi, env);
 				mdb_txn_abort(txn);
 				txn = 0;
 			}

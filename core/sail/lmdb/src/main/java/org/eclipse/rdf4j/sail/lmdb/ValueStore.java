@@ -240,7 +240,7 @@ class ValueStore extends AbstractValueFactory {
 			for (int lookupDbi : new int[] { dbi, freeDbi }) {
 				long cursor = 0;
 				try {
-					cursor = pool.getCursor(stack, txn, lookupDbi);
+					cursor = pool.getCursor(stack, env, txn, lookupDbi);
 
 					MDBVal keyData = MDBVal.calloc(stack);
 					// set cursor after max ID
@@ -259,7 +259,7 @@ class ValueStore extends AbstractValueFactory {
 						nextId = Math.max(nextId, (data2id(keyData.mv_data()) >> 2) + 1);
 					}
 				} finally {
-					pool.freeCursor(cursor, lookupDbi);
+					pool.freeCursor(cursor, lookupDbi, env);
 				}
 			}
 			return null;
@@ -275,7 +275,7 @@ class ValueStore extends AbstractValueFactory {
 			long cursor = 0;
 
 			try {
-				cursor = pool.getCursor(stack, txn, dbi);
+				cursor = pool.getCursor(stack, env, txn, dbi);
 
 				MDBVal keyData = MDBVal.calloc(stack);
 				// set cursor to min key
@@ -292,7 +292,7 @@ class ValueStore extends AbstractValueFactory {
 					rc = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
 				}
 			} finally {
-				pool.freeCursor(cursor, dbi);
+				pool.freeCursor(cursor, dbi, env);
 			}
 			return null;
 		});
@@ -383,7 +383,7 @@ class ValueStore extends AbstractValueFactory {
 				Pool pool = Pool.get();
 				long cursor = 0;
 				try {
-					cursor = pool.getCursor(stack, txn, freeDbi);
+					cursor = pool.getCursor(stack, env, txn, freeDbi);
 
 					MDBVal keyData = MDBVal.calloc(stack);
 					MDBVal valueData = MDBVal.calloc(stack);
@@ -397,7 +397,7 @@ class ValueStore extends AbstractValueFactory {
 					freeIdsAvailable = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT) == MDB_SUCCESS;
 					return null;
 				} finally {
-					pool.freeCursor(cursor, freeDbi);
+					pool.freeCursor(cursor, freeDbi, env);
 				}
 			});
 			if (reusedId != null) {
@@ -770,7 +770,7 @@ class ValueStore extends AbstractValueFactory {
 				Pool pool = Pool.get();
 				long cursor = 0;
 				try {
-					cursor = pool.getCursor(stack, txn, dbi);
+					cursor = pool.getCursor(stack, env, txn, dbi);
 
 					// iterate all entries for hash value
 					if (mdb_cursor_get(cursor, hashVal, dataVal, MDB_SET_RANGE) == MDB_SUCCESS) {
@@ -791,7 +791,7 @@ class ValueStore extends AbstractValueFactory {
 						} while (mdb_cursor_get(cursor, hashVal, dataVal, MDB_NEXT) == MDB_SUCCESS);
 					}
 				} finally {
-					pool.freeCursor(cursor, dbi);
+					pool.freeCursor(cursor, dbi, env);
 				}
 
 				if (!create) {
@@ -1073,8 +1073,8 @@ class ValueStore extends AbstractValueFactory {
 							hashVal.mv_data(hashBb);
 
 							if (valuesCursor == 0) {
-								// initialize cursor
-								valuesCursor = pool.getCursor(stack, txn, dbi);
+// initialize cursor
+								valuesCursor = pool.getCursor(stack, env, txn, dbi);
 							}
 
 							if (mdb_cursor_get(valuesCursor, hashVal, dataVal, MDB_SET_RANGE) == MDB_SUCCESS) {
@@ -1114,7 +1114,7 @@ class ValueStore extends AbstractValueFactory {
 				}
 			}
 		} finally {
-			pool.freeCursor(valuesCursor, dbi);
+			pool.freeCursor(valuesCursor, dbi, env);
 		}
 	}
 
@@ -1130,7 +1130,7 @@ class ValueStore extends AbstractValueFactory {
 		Pool pool = Pool.get();
 		long unusedIdsCursor = 0;
 		try {
-			unusedIdsCursor = pool.getCursor(stack, txn, unusedDbi);
+			unusedIdsCursor = pool.getCursor(stack, env, txn, unusedDbi);
 
 			if (revisionIds == null) {
 				// marker to delete all IDs
@@ -1163,7 +1163,7 @@ class ValueStore extends AbstractValueFactory {
 				}
 			}
 		} finally {
-			pool.freeCursor(unusedIdsCursor, unusedDbi);
+			pool.freeCursor(unusedIdsCursor, unusedDbi, env);
 		}
 		this.freeIdsAvailable |= freeIds;
 	}

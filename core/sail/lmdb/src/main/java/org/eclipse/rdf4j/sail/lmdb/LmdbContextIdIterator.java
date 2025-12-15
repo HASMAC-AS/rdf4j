@@ -41,6 +41,7 @@ class LmdbContextIdIterator implements Closeable {
 	private long txnRefVersion;
 
 	private final long txn;
+	private final long env;
 
 	private final int dbi;
 
@@ -62,13 +63,14 @@ class LmdbContextIdIterator implements Closeable {
 
 	private final Thread ownerThread = Thread.currentThread();
 
-	LmdbContextIdIterator(int dbi, Txn txnRef) throws IOException {
+	LmdbContextIdIterator(int dbi, Txn txnRef, long env) throws IOException {
 		this.pool = Pool.get();
 		this.keyData = pool.getVal();
 		this.valueData = pool.getVal();
 
 		this.dbi = dbi;
 		this.txnRef = txnRef;
+		this.env = env;
 		this.txnLockManager = txnRef.lockManager();
 
 		long readStamp;
@@ -82,7 +84,7 @@ class LmdbContextIdIterator implements Closeable {
 			this.txn = txnRef.get();
 
 			try (MemoryStack stack = MemoryStack.stackPush()) {
-				cursor = pool.getCursor(stack, txn, dbi);
+				cursor = pool.getCursor(stack, env, txn, dbi);
 			}
 		} finally {
 			txnLockManager.unlockRead(readStamp);
@@ -166,7 +168,7 @@ class LmdbContextIdIterator implements Closeable {
 			}
 			try {
 				if (!closed) {
-					pool.freeCursor(cursor, dbi);
+					pool.freeCursor(cursor, dbi, env);
 					pool.free(keyData);
 					pool.free(valueData);
 					if (minKeyBuf != null) {

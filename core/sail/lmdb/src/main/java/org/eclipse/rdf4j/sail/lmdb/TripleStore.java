@@ -397,7 +397,7 @@ class TripleStore implements Closeable {
 						RecordIterator[] sourceIter = { null };
 						try {
 							sourceIter[0] = new LmdbRecordIterator(sourceIndex, false, -1, -1, -1, -1,
-									explicit, txnManager.createTxn(txn));
+									explicit, txnManager.createTxn(txn), env);
 
 							RecordIterator it = sourceIter[0];
 							long[] quad;
@@ -487,7 +487,7 @@ class TripleStore implements Closeable {
 	 * @throws IOException
 	 */
 	public LmdbContextIdIterator getContexts(Txn txn) throws IOException {
-		return new LmdbContextIdIterator(this.contextsDbi, txn);
+		return new LmdbContextIdIterator(this.contextsDbi, txn, env);
 	}
 
 	/**
@@ -525,7 +525,7 @@ class TripleStore implements Closeable {
 
 	private RecordIterator getTriplesUsingIndex(Txn txn, long subj, long pred, long obj, long context,
 			boolean explicit, TripleIndex index, boolean rangeSearch) throws IOException {
-		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn);
+		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn, env);
 	}
 
 	/**
@@ -598,7 +598,7 @@ class TripleStore implements Closeable {
 
 					long cursor = 0;
 					try {
-						cursor = pool.getCursor(stack, txn, dbi);
+						cursor = pool.getCursor(stack, env, txn, dbi);
 
 						if (fullScan) {
 							long[] quad = new long[4];
@@ -660,7 +660,7 @@ class TripleStore implements Closeable {
 							}
 						}
 					} finally {
-						pool.freeCursor(cursor, dbi);
+						pool.freeCursor(cursor, dbi, env);
 					}
 				}
 			}
@@ -715,7 +715,7 @@ class TripleStore implements Closeable {
 					long cursor = 0;
 
 					try {
-						cursor = pool.getCursor(stack, txn, dbi);
+						cursor = pool.getCursor(stack, env, txn, dbi);
 
 						// set cursor to min key
 						keyData.mv_data(keyBuf);
@@ -819,7 +819,7 @@ class TripleStore implements Closeable {
 							}
 						}
 					} finally {
-						pool.freeCursor(cursor, dbi);
+						pool.freeCursor(cursor, dbi, env);
 					}
 				}
 				return cardinality;

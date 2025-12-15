@@ -59,6 +59,7 @@ class LmdbRecordIterator implements RecordIterator {
 	private long txnRefVersion;
 
 	private final long txn;
+	private final long env;
 
 	private final int dbi;
 
@@ -84,7 +85,7 @@ class LmdbRecordIterator implements RecordIterator {
 	private final Thread ownerThread = Thread.currentThread();
 
 	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
-			long context, boolean explicit, Txn txnRef) throws IOException {
+			long context, boolean explicit, Txn txnRef, long env) throws IOException {
 		this.subj = subj;
 		this.pred = pred;
 		this.obj = obj;
@@ -114,6 +115,7 @@ class LmdbRecordIterator implements RecordIterator {
 
 		this.dbi = index.getDB(explicit);
 		this.txnRef = txnRef;
+		this.env = env;
 		this.txnLockManager = txnRef.lockManager();
 
 		long readStamp;
@@ -127,7 +129,7 @@ class LmdbRecordIterator implements RecordIterator {
 			this.txn = txnRef.get();
 
 			try (MemoryStack stack = MemoryStack.stackPush()) {
-				cursor = pool.getCursor(stack, txn, dbi);
+				cursor = pool.getCursor(stack, env, txn, dbi);
 			}
 		} finally {
 			txnLockManager.unlockRead(readStamp);
@@ -237,7 +239,7 @@ class LmdbRecordIterator implements RecordIterator {
 			}
 			try {
 				if (!closed) {
-					pool.freeCursor(cursor, dbi);
+					pool.freeCursor(cursor, dbi, env);
 					pool.free(keyData);
 					pool.free(valueData);
 					if (minKeyBuf != null) {

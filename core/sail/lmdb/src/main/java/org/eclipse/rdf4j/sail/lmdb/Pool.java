@@ -36,6 +36,7 @@ class Pool {
 	private final Statistics[] statisticsPool = new Statistics[512];
 	private final long[] cursorPool = new long[256];
 	private final int[] cursorDbiPool = new int[256];
+	private final long[] cursorEnvPool = new long[256];
 	private int valPoolIndex = -1;
 	private int keyPoolIndex = -1;
 	private int statisticsPoolIndex = -1;
@@ -86,12 +87,22 @@ class Pool {
 		}
 	}
 
-	final long getCursor(MemoryStack stack, long txn, int dbi) throws IOException {
+	final long getCursor(MemoryStack stack, long env, long txn, int dbi) throws IOException {
 		for (int i = cursorPoolIndex; i >= 0; i--) {
+			if (cursorEnvPool[i] != env) {
+				mdb_cursor_close(cursorPool[i]);
+				cursorPool[i] = cursorPool[cursorPoolIndex];
+				cursorDbiPool[i] = cursorDbiPool[cursorPoolIndex];
+				cursorEnvPool[i] = cursorEnvPool[cursorPoolIndex];
+				cursorPoolIndex--;
+				continue;
+			}
+
 			if (cursorDbiPool[i] == dbi) {
 				long cursor = cursorPool[i];
 				cursorPool[i] = cursorPool[cursorPoolIndex];
 				cursorDbiPool[i] = cursorDbiPool[cursorPoolIndex];
+				cursorEnvPool[i] = cursorEnvPool[cursorPoolIndex];
 				cursorPoolIndex--;
 
 				int rc = mdb_cursor_renew(txn, cursor);
@@ -108,13 +119,14 @@ class Pool {
 		return pp.get(0);
 	}
 
-	final void freeCursor(long cursor, int dbi) {
+	final void freeCursor(long cursor, int dbi, long env) {
 		if (cursor == 0) {
 			return;
 		}
 		if (cursorPoolIndex < cursorPool.length - 1) {
 			cursorPool[++cursorPoolIndex] = cursor;
 			cursorDbiPool[cursorPoolIndex] = dbi;
+			cursorEnvPool[cursorPoolIndex] = env;
 		} else {
 			mdb_cursor_close(cursor);
 		}

@@ -205,7 +205,7 @@ class PersistentSet<T extends Serializable> extends AbstractSet<T> {
 					this.txnRefVersion = txnRef.version();
 
 					try (MemoryStack stack = MemoryStack.stackPush()) {
-						cursor = pool.getCursor(stack, txnRef.get(), dbi);
+						cursor = pool.getCursor(stack, factory.env, txnRef.get(), dbi);
 					}
 				} finally {
 					txnLockManager.unlockRead(readStamp);
@@ -279,7 +279,7 @@ class PersistentSet<T extends Serializable> extends AbstractSet<T> {
 					throw new SailException(e);
 				}
 				try {
-					pool.freeCursor(cursor, dbi);
+					pool.freeCursor(cursor, dbi, factory.env);
 					txnRef.close();
 					txnRef = null;
 				} finally {
