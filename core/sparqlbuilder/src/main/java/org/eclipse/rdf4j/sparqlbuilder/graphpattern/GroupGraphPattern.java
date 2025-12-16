@@ -57,7 +57,7 @@ class GroupGraphPattern extends QueryElementCollection<GraphPattern> implements 
 
 	@Override
 	public GroupGraphPattern and(GraphPattern... patterns) {
-		if (isEmpty() && patterns.length == 1 && (isGGP(patterns[0]))) {
+		if (isEmpty() && patterns.length == 1 && isGGP(patterns[0]) && !isService(patterns[0])) {
 			copy(GraphPatterns.extractOrConvertToGGP(patterns[0]));
 		} else {
 			addElements(patterns);
@@ -124,6 +124,18 @@ class GroupGraphPattern extends QueryElementCollection<GraphPattern> implements 
 		}
 		if (pattern instanceof GraphPatternNotTriples) {
 			return ((GraphPatternNotTriples) pattern).gp instanceof GroupGraphPattern;
+		}
+
+		return false;
+	}
+
+	private static boolean isService(GraphPattern pattern) {
+		if (pattern instanceof ServiceGraphPattern) {
+			return true;
+		}
+		if (pattern instanceof GraphPatternNotTriples) {
+			GraphPatternNotTriples gp = (GraphPatternNotTriples) pattern;
+			return gp.gp instanceof ServiceGraphPattern;
 		}
 
 		return false;

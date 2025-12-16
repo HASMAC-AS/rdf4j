@@ -216,6 +216,17 @@ public class GraphPatterns {
 		return new GraphPatternNotTriples(minus);
 	}
 
+	public static GraphPatternNotTriples service(GraphName service, GraphPattern... patterns) {
+		return service(false, service, patterns);
+	}
+
+	public static GraphPatternNotTriples service(boolean silent, GraphName service, GraphPattern... patterns) {
+		ServiceGraphPattern servicePattern = new ServiceGraphPattern(service, silent);
+		servicePattern.and(patterns);
+
+		return new GraphPatternNotTriples(servicePattern);
+	}
+
 	public static GraphPatternNotTriples filterExists(boolean exists, GraphPattern... patterns) {
 		FilterExistsGraphPattern filterExists = new FilterExistsGraphPattern().exists(exists);
 		filterExists.and(patterns);

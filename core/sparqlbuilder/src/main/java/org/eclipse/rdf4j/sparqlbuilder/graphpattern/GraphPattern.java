@@ -194,6 +194,14 @@ public interface GraphPattern extends QueryElement {
 		return and(GraphPatterns.minus(patterns));
 	}
 
+	default GraphPattern service(GraphName service, GraphPattern... patterns) {
+		return and(GraphPatterns.service(service, patterns));
+	}
+
+	default GraphPattern service(boolean silent, GraphName service, GraphPattern... patterns) {
+		return and(GraphPatterns.service(silent, service, patterns));
+	}
+
 	/**
 	 * Convert this graph pattern into a named group graph pattern: <br>
 	 *

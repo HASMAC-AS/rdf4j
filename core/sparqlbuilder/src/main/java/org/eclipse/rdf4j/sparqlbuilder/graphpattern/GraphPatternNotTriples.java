@@ -100,6 +100,20 @@ public class GraphPatternNotTriples implements GraphPattern {
 		return this;
 	}
 
+	@Override
+	public GraphPatternNotTriples service(GraphName service, GraphPattern... patterns) {
+		gp = gp.service(service, patterns);
+
+		return this;
+	}
+
+	@Override
+	public GraphPatternNotTriples service(boolean silent, GraphName service, GraphPattern... patterns) {
+		gp = gp.service(silent, service, patterns);
+
+		return this;
+	}
+
 	/**
 	 * Like {@link GraphPattern#from(GraphName)}, but mutates and returns this instance
 	 *
