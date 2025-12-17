@@ -14,12 +14,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.common.exception.RDF4JException;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.UnsupportedQueryLanguageException;
@@ -34,6 +38,7 @@ import org.eclipse.rdf4j.query.algebra.UnaryTupleOperator;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryOptimizerTest;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.QueryJoinOptimizer;
 import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
+import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.parser.ParsedQuery;
 import org.eclipse.rdf4j.query.parser.QueryParserUtil;
 import org.eclipse.rdf4j.query.parser.sparql.SPARQLParser;
@@ -192,6 +197,160 @@ public class QueryJoinOptimizerTest extends QueryOptimizerTest {
 
 	}
 
+	@Test
+	public void connectedPatternsPreferredOverSelectiveIsolates() throws RDF4JException {
+		String query = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\tex:isolate ex:p ?x .",
+				"\t?a ex:p ?b .",
+				"\t?b ex:q ?c .",
+				"}",
+				"");
+
+		String expectedQuery = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\t{",
+				"\t\t?a ex:p ?b .",
+				"\t\t?b ex:q ?c .",
+				"\t}",
+				"\tex:isolate ex:p ?x .",
+				"}",
+				"");
+
+		testOptimizer(expectedQuery, query);
+	}
+
+	@Test
+	public void disconnectedComponentsAreScopedIndividually() throws RDF4JException {
+		String query = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\t?a ex:p ?b .",
+				"\t?b ex:q ?c .",
+				"\t?x ex:p ?y .",
+				"\t?y ex:q ?z .",
+				"}",
+				"");
+
+		String expectedQuery = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\t{",
+				"\t\t?a ex:p ?b .",
+				"\t\t?b ex:q ?c .",
+				"\t}",
+				"\t{",
+				"\t\t?x ex:p ?y .",
+				"\t\t?y ex:q ?z .",
+				"\t}",
+				"}",
+				"");
+
+		ParsedQuery pq = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, query, null);
+		QueryJoinOptimizer opt = getOptimizer();
+		QueryRoot optRoot = new QueryRoot(pq.getTupleExpr());
+		opt.optimize(optRoot, null, null);
+
+		ScopedJoinCollector scopedJoinCollector = new ScopedJoinCollector();
+		optRoot.visit(scopedJoinCollector);
+		assertThat(scopedJoinCollector.getScopedJoins()).hasSize(2).allSatisfy(join -> {
+			List<String> bindingNames = join.getBindingNames()
+					.stream()
+					.filter(name -> !name.startsWith("_const_"))
+					.collect(Collectors.toList());
+			assertThat(bindingNames).hasSize(3);
+		});
+
+		ParsedQuery expectedParsedQuery = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, expectedQuery, null);
+		QueryRoot root = new QueryRoot(expectedParsedQuery.getTupleExpr());
+		assertQueryModelTrees(root, optRoot);
+	}
+
+	@Test
+        public void disconnectedSingletonsAreScoped() throws RDF4JException {
+                String query = String.join("\n", "",
+                                "prefix ex: <ex:> ",
+				"select * where {",
+				"\t?x ex:p ?y .",
+				"\t?u ex:p ?v .",
+				"\t?m ex:q ?n .",
+				"}",
+				"");
+
+		ParsedQuery pq = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, query, null);
+		QueryJoinOptimizer opt = getOptimizer();
+		QueryRoot optRoot = new QueryRoot(pq.getTupleExpr());
+		opt.optimize(optRoot, null, null);
+
+		ScopedJoinCollector scopedJoinCollector = new ScopedJoinCollector();
+		optRoot.visit(scopedJoinCollector);
+
+                assertThat(scopedJoinCollector.getScopedJoins())
+                                .hasSize(2)
+                                .allSatisfy(join -> assertThat(join.isVariableScopeChange()).isTrue());
+        }
+
+        @Test
+        public void constantDisconnectedPatternsDoNotLoop() throws RDF4JException {
+                String query = String.join("\n", "",
+                                "prefix ex: <ex:> ",
+                                "select * where {",
+                                "       ex:s ex:p ex:o .",
+                                "       ?s ex:p ?o .",
+                                "}",
+                                "");
+
+                assertTimeoutPreemptively(Duration.ofSeconds(1), () -> {
+                        ParsedQuery pq = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, query, null);
+                        QueryJoinOptimizer opt = getOptimizer();
+                        QueryRoot optRoot = new QueryRoot(pq.getTupleExpr());
+
+                        opt.optimize(optRoot, null, null);
+
+                        ParsedQuery expectedParsedQuery = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, query, null);
+                        QueryRoot root = new QueryRoot(expectedParsedQuery.getTupleExpr());
+                        assertQueryModelTrees(root, optRoot);
+                });
+        }
+
+	@Test
+	public void connectedPatternsPreferredWithIrrelevantBindings() throws RDF4JException {
+		String query = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\tex:isolate ex:p ?x .",
+				"\t?a ex:p ?b .",
+				"\t?b ex:q ?c .",
+				"}",
+				"");
+
+		String expectedQuery = String.join("\n", "",
+				"prefix ex: <ex:> ",
+				"select * where {",
+				"\t{",
+				"\t\t?a ex:p ?b .",
+				"\t\t?b ex:q ?c .",
+				"\t}",
+				"\tex:isolate ex:p ?x .",
+				"}",
+				"");
+
+		ParsedQuery pq = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, query, null);
+		QueryJoinOptimizer opt = getOptimizer();
+		QueryRoot optRoot = new QueryRoot(pq.getTupleExpr());
+
+		MapBindingSet initialBindings = new MapBindingSet();
+		initialBindings.addBinding("irrelevant", SimpleValueFactory.getInstance().createIRI("ex:seed"));
+
+		opt.optimize(optRoot, null, initialBindings);
+
+		ParsedQuery expectedParsedQuery = QueryParserUtil.parseQuery(QueryLanguage.SPARQL, expectedQuery, null);
+		QueryRoot root = new QueryRoot(expectedParsedQuery.getTupleExpr());
+		assertQueryModelTrees(root, optRoot);
+	}
+
 	@Override
 	public QueryJoinOptimizer getOptimizer() {
 		return new QueryJoinOptimizer(new EvaluationStatistics(), new EmptyTripleSource());
@@ -237,6 +396,23 @@ public class QueryJoinOptimizerTest extends QueryOptimizerTest {
 		}
 	}
 
+	class ScopedJoinCollector extends AbstractQueryModelVisitor<RuntimeException> {
+
+		private final List<Join> scopedJoins = new ArrayList<>();
+
+		@Override
+		public void meet(Join join) {
+			if (join.isVariableScopeChange()) {
+				scopedJoins.add(join);
+			}
+			super.meet(join);
+		}
+
+		public List<Join> getScopedJoins() {
+			return scopedJoins;
+		}
+	}
+
 	class StatementFinder extends AbstractQueryModelVisitor<RuntimeException> {
 
 		private final List<StatementPattern> statements = new ArrayList<>();
@@ -249,6 +425,6 @@ public class QueryJoinOptimizerTest extends QueryOptimizerTest {
 		public List<StatementPattern> getStatements() {
 			return statements;
 		}
-	}
+}
 
 }

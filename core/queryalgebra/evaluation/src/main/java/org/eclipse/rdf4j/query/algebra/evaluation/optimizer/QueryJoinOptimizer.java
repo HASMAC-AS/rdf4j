@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,11 +34,16 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.AbstractQueryModelNode;
+import org.eclipse.rdf4j.query.algebra.BinaryTupleOperator;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Join;
 import org.eclipse.rdf4j.query.algebra.LeftJoin;
+import org.eclipse.rdf4j.query.algebra.Projection;
+import org.eclipse.rdf4j.query.algebra.ProjectionElem;
+import org.eclipse.rdf4j.query.algebra.ProjectionElemList;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.algebra.UnaryTupleOperator;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.ZeroLengthPath;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryOptimizer;
@@ -111,6 +117,12 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 		protected JoinVisitor() {
 			super(trackResultSize);
 
+		}
+
+		@Override
+		public void meet(Projection projection) {
+			projection.getArg().visit(this);
+			reorderWildcardProjection(projection);
 		}
 
 		@Override
@@ -217,8 +229,136 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 
 					// order all other join arguments based on available statistics
 					while (!joinArgs.isEmpty()) {
+						if (boundVars.isEmpty()) {
+							TupleExpr connected = selectBestConnectedTupleExpr(joinArgs, cardinalityMap, varsMap,
+									varFreqMap);
+
+							if (connected != null) {
+								TupleExpr partner = selectBestConnectingTupleExpr(connected, joinArgs, cardinalityMap,
+										varsMap,
+										varFreqMap);
+
+								double connectedCost = ensureCostEstimate(connected, cardinalityMap, varsMap,
+										varFreqMap);
+
+								if (partner != null) {
+									double partnerCost = ensureCostEstimate(partner, cardinalityMap, varsMap,
+											varFreqMap);
+									this.currentHighestCost = Math.max(currentHighestCost,
+											Math.max(connectedCost, partnerCost));
+
+									joinArgs.remove(connected);
+									joinArgs.remove(partner);
+
+									connected.visit(this);
+									partner.visit(this);
+
+									Join join = new Join(connected, partner);
+									join.setVariableScopeChange(true);
+									orderedJoinArgs.addLast(join);
+
+									boundVars.addAll(connected.getBindingNames());
+									boundVars.addAll(partner.getBindingNames());
+
+									continue;
+								}
+
+								this.currentHighestCost = Math.max(currentHighestCost, connectedCost);
+								joinArgs.remove(connected);
+								orderedJoinArgs.addLast(connected);
+
+								connected.visit(this);
+								boundVars.addAll(connected.getBindingNames());
+
+								continue;
+							}
+
+							if (joinArgs.size() >= 2) {
+								TupleExpr first = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
+								double firstCost = ensureCostEstimate(first, cardinalityMap, varsMap, varFreqMap);
+								Set<String> firstNonConstantNames = getNonConstantVarNames(varsMap.get(first));
+
+								if (firstNonConstantNames.isEmpty()) {
+									// fall through to the regular selection logic
+									boundVars.addAll(first.getBindingNames());
+									this.currentHighestCost = Math.max(currentHighestCost, firstCost);
+									joinArgs.remove(first);
+									orderedJoinArgs.addLast(first);
+
+									first.visit(this);
+
+									continue;
+								}
+
+								joinArgs.remove(first);
+
+								TupleExpr partner = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
+								Set<String> partnerNonConstantNames = getNonConstantVarNames(varsMap.get(partner));
+								if (partnerNonConstantNames.isEmpty()) {
+									boundVars.addAll(first.getBindingNames());
+									this.currentHighestCost = Math.max(currentHighestCost, firstCost);
+									orderedJoinArgs.addLast(first);
+
+									first.visit(this);
+
+									continue;
+								}
+								double partnerCost = ensureCostEstimate(partner, cardinalityMap, varsMap, varFreqMap);
+
+								this.currentHighestCost = Math.max(currentHighestCost,
+										Math.max(firstCost, partnerCost));
+
+								joinArgs.remove(partner);
+
+								first.visit(this);
+								partner.visit(this);
+
+								Join join = new Join(first, partner);
+								join.setVariableScopeChange(true);
+								orderedJoinArgs.addLast(join);
+
+								boundVars.addAll(first.getBindingNames());
+								boundVars.addAll(partner.getBindingNames());
+
+								continue;
+							}
+						}
+
 						TupleExpr tupleExpr = selectNextTupleExpr(joinArgs, cardinalityMap, varsMap, varFreqMap);
-						this.currentHighestCost = Math.max(currentHighestCost, tupleExpr.getCostEstimate());
+						double tupleCost = ensureCostEstimate(tupleExpr, cardinalityMap, varsMap, varFreqMap);
+
+						Set<String> tupleBindingNames = tupleExpr.getBindingNames();
+						Set<String> nonConstantBoundVars = getNonConstantBindingNames(boundVars);
+						Set<String> tupleNonConstantNames = getNonConstantVarNames(varsMap.get(tupleExpr));
+						if (!nonConstantBoundVars.isEmpty() && !tupleNonConstantNames.isEmpty()
+								&& Collections.disjoint(nonConstantBoundVars, tupleNonConstantNames)) {
+							TupleExpr partner = selectBestConnectingTupleExpr(tupleExpr, joinArgs, cardinalityMap,
+									varsMap,
+									varFreqMap);
+
+							if (partner != null) {
+								double partnerCost = ensureCostEstimate(partner, cardinalityMap, varsMap, varFreqMap);
+								this.currentHighestCost = Math.max(currentHighestCost,
+										Math.max(tupleCost, partnerCost));
+
+								joinArgs.remove(tupleExpr);
+								joinArgs.remove(partner);
+
+								tupleExpr.visit(this);
+								partner.visit(this);
+
+								Join join = new Join(tupleExpr, partner);
+								join.setVariableScopeChange(true);
+								orderedJoinArgs.addLast(join);
+
+								boundVars.addAll(tupleBindingNames);
+								boundVars.addAll(partner.getBindingNames());
+
+								continue;
+							}
+						}
+
+						this.currentHighestCost = Math.max(currentHighestCost, tupleCost);
 
 						joinArgs.remove(tupleExpr);
 						orderedJoinArgs.addLast(tupleExpr);
@@ -226,7 +366,7 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 						// Recursively optimize join arguments
 						tupleExpr.visit(this);
 
-						boundVars.addAll(tupleExpr.getBindingNames());
+						boundVars.addAll(tupleBindingNames);
 					}
 				}
 
@@ -268,6 +408,11 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 							cardinality = Math.max(cardinality, left.getResultSizeEstimate());
 							cardinality = Math.max(cardinality, right.getResultSizeEstimate());
 							Join join = new Join(left, right);
+							if (nonConstantBindingsDisjoint(left, right)
+									&& !(TupleExprs.isVariableScopeChange(left)
+											&& TupleExprs.isVariableScopeChange(right))) {
+								join.setVariableScopeChange(true);
+							}
 							join.setOrder((Var) supportedOrders.toArray()[0]);
 							join.setMergeJoin(true);
 							orderedJoinArgs.addFirst(join);
@@ -290,6 +435,11 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 						supportedOrders.retainAll(right.getSupportedOrders(tripleSource));
 
 						Join join = new Join(left, right);
+						if (nonConstantBindingsDisjoint(left, right)
+								&& !(TupleExprs.isVariableScopeChange(left)
+										&& TupleExprs.isVariableScopeChange(right))) {
+							join.setVariableScopeChange(true);
+						}
 
 						if (USE_MERGE_JOIN_FOR_LAST_STATEMENT_PATTERNS_WHEN_CROSS_JOIN) {
 							mergeJoinForCrossJoin(orderedJoinArgs, supportedOrders, left, right, join);
@@ -299,7 +449,14 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 
 					}
 					while (!orderedJoinArgs.isEmpty()) {
-						right = new Join(orderedJoinArgs.removeLast(), right);
+						TupleExpr left = orderedJoinArgs.removeLast();
+						Join join = new Join(left, right);
+						if (nonConstantBindingsDisjoint(left, right)
+								&& !(TupleExprs.isVariableScopeChange(left)
+										&& TupleExprs.isVariableScopeChange(right))) {
+							join.setVariableScopeChange(true);
+						}
+						right = join;
 					}
 
 					if (priorityJoins != null) {
@@ -590,11 +747,239 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 			return selected;
 		}
 
+		private double ensureCostEstimate(TupleExpr tupleExpr, Map<TupleExpr, Double> cardinalityMap,
+				Map<TupleExpr, List<Var>> varsMap, Map<Var, Integer> varFreqMap) {
+			double cost = tupleExpr.getCostEstimate();
+			if (cost < 0) {
+				cost = getTupleExprCost(tupleExpr, cardinalityMap, varsMap, varFreqMap);
+				tupleExpr.setCostEstimate(cost);
+			}
+
+			return cost;
+		}
+
+		private TupleExpr selectBestConnectingTupleExpr(TupleExpr pivot, List<TupleExpr> expressions,
+				Map<TupleExpr, Double> cardinalityMap, Map<TupleExpr, List<Var>> varsMap,
+				Map<Var, Integer> varFreqMap) {
+
+			List<Var> pivotVars = varsMap.get(pivot);
+			Set<String> pivotVarNames = getNonConstantVarNames(pivotVars);
+
+			if (pivotVarNames.isEmpty()) {
+				return null;
+			}
+
+			TupleExpr best = null;
+			double lowestCost = Double.POSITIVE_INFINITY;
+
+			for (TupleExpr candidate : expressions) {
+				if (candidate == pivot) {
+					continue;
+				}
+
+				List<Var> candidateVars = varsMap.get(candidate);
+				if (candidateVars == null) {
+					continue;
+				}
+
+				Set<String> candidateVarNames = getNonConstantVarNames(candidateVars);
+				if (Collections.disjoint(pivotVarNames, candidateVarNames)) {
+					continue;
+				}
+
+				double cost = getTupleExprCost(candidate, cardinalityMap, varsMap, varFreqMap);
+
+				if (best == null || cost < lowestCost) {
+					best = candidate;
+					lowestCost = cost;
+				}
+			}
+
+			return best;
+		}
+
 		/**
-		 * Selects from a list of tuple expressions the next tuple expression that should be evaluated. This method
-		 * selects the tuple expression with highest number of bound variables, preferring variables that have been
-		 * bound in other tuple expressions over variables with a fixed value.
+		 * Selects the first tuple expression to evaluate when no variables have been bound yet. The selection favours
+		 * tuple expressions that share variables with others, thereby avoiding starting execution with an isolated
+		 * pattern even when it looks highly selective.
 		 */
+		private TupleExpr selectBestConnectedTupleExpr(List<TupleExpr> expressions,
+				Map<TupleExpr, Double> cardinalityMap,
+				Map<TupleExpr, List<Var>> varsMap, Map<Var, Integer> varFreqMap) {
+			TupleExpr best = null;
+			int bestScore = 0;
+			double lowestCost = Double.POSITIVE_INFINITY;
+
+			for (TupleExpr tupleExpr : expressions) {
+				List<Var> vars = varsMap.get(tupleExpr);
+				int score = getConnectivityScore(vars, varFreqMap);
+
+				if (score > bestScore) {
+					best = tupleExpr;
+					bestScore = score;
+					lowestCost = Double.POSITIVE_INFINITY;
+				} else if (score == 0 || score < bestScore) {
+					continue;
+				}
+
+				double cost = getTupleExprCost(tupleExpr, cardinalityMap, varsMap, varFreqMap);
+				if (best == null || cost < lowestCost) {
+					best = tupleExpr;
+					lowestCost = cost;
+				}
+			}
+
+			if (bestScore == 0) {
+				return null;
+			}
+
+			return best;
+		}
+
+		private int getConnectivityScore(List<Var> vars, Map<Var, Integer> varFreqMap) {
+			if (vars == null || vars.isEmpty()) {
+				return 0;
+			}
+
+			int score = 0;
+			for (Var var : vars) {
+				if (!var.hasValue() && var.getName() != null) {
+					Integer freq = varFreqMap.get(var);
+					if (freq != null && freq > 1) {
+						score += freq - 1;
+					}
+				}
+			}
+			return score;
+		}
+
+		private Set<String> getNonConstantVarNames(List<Var> vars) {
+			if (vars == null || vars.isEmpty()) {
+				return Collections.emptySet();
+			}
+
+			Set<String> names = new HashSet<>(vars.size());
+			for (Var var : vars) {
+				if (!var.hasValue() && var.getName() != null) {
+					names.add(var.getName());
+				}
+			}
+
+			return names;
+		}
+
+		private Set<String> getNonConstantBindingNames(Set<String> bindingNames) {
+			if (bindingNames.isEmpty()) {
+				return Collections.emptySet();
+			}
+
+			Set<String> names = new HashSet<>(bindingNames.size());
+			for (String bindingName : bindingNames) {
+				if (!bindingName.startsWith("_const_")) {
+					names.add(bindingName);
+				}
+			}
+
+			return names;
+		}
+
+		private boolean nonConstantBindingsDisjoint(TupleExpr left, TupleExpr right) {
+			Set<String> leftNames = getNonConstantBindingNames(left.getBindingNames());
+			if (leftNames.isEmpty()) {
+				return false;
+			}
+
+			Set<String> rightNames = getNonConstantBindingNames(right.getBindingNames());
+			if (rightNames.isEmpty()) {
+				return false;
+			}
+
+			return Collections.disjoint(leftNames, rightNames);
+		}
+
+		private void reorderWildcardProjection(Projection projection) {
+			ProjectionElemList projectionElems = projection.getProjectionElemList();
+			List<ProjectionElem> elements = projectionElems.getElements();
+
+			if (elements.isEmpty()) {
+				return;
+			}
+
+			List<String> orderedBindings = getOrderedBindingNames(projection.getArg());
+			if (!isWildcardProjection(elements, orderedBindings)) {
+				return;
+			}
+
+			Map<String, ProjectionElem> projectionByName = new HashMap<>((elements.size() + 1) * 2);
+			for (ProjectionElem element : elements) {
+				projectionByName.put(element.getName(), element);
+			}
+
+			List<ProjectionElem> reordered = new ArrayList<>(elements.size());
+			for (String name : orderedBindings) {
+				ProjectionElem projectionElem = projectionByName.get(name);
+				if (projectionElem != null) {
+					reordered.add(projectionElem);
+				}
+			}
+
+			if (reordered.size() == elements.size() && !reordered.equals(elements)) {
+				projectionElems.setElements(reordered);
+			}
+		}
+
+		private boolean isWildcardProjection(List<ProjectionElem> elements, List<String> bindingOrder) {
+			if (bindingOrder.isEmpty() || elements.size() != bindingOrder.size()) {
+				return false;
+			}
+
+			Set<String> bindingNames = new HashSet<>(bindingOrder);
+
+			for (ProjectionElem elem : elements) {
+				String projectionName = elem.getProjectionAlias().orElse(null);
+				String name = elem.getName();
+
+				if (elem.getSourceExpression() != null) {
+					return false;
+				}
+
+				if (projectionName != null && !projectionName.equals(name)) {
+					return false;
+				}
+
+				if (!bindingNames.contains(name)) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		private List<String> getOrderedBindingNames(TupleExpr expr) {
+			LinkedHashSet<String> ordered = new LinkedHashSet<>();
+			collectBindingNames(expr, ordered);
+			return new ArrayList<>(ordered);
+		}
+
+		private void collectBindingNames(TupleExpr expr, Set<String> names) {
+			if (expr instanceof StatementPattern) {
+				for (Var var : ((StatementPattern) expr).getVarList()) {
+					if (!var.hasValue() && var.getName() != null) {
+						names.add(var.getName());
+					}
+				}
+			} else if (expr instanceof BinaryTupleOperator) {
+				collectBindingNames(((BinaryTupleOperator) expr).getLeftArg(), names);
+				collectBindingNames(((BinaryTupleOperator) expr).getRightArg(), names);
+			} else if (expr instanceof UnaryTupleOperator) {
+				collectBindingNames(((UnaryTupleOperator) expr).getArg(), names);
+			} else {
+				for (String name : expr.getBindingNames()) {
+					names.add(name);
+				}
+			}
+		}
+
 		protected TupleExpr selectNextTupleExpr(List<TupleExpr> expressions, Map<TupleExpr, Double> cardinalityMap,
 				Map<TupleExpr, List<Var>> varsMap, Map<Var, Integer> varFreqMap) {
 			if (expressions.size() == 1) {
