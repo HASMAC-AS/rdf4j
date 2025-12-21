@@ -238,6 +238,7 @@ It takes the following configuration options:
 - `config:native.valueIDCacheSize` (integer). Specifices the size of the value ID cache (optional).
 - `config:native.namespaceCacheSize` (integer). Specifies the size of the namespace cache (optional).
 - `config:native.namespaceIDCacheSize` (integer). Specifies the size of the namespace ID cache (optional).
+- `config:native.memoryMappedTxnStatusFile` (boolean). Enables the experimental memory-mapped transaction status file instead of the default file-channel implementation (optional).
 
 ##### Native store indexes
 
