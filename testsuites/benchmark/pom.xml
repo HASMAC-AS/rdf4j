@@ -8,7 +8,7 @@
 	</parent>
 	<artifactId>rdf4j-benchmark</artifactId>
 	<name>RDF4J: benchmarks</name>
-	<description />
+	<description/>
 	<dependencies>
 		<dependency>
 			<groupId>org.openjdk.jmh</groupId>
@@ -29,6 +29,11 @@
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>rdf4j-sail-inferencer</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>rdf4j-benchmark-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
@@ -109,7 +114,7 @@
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<mainClass>org.openjdk.jmh.Main</mainClass>
 								</transformer>
-								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
 							</transformers>
 						</configuration>
 					</execution>
