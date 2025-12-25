@@ -86,7 +86,7 @@ public class ReasoningUpdateBenchmark {
 	private int getSize(SailRepository sail) {
 		try (SailRepositoryConnection connection = sail.getConnection()) {
 			try (TupleQueryResult evaluate = connection
-					.prepareTupleQuery("select (count (*) as ?count) where {?a ?b ?c}")
+					.prepareTupleQuery(BenchmarkQueries.COUNT_STATEMENTS)
 					.evaluate()) {
 				return ((Literal) evaluate.next().getBinding("count").getValue()).intValue();
 
