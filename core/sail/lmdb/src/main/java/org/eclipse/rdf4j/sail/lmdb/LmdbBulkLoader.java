@@ -74,12 +74,11 @@ class LmdbBulkLoader {
 
 		ValueStore valueStore = new ValueStore(new File(dataDir, "values"), config);
 		try {
-			writeIdFile(valueStore, inputFile, idFile, format, baseUri, maxIds);
-
 			try (TripleStore tripleStore = new TripleStore(new File(dataDir, "triples"), config, valueStore)) {
 				if (tripleStore.hasTriples(true) || tripleStore.hasTriples(false)) {
 					throw new SailException("Bulk load requires an empty LMDB store");
 				}
+				writeIdFile(valueStore, inputFile, idFile, format, baseUri, maxIds);
 				loadIndexes(tripleStore, idFile, workDir, maxIds);
 			}
 			success = true;

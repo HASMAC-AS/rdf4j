@@ -12,6 +12,7 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,10 +20,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.rio.RDFFormat;
+import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -45,6 +50,35 @@ class LmdbBulkLoadTest {
 			assertEquals(3L, connection.size());
 		} finally {
 			repository.shutDown();
+		}
+	}
+
+	@Test
+	void testBulkLoadRejectsNonEmptyStore() throws Exception {
+		Path inputFile = copyResourceToTempFile("bulkload/bulk-load.nq");
+		LmdbStoreConfig config = new LmdbStoreConfig("spoc,posc,cspo");
+		ValueFactory valueFactory = SimpleValueFactory.getInstance();
+
+		LmdbStore seedStore = new LmdbStore(dataDir.toFile(), config);
+		SailRepository repository = new SailRepository(seedStore);
+		repository.init();
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.add(valueFactory.createIRI("urn:seed-subject"), valueFactory.createIRI("urn:seed-predicate"),
+					valueFactory.createIRI("urn:seed-object"));
+		} finally {
+			repository.shutDown();
+		}
+
+		LmdbStore store = new LmdbStore(dataDir.toFile(), config);
+
+		assertThrows(SailException.class, () -> store.bulkLoad(inputFile, RDFFormat.NQUADS, null));
+
+		ValueStore valueStore = new ValueStore(dataDir.resolve("values").toFile(), config);
+		try {
+			long id = valueStore.getId(valueFactory.createIRI("urn:subject-1"));
+			assertEquals(LmdbValue.UNKNOWN_ID, id);
+		} finally {
+			valueStore.close();
 		}
 	}
 
