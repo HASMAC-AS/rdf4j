@@ -103,7 +103,7 @@ class LmdbBulkLoader {
 			}
 			success = true;
 		} catch (IOException | RDFParseException | RDFHandlerException e) {
-			throw new SailException("Bulk load failed", e);
+			throw new SailException("Bulk load failed; delete the indexes before retrying", e);
 		} finally {
 			if (success && workDir != null) {
 				try {
