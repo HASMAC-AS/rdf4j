@@ -12,6 +12,8 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -24,6 +26,7 @@ import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.SailConnection;
+import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -59,6 +62,23 @@ class LmdbBulkLoadTest {
 				assertEquals(2, countStatements(conn.getStatements(null, p1, null, false)));
 				assertEquals(2, countStatements(conn.getStatements(null, null, null, false, ctx1)));
 			}
+		} finally {
+			store.shutDown();
+		}
+	}
+
+	@Test
+	void bulkLoadFailureMentionsIndexCleanup() throws Exception {
+		Path dataFile = dataDir.resolve("broken.nq");
+		Files.writeString(dataFile, "<urn:s1> <urn:p1> <urn:o1>", StandardCharsets.UTF_8);
+
+		LmdbStore store = new LmdbStore(dataDir.toFile(), new LmdbStoreConfig("spoc,posc,cspo"));
+		store.init();
+		try {
+			SailException exception = assertThrows(SailException.class,
+					() -> store.bulkLoad(dataFile, RDFFormat.NQUADS));
+			assertTrue(exception.getMessage().contains("delete the indexes"),
+					"Expected guidance to delete the indexes after failure");
 		} finally {
 			store.shutDown();
 		}
