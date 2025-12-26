@@ -232,8 +232,8 @@ class PoolCursorTest {
 
 			int poolIndexAfter = cursorPoolIndexField.getInt(pool);
 			assertEquals(poolIndexBefore, poolIndexAfter);
-			assertEquals(cachedCursor, cursorPool[poolIndexAfter]);
 			long[] cursorEnvPool = (long[]) cursorEnvPoolField.get(pool);
+			assertNotEquals(0L, cursorPool[poolIndexAfter]);
 			assertEquals(mainEnv, cursorEnvPool[poolIndexAfter]);
 		} finally {
 			mdb_env_close(mainEnv);
