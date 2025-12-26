@@ -17,6 +17,7 @@ import static org.eclipse.rdf4j.sail.lmdb.LmdbUtil.transaction;
 import static org.eclipse.rdf4j.sail.lmdb.Varint.readQuadUnsigned;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.util.lmdb.LMDB.MDB_APPEND;
 import static org.lwjgl.util.lmdb.LMDB.MDB_CREATE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_FIRST;
 import static org.lwjgl.util.lmdb.LMDB.MDB_KEYEXIST;
@@ -853,6 +854,10 @@ class TripleStore implements Closeable {
 		return bestIndex;
 	}
 
+	List<TripleIndex> getIndexes() {
+		return List.copyOf(indexes);
+	}
+
 	private boolean requiresResize() {
 		if (autoGrow) {
 			return LmdbUtil.requiresResize(mapSize, pageSize, writeTxn, 0);
@@ -925,6 +930,70 @@ class TripleStore implements Closeable {
 		}
 
 		return stAdded;
+	}
+
+	private void ensureWriteTransactionCapacity(long requiredSize) throws IOException {
+		if (!autoGrow) {
+			return;
+		}
+		if (LmdbUtil.requiresResize(mapSize, pageSize, writeTxn, requiredSize)) {
+			E(mdb_txn_commit(writeTxn));
+			mapSize = LmdbUtil.autoGrowMapSize(mapSize, pageSize, requiredSize);
+			E(mdb_env_set_mapsize(env, mapSize));
+			try (MemoryStack stack = stackPush()) {
+				PointerBuffer pp = stack.mallocPointer(1);
+				E(mdb_txn_begin(env, NULL, 0, pp));
+				writeTxn = pp.get(0);
+			}
+		}
+	}
+
+	IndexWriter createIndexWriter(TripleIndex index, boolean explicit, boolean updateContexts, boolean append) {
+		return new IndexWriter(index, explicit, updateContexts, append);
+	}
+
+	final class IndexWriter implements AutoCloseable {
+		private final TripleIndex index;
+		private final boolean explicit;
+		private final boolean updateContexts;
+		private final boolean append;
+		private final MemoryStack stack;
+		private final MDBVal keyVal;
+		private final MDBVal dataVal;
+		private final ByteBuffer keyBuf;
+
+		private IndexWriter(TripleIndex index, boolean explicit, boolean updateContexts, boolean append) {
+			this.index = index;
+			this.explicit = explicit;
+			this.updateContexts = updateContexts;
+			this.append = append;
+			this.stack = stackPush();
+			this.keyVal = MDBVal.malloc(stack);
+			this.dataVal = MDBVal.calloc(stack);
+			this.keyBuf = stack.malloc(MAX_KEY_LENGTH);
+		}
+
+		void store(long[] quad) throws IOException {
+			ensureWriteTransactionCapacity(0);
+			keyBuf.clear();
+			index.toKey(keyBuf, quad[SUBJ_IDX], quad[PRED_IDX], quad[OBJ_IDX], quad[CONTEXT_IDX]);
+			keyBuf.flip();
+			keyVal.mv_data(keyBuf);
+			int flags = append ? MDB_APPEND | MDB_NOOVERWRITE : MDB_NOOVERWRITE;
+			int rc = mdb_put(writeTxn, index.getDB(explicit), keyVal, dataVal, flags);
+			if (rc == MDB_KEYEXIST) {
+				return;
+			}
+			E(rc);
+			if (updateContexts && rc == MDB_SUCCESS) {
+				incrementContext(stack, quad[CONTEXT_IDX]);
+			}
+		}
+
+		@Override
+		public void close() {
+			stack.close();
+		}
 	}
 
 	private void incrementContext(MemoryStack stack, long context) throws IOException {

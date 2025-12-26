@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -36,6 +37,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceRes
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolverClient;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategyFactory;
 import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
+import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.InterruptedSailException;
 import org.eclipse.rdf4j.sail.NotifyingSailConnection;
 import org.eclipse.rdf4j.sail.SailException;
@@ -162,6 +164,44 @@ public class LmdbStore extends AbstractNotifyingSail implements FederatedService
 	public void setDataDir(File dataDir) {
 		super.setDataDir(dataDir);
 		isTmpDatadir = (dataDir == null);
+	}
+
+	public void bulkLoad(Path inputFile, RDFFormat format, String baseUri) throws SailException {
+		Objects.requireNonNull(inputFile, "inputFile must not be null");
+		Objects.requireNonNull(format, "format must not be null");
+
+		if (isInitialized()) {
+			throw new SailException("Bulk load must be invoked before initializing the store");
+		}
+
+		File dataDir = getDataDir();
+		if (dataDir == null) {
+			try {
+				setDataDir(Files.createTempDirectory("rdf4j-lmdb-tmp").toFile());
+				isTmpDatadir = true;
+			} catch (IOException ioe) {
+				throw new SailException("Temp data dir could not be created", ioe);
+			}
+			dataDir = getDataDir();
+		} else if (!dataDir.exists()) {
+			boolean success = dataDir.mkdirs();
+			if (!success) {
+				throw new SailException("Unable to create data directory: " + dataDir);
+			}
+		} else if (!dataDir.isDirectory()) {
+			throw new SailException("The specified path does not denote a directory: " + dataDir);
+		} else if (!dataDir.canRead()) {
+			throw new SailException("Not allowed to read from the specified directory: " + dataDir);
+		}
+
+		Lock bulkLoadLock = new DirectoryLockManager(dataDir).lockOrFail();
+		try {
+			new LmdbBulkLoader(dataDir, config).load(inputFile, format, baseUri);
+		} catch (IOException e) {
+			throw new SailException(e);
+		} finally {
+			bulkLoadLock.release();
+		}
 	}
 
 	/**
