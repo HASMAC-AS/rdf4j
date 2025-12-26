@@ -17,6 +17,7 @@ import static org.eclipse.rdf4j.sail.lmdb.LmdbUtil.transaction;
 import static org.eclipse.rdf4j.sail.lmdb.Varint.readQuadUnsigned;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.util.lmdb.LMDB.MDB_APPEND;
 import static org.lwjgl.util.lmdb.LMDB.MDB_CREATE;
 import static org.lwjgl.util.lmdb.LMDB.MDB_FIRST;
 import static org.lwjgl.util.lmdb.LMDB.MDB_KEYEXIST;
@@ -515,6 +516,32 @@ class TripleStore implements Closeable {
 		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch);
 	}
 
+	List<String> getIndexFieldSequences() {
+		List<String> sequences = new ArrayList<>(indexes.size());
+		for (TripleIndex index : indexes) {
+			sequences.add(new String(index.getFieldSeq()));
+		}
+		return sequences;
+	}
+
+	BulkIndexWriter beginBulkLoad(String fieldSeq, boolean explicit, boolean updateContexts) throws IOException {
+		TripleIndex index = null;
+		for (TripleIndex candidate : indexes) {
+			if (new String(candidate.getFieldSeq()).equals(fieldSeq)) {
+				index = candidate;
+				break;
+			}
+		}
+		if (index == null) {
+			throw new IllegalArgumentException("Unknown triple index: " + fieldSeq);
+		}
+		if (writeTxn != 0) {
+			throw new IOException("Bulk load cannot start while another write transaction is active");
+		}
+		startTransaction();
+		return new BulkIndexWriter(index, explicit, updateContexts);
+	}
+
 	boolean hasTriples(boolean explicit) throws IOException {
 		TripleIndex mainIndex = indexes.get(0);
 		return txnManager.doWith((stack, txn) -> {
@@ -925,6 +952,117 @@ class TripleStore implements Closeable {
 		}
 
 		return stAdded;
+	}
+
+	class BulkIndexWriter implements AutoCloseable {
+
+		private final TripleIndex index;
+		private final boolean explicit;
+		private final boolean updateContexts;
+		private final MemoryStack stack;
+		private final MDBVal keyVal;
+		private final MDBVal dataVal;
+		private final ByteBuffer keyBuf;
+		private byte[] lastKey;
+		private int lastKeyLength;
+		private boolean closed;
+
+		BulkIndexWriter(TripleIndex index, boolean explicit, boolean updateContexts) {
+			this.index = index;
+			this.explicit = explicit;
+			this.updateContexts = updateContexts;
+			this.stack = MemoryStack.stackPush();
+			this.keyVal = MDBVal.malloc(stack);
+			this.dataVal = MDBVal.calloc(stack);
+			this.keyBuf = stack.malloc(MAX_KEY_LENGTH);
+		}
+
+		void append(long[] quad) throws IOException {
+			if (closed) {
+				throw new IOException("Bulk index writer is closed");
+			}
+			if (requiresResize()) {
+				commit();
+				mapSize = LmdbUtil.autoGrowMapSize(mapSize, pageSize, 0);
+				E(mdb_env_set_mapsize(env, mapSize));
+				startTransaction();
+			}
+
+			keyBuf.clear();
+			index.toKey(keyBuf, quad[SUBJ_IDX], quad[PRED_IDX], quad[OBJ_IDX], quad[CONTEXT_IDX]);
+			keyBuf.flip();
+
+			int compare = compareKey(keyBuf, lastKey, lastKeyLength);
+			if (compare == 0) {
+				return;
+			}
+			if (compare < 0) {
+				throw new IOException(
+						"Bulk load produced out-of-order keys for index " + new String(index.getFieldSeq()));
+			}
+
+			keyVal.mv_data(keyBuf);
+			int rc = mdb_put(writeTxn, index.getDB(explicit), keyVal, dataVal, MDB_APPEND);
+			if (rc != MDB_SUCCESS) {
+				throw new IOException(mdb_strerror(rc));
+			}
+
+			if (updateContexts) {
+				incrementContext(stack, quad[CONTEXT_IDX]);
+			}
+
+			cacheLastKey(keyBuf);
+		}
+
+		private void cacheLastKey(ByteBuffer keyBuf) {
+			int length = keyBuf.remaining();
+			if (lastKey == null || lastKey.length < length) {
+				lastKey = new byte[length];
+			}
+			ByteBuffer duplicate = keyBuf.duplicate();
+			duplicate.get(lastKey, 0, length);
+			lastKeyLength = length;
+		}
+
+		@Override
+		public void close() throws IOException {
+			if (closed) {
+				return;
+			}
+			closed = true;
+			try {
+				commit();
+			} finally {
+				stack.pop();
+			}
+		}
+
+		void abort() throws IOException {
+			if (closed) {
+				return;
+			}
+			closed = true;
+			try {
+				rollback();
+			} finally {
+				stack.pop();
+			}
+		}
+	}
+
+	private int compareKey(ByteBuffer current, byte[] lastKey, int lastKeyLength) {
+		if (lastKey == null) {
+			return 1;
+		}
+		int length = current.remaining();
+		int min = Math.min(length, lastKeyLength);
+		for (int i = 0; i < min; i++) {
+			int diff = (current.get(current.position() + i) & 0xff) - (lastKey[i] & 0xff);
+			if (diff != 0) {
+				return diff;
+			}
+		}
+		return Integer.compare(length, lastKeyLength);
 	}
 
 	private void incrementContext(MemoryStack stack, long context) throws IOException {
