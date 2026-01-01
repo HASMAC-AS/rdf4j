@@ -53,6 +53,7 @@ public class DefaultEvaluationStrategyFactory extends AbstractEvaluationStrategy
 		DefaultEvaluationStrategy strategy = new DefaultEvaluationStrategy(tripleSource, dataset, serviceResolver,
 				getQuerySolutionCacheThreshold(), evaluationStatistics, isTrackResultSize());
 		getOptimizerPipeline().ifPresent(strategy::setOptimizerPipeline);
+		strategy.setFeedbackConfiguration(getFeedbackConfiguration());
 		strategy.setCollectionFactory(collectionFactorySupplier);
 		return strategy;
 	}

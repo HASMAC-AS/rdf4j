@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.query.algebra.evaluation.impl;
 import java.util.Optional;
 
 import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategyFactory;
+import org.eclipse.rdf4j.query.algebra.evaluation.FeedbackConfiguration;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryOptimizerPipeline;
 
 /**
@@ -28,6 +29,7 @@ public abstract class AbstractEvaluationStrategyFactory implements EvaluationStr
 	private boolean trackResultSize;
 
 	private QueryOptimizerPipeline pipeline;
+	private FeedbackConfiguration feedbackConfiguration = FeedbackConfiguration.disabled();
 
 	@Override
 	public void setQuerySolutionCacheThreshold(long threshold) {
@@ -57,5 +59,16 @@ public abstract class AbstractEvaluationStrategyFactory implements EvaluationStr
 	@Override
 	public void setTrackResultSize(boolean trackResultSize) {
 		this.trackResultSize = trackResultSize;
+	}
+
+	@Override
+	public void setFeedbackConfiguration(FeedbackConfiguration feedbackConfiguration) {
+		this.feedbackConfiguration = feedbackConfiguration == null ? FeedbackConfiguration.disabled()
+				: feedbackConfiguration;
+	}
+
+	@Override
+	public FeedbackConfiguration getFeedbackConfiguration() {
+		return feedbackConfiguration;
 	}
 }

@@ -57,6 +57,7 @@ public class ExtendedEvaluationStrategyFactory extends AbstractEvaluationStrateg
 		ExtendedEvaluationStrategy extendedEvaluationStrategy = new ExtendedEvaluationStrategy(tripleSource, dataset,
 				serviceResolver, getQuerySolutionCacheThreshold(),
 				evaluationStatistics);
+		extendedEvaluationStrategy.setFeedbackConfiguration(getFeedbackConfiguration());
 		extendedEvaluationStrategy.setCollectionFactory(collectionFactorySupplier);
 		return extendedEvaluationStrategy;
 	}

@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.eclipse.rdf4j.collection.factory.api.CollectionFactory;
+import org.eclipse.rdf4j.common.annotation.Experimental;
 import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 
@@ -94,6 +95,24 @@ public interface EvaluationStrategyFactory {
 	 */
 	default void setCollectionFactory(Supplier<CollectionFactory> collectionFactory) {
 		// no-op for backwards compatibility
+	}
+
+	/**
+	 * Configure feedback-driven telemetry and planning adjustments.
+	 *
+	 * @param feedbackConfiguration configuration to apply
+	 */
+	@Experimental
+	default void setFeedbackConfiguration(FeedbackConfiguration feedbackConfiguration) {
+		// no-op for backwards compatibility
+	}
+
+	/**
+	 * Return the current feedback configuration.
+	 */
+	@Experimental
+	default FeedbackConfiguration getFeedbackConfiguration() {
+		return FeedbackConfiguration.disabled();
 	}
 
 }

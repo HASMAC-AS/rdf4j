@@ -1,3 +1,80 @@
+# Fully Featured Closed-Loop Optimizer
+
+This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and
+`Outcomes & Retrospective` must be kept up to date as work proceeds. This document must be maintained in accordance
+with `PLANS.md` at the repository root.
+
+## Purpose / Big Picture
+
+Deliver a closed-loop planning feedback foundation so the engine can capture predicted vs actual plan metrics with
+deterministic plan/node identities, enabling later telemetry, correction, and adaptive planning. In Phase 0 we only
+establish plan/node identities and baseline observability without changing query semantics.
+
+## Progress
+
+- [x] (2026-01-01 22:19Z) Assign plan node ids/hashes after optimization.
+- [ ] (2026-01-01 22:19Z) Expose plan hash in explanations.
+- [ ] (2026-01-01 22:19Z) Implement telemetry sink and OBSERVE mode.
+- [ ] (2026-01-01 22:19Z) Add SHADOW apply-diff explain output.
+- [ ] (2026-01-01 22:19Z) Implement APPLY_SAFE correction logic.
+
+## Surprises & Discoveries
+
+- Observation: None so far.
+
+## Decision Log
+
+- Decision: Use a `PlanNodeDiagnostics` helper to compute a deterministic plan shape hash (FNV-1a over node signatures
+  and join algorithm names) and assign preorder node ids during `DefaultEvaluationStrategy.optimize`.
+  Rationale: Low overhead, stable across identical planning inputs, aligns with Phase 0 requirements.
+  Date/Author: 2026-01-01 / Codex
+
+## Outcomes & Retrospective
+
+- Outcome: Phase 0 groundwork started with deterministic plan metadata. Remaining Phase 0 acceptance work is listed in
+  Progress.
+
+## Context and Orientation
+
+Relevant query model types live in `core/queryalgebra/model/src/main/java/org/eclipse/rdf4j/query/algebra/`.
+Optimization entry points are in `core/queryalgebra/evaluation/.../DefaultEvaluationStrategy.java`, which applies the
+optimizer pipeline before execution. Plan explanations are built via
+`core/queryalgebra/model/src/main/java/org/eclipse/rdf4j/query/algebra/helpers/QueryModelTreeToGenericPlanNode.java`.
+
+## Plan of Work
+
+Start with Phase 0 acceptance gates in the delivery roadmap. Wire deterministic plan/node identities into the
+optimized query model. Next, add telemetry ingestion and OBSERVE-mode storage (Phase 1), then SHADOW explain
+adjustments (Phase 2), then APPLY_SAFE online corrections (Phase 3). Later phases remain in Part 2 onward.
+
+## Concrete Steps
+
+Run the project fast install before any tests, then implement Phase 0 changes and re-run targeted module checks.
+Use the Maven commands in `AGENTS.md` and the acceptance checklist in section 49.
+
+## Validation and Acceptance
+
+Phase 0 must satisfy section 49.1: per-node predicted rows accessible in the executable plan, per-node actual rows and
+wall time collected reliably (when tracking enabled), deterministic plan shape hash, and OFF mode identical to
+baseline behavior.
+
+## Idempotence and Recovery
+
+Plan metadata assignment is deterministic and safe to rerun; if needed, remove plan metadata calls to return to
+baseline behavior.
+
+## Artifacts and Notes
+
+No external artifacts produced in Phase 0.
+
+## Interfaces and Dependencies
+
+Added experimental plan metadata on `QueryModelNode` (`getPlanNodeId`, `setPlanNodeId`, `getPlanShapeHash`,
+`setPlanShapeHash`) implemented in `AbstractQueryModelNode`. A new helper
+`org.eclipse.rdf4j.query.algebra.helpers.PlanNodeDiagnostics` assigns ids and hash.
+
+---
+
 Execplan: Fully Featured Closed‑Loop Optimizer
 
 Part 1: Foundations (Telemetry → Feedback Plane → Online Models → Planner Integration)
@@ -8193,5 +8270,4 @@ At this point, the document has:
 * pseudo-code and data formats (Part 5)
 * deep semantics and ops playbooks (Part 6)
 * deployment guide and pattern catalog (Part 7)
-
 

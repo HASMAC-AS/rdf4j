@@ -148,6 +148,24 @@ public interface EvaluationStrategy extends FederatedServiceResolver {
 		// no-op for backwards compatibility
 	}
 
+	/**
+	 * Configure feedback-driven telemetry and planning adjustments.
+	 *
+	 * @param feedbackConfiguration configuration to apply
+	 */
+	@Experimental
+	default void setFeedbackConfiguration(FeedbackConfiguration feedbackConfiguration) {
+		// no-op for backwards compatibility
+	}
+
+	/**
+	 * Return the current feedback configuration.
+	 */
+	@Experimental
+	default FeedbackConfiguration getFeedbackConfiguration() {
+		return FeedbackConfiguration.disabled();
+	}
+
 	QueryEvaluationMode getQueryEvaluationMode();
 
 	void setQueryEvaluationMode(QueryEvaluationMode queryEvaluationMode);
