@@ -7379,4 +7379,819 @@ You now have enough detail to implement a fully featured solution in a way that 
 
 ---
 
+**Part 7: End‑to‑End Wiring, Data Evolution Appendix, Deployment Guide, and SPARQL Pattern Catalog**
+
+You’ve now got a design that’s genuinely “all in”: telemetry, online corrections, micro-models, calibrated costs, offline models, optional adaptive execution, plus the operational scaffolding (feature registry, store versioning, budgets, A/B rollout).
+
+Part 7 does four things:
+
+1. **Shows the full reference pipeline** from query → plan → execution → feedback update → next planning cycle, with all the wiring points called out explicitly.
+2. **Goes deep on evolution/compatibility**, i.e., how you change buckets/keys/models over time without turning your store into a haunted attic.
+3. **Gives a deployment guide** that’s realistic: dev → staging → prod, and how you graduate features safely.
+4. **Provides a catalog of RDF/SPARQL query patterns** and exactly how (and *where*) this system learns each pattern’s selectivity/cost quirks over time.
+
+---
+
+## 87) Reference pipeline: end‑to‑end wiring diagram
+
+### 87.1 The “one picture in your head” version
+
+Think of the system as three loops that share a spine:
+
+* **Execution loop** (fast): Operators count rows/time → emit `FeedbackEvent`.
+* **Ingestion loop** (batched): Flusher aggregates events → updates stores → updates caches.
+* **Planning loop** (latency-sensitive): Planner builds keys → looks up stats/sketches/models → estimates → picks plan → annotates executable operators with predicted rows + key hashes.
+
+Everything else (offline training, distributed merges, adaptive execution) hangs off those loops.
+
+### 87.2 What data flows where (explicit data planes)
+
+#### Plane A: Planning-time reads
+
+Planner reads:
+
+* `FeedbackStore.get(level keys + leaf keys)`
+* `SketchStore.get(sketches)`
+* `OfflineModelRegistry.get(active models)` (or in-memory models)
+* baseline stats (existing engine stats)
+  Planner writes:
+* plan annotations: predicted rows/cost, keys, estimator trace metadata (for EXPLAIN)
+
+Critical rule: **planner never blocks on writes**. It only reads through cache-backed interfaces.
+
+#### Plane B: Execution-time emissions
+
+Executor writes:
+
+* per operator counters (rows, time, bytes, spill)
+* on operator close: emits one `FeedbackEvent` into ring buffer
+
+Critical rule: **no allocations, no locks** in the hot path.
+
+#### Plane C: Batch ingestion and persistence
+
+Flusher reads:
+
+* ring buffers
+* aggregated map of key → BatchAgg
+
+Flusher writes:
+
+* FeedbackStore batch updates
+* SketchStore updates (sampled)
+* Hot cache refresh
+* Metrics about flush health
+
+Critical rule: **one writer** to each persistent store.
+
+#### Plane D: Offline pipeline (optional)
+
+Exporter reads:
+
+* aggregated stats/summaries, possibly sample traces
+  Exporter writes:
+* training files (tenant-scoped, schema-hashed)
+
+Trainer reads:
+
+* training files
+  Trainer writes:
+* model artifacts + manifest
+
+Registry reads/writes:
+
+* stores model versions and metadata
+
+Engine model loader reads:
+
+* registry artifacts
+  Engine writes:
+* in-memory active model snapshot
+
+Critical rule: **offline never changes the online store directly**; it delivers new model artifacts that are gated at runtime.
+
+---
+
+## 88) Reference execution wiring: exactly where to instrument
+
+### 88.1 Plan nodes must carry predicted rows and key identity
+
+This is the main “make it unbreakable” step.
+
+During planning, for each node you must attach:
+
+* `nodeId` (stable within plan)
+* `nodeType`
+* `planShapeHash` (plan-level)
+* `keyHash128` (or packed hi/lo)
+* `predictedRows`
+* optionally `predictedCost` and `estimatedRowWidth`
+* `estimatorTrace` pointer or compact trace summary (for explain)
+
+Then, the executor does not recompute predicted rows; it reads them.
+
+### 88.2 Operator base class instrumentation (reference pattern)
+
+A typical operator base class should provide:
+
+* `startWallNanos` at open
+* `rowsProduced` counter
+* optional `rowsConsumed` counter (for filters/joins)
+* optional `bytesRead` (from storage layer)
+* optional `spillBytes` and `peakMemBytes`
+* on close:
+
+   * compute wall/cpu deltas
+   * create `FeedbackEvent` from plan annotation + counters
+   * emit to sink
+
+This creates consistent event semantics across operator implementations.
+
+### 88.3 Handling pipeline/vectorized engines
+
+Vectorized operators often process batches:
+
+* `rowsProduced += batchSize`
+* track `batchCount`, `avgBatchSize` (running average)
+* time measurement remains start/end nanos per operator phase
+
+If operators have multiple phases (build/probe), you can either:
+
+* emit one event with internal phase counters (recommended for simplicity)
+* or emit sub-events for build/probe if you can attribute keys separately (more complex)
+
+A fully featured system benefits from:
+
+* join build/probe phase visibility, because spill often occurs in build phase
+  But don’t go overboard early; you can stage this.
+
+---
+
+## 89) Reference ingestion wiring: flusher and “side effects” discipline
+
+### 89.1 The flusher should be “the only place where learning happens”
+
+A common failure mode: random code paths update stats directly. Don’t.
+
+Only the flusher (or a controlled ingestion module) should:
+
+* update persistent stats
+* update sketches
+* mark cache entries dirty/refresh them
+
+This gives you:
+
+* predictable resource usage
+* fewer race conditions
+* clearer observability
+
+### 89.2 Ingestion steps, with ordering constraints
+
+A robust order:
+
+1. Drain ring buffers (bounded)
+2. Aggregate to `AggMap`
+3. Optionally compute derived features:
+
+   * logErr = log(A/P)
+   * spill flags
+   * cost proxies (e.g., wallNanos per row)
+4. Update FeedbackStore in one transaction
+5. Update SketchStore:
+
+   * update only sketches that are active
+   * sample updates if needed
+6. Refresh hot cache entries (from store or derived updates)
+7. Emit flush metrics
+8. Optional: export batched anonymized summary to offline exporter queue
+
+Important: do FeedbackStore first; it’s your “baseline learning memory.” Sketch updates are nice but can be suspended under pressure.
+
+### 89.3 Ingestion overload behavior (fail “quietly”)
+
+If ingestion falls behind:
+
+* drop events (record it)
+* reduce sampling automatically (dynamic sampling)
+* pause sketch updates (keep FeedbackStore updates)
+* if persistent store writes fail, skip that flush and keep going
+
+Never block queries to preserve learning. Learning is a passenger, not the driver.
+
+---
+
+## 90) Reference planner wiring: where the estimator stack plugs in
+
+### 90.1 The planner’s key moments
+
+A planner typically has:
+
+* logical planning + rewrite
+* enumeration / join order search
+* physical operator selection
+* final plan build
+* compilation to executable operators
+
+Your estimator stack must hook into:
+
+* cardinality estimation during enumeration
+* cost estimation during physical selection
+* annotation of final plan nodes with key hashes + predicted rows
+
+### 90.2 Avoid duplicate work inside enumeration
+
+Enumeration can call estimators *a lot*. You want:
+
+* per-planning-cycle lookup cache (L1)
+* optional memoization of subtree estimates if enumerator already memoizes subplans
+* avoid repeated hierarchical lookups if leaf confidence is already strong (you can short-circuit)
+
+A practical optimization: hierarchical lookup order:
+
+* try leaf key first
+* if leaf is missing or low confidence, try patternHash/predicate/graph/global levels
+* do not always fetch all levels unless needed
+
+### 90.3 Planner trace capture: structured, not verbose
+
+For each node, keep a compact trace record:
+
+* baselineRows
+* microRows (if applied)
+* corrFactor + conf + clamp info
+* offlinePredRows (if applied)
+* finalRows
+* spillRisk (if computed)
+* and references to which sketches/models were used
+
+This becomes the source of truth for EXPLAIN output and offline analysis. Avoid storing long strings; store enums and numeric IDs.
+
+---
+
+## 91) Data evolution and compatibility appendix: keeping the system sane across time
+
+This is the “boring but life-saving” part.
+
+### 91.1 What can evolve
+
+Five categories:
+
+1. **Feature definitions**
+   Bucket boundaries, new features, changed encodings.
+
+2. **Key schema**
+   New key families, changed bindMask bits, added context to keys.
+
+3. **Baseline estimator logic**
+   Even without feedback changes, you might improve baseline stats.
+
+4. **Micro-model types and parameters**
+   New sketch families, changed sketch sizes, changed activation logic.
+
+5. **Offline models**
+   New model types, new feature dependencies, new inference engines.
+
+Each of these changes can invalidate stored evidence or models.
+
+### 91.2 The compatibility contract (explicit)
+
+Define and enforce:
+
+* `featureSchemaHash` identifies feature encoding semantics.
+* `keySchemaVersion` identifies structured key fields.
+* `estimatorSignatureHash` identifies the *pipeline composition* (baseline + micro-models + correction logic).
+* `dictionaryHash` identifies the stability of predicate/graph IDs.
+* `engineMajorVersion` identifies operator semantics and instrumentation meaning.
+
+If any of the above mismatches:
+
+* you either **purge** or **downweight** evidence
+* you never apply mismatched evidence at full strength
+
+### 91.3 Compatibility matrix: what you do for each mismatch
+
+#### 91.3.1 Feature schema mismatch
+
+* **Offline models:** must not load (hard reject).
+* **FeedbackStore:** safest is ignore/purge.
+* **SketchStore:** ignore/purge (sketch payload semantics likely changed).
+
+There are rare cases where feature schema changed only by adding an unused feature and you could still use old stats. But “rare” is the trap. The fully featured stance: **reject unless you explicitly support migration**.
+
+#### 91.3.2 Key schema mismatch
+
+* FeedbackStore leaf keys are invalid.
+* You *may* keep higher-level stats if their keys are still compatible.
+  Example: if leaf key added litBucket but predicate-level keys unchanged, you can keep predicate-level.
+
+So allow a policy:
+
+* `compatMode = PURGE_ALL | KEEP_LEVELS_UP_TO(predicate)`
+
+This gives you a soft landing without risking incorrect specificity.
+
+#### 91.3.3 Dictionary mismatch
+
+If predicateId/graphId mapping changed:
+
+* evidence keyed by those IDs is unsafe to reuse
+  Default:
+* purge or ignore
+
+If you use stable hashed IDs instead, dictionary mismatch is less relevant, but keys are larger.
+
+#### 91.3.4 Estimator signature mismatch
+
+Estimator signature changed when you introduced micro-models or changed baseline heuristics. Stored correction stats may overcorrect now.
+
+Policy:
+
+* keep evidence but treat as low-confidence initially:
+
+   * multiply confidence by a factor like 0.2 until new evidence accumulates
+* or purge leaf-level corrections and keep broader priors
+
+This is a nuanced case: evidence may still be directionally useful, but you want to avoid double-correcting.
+
+### 91.4 Rolling upgrades in clustered environments
+
+If you deploy new engine version gradually:
+
+* instances will run different schema versions temporarily.
+
+Rules:
+
+* do not merge feedback across incompatible versions
+* do not share stores across versions unless you partition by schema hash
+* model registry should support version pinning:
+
+   * old instances use old models
+   * new instances use new models
+
+If you must share evidence across versions:
+
+* share only at “safe levels” (global/graph) with very conservative weighting
+* but this is optional and usually not worth the complexity
+
+### 91.5 Bucket evolution strategy: how to change buckets without losing everything
+
+You will want to refine buckets (e.g., string length buckets). A safe method:
+
+1. Introduce new schema version with new buckets.
+2. Run in SHADOW mode to compare old vs new bucket behavior.
+3. Keep old store for a while; don’t delete immediately.
+4. Start collecting new stats under new schema.
+5. Once new stats have enough coverage, purge old store.
+
+If you want a smoother transition:
+
+* run both schema versions in parallel (dual-write) for a limited time.
+  But dual-writing doubles store pressure. Use only if you have strong reasons.
+
+### 91.6 Backward compatibility for EXPLAIN output
+
+People will compare EXPLAIN outputs across versions. Provide:
+
+* explicit schema and model version tags in EXPLAIN output
+* stable field names; only add new fields, don’t rename
+* if a value is missing, omit or set null; don’t invent defaults
+
+---
+
+## 92) Example deployment guide: dev → staging → production
+
+This is a “do it in the real world without regrets” path.
+
+### 92.1 Development environment goals
+
+Dev is where you verify:
+
+* correctness
+* instrumentation accuracy
+* key determinism
+* basic learning loop behavior
+
+Suggested dev config:
+
+* telemetry sampling 1.0
+* FeedbackStore in-memory or small persistent
+* micro-models enabled but with low budgets (to catch leaks)
+* SHADOW mode by default; APPLY only in local test runs
+
+Dev acceptance:
+
+* conformance tests pass
+* EXPLAIN (ANALYZE, FEEDBACK) prints sensible predicted vs actual per node
+* store survives restart
+* OFF mode remains identical to baseline
+
+### 92.2 Staging environment goals
+
+Staging is where you validate:
+
+* overhead under realistic concurrency
+* store behavior at scale (flush, compaction)
+* plan stability
+* no hidden regressions
+
+Suggested staging phases:
+
+1. OBSERVE for all templates
+2. SHADOW for a meaningful subset (e.g., 20–50% templates)
+3. APPLY_SAFE for a small canary (1–5% templates)
+4. Gradually expand APPLY_SAFE with auto rollback triggers
+
+Staging acceptance:
+
+* planning p95 unchanged (or within a small budget)
+* event drop rate low or acceptable
+* compaction works and doesn’t spike latency dangerously
+* A/B shows tail improvement or at least no major regressions
+
+### 92.3 Production rollout goals
+
+Production is where you optimize for:
+
+* safety
+* rollback
+* privacy constraints
+* minimal operational burden
+
+Recommended production rollout:
+
+1. OBSERVE for all templates; collect baseline telemetry
+2. SHADOW for 5–10% templates; validate “would have changed estimate by X×” reports
+3. APPLY_SAFE for 1–2% templates (canary) with strict clamps
+4. Expand APPLY_SAFE to 10%, 25%, 50% as metrics remain healthy
+5. Enable micro-model families gradually:
+
+   * NDV first (often safe and broadly useful)
+   * range sketches next
+   * heavy hitters next (value-based; privacy-sensitive)
+   * CS/correlation next (bigger offline investment)
+6. Introduce cost calibration in OBSERVE then SHADOW then APPLY
+7. Offline models only after you have stable exports and staging evidence
+
+Production guardrails:
+
+* auto rollback triggers as described earlier
+* per-template gating: only apply to templates with stable evidence
+* per-tenant isolation enforced
+
+---
+
+## 93) Recommended feature flag progression (a practical ladder)
+
+Instead of a giant “enable = true,” treat each layer as a rung:
+
+1. `telemetry.enabled`
+2. `feedbackStore.enabled` + `mode=OBSERVE`
+3. `planner.feedbackLookup.enabled` + `mode=SHADOW`
+4. `planner.feedbackApply.enabled` + `mode=APPLY_SAFE`
+5. `sketchStore.enabled` + `ndvSketch.enabled` (SHADOW then APPLY)
+6. `rangeSketch.enabled`
+7. `heavyHitters.enabled`
+8. `correlationModels.enabled` (CS/pairs)
+9. `costCalib.enabled` (OBSERVE→SHADOW→APPLY)
+10. `offlineModels.enabled` (SHADOW→CANARY→APPLY)
+11. `adaptive.enabled` (last)
+
+The order is designed to:
+
+* maximize early benefit (online correction, NDV)
+* keep memory and privacy risks controlled
+* postpone semantically risky features (adaptive) until estimator stack is mature
+
+---
+
+## 94) Catalog of RDF/SPARQL query patterns and how the system learns them
+
+This is the part where the abstract machinery meets the weird reality of RDF data.
+
+For each pattern, I’ll call out:
+
+* where baseline estimates typically fail
+* which keys/stats/sketches matter
+* which learning signals converge fastest
+* what guardrails prevent disasters
+
+### 94.1 The classic star join
+
+**Shape**
+
+```sparql
+?s p1 ?o1 .
+?s p2 ?o2 .
+?s p3 ?o3 .
+```
+
+**Baseline failure modes**
+
+* assumes predicate independence (wrong)
+* ignores type-conditioned correlations
+* multiplicity per predicate ignored or oversimplified
+
+**Learns via**
+
+* CS / predicate-pair correlation stats: existence correlation
+* predicate multiplicity models: triples/subjects per predicate
+* online corrections keyed by (patternHash, bindMask): learns context “once ?s is bound, p2 selectivity changes”
+* NDV sketches for join keys if downstream joins depend on ?o variables
+
+**Converges**
+
+* fast if workload repeats common stars (typical)
+* slower if there are many star variants with rare predicate combos (then hierarchical shrinkage helps)
+
+**Guardrails**
+
+* clamp correlation model influence if evidence sparse
+* tail-risk penalty for predicates with heavy multiplicity tails (degree sketches)
+
+### 94.2 Snowflake pattern (star + secondary stars)
+
+**Shape**
+
+```sparql
+?s p1 ?o .
+?o q1 ?x .
+?o q2 ?y .
+```
+
+**Baseline failures**
+
+* join selectivity between object and its own star is hard: correlations are stronger than uniform
+* NDV propagation is uncertain
+
+**Learns via**
+
+* NDV sketches for predicate objects (`NDV(o|p1)`), helps join selectivity
+* heavy hitters on ?o if skew exists (e.g., popular nodes)
+* online correction at join-level higher hierarchy (join family stats) even if leaf JoinKey not used
+* cost calibration for join algorithm break-even
+
+**Guardrails**
+
+* avoid join key distribution overconfidence; use conservative NDV propagation
+* risk-aware scoring penalizes brittle join algorithms under uncertainty
+
+### 94.3 Path chains (length 2–4)
+
+**Shape**
+
+```sparql
+?a p ?b .
+?b q ?c .
+?c r ?d .
+```
+
+**Baseline failures**
+
+* independence assumptions compound; small errors explode
+* branching factors vary wildly by predicate
+
+**Learns via**
+
+* PathKey decay models by length bucket and predicate sequence signature (or per-step decay if sequence too diverse)
+* online corrections per pattern under specific bindMask contexts (e.g., when ?b is bound vs free)
+* spill risk for path materializations
+
+**Guardrails**
+
+* hard clamps and early “explosion detectors”
+* adaptive runtime filters can help drastically if join keys become selective unexpectedly
+
+### 94.4 OPTIONAL chains (left outer join cascades)
+
+**Shape**
+
+```sparql
+?s p ?o .
+OPTIONAL { ?s q ?x . OPTIONAL { ?x r ?y } }
+```
+
+**Baseline failures**
+
+* match rate and multiplicity are unpredictable
+* correlation with entering bindings strong
+
+**Learns via**
+
+* OptionalKey micro-model:
+
+   * matchRate conditioned on bind context
+   * multiplicity distribution
+* online correction for OptionalKey
+* multiplicity sketches per predicate
+
+**Guardrails**
+
+* treat OPTIONAL as a barrier for reorder unless proven safe
+* tail-risk heavy: OPTIONAL can multiply rows unexpectedly
+
+### 94.5 UNION with asymmetric arms
+
+**Shape**
+
+```sparql
+{ ... selective arm ... } UNION { ... broad arm ... }
+```
+
+**Baseline failures**
+
+* assumes arms equal or uses simplistic guesses
+* branch probabilities can differ by orders of magnitude
+
+**Learns via**
+
+* UnionArmKey stats for arm selectivity
+* per-arm filter/pattern micro-models
+* plan stability measures to avoid swapping arm evaluation order too often
+
+**Guardrails**
+
+* if LIMIT exists, be careful: arm order can change which results appear if not ordered; decide stability policy
+* clamp per-arm adjustments and require evidence before reordering expensive arms
+
+### 94.6 Regex-heavy text search in literals
+
+**Shape**
+
+```sparql
+?s rdfs:label ?label .
+FILTER regex(?label, "foo.*bar", "i")
+```
+
+**Baseline failures**
+
+* regex selectivity is data-dependent and pattern-dependent
+* cost per row is huge and depends on pattern features
+
+**Learns via**
+
+* FilterKey by regex feature buckets: selectivity and CPU cost multiplier
+* length bucketed stats: regex tends to fail quickly on short strings
+* predicate-conditioned filter stats: label distributions differ by predicate
+
+**Guardrails**
+
+* treat regex selectivity as high-variance early; don’t let it dominate join ordering until evidence grows
+* encourage pushing cheaper filters earlier (normal optimizer heuristic) augmented by learned CPU costs
+
+### 94.7 Numeric range analytics
+
+**Shape**
+
+```sparql
+?s ex:price ?p .
+FILTER(?p > 100 && ?p < 200)
+```
+
+**Baseline failures**
+
+* uniform assumption wrong; distributions can be log-normal-ish or spiky
+
+**Learns via**
+
+* RangeSketch CDF estimates
+* online correction for residual drift
+* type-conditioned ranges if predicate used across entity types with different distributions
+
+**Guardrails**
+
+* separate sketches by datatype family
+* clamp and confidence gating to avoid using sparse sketches
+
+### 94.8 Highly skewed “hub” joins
+
+**Shape**
+
+```sparql
+?hub ex:connectedTo ?x .
+?x ex:connectedTo ?y .
+```
+
+**Baseline failures**
+
+* underestimates multiplicity and join output due to hubs
+* wrong join algorithm triggers spills or massive nested loops
+
+**Learns via**
+
+* heavy hitters on hub IDs (value hashes) if privacy allows
+* degree distribution sketches per predicate (subjects per object and objects per subject)
+* spill model learns that “buildRows × width” threshold is often exceeded here
+
+**Guardrails**
+
+* risk-aware scoring; avoid hash build under high spill probability
+* adaptive runtime filters can reduce probe side drastically
+
+### 94.9 LIMIT-driven interactive queries
+
+**Shape**
+
+```sparql
+SELECT ... WHERE { ... } LIMIT 100
+```
+
+**Baseline failures**
+
+* optimizer might still pick a plan optimized for full output
+* early termination opportunities ignored
+
+**Learns via**
+
+* cost calibration for “produce-first-row” latency (not just total runtime)
+* if engine supports it: instrumentation of time-to-first-result
+* plan stability: user-facing queries want stable behavior
+
+**Guardrails**
+
+* treat LIMIT as stability constraint (policy) if user expectations matter
+* prefer plans that can deliver first results quickly under uncertainty
+
+### 94.10 GROUP BY and DISTINCT queries
+
+**Shape**
+
+```sparql
+SELECT (COUNT(*) AS ?c) WHERE { ... } GROUP BY ?k
+```
+
+**Baseline failures**
+
+* distinct counts guessed poorly
+* spill risk underpredicted
+
+**Learns via**
+
+* NDV sketches for group keys (if derivable)
+* spill model for aggregation and sort
+* cost calibration for sort vs hash aggregate performance under different memory regimes
+
+**Guardrails**
+
+* treat group/aggregate as barrier for reordering and adaptation
+* risk-aware scoring penalizes potential spills
+
+---
+
+## 95) The “reference pipeline implementation” checklist
+
+If you’re building this as a project, here’s a compact, ordered checklist that matches the wiring above. It’s intentionally prescriptive.
+
+### 95.1 Planner phase checklist
+
+* [ ] Implement FeatureRegistry and compute schema hash.
+* [ ] Implement canonicalization + query fingerprinting.
+* [ ] Implement KeyBuilder for each key family (PatternKey at minimum).
+* [ ] Integrate estimator stack (baseline + correction in SHADOW first).
+* [ ] Annotate plan nodes with nodeId, keyHash, predictedRows.
+* [ ] Implement EXPLAIN trace for predicted vs adjusted estimates.
+
+### 95.2 Executor phase checklist
+
+* [ ] Add operator base counters (rows/time/spill/mem).
+* [ ] Attach plan annotations into executable operators.
+* [ ] Emit FeedbackEvent on close into ring buffer sink.
+* [ ] Add sampling and drop counters.
+
+### 95.3 Ingestion phase checklist
+
+* [ ] Implement per-thread ring buffers and flusher thread.
+* [ ] Implement batch aggregation (primitive keyed map).
+* [ ] Implement FeedbackStore backend (in-memory first, then persistent).
+* [ ] Implement hot cache with L1 per-plan caching.
+* [ ] Add compaction/rebuild mechanism.
+* [ ] Emit flush health metrics.
+
+### 95.4 Apply phase checklist
+
+* [ ] Enable APPLY_SAFE with clamps and stickiness.
+* [ ] Add hierarchical shrinkage levels (predicate/graph/global).
+* [ ] Validate plan stability and tail improvement in staging.
+* [ ] Add micro-model infrastructure (SketchStore + budgets).
+* [ ] Enable NDV sketches first, then range, then heavy hitters, then correlation.
+
+### 95.5 Advanced phase checklist
+
+* [ ] Add cost calibration in OBSERVE then SHADOW then APPLY.
+* [ ] Add offline export + training pipeline + registry.
+* [ ] Add offline model inference with strict gating.
+* [ ] Add adaptive execution last (with barrier-aware regions and correctness tests).
+
+---
+
+## 96) End of Part 7
+
+At this point, the document has:
+
+* architecture (Parts 1–2)
+* key/store/compaction/merge engineering (Parts 3–6)
+* feature registry and rollout mechanics (Part 4–7)
+* pseudo-code and data formats (Part 5)
+* deep semantics and ops playbooks (Part 6)
+* deployment guide and pattern catalog (Part 7)
+
 
