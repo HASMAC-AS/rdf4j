@@ -1142,11 +1142,11 @@ Define explicit budgets:
 * `microModels.maxBytesTotal` (global budget, e.g., 128MB–1GB depending on deployment)
 * budgets per model family:
 
-  * frequency/heavy hitters
-  * numeric digests
-  * HLL distinct counters
-  * Bloom/existence filters
-  * characteristic sets / predicate co-occurrence stats
+   * frequency/heavy hitters
+   * numeric digests
+   * HLL distinct counters
+   * Bloom/existence filters
+   * characteristic sets / predicate co-occurrence stats
 
 Also define per-key budgets:
 
@@ -1174,9 +1174,9 @@ Activation policy example:
 
 * Activate micro-model for predicate `p` in graph `g` if:
 
-  * `n(p,g) >= Nmin` (e.g., 100 observations)
-  * `medianAbsLogErr(p,g) >= Emin` (e.g., factor ≥ 3)
-  * and `p` accounts for ≥ X% of total operator time in the workload
+   * `n(p,g) >= Nmin` (e.g., 100 observations)
+   * `medianAbsLogErr(p,g) >= Emin` (e.g., factor ≥ 3)
+   * and `p` accounts for ≥ X% of total operator time in the workload
 
 Keep it deterministic: once activated, it stays active until it falls below a retention threshold (hysteresis). Hysteresis avoids thrashing.
 
@@ -1272,8 +1272,8 @@ For IN-lists:
 * cap at 1.0 selectivity
 * if list is huge, approximate:
 
-  * sample values, estimate average frequency, multiply, clamp
-  * or build a temporary Bloom filter for list membership and ask CMS for those? Usually too heavy; sampling is fine.
+   * sample values, estimate average frequency, multiply, clamp
+   * or build a temporary Bloom filter for list membership and ask CMS for those? Usually too heavy; sampling is fine.
 
 ---
 
@@ -1292,9 +1292,9 @@ In RDF, NDV for predicate objects can be wildly different across predicates and 
 
 * **HyperLogLog (HLL)** is the standard:
 
-  * mergeable
-  * memory efficient
-  * good enough accuracy for planning
+   * mergeable
+   * memory efficient
+   * good enough accuracy for planning
 
 Maintain HLL sketches for:
 
@@ -1306,12 +1306,12 @@ Maintain HLL sketches for:
 
 * For pattern `?s p ?o`:
 
-  * estimate output rows from base cardinality
-  * estimate NDV of `?o` from HLL
+   * estimate output rows from base cardinality
+   * estimate NDV of `?o` from HLL
 * For join on variable `?o`:
 
-  * use NDV estimates to compute join selectivity
-  * incorporate skew with heavy hitters where possible (see later)
+   * use NDV estimates to compute join selectivity
+   * incorporate skew with heavy hitters where possible (see later)
 
 Uncertainty:
 
@@ -1541,9 +1541,9 @@ For stars {p,q,r}:
 
 * approximate P(p,q,r) using chain rule:
 
-  * P(p,q,r) ≈ P(p) * P(q|p) * P(r|p,q)
-    But you don’t have p,q conditioning for r unless you track triples. So approximate:
-  * P(r|p,q) ≈ min(P(r|p), P(r|q)) or some blend.
+   * P(p,q,r) ≈ P(p) * P(q|p) * P(r|p,q)
+     But you don’t have p,q conditioning for r unless you track triples. So approximate:
+   * P(r|p,q) ≈ min(P(r|p), P(r|q)) or some blend.
 
 This is imperfect but often better than independence.
 
@@ -1621,8 +1621,8 @@ Learn these from execution:
 * track output rows
 * track matched rows count if operator can expose it, else infer:
 
-  * matchedRows = outputRows - nullExtendedRows
-    But you need nullExtendedRows; many engines can count whether right side produced matches per left binding.
+   * matchedRows = outputRows - nullExtendedRows
+     But you need nullExtendedRows; many engines can count whether right side produced matches per left binding.
 
 If you cannot instrument per-left-binding, you can approximate:
 
@@ -1877,12 +1877,12 @@ Approach:
 
 * treat spill as a binary event with probability depending on:
 
-  * predicted hash table size / available memory
-  * predicted distinct groups for aggregation
-  * row width
+   * predicted hash table size / available memory
+   * predicted distinct groups for aggregation
+   * row width
 * learn a logistic regression:
 
-  * `P(spill) = sigmoid(w · features)`
+   * `P(spill) = sigmoid(w · features)`
 * if spill probability high, planner penalizes plans that rely on in-memory hash/sort
 * if spilledBytes measured, learn expected spill magnitude as well
 
@@ -1890,7 +1890,7 @@ If implementing full logistic regression online is too heavy, use a simpler heur
 
 * maintain empirical spill threshold per operator type:
 
-  * “hash join spills when buildRows*rowWidth exceeds ~X bytes”
+   * “hash join spills when buildRows*rowWidth exceeds ~X bytes”
 * update X via EWMA based on observed spills
 
 ### 27.7 Join algorithm break-even learning
@@ -1908,8 +1908,8 @@ Calibration tasks:
 
 * for each algorithmTag, maintain cost parameters:
 
-  * build cost per row, probe cost per row, overhead
-  * plus spill threshold / penalty
+   * build cost per row, probe cost per row, overhead
+   * plus spill threshold / penalty
 * learn from observed join operator telemetry
 * incorporate memory availability and row width
 
@@ -1933,12 +1933,12 @@ The estimator stack becomes multi-dimensional:
 1. Baseline statistics produce an initial estimate.
 2. Micro-models refine selectivity/cardinality for certain cases:
 
-  * equality/IN-list using frequency sketch
-  * range filters using digest
-  * star join correlation using CS/predicate co-occurrence
+   * equality/IN-list using frequency sketch
+   * range filters using digest
+   * star join correlation using CS/predicate co-occurrence
 3. Online correction factors apply to residual errors and drift:
 
-  * adjust the refined estimate with robust shrinkage
+   * adjust the refined estimate with robust shrinkage
 4. Cost model uses final cardinality and micro-model cost hints (e.g., regex CPU factor).
 5. Risk-aware scoring uses uncertainty + spill probability.
 
@@ -1969,8 +1969,8 @@ Uncertainty from micro-model sketches and correction stats should propagate upwa
 * if independent, variances add
 * but they are not independent; treat as conservative:
 
-  * `var_total = max(var_baseline, var_microModel, var_correction)` or
-  * `var_total = var_microModel + var_correction` with a safety inflation factor
+   * `var_total = max(var_baseline, var_microModel, var_correction)` or
+   * `var_total = var_microModel + var_correction` with a safety inflation factor
 
 The goal isn’t perfect Bayesian inference; the goal is to avoid overconfidence.
 
@@ -2012,22 +2012,22 @@ A training example for cardinality might include:
 
 * features:
 
-  * patternHash (or hashed)
-  * predicateId (dictionary ID, or hashed)
-  * bindMask
-  * litBucket
-  * graphId (or hashed/tenant-scoped)
-  * indexTag
-  * filterKind + feature buckets
-  * star join context features (degree, #predicates in star, presence of rdf:type, etc.)
+   * patternHash (or hashed)
+   * predicateId (dictionary ID, or hashed)
+   * bindMask
+   * litBucket
+   * graphId (or hashed/tenant-scoped)
+   * indexTag
+   * filterKind + feature buckets
+   * star join context features (degree, #predicates in star, presence of rdf:type, etc.)
 * label:
 
-  * actualRows (or log actualRows)
+   * actualRows (or log actualRows)
 * metadata:
 
-  * engine version tag
-  * execution mode
-  * timestamp bucket
+   * engine version tag
+   * execution mode
+   * timestamp bucket
 
 For cost models, include:
 
@@ -2077,25 +2077,25 @@ Target label: `log(actualRows + 1)` to manage heavy tails.
 
 * separate models per operator family:
 
-  * scan cost model
-  * join cost model
-  * sort/group cost model
+   * scan cost model
+   * join cost model
+   * sort/group cost model
 * either regression on log time or separate CPU and I/O components
 
 #### 29.5.3 Spill prediction
 
 * logistic regression or GBDT classifier:
 
-  * label: spilled? (0/1)
-  * features: predicted memory footprint ratio, rows, width, algorithm, mode
+   * label: spilled? (0/1)
+   * features: predicted memory footprint ratio, rows, width, algorithm, mode
 
 #### 29.5.4 Join algorithm choice
 
 * multi-class classifier to recommend algorithm tag
 * but use it as a suggestion, not a hard rule:
 
-  * planner still computes costs and applies guardrails
-  * classifier only biases choice or sets priors
+   * planner still computes costs and applies guardrails
+   * classifier only biases choice or sets priors
 
 ### 29.6 Offline evaluation (before deployment)
 
@@ -2106,10 +2106,10 @@ Evaluate:
 * cardinality error distribution on holdout
 * plan quality via trace replay or plan simulation:
 
-  * compare plan choices under baseline vs model estimates
+   * compare plan choices under baseline vs model estimates
 * worst-case regressions:
 
-  * look at tail of errors, not just mean
+   * look at tail of errors, not just mean
 
 A key metric: “regret”
 
@@ -2125,10 +2125,10 @@ Registry responsibilities:
 * validate schema compatibility
 * manage versions and rollout states:
 
-  * `STAGED` → `CANARY` → `ACTIVE` → `DEPRECATED`
+   * `STAGED` → `CANARY` → `ACTIVE` → `DEPRECATED`
 * maintain audit logs:
 
-  * who activated which model, when, with what metrics
+   * who activated which model, when, with what metrics
 
 Model metadata includes:
 
@@ -2203,9 +2203,9 @@ Define triggers based on ratio and confidence:
 * `ratio = actualSoFar / predictedSoFar` (or actualRowsAtCheckpoint / predictedRowsAtCheckpoint)
 * trigger if:
 
-  * `ratio > Rhigh` (e.g., 10× or 30×) or `ratio < Rlow` (e.g., 0.1×)
-  * and enough work remains (e.g., still have joins/aggregations downstream)
-  * and the checkpoint is early enough that changing plan matters
+   * `ratio > Rhigh` (e.g., 10× or 30×) or `ratio < Rlow` (e.g., 0.1×)
+   * and enough work remains (e.g., still have joins/aggregations downstream)
+   * and the checkpoint is early enough that changing plan matters
 
 Use log space:
 
@@ -2319,8 +2319,8 @@ This is sensitive but practical: production systems often distinguish trusted wo
 
 * if a key’s observed logErr spikes wildly, quarantine it:
 
-  * stop applying its corrections
-  * decay its stats faster
+   * stop applying its corrections
+   * decay its stats faster
 * maintain anomaly counters per key and per operator family
 * if anomalies exceed threshold, mark key as “unstable” and reduce confidence
 
@@ -2381,12 +2381,12 @@ In addition to Part 1 flags, add:
 * `microModels.activation.minBenefitScore`
 * per model type toggles:
 
-  * `microModels.freqSketch.enabled`
-  * `microModels.ndvSketch.enabled`
-  * `microModels.rangeSketch.enabled`
-  * `microModels.bloom.enabled`
-  * `microModels.characteristicSets.enabled`
-  * `microModels.predicatePairs.enabled`
+   * `microModels.freqSketch.enabled`
+   * `microModels.ndvSketch.enabled`
+   * `microModels.rangeSketch.enabled`
+   * `microModels.bloom.enabled`
+   * `microModels.characteristicSets.enabled`
+   * `microModels.predicatePairs.enabled`
 
 **Cost calibration**
 
@@ -2460,13 +2460,13 @@ Immediate steps:
 2. If regression persists, disable telemetry to eliminate overhead.
 3. Inspect:
 
-  * plan stability metrics (did plans change massively?)
-  * adjustment factor clamping counts (were factors huge?)
-  * which keys were applied most frequently (top offenders)
+   * plan stability metrics (did plans change massively?)
+   * adjustment factor clamping counts (were factors huge?)
+   * which keys were applied most frequently (top offenders)
 4. Quarantine problematic query fingerprints or keys:
 
-  * add to denylist for apply
-  * purge store entries for those keys
+   * add to denylist for apply
+   * purge store entries for those keys
 5. Re-enable APPLY_SAFE gradually with tighter clamps.
 
 #### 32.3.2 Store corruption/mismatch
@@ -2479,10 +2479,10 @@ Immediate steps:
 
 * SketchStore eviction should prevent this, but if not:
 
-  * disable micro-models
-  * reduce budgets
-  * inspect which sketch type dominates memory
-  * increase activation thresholds
+   * disable micro-models
+   * reduce budgets
+   * inspect which sketch type dominates memory
+   * increase activation thresholds
 
 #### 32.3.4 Offline model regression
 
@@ -2551,11 +2551,11 @@ Micro-model updates can come from:
 1. **Background scans** (offline build): full dataset statistics.
 2. **Runtime sample updates**:
 
-  * update from values encountered during query execution
-  * possibly sampled to reduce overhead
+   * update from values encountered during query execution
+   * possibly sampled to reduce overhead
 3. **Storage-layer hooks**:
 
-  * if storage already maintains certain stats (NDV, histograms), reuse them
+   * if storage already maintains certain stats (NDV, histograms), reuse them
 
 For “fully featured,” you likely do:
 
@@ -2573,8 +2573,8 @@ Instead:
 
 * sample values:
 
-  * every k-th row
-  * or reservoir sample up to N per operator
+   * every k-th row
+   * or reservoir sample up to N per operator
 * update sketches with sampled values weighted appropriately (importance weighting)
 
 This yields approximate distribution updates.
@@ -2618,18 +2618,18 @@ For each node:
 * baseline estimate (rows, cost)
 * micro-model adjustments:
 
-  * which sketch contributed
-  * estimated selectivity and confidence
+   * which sketch contributed
+   * estimated selectivity and confidence
 * online correction factor:
 
-  * factor, confidence, evidence levels
+   * factor, confidence, evidence levels
 * final estimate and cost
 * spill risk estimate if applicable
 * if offline model used:
 
-  * modelId/version
-  * prediction vs baseline
-  * gating reason (“high confidence, features complete”)
+   * modelId/version
+   * prediction vs baseline
+   * gating reason (“high confidence, features complete”)
 
 For adaptive execution (if executed):
 
@@ -5075,10 +5075,10 @@ Example packing:
 
 * c (32 bits):
 
-  * bits 0..5: indexTag (0..63)
-  * bits 6..17: graphId (0..4095)
-  * bits 18..25: litBucket (0..255)
-  * bits 26..31: bindMaskLow (0..63) (if bindMask needs more bits, store in d)
+   * bits 0..5: indexTag (0..63)
+   * bits 6..17: graphId (0..4095)
+   * bits 18..25: litBucket (0..255)
+   * bits 26..31: bindMaskLow (0..63) (if bindMask needs more bits, store in d)
 
 Then d = bindMaskHigh or additional features.
 
@@ -5291,8 +5291,8 @@ Outlier handling:
 
 * if `abs(logErr) > LOGERR_CAP` then:
 
-  * increment anomalyCount
-  * clamp logErr to sign(logErr)*LOGERR_CAP (or ignore update if you prefer)
+   * increment anomalyCount
+   * clamp logErr to sign(logErr)*LOGERR_CAP (or ignore update if you prefer)
 
 #### 66.5.3 Confidence function (store-side helper)
 
@@ -5365,8 +5365,8 @@ You don’t need strict coherence. Update L2 entries opportunistically:
 * after store updates, flusher calls `cache.refreshFromBatch()`
 * refresh either:
 
-  * recompute from updated stats returned by store
-  * or mark keys as dirty so next planner miss triggers reload
+   * recompute from updated stats returned by store
+   * or mark keys as dirty so next planner miss triggers reload
 
 Given this is a learning system, eventual consistency is fine.
 
@@ -5697,11 +5697,11 @@ For a custom format, define:
 * file header with schema hash and feature definitions version ID
 * records as:
 
-  * key family and level
-  * feature vector in packed bucket IDs (varints)
-  * labels: actual rows (log), actual time (log), spilled? etc.
-  * weights: observation count, confidence
-  * timestamps in coarse buckets
+   * key family and level
+   * feature vector in packed bucket IDs (varints)
+   * labels: actual rows (log), actual time (log), spilled? etc.
+   * weights: observation count, confidence
+   * timestamps in coarse buckets
 
 Privacy:
 
@@ -5715,13 +5715,13 @@ A model artifact bundle should include:
 
 * `manifest.json` (or binary manifest) with:
 
-  * modelId, version, type, operator family
-  * feature schema hash
-  * required features
-  * training window
-  * evaluation summary
-  * inference budget
-  * signature/checksum
+   * modelId, version, type, operator family
+   * feature schema hash
+   * required features
+   * training window
+   * evaluation summary
+   * inference budget
+   * signature/checksum
 * `weights.bin` (compiled representation)
 * optional `calibration.bin` (post-training calibration, e.g., isotonic regression)
 * optional `notes.txt` for human context
@@ -5791,10 +5791,10 @@ In production you usually can’t run both. So you use approximations:
 
 * In a dedicated environment, for a set of query fingerprints:
 
-  * collect top-k candidate plans (from enumerator)
-  * execute a subset of plans to measure actual costs
-  * compute regret of chosen plan under each estimator
-    This is expensive but gives better insight and helps tune risk penalties.
+   * collect top-k candidate plans (from enumerator)
+   * execute a subset of plans to measure actual costs
+   * compute regret of chosen plan under each estimator
+     This is expensive but gives better insight and helps tune risk penalties.
 
 **Strategy C: Operator-level cost replay**
 
@@ -5828,10 +5828,10 @@ Example rollback policy (conceptual):
 
 * In canary group, over last 10 minutes:
 
-  * if p99 runtime > control p99 × 1.25 AND sample count ≥ N
-  * OR spilled bytes increase > 2× AND spill count ≥ N
-  * OR planning time p95 increases > 1.10×
-    Then:
+   * if p99 runtime > control p99 × 1.25 AND sample count ≥ N
+   * OR spilled bytes increase > 2× AND spill count ≥ N
+   * OR planning time p95 increases > 1.10×
+     Then:
 * automatically switch canary from APPLY to SHADOW
 * keep OBSERVE on
 * record rollback event with diagnostics snapshot
@@ -5852,7 +5852,7 @@ For each fingerprint:
 * count plan changes per hour/day
 * detect oscillation between two plans:
 
-  * if plan alternates A↔B frequently, that’s flapping
+   * if plan alternates A↔B frequently, that’s flapping
 
 Mitigation tuning:
 
@@ -5894,14 +5894,14 @@ At plan time:
 
 * if your star join uses existence correlation via CS, combine:
 
-  * estimated subjects satisfying predicate presence constraints
-  * multiply by multiplicity for each predicate whose object is projected (carefully; independence assumptions apply)
+   * estimated subjects satisfying predicate presence constraints
+   * multiply by multiplicity for each predicate whose object is projected (carefully; independence assumptions apply)
 
 Uncertainty:
 
 * multiplicity can be heavy-tailed (some subjects have many values). Track variance or at least a “heavy tail indicator”:
 
-  * e.g., ratio of p90 multiplicity to mean multiplicity (can be approximated if you track a small digest of multiplicities)
+   * e.g., ratio of p90 multiplicity to mean multiplicity (can be approximated if you track a small digest of multiplicities)
 
 ### 69.2 Subject degree distribution (generalization for star joins)
 
@@ -5946,18 +5946,18 @@ If your workload frequently constrains `?s rdf:type T`, then type-conditioned st
 
 * within type T:
 
-  * count of subjects
-  * predicate presence rates
-  * predicate multiplicities
-  * object NDV for certain predicates
+   * count of subjects
+   * predicate presence rates
+   * predicate multiplicities
+   * object NDV for certain predicates
 
 You don’t need full per-type everything. Start with:
 
 * for top K types (by frequency in workload), maintain:
 
-  * count subjects of type
-  * presence probabilities of top predicates (or counts of subjects with predicate given type)
-    Then star join estimate becomes:
+   * count subjects of type
+   * presence probabilities of top predicates (or counts of subjects with predicate given type)
+     Then star join estimate becomes:
 * subjects of type T satisfying predicates ≈ count(T) × Π P(p_i | T) (or using type-conditioned CS/itemsets)
 
 This is a micro-model tier:
@@ -5987,7 +5987,7 @@ It’s hard to maintain exact join key distributions for intermediate results. B
 
 * propagate “origin metadata” for variables through the plan:
 
-  * variable ?x came from predicate p on object position
+   * variable ?x came from predicate p on object position
 * if join key variable originates from a scan on predicate p, reuse p’s heavy hitter sketch for skew estimation
 
 Then for join selectivity:
@@ -5995,10 +5995,10 @@ Then for join selectivity:
 * compute long-tail uniform estimate from NDV
 * add heavy hitters contribution:
 
-  * estimate for each top value v:
+   * estimate for each top value v:
 
-    * leftFreq(v) * rightFreq(v)
-      Sum over top values, plus long tail approximation.
+      * leftFreq(v) * rightFreq(v)
+        Sum over top values, plus long tail approximation.
 
 This is approximate but can catch the worst skew cases and prevent catastrophic join algorithm choices.
 
@@ -6014,7 +6014,7 @@ A lightweight “all in” approach:
 * maintain filter selectivity stats keyed by (predicateId, filterKind, bucket features) instead of filterKind alone
 * this requires predicate-aware FilterKey:
 
-  * include predicateId in FilterKey where safe
+   * include predicateId in FilterKey where safe
 
 Gate it carefully to avoid fragmentation.
 
@@ -6120,11 +6120,11 @@ Planner now estimates:
 * type ~10M
 * range filter selectivity from sketch:
 
-  * `cdf(1990) - cdf(1980)` ≈ 0.02
+   * `cdf(1990) - cdf(1980)` ≈ 0.02
 * online correction factor might further adjust slightly:
 
-  * factor = exp(ewmaLogErr) near 1.0 now because sketch already fixed it, or
-  * if sketch is new, correction still provides the 0.18× adjustment (0.02/0.11)
+   * factor = exp(ewmaLogErr) near 1.0 now because sketch already fixed it, or
+   * if sketch is new, correction still provides the 0.18× adjustment (0.02/0.11)
 
 Estimated rows after birthYear filter:
 
@@ -6161,25 +6161,25 @@ A well-designed explain output would show something like:
 
 * Filter node (birthYear range):
 
-  * baseline sel: 0.11
-  * micro-model rangeSketch sel: 0.021 (conf=0.78)
-  * online correction factor: 0.95 (conf=0.62) (small residual adjustment)
-  * final sel: 0.020
-  * predicted rows: 200k
-  * actual rows (analyzed run): 205k
+   * baseline sel: 0.11
+   * micro-model rangeSketch sel: 0.021 (conf=0.78)
+   * online correction factor: 0.95 (conf=0.62) (small residual adjustment)
+   * final sel: 0.020
+   * predicted rows: 200k
+   * actual rows (analyzed run): 205k
 
 * OPTIONAL node:
 
-  * baseline matchRate: 0.8
-  * learned matchRate: 0.6 (conf=0.70)
-  * learned multiplicity: 1.1 (conf=0.55)
-  * predicted output rows: 212k
-  * actual: 220k
+   * baseline matchRate: 0.8
+   * learned matchRate: 0.6 (conf=0.70)
+   * learned multiplicity: 1.1 (conf=0.55)
+   * predicted output rows: 212k
+   * actual: 220k
 
 * Country join:
 
-  * algorithm chosen: index nested-loop
-  * reason: leftRows small, spillProb(hash) moderate under worst-case; tail-risk favors nlj
+   * algorithm chosen: index nested-loop
+   * reason: leftRows small, spillProb(hash) moderate under worst-case; tail-risk favors nlj
 
 ### 70.7 The “long-term behavior” after weeks
 
@@ -6203,4 +6203,1180 @@ Part 5 delivered:
 * a realistic A/B analytics and rollback automation plan
 * RDF/SPARQL-specific estimation improvements beyond the basic micro-model set
 * a worked end-to-end example showing how the loop converges
+
+---
+
+*Part 6: Store Backends Reference Implementations, Sketch Implementations, Merge Logic, Deep Adaptive Execution Semantics, Multi‑Tenant Privacy, and Engineering Failure‑Mode Checklists**
+
+Parts 1–5 gave you the architecture, model layers, rollout patterns, and lots of pseudo‑code. Part 6 is about turning that into an implementation that won’t bite you later. This includes:
+
+* concrete backend designs for `FeedbackStore` (LMDB and SQLite patterns)
+* concrete implementations (and pitfalls) for the main sketch types (HLL, KLL/t‑digest, SpaceSaving, CMS, Bloom)
+* how to merge stats/sketches safely across instances
+* adaptive execution in the presence of LIMIT/OFFSET/ORDER BY/DISTINCT/GROUP BY (where many “adaptive” systems quietly break semantics)
+* privacy-safe hashing and tenant isolation patterns
+* failure modes + detection + mitigation checklists per subsystem
+
+This is still “execplan style” (how to build), but it’s intentionally closer to reference engineering notes than to marketing prose.
+
+---
+
+## 72) FeedbackStore backend reference designs
+
+### 72.1 What the store must guarantee (re-stated as contracts)
+
+The FeedbackStore is not a database of truth; it’s a bounded memory of experience. That changes your priorities:
+
+**Correctness contract**
+
+* Store must never cause query failure.
+* On read failure or corruption: return miss (fail closed).
+* Stats may be stale; eventual consistency is fine.
+
+**Performance contract**
+
+* Planner read path must be low latency (p95 predictable).
+* Write path can be batched and amortized.
+
+**Operational contract**
+
+* Schema/version mismatch is detected early and handled safely.
+* Purge/rebuild is safe and fast enough to be an accepted operational move.
+
+### 72.2 Store API (refined)
+
+We’ll use a batch-oriented interface because writes must be amortized:
+
+```java
+interface FeedbackStore {
+  Optional<FeedbackStats> get(Key128 k);           // point lookup
+  Map<Key128, FeedbackStats> getBatch(List<Key128> keys); // optional
+  void updateBatch(AggMap<Key128, BatchAgg> agg);  // transactional batch update
+  StoreMeta meta();                               // schema/version, size, stats
+  void compactIfNeeded();                         // optional
+  void close();
+}
+```
+
+StoreMeta should include:
+
+* schema hashes
+* size estimate
+* record count estimate
+* last compact time
+* salts used for hashing
+* corruption flags
+
+---
+
+## 73) LMDB backend: practical “single-writer, many readers” design
+
+LMDB is a strong fit because planner reads dominate and can be memory-mapped.
+
+### 73.1 LMDB concurrency model (use it, don’t fight it)
+
+* LMDB supports **many concurrent read transactions**.
+* LMDB supports **one write transaction at a time**.
+
+That maps nicely to:
+
+* planner threads = read transactions (short-lived)
+* telemetry flusher = single writer thread
+
+Do not attempt multi-writer patterns; you’ll get lock contention and sadness.
+
+### 73.2 Data layout choices
+
+Keys:
+
+* 16 bytes (hash128)
+  Values:
+* fixed-size binary struct (e.g., 64 bytes)
+
+Fixed size reduces fragmentation and parsing overhead.
+
+### 73.3 Reader strategy: short read transactions, cache first
+
+Planner should not open an LMDB read txn for every lookup if you can avoid it; but you also don’t want long-lived txns that prevent page reuse. Good practice:
+
+* L2 hot cache absorbs most lookups.
+* When you do hit LMDB:
+
+   * open a read txn
+   * lookup key
+   * close txn immediately
+
+Optionally, you can:
+
+* keep a per-thread read txn and renew periodically (advanced)
+  But the simplest safe pattern is short-lived txns since cache hit rates should be high.
+
+### 73.4 Writer strategy: one batched write transaction per flush
+
+The flusher aggregates and then does:
+
+1. begin write transaction
+2. for each key:
+
+   * fetch current stats (optional; you can also rely on overwrite if you compute updates without reading)
+   * compute new stats
+   * put
+3. commit transaction
+
+LMDB write transactions are fast when batched.
+
+### 73.5 Handling “read-modify-write”
+
+For EWMA updates you typically need existing stats. So updateBatch often does:
+
+* `get(key)` inside write txn
+* update
+* `put(key)`
+
+This is fine, but you can optimize:
+
+* if key not found, create default stats and insert
+* keep a small in-memory “recent write cache” in the flusher to avoid repeated reads for hot keys across adjacent flushes (optional)
+
+### 73.6 LMDB map size management
+
+LMDB requires you to set a maximum map size. If you set it too small and the DB grows, you’ll get “map full” errors.
+
+**Practical policy**
+
+* set map size to something like `maxBytes * 2` or `maxBytes * 3` to allow slack for internal overhead and growth during compaction cycles.
+* monitor actual used pages.
+* support controlled resize:
+
+   * if within writer thread you detect near-full, resize map (LMDB supports it, but do it safely and carefully)
+
+**Fail-closed behavior**
+
+* If writer fails due to map full:
+
+   * log error
+   * drop updates for that flush (learning pause)
+   * schedule compaction/rebuild
+   * do not block queries
+
+### 73.7 Crash safety and corruption handling
+
+LMDB is robust, but you still need a plan:
+
+* store header is separate (or in a dedicated key) with schema metadata
+* on startup:
+
+   * read header
+   * verify schema hash
+   * if mismatch → ignore store / rename to .old and start fresh (configurable)
+* if LMDB reports corruption:
+
+   * disable feedback
+   * quarantine store file
+   * optionally auto-purge if config allows
+
+### 73.8 Compaction with LMDB
+
+LMDB doesn’t “compact” in place; you typically rebuild by copying:
+
+* create new env
+* copy selected entries (top‑K) into new env
+* atomic swap directories
+
+This fits the periodic rebuild strategy from Part 3.
+
+---
+
+## 74) SQLite backend: robust and introspectable, but needs careful tuning
+
+SQLite is an excellent “ops-friendly” choice if you accept careful tuning and the fact that it’s not a pure KV store.
+
+### 74.1 SQLite mode: WAL or bust
+
+Use WAL mode:
+
+* better concurrency
+* less writer-reader blocking
+* more predictable under mixed workloads
+
+Set:
+
+* `PRAGMA journal_mode=WAL;`
+* `PRAGMA synchronous=NORMAL;` (or FULL if you want stronger durability at performance cost)
+* `PRAGMA temp_store=MEMORY;` for compaction operations if safe
+* consider `PRAGMA mmap_size=...` for faster reads
+
+### 74.2 Schema design
+
+Single table keyed by 16-byte blob:
+
+```sql
+CREATE TABLE feedback (
+  key BLOB PRIMARY KEY,        -- 16 bytes
+  n INTEGER NOT NULL,
+  lastSeen INTEGER NOT NULL,   -- nanos or millis
+  ewmaLogErr REAL NOT NULL,
+  ewmaLogErr2 REAL NOT NULL,
+  ewmaLogCost REAL NOT NULL,
+  anomalyCount INTEGER NOT NULL
+);
+```
+
+You can store the value as a blob instead, but separate columns help with compaction queries and introspection.
+
+Index:
+
+* primary key is sufficient for lookups
+* optional index on `lastSeen` for eviction decisions
+* optional index on a derived `score` column if you persist score
+
+### 74.3 Prepared statements (mandatory)
+
+For performance:
+
+* prepare statements once, reuse:
+
+* `SELECT ... FROM feedback WHERE key=?`
+
+* `INSERT INTO feedback(...) VALUES(...) ON CONFLICT(key) DO UPDATE SET ...`
+
+* OR two-step read then update (but upsert is nice)
+
+Batch updates:
+
+* wrap updateBatch in a transaction:
+
+   * `BEGIN IMMEDIATE;`
+   * execute many upserts
+   * `COMMIT;`
+
+### 74.4 Avoid per-key SELECT during updateBatch if possible
+
+Upsert can compute updated stats in SQL only if you can express update math in SQL. That is possible for simple EWMA updates, but you’ll need the existing values.
+
+Example:
+
+* `ewmaLogErr = (1-α)*ewmaLogErr + α*logErr`
+
+You can precompute `logErr` and α in the application and pass them as parameters:
+
+* in `UPDATE`, refer to existing columns
+
+This avoids a separate SELECT.
+
+However, you must be careful:
+
+* α might depend on existing n or effective n
+* keep the math consistent with your application-level implementation
+* beware floating point drift
+
+A pragmatic approach:
+
+* compute logErr and α in application
+* use `ON CONFLICT DO UPDATE SET` with expressions referencing existing columns
+
+### 74.5 SQLite compaction/eviction strategy
+
+SQLite doesn’t have automatic eviction. Use periodic rebuild:
+
+Option A: table rebuild into a new file:
+
+* create new SQLite file
+* copy top entries based on score/recency/n
+* swap
+
+Option B: delete old rows and VACUUM:
+
+* `DELETE FROM feedback WHERE ...`
+* `VACUUM;`
+  But VACUUM locks and is expensive. Rebuild is often cleaner.
+
+### 74.6 Failure modes
+
+* DB busy / locked:
+
+   * writer thread should retry a few times with short backoff
+   * if still fails, drop update batch (learning pause)
+* corruption:
+
+   * fail closed, quarantine, purge optional
+* schema mismatch:
+
+   * detected via header table, fail closed
+
+---
+
+## 75) Sketch implementations: concrete designs and pitfalls
+
+Micro-model sketches are where memory budgets go to die if you let object overhead run wild. The principle:
+
+* use primitive arrays
+* keep sketches mergeable when you care about distributed merge
+* store parameterization in sketch metadata
+
+### 75.1 Hashing: the unsung hero
+
+All sketches depend on hashing values consistently and privately.
+
+Use:
+
+* keyed hash (SipHash or similar) with secret per tenant or per store
+* stable normalization before hashing:
+
+   * numeric canonical representation
+   * string normalization policy (case-folding? trimming? careful: can change semantics)
+
+**Do not** use language runtime default hashes (they can vary across processes and versions).
+
+---
+
+## 76) HyperLogLog NDV sketch (HLL)
+
+### 76.1 What it stores
+
+* `m = 2^p` registers
+* register value = max observed leading zero count for hashed values
+
+Memory:
+
+* registers stored as byte array or packed bits
+
+### 76.2 Update algorithm
+
+Given hash `h` (64-bit):
+
+* index = high p bits (or low bits depending on convention)
+* w = remaining bits
+* rho = number of leading zeros in w + 1
+* registers[index] = max(registers[index], rho)
+
+Pseudo:
+
+```java
+void update(long hash64) {
+  int idx = (int)(hash64 >>> (64 - p));
+  long w = (hash64 << p) | (1L << (p-1));  // ensure non-zero
+  int rho = leadingZeros(w) + 1;
+  reg[idx] = max(reg[idx], rho);
+}
+```
+
+### 76.3 Estimate algorithm
+
+Use standard HLL estimation:
+
+* harmonic mean of 2^{-reg[i]}
+* apply small-range correction (linear counting) if many zeros
+* apply large-range correction if needed (rare for most use)
+
+Confidence:
+
+* relative error ≈ 1.04 / sqrt(m)
+
+Store p in metadata for reconstruction.
+
+### 76.4 Merge
+
+Merge is register-wise max:
+
+* for i in 0..m-1: reg[i] = max(reg[i], other.reg[i])
+
+### 76.5 Pitfalls and mitigations
+
+* Register packing: bit packing reduces memory but costs CPU. For p=12 (4096 registers), a byte array is fine (~4KB) and simpler.
+* Do not allocate per update; update should be a few operations.
+* HLL is sensitive to hash quality; use strong hash.
+
+---
+
+## 77) KLL sketch (quantiles for numeric ranges)
+
+### 77.1 What KLL does
+
+KLL maintains a compact summary of numeric values that can approximate quantiles (and therefore CDF) efficiently.
+
+### 77.2 Implementation overview (practical)
+
+A KLL sketch maintains levels:
+
+* level 0: buffer of recent samples
+* when full, compaction randomly halves and promotes to next level
+* higher levels represent larger “weights”
+
+Parameters:
+
+* `k`: controls accuracy and memory
+* memory roughly O(k log n)
+
+### 77.3 Update
+
+* append value to level 0 buffer
+* if buffer size > k:
+
+   * sort buffer
+   * randomly keep every other item (or choose offset 0/1 randomly)
+   * promote survivors to next level buffer
+   * recurse if next level exceeds capacity
+
+### 77.4 Query CDF / quantiles
+
+To estimate CDF(x):
+
+* merge all levels into a weighted list (value, weight)
+* compute approximate rank by summing weights for values ≤ x
+  This can be done:
+* by building a sorted merged view on demand (planning time)
+* or by maintaining a cached merged structure that rebuilds when sketch updates (tradeoff)
+
+Given planning-time needs:
+
+* keep a cached merged view for hot sketches
+* rebuild after significant updates or periodically
+
+### 77.5 Merge
+
+Merge KLL sketches by:
+
+* merging level buffers and then re-compacting to maintain bounds
+  Implementation complexity is higher than HLL; keep it well-tested.
+
+### 77.6 Pitfalls
+
+* Sorting costs can be non-trivial if you rebuild too often; keep compaction infrequent with appropriate k and update sampling.
+* Numeric parsing and normalization must be stable and safe; keep datatypes separate.
+
+---
+
+## 78) SpaceSaving heavy hitters (frequency of common values)
+
+### 78.1 Why SpaceSaving
+
+It maintains approximate counts of top-K frequent items with bounded error and small memory. Great for skew detection.
+
+### 78.2 Data representation (primitive arrays)
+
+Avoid maps-of-objects. Use arrays:
+
+* `long[] keys` (value hashes)
+* `int[] counts`
+* `int[] errors`
+* `int size`
+* plus an index structure for key lookup
+
+Lookup requires mapping valueHash → index. Two options:
+
+1. open-address hash table storing indices
+2. sort-based periodic rebuild (usually too slow)
+
+Use open-address hash table:
+
+* `long[] tableKeys` and `int[] tableIndex` with tombstones
+
+### 78.3 Update algorithm (SpaceSaving)
+
+When value v arrives:
+
+* if v in table:
+
+   * counts[idx]++
+* else if size < K:
+
+   * insert v with count=1, error=0
+* else:
+
+   * find min-count entry (needs efficient min tracking!)
+   * replace it with v:
+
+      * error[v] = minCount
+      * count[v] = minCount + 1
+
+Finding min each time naively is O(K) per update. That’s too slow. Options:
+
+* maintain a min-heap keyed by count (O(log K) update)
+* maintain bucketed counts (fast if counts small; not always)
+* update in batches and recompute min periodically (approx)
+
+A practical compromise:
+
+* maintain a min-heap of indices
+* on increment, update heap key (decrease-key is needed; implement with heap positions)
+* for replace, pop min index
+
+### 78.4 Query frequency estimate
+
+For v:
+
+* if present: count[v] with error bound error[v]
+* else: unknown; treat as low-frequency
+
+Selectivity estimate:
+
+* freq(v)/N where N is total observed count (store separately)
+
+### 78.5 Merge
+
+SpaceSaving merge is approximate:
+
+* combine two summaries by:
+
+   * add counts for matching keys
+   * for keys present in one summary but not the other, include with their count (and error)
+   * then if size exceeds K, prune by keeping top-K counts and adjusting errors
+     This is non-trivial but doable.
+
+If distributed merge is important and you want simpler merges:
+
+* use CMS for mergeability, but accept memory tradeoff
+* or use SpaceSaving locally and merge only at higher level (graph/predicate), not leaf
+
+---
+
+## 79) Count-Min Sketch (optional): when you truly need it
+
+CMS gives approximate frequency for any key with mergeability. But memory per predicate can be heavy.
+
+If you implement CMS:
+
+* choose w and d globally
+* store counters as 16-bit if you can tolerate overflow with saturation or periodic scaling
+* update is O(d) per value
+
+Use CMS only for:
+
+* global frequency sketches
+* or a tiny set of extremely high-impact predicates
+
+---
+
+## 80) Bloom filter (existence hints): treat as special ops
+
+Bloom filters are mergeable (bitwise OR), but memory heavy. Use only for a handful of predicates where:
+
+* equality lookups often result in zero matches
+* early emptiness detection matters a lot
+
+Implement:
+
+* bitset `m` bits
+* k hash functions derived from a 128-bit hash (double hashing technique)
+* update sets bits
+* query checks bits
+
+Metadata includes:
+
+* expected n, false positive rate
+* actual inserts count to detect saturation (FPR rises when overfilled)
+
+Planner should treat Bloom “definitely not present” as high-confidence only when:
+
+* Bloom has full coverage and correct partition semantics
+  Otherwise treat as moderate hint.
+
+---
+
+## 81) Merging stats and sketches across instances
+
+### 81.1 The core problem: EWMA isn’t merge-friendly
+
+EWMA depends on order and timing. If you naïvely merge EWMAs, you get nonsense.
+
+Solution: store mergeable aggregates in addition to EWMA-ish fields.
+
+### 81.2 Store mergeable stats representation
+
+Instead of storing only EWMA fields, store:
+
+* n
+* sumLogErr
+* sumLogErrSq
+* lastSeen
+  Optionally:
+* sumLogCost, sumLogCostSq
+
+From these you can derive:
+
+* mean = sumLogErr / n
+* var = sumLogErrSq / n - mean^2
+
+Then you can re-derive an EWMA-like value using time decay at read time:
+
+* `effectiveMean = blend(priorMean, observedMean, weight based on nEff and age)`
+
+This becomes a generalized shrinkage model rather than a literal EWMA.
+
+**Practical compromise**
+
+* Keep EWMA for fast local updates
+* Also keep mergeable aggregates for cross-instance merge
+* On merge, recompute EWMA-ish fields from merged aggregates with chosen decay
+
+### 81.3 Merge algorithm for stats
+
+Given stats A and B for same key:
+
+* n = nA + nB
+* sumLogErr = sumA + sumB
+* sumLogErrSq = sumSqA + sumSqB
+* lastSeen = max(lastSeenA, lastSeenB)
+* anomalyCount = anomalyA + anomalyB
+
+Then optionally:
+
+* clamp extremes (if one side clearly corrupted)
+* compute derived mean/var
+
+If you keep EWMA fields too:
+
+* recompute ewmaLogErr = sumLogErr / n (or a weighted blend with time decay)
+* ewmaLogErr2 similarly
+
+### 81.4 Merge algorithm for sketches
+
+* HLL: register max
+* KLL: merge and compact
+* Bloom: bitwise OR (watch saturation)
+* CMS: counter-wise addition with saturation
+* SpaceSaving: approximate merge and prune
+
+### 81.5 Merge protocol: deltas vs snapshots (operational)
+
+A safe protocol:
+
+* each instance periodically produces a snapshot of:
+
+   * top keys by utility score (bounded)
+   * sketches for active keys (bounded)
+* aggregator merges snapshots into a “global snapshot”
+* instances optionally pull global snapshot and merge into local stores
+
+This avoids:
+
+* continuous streaming complexity
+* huge merges
+* and ensures bounded network cost
+
+---
+
+## 82) Adaptive execution with semantic constraints (LIMIT/OFFSET/ORDER BY/DISTINCT/GROUP BY)
+
+This is where adaptive systems often cheat accidentally. We won’t.
+
+### 82.1 The semantic landmines
+
+Adaptive execution that reorders work mid-flight must not violate:
+
+* **LIMIT/OFFSET**: you can’t return wrong subset
+* **ORDER BY**: result order must be correct
+* **DISTINCT**: duplicates must be eliminated as specified
+* **GROUP BY / aggregates**: grouping must be correct, and partial aggregates must be combined correctly
+* **OPTIONAL semantics**: null extension must match spec
+
+So adaptation must be restricted to regions where these properties are preserved.
+
+### 82.2 The safe categories of adaptive actions
+
+**Category 1: Local algorithm adaptation** (usually safe)
+
+* change join algorithm (hash ↔ nested-loop) without changing logical order
+* adjust memory policy (in-memory vs partitioned)
+* enable/disable runtime filters
+* change vector batch sizes
+
+These do not change the logical plan; they change physical strategy.
+
+**Category 2: Reoptimization within a reopt region** (conditionally safe)
+
+* reorder commutative inner joins
+* push filters earlier within region (if semantics allow)
+* change join tree shape for inner joins
+
+But only safe if:
+
+* the region’s outputs are not required in a specific order
+* and region is not entangled with LIMIT/OFFSET semantics in a way that depends on evaluation order
+
+**Category 3: Global replanning** (rare, expensive, risky)
+
+* only feasible if query is executed in stages and can restart remaining stages with materialized intermediates
+
+### 82.3 Handling LIMIT and ORDER BY correctly
+
+#### 82.3.1 LIMIT without ORDER BY
+
+If there is a LIMIT but no ORDER BY, the query is allowed to return any N solutions. This gives more flexibility:
+
+* you may stop early when you have enough results (depending on semantics)
+* you may reorder joins if you preserve correctness of returned bindings
+
+But caution: some engines produce results in a deterministic internal order; changing plan can change which results appear under LIMIT. SPARQL semantics allow arbitrary order unless ORDER BY is specified, but users may still expect stability. Decide:
+
+* for strict “user surprise minimization,” treat LIMIT as a stability constraint even if spec allows arbitrary
+* or provide a config: “LIMIT stability mode”
+
+#### 82.3.2 ORDER BY with LIMIT (top-k)
+
+With ORDER BY, LIMIT selects the smallest/largest N according to ordering. You can’t change how results are generated unless you preserve ability to compute top‑k correctly.
+
+Safe adaptive patterns:
+
+* if you use a top‑k heap algorithm, you can adapt within the unordered generation stage as long as you still feed the same candidates into the top‑k structure.
+* you cannot “early terminate” incorrectly unless you can prove remaining results cannot beat current top‑k.
+
+So for adaptive reordering:
+
+* reopt inside the region that generates candidate rows
+* but ensure the ORDER BY/top‑k operator remains above it and unchanged
+* do not change semantics of ordering keys
+
+#### 82.3.3 Materialization boundaries
+
+If ORDER BY is present, you often materialize or at least buffer. That’s a natural reopt boundary:
+
+* generate partial results
+* if actual cardinalities diverge early, adjust remaining join strategies
+  But be cautious: if you already emitted results, you may not be able to reorder safely.
+
+### 82.4 DISTINCT and adaptive execution
+
+DISTINCT requires duplicate elimination. If DISTINCT is implemented via:
+
+* hash set of seen solutions
+* or sort unique
+
+Adaptive actions must not cause:
+
+* missing duplicates elimination
+* or double counting
+
+Safe:
+
+* algorithm switching below DISTINCT is fine
+* join reorder below DISTINCT is fine (still produces same multiset of solutions)
+* but if you use LIMIT and DISTINCT together, early termination becomes tricky:
+
+   * you can’t stop after seeing N outputs unless you know remaining unseen results won’t add new distinct ones
+
+So reopt triggers must be conservative when DISTINCT+LIMIT exist:
+
+* avoid “stop early” heuristics unless proven safe
+* still allow algorithm switching to avoid spill
+
+### 82.5 GROUP BY / aggregates and adaptation
+
+Aggregates require full input unless you can do partial aggregation correctly.
+
+Safe adaptive patterns:
+
+* change join algorithms below aggregation
+* reorder inner joins below aggregation
+* adjust memory/spill policy of aggregate operator
+* use partial aggregation in parallel (if designed)
+
+Replanning mid-aggregation is hard unless:
+
+* aggregation is staged and can merge partials
+* and reopt doesn’t affect grouping semantics
+
+In practice:
+
+* treat GROUP BY as a strong boundary
+* allow adaptation below it (safe)
+* allow memory policy adaptation within it (safe)
+* avoid join reorder across it
+
+### 82.6 OPTIONAL semantics constraints
+
+OPTIONAL is not commutative with inner joins in general; pushing things across OPTIONAL can change semantics.
+
+So reopt regions should generally:
+
+* avoid spanning OPTIONAL boundaries
+* or treat OPTIONAL as a “fixed structure” while allowing algorithm adaptations internally
+
+For example:
+
+* inside the OPTIONAL subgraph, you can reorder inner joins
+* but you shouldn’t pull OPTIONAL’s right side above left side or reorder OPTIONAL relative to other joins unless you have proven equivalence (rare)
+
+### 82.7 Reopt region discovery: practical algorithm
+
+During planning, label nodes with:
+
+* commutative group IDs for inner-join regions
+* barrier nodes: OPTIONAL, UNION, ORDER BY, DISTINCT, GROUP BY, LIMIT with strong stability mode
+
+Algorithm:
+
+1. Traverse plan tree.
+2. Identify maximal connected subgraphs of **inner joins and filters** not crossing barrier nodes.
+3. For each subgraph, decide if it is “reopt-capable”:
+
+   * has at least 3 joins (otherwise replanning benefit small)
+   * has high estimated cost or high uncertainty
+   * has an existing or cheap-to-add materialization point
+4. Annotate plan with reopt regions and their boundaries.
+
+At runtime, checkpoints report:
+
+* observed row counts at region entry/exit
+* if deviation triggers, and region is reopt-capable, perform bounded replanning.
+
+### 82.8 Runtime override store for adaptation
+
+Implement a per-query override map:
+
+* key: Key128 or nodeId
+* value: observed mean rows, high confidence, timestamp
+
+Override rules:
+
+* overrides take precedence over store-based estimates
+* overrides apply only within this query execution
+* overrides can be exported as special training data but are not blindly merged into global store
+
+### 82.9 Correctness testing for adaptive features
+
+You must test adaptation under:
+
+* ORDER BY + LIMIT
+* DISTINCT + LIMIT
+* GROUP BY with HAVING
+* OPTIONAL interactions
+* UNION interactions
+* property paths (if present)
+
+Golden tests:
+
+* run query with adaptive OFF and adaptive ON repeatedly; results must be identical (including order when ORDER BY specified).
+* for queries without ORDER BY, order differences may be acceptable by spec, but if you want stability, enforce it and test it.
+
+---
+
+## 83) Multi-tenant isolation and privacy-safe hashing
+
+### 83.1 Tenant isolation: the default should be “no sharing”
+
+If multiple tenants share the engine:
+
+* do not share feedback evidence across tenants unless explicitly enabled
+* do not share sketches across tenants by default
+* do not share offline training exports across tenants
+
+Implementation:
+
+* include tenantId in KeySeed before hashing
+* enforce per-tenant budgets in FeedbackStore and SketchStore
+* separate store files per tenant if feasible, otherwise partition keys by tenantId
+
+### 83.2 Privacy-safe hashing: keyed hashes and rotation
+
+Use a keyed hash (SipHash or similar):
+
+* `valueHash = SipHash(tenantSecretKey, normalizedValueBytes)`
+
+Benefits:
+
+* prevents attackers from guessing hashes without secret
+* isolates tenants (each tenant has different key)
+
+Rotation:
+
+* you might rotate tenant keys periodically
+* rotation breaks continuity for value-based sketches (heavy hitters, bloom), but does not necessarily break bucket-based features
+  Plan:
+* rotate only when required (security policy)
+* accept that some micro-models reset on rotation
+* keep global correction factors that don’t depend on raw values (pattern-level stats)
+
+### 83.3 What to never store or export
+
+Unless you have explicit policy and safeguards:
+
+* do not store raw literal strings
+* do not store raw IRIs in feedback store (store stable IDs or hashed)
+* do not export raw values
+
+If you need to debug hot keys:
+
+* build a separate opt-in “debug dictionary” that maps key hashes to human-readable fragments for a limited time, accessible only to admins
+
+### 83.4 Defense against “inference by observation”
+
+Even hashed sketches can leak something indirectly (e.g., heavy hitter presence). Mitigations:
+
+* restrict access to explain outputs that reveal micro-model details
+* redact exact factor/confidence for untrusted users, or bucket them (“low/med/high adjustment”)
+* separate admin-level explain from user-level explain
+
+This is an operational policy decision, but the system should support it.
+
+### 83.5 Poisoning mitigation in multi-tenant contexts
+
+To prevent one tenant from poisoning itself (or others, if sharing enabled):
+
+* clamp apply strength for low-trust workloads
+* allow applying corrections only for authenticated workloads or allowlists
+* quarantine keys that show anomalous behavior (variance spikes, extreme logErr)
+* keep recent-vs-long-term stats and require consistency before applying strongly
+
+---
+
+## 84) Engineering failure-mode checklists (per subsystem)
+
+This section is meant to be used like a preflight checklist and a postmortem guide.
+
+### 84.1 Feature registry and keying
+
+**Failure modes**
+
+* planner/executor compute different keys → evidence useless or harmful
+* schema hash mismatch not detected → wrong evidence applied
+* dictionary IDs unstable → evidence mapped to wrong predicates/graphs
+
+**Detection**
+
+* conformance tests in CI
+* runtime metric: feedback hit rate collapses after restart
+* runtime metric: anomaly count spikes for many keys
+* debug mode: compare key components printed in explain vs expected
+
+**Mitigation**
+
+* store schema hash and dictionary hash in store header; fail closed on mismatch
+* persistent dictionaries or stable hash IDs
+* automated “canary conformance check” at startup: build a few keys and ensure registry signature matches expected
+
+### 84.2 Telemetry ingestion (ring buffers)
+
+**Failure modes**
+
+* event drops under load → learning slows or biases
+* hot path allocations → GC spikes
+* flusher thread stalls → buffers overflow
+
+**Detection**
+
+* counters: droppedEvents, flushLagMillis, bufferUtilization
+* GC and allocation profiling
+* p95 planning time or query runtime increases when telemetry enabled (shouldn’t)
+
+**Mitigation**
+
+* increase ring buffer size
+* reduce sampling rate
+* ensure event structs are allocation-free (primitive arrays/off-heap)
+* bound drain per flush and flush more frequently
+* allow emergency toggle: disable telemetry without restart
+
+### 84.3 FeedbackStore backend
+
+**Failure modes**
+
+* store read latency spikes → planning tail latency spikes
+* write failures (map full, DB locked) → learning pauses
+* corruption → crashes if not handled
+
+**Detection**
+
+* lookup latency histograms (hit/miss)
+* write batch duration histograms
+* store error counters
+
+**Mitigation**
+
+* hot cache to shield disk
+* batch writes
+* rebuild/compaction plan
+* fail closed on corruption
+
+### 84.4 SketchStore and micro-models
+
+**Failure modes**
+
+* memory blowup due to too many sketches or too large sketches
+* sketches stale or saturated (bloom saturation, HLL drift)
+* activation thrash (create/evict repeatedly)
+
+**Detection**
+
+* metrics: sketches count by type, bytes by type, evictions, activation rate
+* sketch confidence distributions
+* bloom saturation estimate, NDV estimate stability
+
+**Mitigation**
+
+* strict budgets + admission control
+* hysteresis thresholds for activation/deactivation
+* periodic health checks (disable sketch if saturated or unstable)
+* prefer value-bucket models when privacy or memory constraints dominate
+
+### 84.5 Estimator stack
+
+**Failure modes**
+
+* double counting adjustments (micro-model + correction) leading to overcorrection
+* confidence miscalibrated → too aggressive apply
+* high variance keys applied strongly → plan flapping
+
+**Detection**
+
+* clamp frequency spikes
+* plan stability metrics worsen
+* error metrics get worse in APPLY compared to SHADOW
+* regression detection via A/B
+
+**Mitigation**
+
+* estimator signature hash: reset or downweight old corrections after pipeline changes
+* stickiness thresholds
+* confidence gating and soft clamps
+* quarantine high-variance keys
+
+### 84.6 Cost calibration
+
+**Failure modes**
+
+* cost model learns contention noise → predicts wrong costs under normal load
+* spill model too optimistic → frequent spills
+* calibration updates too aggressive → oscillation
+
+**Detection**
+
+* divergence between predicted and actual cost metrics
+* increased spill incidence after applying calibration
+* coefficient drift monitors (beta values change wildly)
+
+**Mitigation**
+
+* context tagging (load buckets) and downweight extreme periods
+* robust update (Huber clamp)
+* slower forgetting factor (λ closer to 1)
+* apply calibration only in safe mode first (shadow → canary)
+
+### 84.7 Offline models and registry
+
+**Failure modes**
+
+* schema mismatch leads to nonsense inference
+* model inference too slow → planning time spikes
+* model causes plan regressions (regret) in production
+
+**Detection**
+
+* loader rejects incompatible schema (must happen)
+* inference time histogram
+* canary A/B regret metrics and rollback triggers
+
+**Mitigation**
+
+* strict schema hash enforcement
+* inference budgets with hard fallback
+* canary deployment + automated rollback
+* per-template gating: apply models only where proven helpful
+
+### 84.8 Adaptive execution
+
+**Failure modes**
+
+* semantic violation (wrong results/order)
+* runaway replanning loops
+* reopt triggers too sensitive, causing overhead
+* materialization blows memory/disk budgets
+
+**Detection**
+
+* correctness tests (goldens) must catch semantics issues
+* metrics: adaptations per query, reopt time budget usage
+* memory and spill metrics spike when adaptive enabled
+
+**Mitigation**
+
+* strict reopt caps (count and time)
+* barrier-aware reopt regions
+* conservative triggers (min rows/time before trigger)
+* abort reopt if materialization exceeds cap
+* keep adaptive OFF until estimator stack is stable
+
+---
+
+## 85) Operational playbooks (the “what to do when something smells wrong” guide)
+
+### 85.1 “Optimizer got worse after enabling APPLY_SAFE”
+
+1. Switch to SHADOW immediately (preserve learning but stop changing plans).
+2. Identify top regressing fingerprints (A/B analysis).
+3. Check:
+
+   * clamp frequency (are factors huge?)
+   * plan flapping rate
+   * which key families contributed most adjustments
+4. Quarantine regressing fingerprints (disable apply for them).
+5. Tighten:
+
+   * maxFactorHard (e.g., from 8× to 4×)
+   * stickiness δ (e.g., from 10% to 20%)
+   * increase minObservations
+6. Re-enable APPLY_SAFE gradually.
+
+### 85.2 “Planning time spiked after enabling features”
+
+1. Inspect store lookup latency; is it disk-bound?
+2. Increase hot cache size or enable L1 per-plan caching.
+3. Reduce number of lookups:
+
+   * cache within planning cycle
+   * avoid repeated hierarchical lookups unless needed
+4. Ensure offline model inference budgets are enforced.
+5. If still bad: disable offline models and micro-models; keep observe.
+
+### 85.3 “Memory blowup”
+
+1. Disable micro-models immediately (or set budgets lower).
+2. Inspect sketch bytes by type and by tenant.
+3. Increase activation thresholds and add hysteresis.
+4. Ensure sketches are implemented with primitive arrays; object overhead can be 10×.
+5. Add a hard “circuit breaker”:
+
+   * if sketch bytes > maxBytesTotal, freeze admissions and evict aggressively.
+
+### 85.4 “Store corruption detected”
+
+1. Feedback system should already fail closed.
+2. Quarantine store file (rename).
+3. Start fresh store.
+4. Optional: run a salvage tool to extract top keys if you truly need continuity, but default is purge.
+
+### 85.5 “Canary offline model regressed”
+
+1. Auto-rollback to SHADOW should trigger.
+2. Pin registry to previous model version.
+3. Investigate:
+
+   * feature drift
+   * distribution shift (out-of-distribution)
+   * inference delta clamp too loose
+4. Retrain or tighten gating.
+
+---
+
+## 86) Closing Part 6
+
+Part 6 gave you:
+
+* a concrete approach for LMDB and SQLite FeedbackStores (with tuning and failure handling)
+* concrete sketch implementation guidance (HLL, KLL, SpaceSaving, CMS, Bloom) and the “use these sparingly” realism
+* safe merge strategies across instances (mergeable aggregates, not raw EWMA)
+* deep adaptive execution semantics and safe region constraints
+* multi-tenant privacy-safe hashing and isolation policies
+* practical failure-mode checklists and ops playbooks
+
+You now have enough detail to implement a fully featured solution in a way that stays:
+
+* bounded
+* explainable
+* testable
+* and reversible
+
+---
+
 
