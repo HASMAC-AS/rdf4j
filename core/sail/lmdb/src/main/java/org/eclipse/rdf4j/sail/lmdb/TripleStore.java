@@ -85,6 +85,7 @@ import org.eclipse.rdf4j.sail.lmdb.TxnManager.Txn;
 import org.eclipse.rdf4j.sail.lmdb.TxnRecordCache.Record;
 import org.eclipse.rdf4j.sail.lmdb.TxnRecordCache.RecordCacheIterator;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 import org.eclipse.rdf4j.sail.lmdb.util.GroupMatcher;
 import org.eclipse.rdf4j.sail.lmdb.util.IndexKeyWriters;
 import org.lwjgl.PointerBuffer;
@@ -673,6 +674,10 @@ class TripleStore implements Closeable {
 	}
 
 	protected double cardinality(long subj, long pred, long obj, long context) throws IOException {
+		return cardinality(subj, pred, obj, context, true);
+	}
+
+	private double cardinality(long subj, long pred, long obj, long context, boolean applyPenalty) throws IOException {
 		TripleIndex index = getBestIndex(subj, pred, obj, context);
 
 		int relevantParts = index.getPatternScore(subj, pred, obj, context);
@@ -690,7 +695,7 @@ class TripleStore implements Closeable {
 			});
 		}
 
-		return txnManager.doWith((stack, txn) -> {
+		double estimate = txnManager.doWith((stack, txn) -> {
 			Pool pool = Pool.get();
 			final Statistics s = pool.getStatistics();
 			try {
@@ -706,7 +711,7 @@ class TripleStore implements Closeable {
 				ByteBuffer keyBuf = stack.malloc(TripleStore.MAX_KEY_LENGTH);
 				MDBVal valueData = MDBVal.mallocStack(stack);
 
-				double cardinality = 0;
+				double estimateValue = 0;
 				for (boolean explicit : new boolean[] { true, false }) {
 					Arrays.fill(s.avgRowsPerValue, 1.0);
 					Arrays.fill(s.avgRowsPerValueCounts, 0);
@@ -788,8 +793,8 @@ class TripleStore implements Closeable {
 												long diff = s.values[i] - s.lastValues[bucket][i];
 												s.avgRowsPerValueCounts[i]++;
 												s.avgRowsPerValue[i] = (s.avgRowsPerValue[i]
-														* (s.avgRowsPerValueCounts[i] - 1) +
-														(double) s.counts[i] / diff) / s.avgRowsPerValueCounts[i];
+														* (s.avgRowsPerValueCounts[i] - 1)
+														+ (double) s.counts[i] / diff) / s.avgRowsPerValueCounts[i];
 												s.counts[i] = 0;
 											}
 										}
@@ -804,7 +809,7 @@ class TripleStore implements Closeable {
 						}
 
 						// at least the seen samples must be counted
-						cardinality += allSamplesCount;
+						estimateValue += allSamplesCount;
 
 						// the actual number of buckets (bucket - 1 "real" buckets and one for the last element within
 						// the range)
@@ -822,7 +827,7 @@ class TripleStore implements Closeable {
 										.max(s.startValues[bucket][pos] - s.lastValues[bucket - 1][pos], 0);
 								// estimate number of elements between last element of previous bucket and first element
 								// of current bucket
-								cardinality += s.avgRowsPerValue[pos] * diffBetweenGroups;
+								estimateValue += s.avgRowsPerValue[pos] * diffBetweenGroups;
 							}
 						}
 					} finally {
@@ -831,10 +836,134 @@ class TripleStore implements Closeable {
 						}
 					}
 				}
-				return cardinality;
+				return estimateValue;
 			} finally {
 				pool.free(s);
 			}
+		});
+
+		if (applyPenalty && hasKnownComponentsBeyondPrefix(index, relevantParts, subj, pred, obj, context)) {
+			estimate = applyNonOptimalIndexPenalty(index, relevantParts, subj, pred, obj, context, estimate);
+		}
+
+		return estimate;
+	}
+
+	private boolean hasKnownComponentsBeyondPrefix(TripleIndex index, int relevantParts, long subj, long pred, long obj,
+			long context) {
+		for (int i = relevantParts; i < index.fieldSeq.length; i++) {
+			switch (index.fieldSeq[i]) {
+			case 's':
+				if (isKnown(subj)) {
+					return true;
+				}
+				break;
+			case 'p':
+				if (isKnown(pred)) {
+					return true;
+				}
+				break;
+			case 'o':
+				if (isKnown(obj)) {
+					return true;
+				}
+				break;
+			case 'c':
+				if (isKnown(context)) {
+					return true;
+				}
+				break;
+			default:
+				throw new IllegalStateException("Unexpected index field: " + index.fieldSeq[i]);
+			}
+		}
+		return false;
+	}
+
+	private boolean isKnown(long value) {
+		return value >= 0;
+	}
+
+	private double applyNonOptimalIndexPenalty(TripleIndex index, int relevantParts, long subj, long pred, long obj,
+			long context, double baseEstimate) throws IOException {
+		long penaltySubj = subj;
+		long penaltyPred = pred;
+		long penaltyObj = obj;
+		long penaltyContext = context;
+
+		for (int i = relevantParts; i < index.fieldSeq.length; i++) {
+			switch (index.fieldSeq[i]) {
+			case 's':
+				penaltySubj = LmdbValue.UNKNOWN_ID;
+				break;
+			case 'p':
+				penaltyPred = LmdbValue.UNKNOWN_ID;
+				break;
+			case 'o':
+				penaltyObj = LmdbValue.UNKNOWN_ID;
+				break;
+			case 'c':
+				penaltyContext = LmdbValue.UNKNOWN_ID;
+				break;
+			default:
+				throw new IllegalStateException("Unexpected index field: " + index.fieldSeq[i]);
+			}
+		}
+
+		double rangeCount = countEntriesForPrefix(index, penaltySubj, penaltyPred, penaltyObj, penaltyContext);
+		if (rangeCount > baseEstimate) {
+			return rangeCount;
+		}
+		return baseEstimate;
+	}
+
+	private double countEntriesForPrefix(TripleIndex index, long subj, long pred, long obj, long context)
+			throws IOException {
+		return txnManager.doWith((stack, txn) -> {
+			double count = 0;
+
+			ByteBuffer minKeyBuf = stack.malloc(TripleStore.MAX_KEY_LENGTH);
+			index.getMinKey(minKeyBuf, subj, pred, obj, context);
+			minKeyBuf.flip();
+
+			MDBVal maxKey = MDBVal.malloc(stack);
+			ByteBuffer maxKeyBuf = stack.malloc(TripleStore.MAX_KEY_LENGTH);
+			index.getMaxKey(maxKeyBuf, subj, pred, obj, context);
+			maxKeyBuf.flip();
+			maxKey.mv_data(maxKeyBuf);
+
+			MDBVal keyData = MDBVal.mallocStack(stack);
+			MDBVal valueData = MDBVal.mallocStack(stack);
+			PointerBuffer pp = stack.mallocPointer(1);
+
+			for (boolean explicit : new boolean[] { true, false }) {
+				int dbi = index.getDB(explicit);
+				long cursor = 0;
+
+				try {
+					E(mdb_cursor_open(txn, dbi, pp));
+					cursor = pp.get(0);
+
+					keyData.mv_data(minKeyBuf);
+					int rc = mdb_cursor_get(cursor, keyData, valueData, MDB_SET_RANGE);
+
+					while (rc == MDB_SUCCESS) {
+						if (mdb_cmp(txn, dbi, keyData, maxKey) > 0) {
+							break;
+						}
+
+						count++;
+
+						rc = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
+					}
+				} finally {
+					if (cursor != 0) {
+						mdb_cursor_close(cursor);
+					}
+				}
+			}
+
+			return count;
 		});
 	}
 
