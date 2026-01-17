@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,16 +31,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.rdf4j.model.IRI;
-import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
-import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
-import org.eclipse.rdf4j.query.BindingSet;
-import org.eclipse.rdf4j.query.QueryLanguage;
-import org.eclipse.rdf4j.query.TupleQuery;
-import org.eclipse.rdf4j.query.TupleQueryResult;
+import org.eclipse.rdf4j.model.util.LexicalValueComparator;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolver;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.TupleFunctionRegistry;
+import org.eclipse.rdf4j.repository.RepositoryResult;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
@@ -245,6 +242,13 @@ public class LuceneSail extends NotifyingSailWrapper {
 	 */
 
 	final static private Logger logger = LoggerFactory.getLogger(LuceneSail.class);
+	private static final int DEFAULT_REINDEX_BATCH_SIZE = 10_000;
+	private static final LexicalValueComparator VALUE_COMPARATOR = new LexicalValueComparator();
+	private static final Comparator<Statement> REINDEX_STATEMENT_COMPARATOR = Comparator
+			.comparing(Statement::getSubject, VALUE_COMPARATOR)
+			.thenComparing(Statement::getPredicate, VALUE_COMPARATOR)
+			.thenComparing(Statement::getObject, VALUE_COMPARATOR)
+			.thenComparing(Statement::getContext, Comparator.nullsFirst(VALUE_COMPARATOR));
 
 	/**
 	 * Set the parameter "reindexQuery=" to configure the statements to index over. Default value is "SELECT ?s ?p ?o ?c
@@ -667,41 +671,20 @@ public class LuceneSail extends NotifyingSailWrapper {
 					}
 				});
 				try (SailRepositoryConnection connection = repo.getConnection()) {
-					TupleQuery query = connection.prepareTupleQuery(QueryLanguage.SPARQL, reindexQuery);
-					try (TupleQueryResult res = query.evaluate()) {
-						Resource current = null;
-						ValueFactory vf = getValueFactory();
-						List<Statement> statements = new ArrayList<>();
+					int batchSize = Math.max(1, getReindexBatchSize());
+					List<Statement> statements = new ArrayList<>(batchSize);
+					try (RepositoryResult<Statement> res = connection.getStatements(null, null, null, false)) {
 						while (res.hasNext()) {
-							BindingSet set = res.next();
-							Resource r = (Resource) set.getValue("s");
-							IRI p = (IRI) set.getValue("p");
-							Value o = set.getValue("o");
-							Resource c = (Resource) set.getValue("c");
-							if (current == null) {
-								current = r;
-							} else if (!current.equals(r)) {
-								if (logger.isDebugEnabled()) {
-									logger.debug("reindexing resource " + current);
-								}
-								// commit
-								luceneIndex.addDocuments(current, statements);
-
-								// re-init
-								current = r;
+							statements.add(res.next());
+							if (statements.size() >= batchSize) {
+								indexStatementBatch(statements);
 								statements.clear();
 							}
-							statements.add(vf.createStatement(r, p, o, c));
 						}
+					}
 
-						// make sure to index statements for last resource
-						if (current != null && !statements.isEmpty()) {
-							if (logger.isDebugEnabled()) {
-								logger.debug("reindexing resource " + current);
-							}
-							// commit
-							luceneIndex.addDocuments(current, statements);
-						}
+					if (!statements.isEmpty()) {
+						indexStatementBatch(statements);
 					}
 				} finally {
 					repo.shutDown();
@@ -718,6 +701,15 @@ public class LuceneSail extends NotifyingSailWrapper {
 		} catch (Exception e) {
 			throw new SailException("Could not reindex LuceneSail: " + e.getMessage(), e);
 		}
+	}
+
+	protected int getReindexBatchSize() {
+		return DEFAULT_REINDEX_BATCH_SIZE;
+	}
+
+	private void indexStatementBatch(List<Statement> statements) throws IOException {
+		statements.sort(REINDEX_STATEMENT_COMPARATOR);
+		luceneIndex.addRemoveStatements(statements, List.of());
 	}
 
 	/**
