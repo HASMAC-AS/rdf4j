@@ -173,6 +173,10 @@ Use this as a compact, repeatable loop for anything from a one‑line bug fix to
 
 The `scripts/run-single-benchmark.sh` helper is the supported path for spot-checking performance optimisations. It builds the chosen module with the `benchmarks` profile, constrains the benchmark selection to a single `@Benchmark` method, and when `--enable-jfr` is supplied it enforces repeatable profiling defaults (no warmup, ten 10-second measurements, one fork) while clearly reporting the destination of the generated JFR recording. Lean on this script whenever you need a reproducible measurement harness.
 
+### Benchmarking workflow (repository-wide)
+
+The `scripts/run-single-benchmark.sh` helper is the supported path for spot-checking performance optimisations. It builds the chosen module with the `benchmarks` profile, constrains the benchmark selection to a single `@Benchmark` method, and when `--enable-jfr` is supplied it enforces repeatable profiling defaults (no warmup, ten 10-second measurements, one fork) while clearly reporting the destination of the generated JFR recording. Lean on this script whenever you need a reproducible measurement harness.
+
 ## Proportionality Model (Think before you test)
 
 Score the change on these lenses. If any are **High**, prefer **Routine A or D**.
