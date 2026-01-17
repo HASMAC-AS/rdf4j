@@ -55,6 +55,10 @@ public class LmdbStoreConfig extends BaseSailConfig {
 	 */
 	public static final int NAMESPACE_ID_CACHE_SIZE = 32;
 
+	public static final double DEFAULT_COMPACTION_FRAGMENTATION_THRESHOLD = 0.35;
+
+	public static final long DEFAULT_COMPACTION_MIN_INTERVAL = Duration.ofDays(7).toMillis();
+
 	private String tripleIndexes;
 
 	private long tripleDBSize = -1;
@@ -74,6 +78,12 @@ public class LmdbStoreConfig extends BaseSailConfig {
 	private boolean autoGrow = true;
 
 	private long valueEvictionInterval = Duration.ofSeconds(60).toMillis();
+
+	private boolean compactionAutoEnabled = false;
+
+	private double compactionFragmentationThreshold = DEFAULT_COMPACTION_FRAGMENTATION_THRESHOLD;
+
+	private long compactionMinimumInterval = DEFAULT_COMPACTION_MIN_INTERVAL;
 
 	/*--------------*
 	 * Constructors *
@@ -190,6 +200,39 @@ public class LmdbStoreConfig extends BaseSailConfig {
 		return this;
 	}
 
+	public boolean isCompactionAutoEnabled() {
+		return compactionAutoEnabled;
+	}
+
+	public LmdbStoreConfig setCompactionAutoEnabled(boolean compactionAutoEnabled) {
+		this.compactionAutoEnabled = compactionAutoEnabled;
+		return this;
+	}
+
+	public double getCompactionFragmentationThreshold() {
+		return compactionFragmentationThreshold;
+	}
+
+	public LmdbStoreConfig setCompactionFragmentationThreshold(double compactionFragmentationThreshold) {
+		if (compactionFragmentationThreshold < 0.0 || compactionFragmentationThreshold > 1.0) {
+			throw new IllegalArgumentException("Compaction fragmentation threshold must be between 0.0 and 1.0");
+		}
+		this.compactionFragmentationThreshold = compactionFragmentationThreshold;
+		return this;
+	}
+
+	public long getCompactionMinimumInterval() {
+		return compactionMinimumInterval;
+	}
+
+	public LmdbStoreConfig setCompactionMinimumInterval(long compactionMinimumInterval) {
+		if (compactionMinimumInterval < 0) {
+			throw new IllegalArgumentException("Compaction minimum interval must be >= 0");
+		}
+		this.compactionMinimumInterval = compactionMinimumInterval;
+		return this;
+	}
+
 	@Override
 	public Resource export(Model m) {
 		Resource implNode = super.export(m);
@@ -225,6 +268,16 @@ public class LmdbStoreConfig extends BaseSailConfig {
 		}
 		if (valueEvictionInterval != Duration.ofSeconds(60).toMillis()) {
 			m.add(implNode, LmdbStoreSchema.VALUE_EVICTION_INTERVAL, vf.createLiteral(valueEvictionInterval));
+		}
+		if (compactionAutoEnabled) {
+			m.add(implNode, LmdbStoreSchema.COMPACTION_AUTO_ENABLED, vf.createLiteral(true));
+		}
+		if (Double.compare(compactionFragmentationThreshold, DEFAULT_COMPACTION_FRAGMENTATION_THRESHOLD) != 0) {
+			m.add(implNode, LmdbStoreSchema.COMPACTION_FRAGMENTATION_THRESHOLD,
+					vf.createLiteral(compactionFragmentationThreshold));
+		}
+		if (compactionMinimumInterval != DEFAULT_COMPACTION_MIN_INTERVAL) {
+			m.add(implNode, LmdbStoreSchema.COMPACTION_MIN_INTERVAL, vf.createLiteral(compactionMinimumInterval));
 		}
 		return implNode;
 	}
@@ -327,6 +380,39 @@ public class LmdbStoreConfig extends BaseSailConfig {
 						} catch (NumberFormatException e) {
 							throw new SailConfigException(
 									"Long value required for " + LmdbStoreSchema.VALUE_EVICTION_INTERVAL
+											+ " property, found " + lit);
+						}
+					});
+
+			Models.objectLiteral(m.getStatements(implNode, LmdbStoreSchema.COMPACTION_AUTO_ENABLED, null))
+					.ifPresent(lit -> {
+						try {
+							setCompactionAutoEnabled(lit.booleanValue());
+						} catch (IllegalArgumentException e) {
+							throw new SailConfigException(
+									"Boolean value required for " + LmdbStoreSchema.COMPACTION_AUTO_ENABLED
+											+ " property, found " + lit);
+						}
+					});
+
+			Models.objectLiteral(m.getStatements(implNode, LmdbStoreSchema.COMPACTION_FRAGMENTATION_THRESHOLD, null))
+					.ifPresent(lit -> {
+						try {
+							setCompactionFragmentationThreshold(lit.doubleValue());
+						} catch (NumberFormatException e) {
+							throw new SailConfigException(
+									"Double value required for " + LmdbStoreSchema.COMPACTION_FRAGMENTATION_THRESHOLD
+											+ " property, found " + lit);
+						}
+					});
+
+			Models.objectLiteral(m.getStatements(implNode, LmdbStoreSchema.COMPACTION_MIN_INTERVAL, null))
+					.ifPresent(lit -> {
+						try {
+							setCompactionMinimumInterval(lit.longValue());
+						} catch (NumberFormatException e) {
+							throw new SailConfigException(
+									"Long value required for " + LmdbStoreSchema.COMPACTION_MIN_INTERVAL
 											+ " property, found " + lit);
 						}
 					});
