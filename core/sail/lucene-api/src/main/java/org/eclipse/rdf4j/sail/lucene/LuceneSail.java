@@ -33,9 +33,9 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.ValueFactory;
-import org.eclipse.rdf4j.model.util.LexicalValueComparator;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolver;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.TupleFunctionRegistry;
+import org.eclipse.rdf4j.query.algebra.evaluation.util.ValueComparator;
 import org.eclipse.rdf4j.repository.RepositoryResult;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
@@ -243,7 +243,7 @@ public class LuceneSail extends NotifyingSailWrapper {
 
 	final static private Logger logger = LoggerFactory.getLogger(LuceneSail.class);
 	private static final int DEFAULT_REINDEX_BATCH_SIZE = 10_000;
-	private static final LexicalValueComparator VALUE_COMPARATOR = new LexicalValueComparator();
+	private static final ValueComparator VALUE_COMPARATOR = new ValueComparator();
 	private static final Comparator<Statement> REINDEX_STATEMENT_COMPARATOR = Comparator
 			.comparing(Statement::getSubject, VALUE_COMPARATOR)
 			.thenComparing(Statement::getPredicate, VALUE_COMPARATOR)

@@ -32,8 +32,8 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
-import org.eclipse.rdf4j.model.util.LexicalValueComparator;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.algebra.evaluation.util.ValueComparator;
 import org.eclipse.rdf4j.sail.NotifyingSail;
 import org.eclipse.rdf4j.sail.NotifyingSailConnection;
 import org.eclipse.rdf4j.sail.SailException;
@@ -140,7 +140,7 @@ class ReindexBatchingTest {
 	}
 
 	private static final class RecordingSearchIndex implements SearchIndex {
-		private final Comparator<Value> valueComparator = new LexicalValueComparator();
+		private final Comparator<Value> valueComparator = new ValueComparator();
 		private final Comparator<Statement> statementComparator = Comparator
 				.comparing(Statement::getSubject, valueComparator)
 				.thenComparing(Statement::getPredicate, valueComparator)
