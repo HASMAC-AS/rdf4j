@@ -65,11 +65,13 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -77,6 +79,8 @@ import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager;
 import org.eclipse.rdf4j.sail.SailException;
@@ -108,6 +112,8 @@ class TripleStore implements Closeable {
 	static long hit = 0;
 	static long fullHit = 0;
 	static long miss = 0;
+
+	private static final ConcurrentHashMap<String, LongAdder> RECOMMENDED_INDEX_COUNTS = new ConcurrentHashMap<>();
 
 	/*-----------*
 	 * Constants *
@@ -398,7 +404,7 @@ class TripleStore implements Closeable {
 						RecordIterator[] sourceIter = { null };
 						try {
 							sourceIter[0] = new LmdbRecordIterator(sourceIndex, false, -1, -1, -1, -1,
-									explicit, txnManager.createTxn(txn));
+									explicit, txnManager.createTxn(txn), null);
 
 							RecordIterator it = sourceIter[0];
 							long[] quad;
@@ -501,7 +507,7 @@ class TripleStore implements Closeable {
 		for (TripleIndex index : indexes) {
 			if (index.getFieldSeq()[0] == 'c') {
 				// found a context-first index
-				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false);
+				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false, null);
 			}
 		}
 		return null;
@@ -511,8 +517,12 @@ class TripleStore implements Closeable {
 			throws IOException {
 		TripleIndex index = getBestIndex(subj, pred, obj, context);
 		// System.out.println("get triples: " + Arrays.asList(subj, pred, obj,context));
-		boolean doRangeSearch = index.getPatternScore(subj, pred, obj, context) > 0;
-		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch);
+		int bestScore = index.getPatternScore(subj, pred, obj, context);
+		boolean doRangeSearch = bestScore > 0;
+		Supplier<List<String>> recommendedIndexes = () -> computeRecommendedIndexes(subj, pred, obj, context,
+				index, bestScore);
+		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch,
+				recommendedIndexes);
 	}
 
 	boolean hasTriples(boolean explicit) throws IOException {
@@ -525,8 +535,10 @@ class TripleStore implements Closeable {
 	}
 
 	private RecordIterator getTriplesUsingIndex(Txn txn, long subj, long pred, long obj, long context,
-			boolean explicit, TripleIndex index, boolean rangeSearch) throws IOException {
-		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn);
+			boolean explicit, TripleIndex index, boolean rangeSearch,
+			Supplier<List<String>> recommendedIndexes) throws IOException {
+		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn,
+				recommendedIndexes);
 	}
 
 	/**
@@ -851,6 +863,123 @@ class TripleStore implements Closeable {
 		}
 
 		return bestIndex;
+	}
+
+	private List<String> computeRecommendedIndexes(long subj, long pred, long obj, long context,
+			TripleIndex selectedIndex, int bestScore) {
+		int boundCount = 0;
+		if (subj >= 0) {
+			boundCount++;
+		}
+		if (pred >= 0) {
+			boundCount++;
+		}
+		if (obj >= 0) {
+			boundCount++;
+		}
+		if (context >= 0) {
+			boundCount++;
+		}
+
+		if (boundCount == 0 || bestScore >= boundCount) {
+			return List.of();
+		}
+
+		List<Character> bound = new ArrayList<>(4);
+		List<Character> unbound = new ArrayList<>(4);
+		if (subj >= 0) {
+			bound.add('s');
+		} else {
+			unbound.add('s');
+		}
+		if (pred >= 0) {
+			bound.add('p');
+		} else {
+			unbound.add('p');
+		}
+		if (obj >= 0) {
+			bound.add('o');
+		} else {
+			unbound.add('o');
+		}
+		if (context >= 0) {
+			bound.add('c');
+		} else {
+			unbound.add('c');
+		}
+
+		List<String> boundPermutations = permutationsOf(bound);
+		List<String> unboundPermutations = permutationsOf(unbound);
+		if (unboundPermutations.isEmpty()) {
+			unboundPermutations = List.of("");
+		}
+
+		Set<String> existing = indexes.stream()
+				.map(idx -> new String(idx.getFieldSeq()).toUpperCase(Locale.ROOT))
+				.collect(Collectors.toSet());
+
+		String currentIndex = new String(selectedIndex.getFieldSeq()).toUpperCase(Locale.ROOT);
+
+		List<String> candidates = new ArrayList<>();
+		for (String prefix : boundPermutations) {
+			for (String suffix : unboundPermutations) {
+				String candidate = prefix + suffix;
+				if (candidate.equals(currentIndex) || existing.contains(candidate)) {
+					continue;
+				}
+				candidates.add(candidate);
+			}
+		}
+
+		if (candidates.isEmpty()) {
+			return List.of();
+		}
+
+		for (String candidate : candidates) {
+			RECOMMENDED_INDEX_COUNTS.computeIfAbsent(candidate, k -> new LongAdder()).increment();
+		}
+
+		candidates.sort((left, right) -> {
+			long leftCount = getRecommendationCount(left);
+			long rightCount = getRecommendationCount(right);
+			if (leftCount != rightCount) {
+				return Long.compare(rightCount, leftCount);
+			}
+			return left.compareTo(right);
+		});
+
+		return candidates;
+	}
+
+	private static long getRecommendationCount(String indexName) {
+		LongAdder counter = RECOMMENDED_INDEX_COUNTS.get(indexName);
+		return counter != null ? counter.sum() : 0;
+	}
+
+	private List<String> permutationsOf(List<Character> elements) {
+		if (elements.isEmpty()) {
+			return List.of("");
+		}
+		List<String> results = new ArrayList<>();
+		permute(elements, new boolean[elements.size()], new StringBuilder(elements.size()), results);
+		return results;
+	}
+
+	private void permute(List<Character> elements, boolean[] used, StringBuilder builder, List<String> results) {
+		if (builder.length() == elements.size()) {
+			results.add(builder.toString());
+			return;
+		}
+		for (int i = 0; i < elements.size(); i++) {
+			if (used[i]) {
+				continue;
+			}
+			used[i] = true;
+			builder.append(Character.toUpperCase(elements.get(i)));
+			permute(elements, used, builder, results);
+			builder.setLength(builder.length() - 1);
+			used[i] = false;
+		}
 	}
 
 	private boolean requiresResize() {

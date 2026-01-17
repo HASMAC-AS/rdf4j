@@ -11,9 +11,13 @@
 package org.eclipse.rdf4j.sail.lmdb;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 import org.eclipse.rdf4j.common.iteration.AbstractCloseableIteration;
+import org.eclipse.rdf4j.common.iteration.IndexReportingIterator;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
@@ -24,7 +28,7 @@ import org.eclipse.rdf4j.sail.SailException;
  * A statement iterator that wraps a RecordIterator containing statement records and translates these records to
  * {@link Statement} objects.
  */
-class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
+class LmdbStatementIterator extends AbstractCloseableIteration<Statement> implements IndexReportingIterator {
 
 	/*-----------*
 	 * Variables *
@@ -34,6 +38,8 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 
 	private final ValueStore valueStore;
 	private Statement nextElement;
+
+	private volatile String cachedIndexName;
 
 	/*--------------*
 	 * Constructors *
@@ -134,5 +140,32 @@ class LmdbStatementIterator extends AbstractCloseableIteration<Statement> {
 	@Override
 	public void remove() {
 		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public String getIndexName() {
+		String cached = cachedIndexName;
+		if (cached != null) {
+			return cached;
+		}
+
+		String iteratorIndexName = recordIt.getIndexName();
+		if (iteratorIndexName == null || iteratorIndexName.isEmpty()) {
+			cachedIndexName = iteratorIndexName;
+			return iteratorIndexName;
+		}
+
+		List<String> recommendations = recordIt.getRecommendedIndexes();
+		if (recommendations == null || recommendations.isEmpty()) {
+			cachedIndexName = iteratorIndexName;
+			return iteratorIndexName;
+		}
+
+		String formattedRecommendations = recommendations.stream()
+				.map(s -> s.toLowerCase(Locale.ROOT))
+				.collect(Collectors.joining(", "));
+		String formatted = iteratorIndexName + "] [recommended indexes: " + formattedRecommendations;
+		cachedIndexName = formatted;
+		return formatted;
 	}
 }
