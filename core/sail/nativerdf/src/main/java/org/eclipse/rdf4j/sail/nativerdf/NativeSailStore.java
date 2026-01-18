@@ -19,6 +19,8 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +38,9 @@ import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.ConvertingIteration;
 import org.eclipse.rdf4j.common.iteration.EmptyIteration;
 import org.eclipse.rdf4j.common.iteration.FilterIteration;
+import org.eclipse.rdf4j.common.iteration.Iterations;
 import org.eclipse.rdf4j.common.iteration.UnionIteration;
+import org.eclipse.rdf4j.common.order.StatementOrder;
 import org.eclipse.rdf4j.common.transaction.IsolationLevel;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Namespace;
@@ -44,6 +48,7 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.util.LexicalValueComparator;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.BackingSailSource;
@@ -876,6 +881,7 @@ class NativeSailStore implements SailStore {
 	private final class NativeSailDataset implements SailDataset {
 
 		private final boolean explicit;
+		private final Comparator<Value> comparator = new LexicalValueComparator();
 
 		public NativeSailDataset(boolean explicit) throws SailException {
 			this.explicit = explicit;
@@ -909,6 +915,26 @@ class NativeSailStore implements SailStore {
 			} catch (IOException e) {
 				throw new SailException("Unable to get statements", e);
 			}
+		}
+
+		@Override
+		public CloseableIteration<? extends Statement> getStatements(StatementOrder statementOrder, Resource subj,
+				IRI pred, Value obj, Resource... contexts) throws SailException {
+			try (CloseableIteration<? extends Statement> statements = getStatements(subj, pred, obj, contexts)) {
+				List<Statement> ordered = new ArrayList<>(Iterations.asList(statements));
+				ordered.sort(statementOrder.getComparator(comparator));
+				return new CloseableIteratorIteration<>(ordered.iterator());
+			}
+		}
+
+		@Override
+		public Set<StatementOrder> getSupportedOrders(Resource subj, IRI pred, Value obj, Resource... contexts) {
+			return EnumSet.of(StatementOrder.S, StatementOrder.P, StatementOrder.O, StatementOrder.C);
+		}
+
+		@Override
+		public Comparator<Value> getComparator() {
+			return comparator;
 		}
 	}
 
