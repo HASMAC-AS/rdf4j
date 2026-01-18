@@ -109,7 +109,9 @@ import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.query.algebra.ValueExprTripleRef;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.ZeroLengthPath;
+import org.eclipse.rdf4j.query.algebra.helpers.PlanNodeDiagnostics;
 import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
+import org.eclipse.rdf4j.query.algebra.evaluation.FeedbackConfiguration;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryBindingSet;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryOptimizer;
@@ -201,6 +203,8 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 
 	// track the exeution time of each node in the plan
 	private boolean trackTime;
+
+	private FeedbackConfiguration feedbackConfiguration = FeedbackConfiguration.disabled();
 
 	private UUID uuid;
 
@@ -329,6 +333,7 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 		for (QueryOptimizer optimizer : pipeline.getOptimizers()) {
 			optimizer.optimize(expr, dataset, bindings);
 		}
+		PlanNodeDiagnostics.assignPlanMetadata(expr);
 		return expr;
 	}
 
@@ -1548,6 +1553,17 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 	@Override
 	public void setTrackTime(boolean trackTime) {
 		this.trackTime = trackTime;
+	}
+
+	@Override
+	public void setFeedbackConfiguration(FeedbackConfiguration feedbackConfiguration) {
+		this.feedbackConfiguration = feedbackConfiguration == null ? FeedbackConfiguration.disabled()
+				: feedbackConfiguration;
+	}
+
+	@Override
+	public FeedbackConfiguration getFeedbackConfiguration() {
+		return feedbackConfiguration;
 	}
 
 	/**

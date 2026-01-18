@@ -41,6 +41,8 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, Variable
 	private long resultSizeActual = -1;
 	private double costEstimate = -1;
 	private long totalTimeNanosActual = -1;
+	private int planNodeId = -1;
+	private long planShapeHash = -1;
 
 	private double cardinality = CARDINALITY_NOT_SET;
 
@@ -103,6 +105,8 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, Variable
 			clone.setVariableScopeChange(this.isVariableScopeChange());
 			clone.cardinality = CARDINALITY_NOT_SET;
 			clone.parent = null;
+			clone.planNodeId = -1;
+			clone.planShapeHash = -1;
 			return clone;
 		} catch (CloneNotSupportedException e) {
 			throw new RuntimeException("Query model nodes are required to be cloneable", e);
@@ -165,6 +169,26 @@ public abstract class AbstractQueryModelNode implements QueryModelNode, Variable
 	@Override
 	public void setTotalTimeNanosActual(long totalTimeNanosActual) {
 		this.totalTimeNanosActual = totalTimeNanosActual;
+	}
+
+	@Override
+	public int getPlanNodeId() {
+		return planNodeId;
+	}
+
+	@Override
+	public void setPlanNodeId(int planNodeId) {
+		this.planNodeId = planNodeId;
+	}
+
+	@Override
+	public long getPlanShapeHash() {
+		return planShapeHash;
+	}
+
+	@Override
+	public void setPlanShapeHash(long planShapeHash) {
+		this.planShapeHash = planShapeHash;
 	}
 
 	/**

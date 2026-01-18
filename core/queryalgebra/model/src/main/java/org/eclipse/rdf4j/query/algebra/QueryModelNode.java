@@ -138,4 +138,24 @@ public interface QueryModelNode extends Cloneable, Serializable {
 		// no-op
 	}
 
+	@Experimental
+	default int getPlanNodeId() {
+		return -1;
+	}
+
+	@Experimental
+	default void setPlanNodeId(int planNodeId) {
+		// no-op
+	}
+
+	@Experimental
+	default long getPlanShapeHash() {
+		return -1;
+	}
+
+	@Experimental
+	default void setPlanShapeHash(long planShapeHash) {
+		// no-op
+	}
+
 }
