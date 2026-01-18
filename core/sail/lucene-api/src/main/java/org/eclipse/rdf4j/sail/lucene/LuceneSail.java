@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -248,10 +249,13 @@ public class LuceneSail extends NotifyingSailWrapper {
 
 	/**
 	 * Set the parameter "reindexQuery=" to configure the statements to index over. Default value is "SELECT ?s ?p ?o ?c
-	 * WHERE {{?s ?p ?o} UNION {GRAPH ?c {?s ?p ?o.}}} ORDER BY ?s" . NB: the query must contain the bindings ?s, ?p, ?o
-	 * and ?c and must be ordered by ?s.
+	 * WHERE {{?s ?p ?o} UNION {GRAPH ?c {?s ?p ?o.}}}". NB: the query must contain the bindings ?s, ?p, ?o and ?c.
 	 */
 	public static final String REINDEX_QUERY_KEY = "reindexQuery";
+
+	private static final String DEFAULT_REINDEX_QUERY = "SELECT ?s ?p ?o ?c WHERE {{?s ?p ?o} UNION {GRAPH ?c {?s ?p ?o.}}}";
+
+	private static final int REINDEX_SUBJECT_BATCH_SIZE = 1_000;
 
 	/**
 	 * Set the parameter "indexedfields=..." to configure a selection of fields to index, and projections of properties.
@@ -398,7 +402,7 @@ public class LuceneSail extends NotifyingSailWrapper {
 
 	protected final Properties parameters = new Properties();
 
-	private volatile String reindexQuery = "SELECT ?s ?p ?o ?c WHERE {{?s ?p ?o} UNION {GRAPH ?c {?s ?p ?o.}}} ORDER BY ?s";
+	private volatile String reindexQuery = DEFAULT_REINDEX_QUERY;
 
 	private volatile boolean incompleteQueryFails = true;
 
@@ -667,41 +671,26 @@ public class LuceneSail extends NotifyingSailWrapper {
 					}
 				});
 				try (SailRepositoryConnection connection = repo.getConnection()) {
+					boolean useDefaultQuery = DEFAULT_REINDEX_QUERY.equals(reindexQuery);
+					Set<Resource> subjects = new LinkedHashSet<>(REINDEX_SUBJECT_BATCH_SIZE);
 					TupleQuery query = connection.prepareTupleQuery(QueryLanguage.SPARQL, reindexQuery);
 					try (TupleQueryResult res = query.evaluate()) {
-						Resource current = null;
-						ValueFactory vf = getValueFactory();
-						List<Statement> statements = new ArrayList<>();
 						while (res.hasNext()) {
 							BindingSet set = res.next();
-							Resource r = (Resource) set.getValue("s");
-							IRI p = (IRI) set.getValue("p");
-							Value o = set.getValue("o");
-							Resource c = (Resource) set.getValue("c");
-							if (current == null) {
-								current = r;
-							} else if (!current.equals(r)) {
-								if (logger.isDebugEnabled()) {
-									logger.debug("reindexing resource " + current);
-								}
-								// commit
-								luceneIndex.addDocuments(current, statements);
-
-								// re-init
-								current = r;
-								statements.clear();
+							Resource subject = (Resource) set.getValue("s");
+							if (subject == null) {
+								continue;
 							}
-							statements.add(vf.createStatement(r, p, o, c));
-						}
-
-						// make sure to index statements for last resource
-						if (current != null && !statements.isEmpty()) {
-							if (logger.isDebugEnabled()) {
-								logger.debug("reindexing resource " + current);
+							subjects.add(subject);
+							if (subjects.size() >= REINDEX_SUBJECT_BATCH_SIZE) {
+								reindexSubjects(connection, subjects, useDefaultQuery);
+								subjects.clear();
 							}
-							// commit
-							luceneIndex.addDocuments(current, statements);
 						}
+					}
+					if (!subjects.isEmpty()) {
+						reindexSubjects(connection, subjects, useDefaultQuery);
+						subjects.clear();
 					}
 				} finally {
 					repo.shutDown();
@@ -717,6 +706,39 @@ public class LuceneSail extends NotifyingSailWrapper {
 			}
 		} catch (Exception e) {
 			throw new SailException("Could not reindex LuceneSail: " + e.getMessage(), e);
+		}
+	}
+
+	private void reindexSubjects(SailRepositoryConnection connection, Set<Resource> subjects, boolean useDefaultQuery)
+			throws Exception {
+		ValueFactory vf = getValueFactory();
+		for (Resource subject : subjects) {
+			List<Statement> statements = new ArrayList<>();
+			if (useDefaultQuery) {
+				try (var statementIter = connection.getStatements(subject, null, null, true)) {
+					while (statementIter.hasNext()) {
+						statements.add(statementIter.next());
+					}
+				}
+			} else {
+				TupleQuery subjectQuery = connection.prepareTupleQuery(QueryLanguage.SPARQL, reindexQuery);
+				subjectQuery.setBinding("s", subject);
+				try (TupleQueryResult res = subjectQuery.evaluate()) {
+					while (res.hasNext()) {
+						BindingSet set = res.next();
+						IRI p = (IRI) set.getValue("p");
+						Value o = set.getValue("o");
+						Resource c = (Resource) set.getValue("c");
+						statements.add(vf.createStatement(subject, p, o, c));
+					}
+				}
+			}
+			if (!statements.isEmpty()) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("reindexing resource " + subject);
+				}
+				luceneIndex.addDocuments(subject, statements);
+			}
 		}
 	}
 

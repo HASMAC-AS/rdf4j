@@ -767,6 +767,19 @@ public abstract class AbstractGenericLuceneTest {
 	}
 
 	@Test
+	public void testReindexingWithUnorderedQuery() throws Exception {
+		String unorderedQuery = "SELECT ?s ?p ?o ?c WHERE {{?s ?p ?o} UNION {GRAPH ?c {?s ?p ?o.}}} ORDER BY ?p";
+		sail.setReindexQuery(unorderedQuery);
+		sail.reindex();
+		sleepAfterCommitIfNeeded();
+
+		LuceneIndex index = (LuceneIndex) sail.getLuceneIndex();
+		assertThat(index.getDocuments(SUBJECT_1)).hasSize(1);
+		assertThat(index.getDocuments(SUBJECT_2)).hasSize(1);
+		assertThat(index.getDocuments(SUBJECT_3)).hasSize(1);
+	}
+
+	@Test
 	public void testPropertyVar() throws MalformedQueryException, RepositoryException, QueryEvaluationException {
 		sleepAfterCommitIfNeeded();
 		StringBuilder buffer = new StringBuilder();
