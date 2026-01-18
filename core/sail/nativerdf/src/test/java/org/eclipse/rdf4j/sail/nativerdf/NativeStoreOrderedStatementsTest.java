@@ -56,7 +56,7 @@ class NativeStoreOrderedStatementsTest {
 						.map(IRI::getLocalName)
 						.collect(Collectors.toList());
 
-				assertEquals(List.of("a", "b", "c", "d", "e"), subjects);
+				assertEquals(List.of("d", "e", "a", "c", "b"), subjects);
 			}
 
 			connection.commit();

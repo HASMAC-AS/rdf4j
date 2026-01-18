@@ -23,6 +23,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +34,7 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 import org.eclipse.rdf4j.common.io.ByteArrayUtil;
+import org.eclipse.rdf4j.common.order.StatementOrder;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.nativerdf.TxnStatusFile.TxnStatus;
 import org.eclipse.rdf4j.sail.nativerdf.btree.BTree;
@@ -585,6 +587,55 @@ class TripleStore implements Closeable {
 		return btreeIter;
 	}
 
+	public RecordIterator getTriples(StatementOrder order, int subj, int pred, int obj, int context, boolean explicit,
+			boolean readTransaction) {
+		if (order == null) {
+			return getTriples(subj, pred, obj, context, explicit, readTransaction);
+		}
+
+		int flags = 0;
+		int flagsMask = 0;
+
+		if (readTransaction) {
+			flagsMask |= TripleStore.REMOVED_FLAG;
+			// 'explicit' is handled through an ExplicitStatementFilter
+		} else {
+			flagsMask |= TripleStore.ADDED_FLAG;
+
+			if (explicit) {
+				flags |= TripleStore.EXPLICIT_FLAG;
+				flagsMask |= TripleStore.EXPLICIT_FLAG;
+			}
+		}
+
+		TripleIndex index = getBestIndexForOrder(order, subj, pred, obj, context);
+		RecordIterator btreeIter;
+		if (index == null) {
+			btreeIter = getTriples(subj, pred, obj, context, explicit, readTransaction);
+		} else {
+			boolean doRangeSearch = index.getPatternScore(subj, pred, obj, context) > 0;
+			btreeIter = getTriplesUsingIndex(subj, pred, obj, context, flags, flagsMask, index, doRangeSearch);
+			if (readTransaction && explicit) {
+				btreeIter = new ExplicitStatementFilter(btreeIter);
+			} else if (!explicit) {
+				btreeIter = new ImplicitStatementFilter(btreeIter);
+			}
+		}
+
+		return btreeIter;
+	}
+
+	Set<StatementOrder> getSupportedOrders() {
+		EnumSet<StatementOrder> supported = EnumSet.noneOf(StatementOrder.class);
+		for (TripleIndex index : indexes) {
+			StatementOrder order = statementOrderForField(index.getFieldSeq()[0]);
+			if (order != null) {
+				supported.add(order);
+			}
+		}
+		return supported;
+	}
+
 	public void disableTxnStatus() {
 		txnStatusFile.disable();
 	}
@@ -671,6 +722,39 @@ class TripleStore implements Closeable {
 		TripleIndex index = getBestIndex(subj, pred, obj, context);
 		boolean doRangeSearch = index.getPatternScore(subj, pred, obj, context) > 0;
 		return getTriplesUsingIndex(subj, pred, obj, context, flags, flagsMask, index, doRangeSearch);
+	}
+
+	private TripleIndex getBestIndexForOrder(StatementOrder order, int subj, int pred, int obj, int context) {
+		TripleIndex bestIndex = null;
+		int bestScore = -1;
+
+		for (TripleIndex index : indexes) {
+			if (statementOrderForField(index.getFieldSeq()[0]) != order) {
+				continue;
+			}
+			int score = index.getPatternScore(subj, pred, obj, context);
+			if (score > bestScore) {
+				bestScore = score;
+				bestIndex = index;
+			}
+		}
+
+		return bestIndex;
+	}
+
+	private StatementOrder statementOrderForField(char field) {
+		switch (field) {
+		case 's':
+			return StatementOrder.S;
+		case 'p':
+			return StatementOrder.P;
+		case 'o':
+			return StatementOrder.O;
+		case 'c':
+			return StatementOrder.C;
+		default:
+			return null;
+		}
 	}
 
 	private RecordIterator getAllTriplesSortedByContext(int flags, int flagsMask) {
