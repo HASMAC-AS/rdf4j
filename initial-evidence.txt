@@ -1,0 +1,62 @@
+Apache Maven 3.9.10 (5f519b97e944483d878815739f519b2eade0a91d)
+Maven home: /root/.local/share/mise/installs/maven/3.9.10/apache-maven-3.9.10
+Java version: 21.0.2, vendor: Oracle Corporation, runtime: /root/.local/share/mise/installs/java/21.0.2
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.12.13", arch: "amd64", family: "unix"
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------< org.eclipse.rdf4j:rdf4j-http-workbench >---------------
+[INFO] Building RDF4J: Workbench 6.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.4.1:enforce (enforce-maven-3) @ rdf4j-http-workbench ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] 
+[INFO] --- enforcer:3.4.1:enforce (enforce-logging-dependencies) @ rdf4j-http-workbench ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- enforcer:3.4.1:enforce (enforce-javaee-provided) @ rdf4j-http-workbench ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- enforcer:3.4.1:enforce (enforce-ban-duplicate-classes) @ rdf4j-http-workbench ---
+[INFO] Adding ignore: module-info
+[INFO] Adding ignore: META-INF/versions/*/module-info
+[INFO] Adding ignore: org.junit.*
+[INFO] Adding ignore: org.slf4j.*
+[INFO] Adding ignore: org.opentest4j.*
+[INFO] Rule 0: org.apache.maven.plugins.enforcer.BanDuplicateClasses passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ rdf4j-http-workbench ---
+[INFO] skip non existing resourceDirectory /workspace/rdf4j/tools/workbench/src/main/resources
+[INFO] 
+[INFO] --- spotless:2.46.1:apply (spotless-apply) @ rdf4j-http-workbench ---
+[INFO] Index file does not exist. Fallback to an empty index
+[INFO] Spotless.Format is keeping 3 files clean - 0 were changed to be clean, 3 were already clean, 0 were skipped because caching determined they were already clean
+[INFO] Spotless.Java is keeping 66 files clean - 0 were changed to be clean, 66 were already clean, 0 were skipped because caching determined they were already clean
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ rdf4j-http-workbench ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ rdf4j-http-workbench ---
+[INFO] Copying 4 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ rdf4j-http-workbench ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ rdf4j-http-workbench ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[WARNING] The POM for org.apache.maven.surefire:surefire-junit-platform:jar:3.5.4 is missing, no dependency information available
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.546 s
+[INFO] Finished at: 2026-01-31T18:38:42Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project rdf4j-http-workbench: The following artifacts could not be resolved: org.apache.maven.surefire:surefire-junit-platform:jar:3.5.4 (absent): Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.apache.maven.surefire:surefire-junit-platform:jar:3.5.4 has not been downloaded from it before. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

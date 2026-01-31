@@ -27,7 +27,7 @@ var workbench;
             var value = encodeURIComponent($('#' + name).val());
             var url = document.location.href;
             var ref = workbench.getCookie('ref');
-            if (url.match(/query$/)) {
+            if (url.match(/query$/)) { // looking at POST query results?
                 if ('id' == ref) {
                     url = url + ';ref=id' + AMP + 'action=exec';
                     url = addCookieToUrlQueryIfPresent(url, 'query');
@@ -49,11 +49,11 @@ var workbench;
             }
         }
         paging.addGraphParam = addGraphParam;
-        var StringMap = (function () {
+        var StringMap = /** @class */ (function () {
             function StringMap() {
             }
             return StringMap;
-        })();
+        }());
         /**
          * Scans the given URI for duplicate query parameter names, and removes
          * all but the last occurrence for any duplicate case.
@@ -71,6 +71,7 @@ var workbench;
             for (var i = 0; elements.length - i; i++) {
                 var pair = elements[i].split('=');
                 params[pair[0]] = pair[1];
+                // Keep looping. We are interested in the last value.
             }
             for (var name in params) {
                 // use hasOwnProperty to filter out keys from the
@@ -162,6 +163,7 @@ var workbench;
                     continue;
                 }
                 rval = pair[1];
+                // Keep looping. We are interested in the last value.
             }
             return rval;
         }

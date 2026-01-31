@@ -43,10 +43,19 @@ import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.helpers.StatementCollector;
 import org.eclipse.rdf4j.workbench.base.TransformationServlet;
+import org.eclipse.rdf4j.workbench.sailstack.RepoSpec;
+import org.eclipse.rdf4j.workbench.sailstack.SailStackConfigGenerator;
+import org.eclipse.rdf4j.workbench.sailstack.SailStackConfigResult;
+import org.eclipse.rdf4j.workbench.sailstack.SailStackSpec;
 import org.eclipse.rdf4j.workbench.util.TupleResultBuilder;
 import org.eclipse.rdf4j.workbench.util.WorkbenchRequest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class CreateServlet extends TransformationServlet {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
+	private static final SailStackConfigGenerator STACK_GENERATOR = new SailStackConfigGenerator();
 
 	@Override
 	public void init(final ServletConfig config) throws ServletException {
@@ -103,6 +112,15 @@ public class CreateServlet extends TransformationServlet {
 			newID = req.getParameter("Local repository ID");
 			addFederated(newID, req.getParameter("Repository title"),
 					Arrays.asList(req.getParameterValues("memberID")));
+		} else if ("custom-sail".equals(type)) {
+			SailStackSpec spec = readStackSpec(req);
+			SailStackConfigResult result = STACK_GENERATOR.generate(spec);
+			if (result.getValidation().hasErrors()) {
+				throw new RepositoryException(String.join("; ", result.getValidation().getErrors()));
+			}
+			RepositoryConfig config = result.getRepositoryConfig();
+			manager.addRepositoryConfig(config);
+			newID = config.getID();
 		} else {
 			newID = updateRepositoryConfig(getConfigTemplate(type).render(req.getSingleParameterMap())).getID();
 		}
@@ -139,5 +157,23 @@ public class CreateServlet extends TransformationServlet {
 			final String template = IOUtil.readString(new InputStreamReader(ttlInput, StandardCharsets.UTF_8));
 			return new ConfigTemplate(template);
 		}
+	}
+
+	private SailStackSpec readStackSpec(WorkbenchRequest req) throws IOException {
+		String raw = req.getParameter("stackSpec");
+		if (raw == null || raw.isBlank()) {
+			throw new RepositoryException("Missing stack specification.");
+		}
+		SailStackSpec spec = MAPPER.readValue(raw, SailStackSpec.class);
+		if (spec.getRepo() == null) {
+			spec.setRepo(new RepoSpec());
+		}
+		if (spec.getRepo().getId() == null || spec.getRepo().getId().isBlank()) {
+			spec.getRepo().setId(req.getParameter("id"));
+		}
+		if (spec.getRepo().getTitle() == null || spec.getRepo().getTitle().isBlank()) {
+			spec.getRepo().setTitle(req.getParameter("title"));
+		}
+		return spec;
 	}
 }

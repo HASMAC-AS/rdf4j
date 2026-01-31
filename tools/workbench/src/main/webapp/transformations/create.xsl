@@ -74,6 +74,7 @@
 								</option>
 								<option value="federate">Federation</option>
 								<option value="lmdb">LMDB Store</option>
+								<option value="custom-sail">Custom Sail Stack</option>
 							</select>
 						</td>
 						<td></td>
