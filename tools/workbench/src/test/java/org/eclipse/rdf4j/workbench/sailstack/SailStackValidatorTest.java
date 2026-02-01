@@ -54,4 +54,21 @@ class SailStackValidatorTest {
 		SailStackValidationResult result = validator.validate(spec);
 		assertThat(result.getErrors()).anyMatch(error -> error.contains("Lucene"));
 	}
+
+	@Test
+	void warnsOnRepositoryIdPatternMismatch() {
+		SailStackSpec spec = new SailStackSpec();
+		RepoSpec repo = new RepoSpec();
+		repo.setId("UpperCase-ID");
+		spec.setRepo(repo);
+
+		SailLayerSpec base = new SailLayerSpec();
+		base.setType(SailLayerType.MEMORY);
+		base.setConfig(Map.of("persist", true));
+		spec.setStack(List.of(base));
+
+		SailStackValidationResult result = validator.validate(spec);
+		assertThat(result.getErrors()).noneMatch(error -> error.contains("Repository ID"));
+		assertThat(result.getWarnings()).anyMatch(warning -> warning.contains("Repository ID"));
+	}
 }

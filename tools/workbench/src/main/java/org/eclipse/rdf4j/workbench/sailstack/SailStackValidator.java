@@ -30,7 +30,7 @@ public class SailStackValidator {
 		if (repo == null || repo.getId() == null || repo.getId().isBlank()) {
 			result.addError("Repository ID is required.");
 		} else if (!REPOSITORY_ID_PATTERN.matcher(repo.getId()).matches()) {
-			result.addError("Repository ID contains unsupported characters.");
+			result.addWarning("Repository ID contains unsupported characters.");
 		}
 
 		List<SailLayerSpec> stack = spec.getStack();
