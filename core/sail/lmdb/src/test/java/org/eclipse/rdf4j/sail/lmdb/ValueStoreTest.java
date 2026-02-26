@@ -62,6 +62,26 @@ public class ValueStoreTest {
 	}
 
 	@Test
+	public void testChronicleValueIdMappingPersistsAcrossRestart() throws Exception {
+		LmdbValue value = valueStore.createLiteral("chronicle-persist-value");
+
+		valueStore.startTransaction(true);
+		long id = valueStore.storeValue(value);
+		valueStore.commit();
+
+		File idToValueMap = new File(new File(dataDir, "values"), "value-id-map.cmap");
+		File valueToIdMap = new File(new File(dataDir, "values"), "id-value-map.cmap");
+
+		assertTrue("Expected Chronicle map for id->value to exist", idToValueMap.exists());
+		assertTrue("Expected Chronicle map for value->id to exist", valueToIdMap.exists());
+
+		valueStore.close();
+		valueStore = createValueStore();
+
+		assertEquals(id, valueStore.getId(value));
+	}
+
+	@Test
 	public void testGcValues() throws Exception {
 		Value values[] = new Value[] {
 				RDF.TYPE, RDFS.CLASS,

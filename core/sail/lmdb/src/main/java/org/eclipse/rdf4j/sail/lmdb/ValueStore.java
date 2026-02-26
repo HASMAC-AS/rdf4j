@@ -55,6 +55,7 @@ import java.lang.ref.Cleaner;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -92,6 +93,9 @@ import org.lwjgl.util.lmdb.MDBStat;
 import org.lwjgl.util.lmdb.MDBVal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.openhft.chronicle.map.ChronicleMap;
+import net.openhft.chronicle.map.ChronicleMapBuilder;
 
 /**
  * LMDB-based indexed storage and retrieval of RDF values. ValueStore maps RDF values to integer IDs and vice-versa.
@@ -161,6 +165,8 @@ class ValueStore extends AbstractValueFactory {
 	 * Used to do the actual storage of values, once they're translated to byte arrays.
 	 */
 	private long env;
+	private ChronicleMap<Long, byte[]> idToValueMap;
+	private ChronicleMap<String, Long> valueToIdMap;
 	private int pageSize;
 	private long mapSize;
 	// main database
@@ -309,6 +315,7 @@ class ValueStore extends AbstractValueFactory {
 	private void open() throws IOException {
 		// create directory if it not exists
 		dir.mkdirs();
+		openChronicleMaps();
 
 		try (MemoryStack stack = stackPush()) {
 			PointerBuffer pp = stack.mallocPointer(1);
@@ -384,6 +391,23 @@ class ValueStore extends AbstractValueFactory {
 		});
 	}
 
+	private void openChronicleMaps() throws IOException {
+		idToValueMap = ChronicleMapBuilder.simpleMapOf(Long.class, byte[].class)
+				.name("lmdb-id-to-value")
+				.entries(5_000_000)
+				.averageValueSize(64)
+				.createPersistedTo(new File(dir, "value-id-map.cmap"));
+		valueToIdMap = ChronicleMapBuilder.simpleMapOf(String.class, Long.class)
+				.name("lmdb-value-to-id")
+				.entries(5_000_000)
+				.averageKeySize(96)
+				.createPersistedTo(new File(dir, "id-value-map.cmap"));
+	}
+
+	private String valueToMapKey(byte[] data) {
+		return Base64.getEncoder().encodeToString(data);
+	}
+
 	private long nextId(byte type) throws IOException {
 		if (freeIdsAvailable) {
 			// next id from store
@@ -455,6 +479,11 @@ class ValueStore extends AbstractValueFactory {
 	}
 
 	protected byte[] getData(long id) throws IOException {
+		byte[] cachedValue = idToValueMap.get(id);
+		if (cachedValue != null) {
+			return cachedValue;
+		}
+
 		return readTransaction(env, (stack, txn) -> {
 			MDBVal keyData = MDBVal.calloc(stack);
 			keyData.mv_data(id2data(idBuffer(stack), id).flip());
@@ -462,6 +491,8 @@ class ValueStore extends AbstractValueFactory {
 			if (mdb_get(txn, dbi, keyData, valueData) == MDB_SUCCESS) {
 				byte[] valueBytes = new byte[valueData.mv_data().remaining()];
 				valueData.mv_data().get(valueBytes);
+				idToValueMap.put(id, valueBytes);
+				valueToIdMap.put(valueToMapKey(valueBytes), id);
 				return valueBytes;
 			}
 			return null;
@@ -842,6 +873,10 @@ class ValueStore extends AbstractValueFactory {
 				return newId;
 			}
 		});
+		if (id != null) {
+			idToValueMap.put(id, data);
+			valueToIdMap.put(valueToMapKey(data), id);
+		}
 		return id != null ? id : LmdbValue.UNKNOWN_ID;
 	}
 
@@ -1045,6 +1080,14 @@ class ValueStore extends AbstractValueFactory {
 				// id must not have a reference count and must have an existing value
 				int a = mdb_get(writeTxn, refCountsDbi, idVal, ignoreVal); // this is where I get MDB_BAD_TXN
 				int b = mdb_get(txn, dbi, idVal, dataVal);
+				if (b == MDB_SUCCESS) {
+					ByteBuffer dataBuffer = dataVal.mv_data();
+					byte[] dataBytes = new byte[dataBuffer.remaining()];
+					dataBuffer.duplicate().get(dataBytes);
+					idToValueMap.remove(id);
+					valueToIdMap.remove(valueToMapKey(dataBytes));
+				}
+
 				if (a != MDB_SUCCESS && b == MDB_SUCCESS) {
 					ByteBuffer dataBuffer = dataVal.mv_data();
 
@@ -1332,6 +1375,14 @@ class ValueStore extends AbstractValueFactory {
 			endTransaction(false);
 			mdb_env_close(env);
 			env = 0;
+		}
+		if (idToValueMap != null) {
+			idToValueMap.close();
+			idToValueMap = null;
+		}
+		if (valueToIdMap != null) {
+			valueToIdMap.close();
+			valueToIdMap = null;
 		}
 	}
 
