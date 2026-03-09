@@ -214,6 +214,7 @@ class LmdbSailStore implements SailStore {
 	void rollback() throws SailException {
 		sinkStoreAccessLock.lock();
 		try {
+			statementIteratorCache.invalidateCache();
 			try {
 				valueStore.rollback();
 			} finally {
@@ -567,6 +568,7 @@ class LmdbSailStore implements SailStore {
 						}
 						handleRemovedIdsInValueStore();
 						valueStore.commit();
+						statementIteratorCache.invalidateCache();
 						// do not set flag to false until _after_ commit is successfully completed.
 						storeTxnStarted.set(false);
 					}
