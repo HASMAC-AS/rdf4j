@@ -68,6 +68,34 @@ class LmdbRecordIteratorLateBindingTest {
 		}
 	}
 
+	@Test
+	void exhaustedIteratorTransfersResourcesToFreshProbe() throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn();
+				RecordIterator expected = tripleStore.getTriples(txn, 2, -1, 6, -1, true);
+				LmdbRecordIterator first = (LmdbRecordIterator) tripleStore.getTriples(txn, 1, -1, 6, -1, true, null,
+						null, true)) {
+			assertThat(collect(expected)).containsExactly(new long[] { 2, 5, 6, 0 });
+			assertThat(collect(first)).containsExactly(new long[] { 1, 5, 6, 0 });
+
+			RecordIterator reused = tripleStore.getTriples(txn, 2, -1, 6, -1, true, null, first, true);
+			assertThat(reused).isInstanceOf(LmdbRecordIterator.class);
+			assertThat(reused).isNotSameAs(first);
+
+			first.close();
+			assertThat(collect(reused)).containsExactly(new long[] { 2, 5, 6, 0 });
+			reused.close();
+		}
+	}
+
+	private static List<long[]> collect(RecordIterator iterator) throws Exception {
+		List<long[]> seen = new ArrayList<>();
+		long[] next;
+		while ((next = iterator.next()) != null) {
+			seen.add(next.clone());
+		}
+		return seen;
+	}
+
 	private static boolean getBooleanField(Object instance, String name) throws Exception {
 		Field field = LmdbRecordIterator.class.getDeclaredField(name);
 		field.setAccessible(true);

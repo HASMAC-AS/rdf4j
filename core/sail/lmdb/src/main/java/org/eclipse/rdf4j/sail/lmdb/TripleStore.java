@@ -587,7 +587,7 @@ public class TripleStore implements Closeable {
 				// found a context-first index
 				LmdbDupRecordIterator.FallbackSupplier fallback = quad -> new LmdbRecordIterator(index, false, -1, -1,
 						-1, -1, true, txn, quad);
-				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false, fallback, null);
+				return getTriplesUsingIndex(txn, -1, -1, -1, -1, true, index, false, fallback, null, null, false);
 			}
 		}
 		return null;
@@ -595,25 +595,37 @@ public class TripleStore implements Closeable {
 
 	public RecordIterator getTriples(Txn txn, long subj, long pred, long obj, long context, boolean explicit)
 			throws IOException {
-		return getTriples(txn, subj, pred, obj, context, explicit, null);
+		return getTriples(txn, subj, pred, obj, context, explicit, null, null, false);
 	}
 
 	public RecordIterator getTriples(Txn txn, long subj, long pred, long obj, long context, boolean explicit,
 			long[] quadReuse) throws IOException {
+		return getTriples(txn, subj, pred, obj, context, explicit, quadReuse, null, false);
+	}
+
+	RecordIterator getTriples(Txn txn, long subj, long pred, long obj, long context, boolean explicit,
+			long[] quadReuse, RecordIterator previousRight, boolean reusableOnExhaustion) throws IOException {
 		TripleIndex index = getBestIndex(subj, pred, obj, context);
 		// System.out.println("get triples: " + Arrays.asList(subj, pred, obj,context));
 		boolean doRangeSearch = index.getPatternScore(subj, pred, obj, context) > 0;
 		LmdbDupRecordIterator.FallbackSupplier fallbackSupplier = quad -> new LmdbRecordIterator(index, doRangeSearch,
-				subj, pred, obj, context, explicit, txn, quad);
+				subj, pred, obj, context, explicit, txn, quad, false);
 		if (dupsortRead && subjectPredicateIndex != null && subj >= 0 && pred >= 0 && obj == -1 && context == -1) {
 			assert context == -1 && obj == -1 : "subject-predicate index can only be used for (s,p,?,?) patterns";
 			// Use SP dup iterator, but union with the standard iterator to guard against any edge cases
 			// in SP storage/retrieval; de-duplicate at the record level.
-			return new LmdbDupRecordIterator(subjectPredicateIndex, subj, pred, explicit, txn,
-					fallbackSupplier);
+			if (previousRight instanceof LmdbDupRecordIterator) {
+				LmdbDupRecordIterator reused = ((LmdbDupRecordIterator) previousRight)
+						.tryTransfer(subj, pred, explicit, txn, fallbackSupplier);
+				if (reused != null) {
+					return reused;
+				}
+			}
+			return new LmdbDupRecordIterator(subjectPredicateIndex, subj, pred, explicit, txn, fallbackSupplier,
+					reusableOnExhaustion);
 		}
 		return getTriplesUsingIndex(txn, subj, pred, obj, context, explicit, index, doRangeSearch, fallbackSupplier,
-				quadReuse);
+				quadReuse, previousRight, reusableOnExhaustion);
 	}
 
 	boolean hasTriples(boolean explicit) throws IOException {
@@ -627,8 +639,17 @@ public class TripleStore implements Closeable {
 
 	private RecordIterator getTriplesUsingIndex(Txn txn, long subj, long pred, long obj, long context,
 			boolean explicit, TripleIndex index, boolean rangeSearch,
-			LmdbDupRecordIterator.FallbackSupplier fallbackSupplier, long[] quadReuse) throws IOException {
-		return fallbackSupplier.get(quadReuse);
+			LmdbDupRecordIterator.FallbackSupplier fallbackSupplier, long[] quadReuse, RecordIterator previousRight,
+			boolean reusableOnExhaustion) throws IOException {
+		if (previousRight instanceof LmdbRecordIterator) {
+			LmdbRecordIterator reused = ((LmdbRecordIterator) previousRight)
+					.tryTransfer(index, null, rangeSearch, subj, pred, obj, context, explicit, txn, quadReuse);
+			if (reused != null) {
+				return reused;
+			}
+		}
+		return new LmdbRecordIterator(index, rangeSearch, subj, pred, obj, context, explicit, txn, quadReuse,
+				reusableOnExhaustion);
 	}
 
 	private int leadingBoundCount(char[] fieldSeq, long subj, long pred, long obj, long context) {

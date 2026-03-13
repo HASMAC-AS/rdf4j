@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.rdf4j.sail.lmdb.TxnManager.Txn;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
@@ -40,6 +42,8 @@ class SubjectPredicateIndexTest {
 		tripleStore.startTransaction();
 		tripleStore.storeTriple(1, 2, 3, 0, true);
 		tripleStore.storeTriple(1, 2, 4, 0, true);
+		tripleStore.storeTriple(5, 2, 6, 0, true);
+		tripleStore.storeTriple(5, 2, 7, 0, true);
 		tripleStore.commit();
 	}
 
@@ -131,5 +135,47 @@ class SubjectPredicateIndexTest {
 			}
 			assertEquals(1, count);
 		}
+	}
+
+	@Test
+	void exhaustedDupIteratorTransfersResourcesToFreshProbe() throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn();
+				RecordIterator expected = tripleStore.getTriples(txn, 5, 2, -1, -1, true);
+				RecordIterator first = tripleStore.getTriples(txn, 1, 2, -1, -1, true, null, null, true)) {
+			assertThat(collect(expected)).containsExactly(new long[] { 5, 2, 6, 0 }, new long[] { 5, 2, 7, 0 });
+			assertThat(collect(first)).containsExactly(new long[] { 1, 2, 3, 0 }, new long[] { 1, 2, 4, 0 });
+
+			RecordIterator reused = tripleStore.getTriples(txn, 5, 2, -1, -1, true, null, first, true);
+			assertThat(reused).isInstanceOf(LmdbDupRecordIterator.class);
+			assertThat(reused).isNotSameAs(first);
+
+			first.close();
+			assertThat(collect(reused)).containsExactly(new long[] { 5, 2, 6, 0 }, new long[] { 5, 2, 7, 0 });
+			reused.close();
+		}
+	}
+
+	@Test
+	void incompatiblePreviousIteratorFallsBackToFreshDupIterator() throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn();
+				RecordIterator previous = tripleStore.getTriples(txn, -1, 2, 3, -1, true, null, null, true)) {
+			assertThat(previous).isNotInstanceOf(LmdbDupRecordIterator.class);
+			assertThat(collect(previous)).containsExactly(new long[] { 1, 2, 3, 0 });
+
+			RecordIterator fresh = tripleStore.getTriples(txn, 1, 2, -1, -1, true, null, previous, true);
+			assertThat(fresh).isInstanceOf(LmdbDupRecordIterator.class);
+			assertThat(fresh).isNotSameAs(previous);
+			assertThat(collect(fresh)).containsExactly(new long[] { 1, 2, 3, 0 }, new long[] { 1, 2, 4, 0 });
+			fresh.close();
+		}
+	}
+
+	private static List<long[]> collect(RecordIterator iterator) throws Exception {
+		List<long[]> seen = new ArrayList<>();
+		long[] next;
+		while ((next = iterator.next()) != null) {
+			seen.add(next.clone());
+		}
+		return seen;
 	}
 }

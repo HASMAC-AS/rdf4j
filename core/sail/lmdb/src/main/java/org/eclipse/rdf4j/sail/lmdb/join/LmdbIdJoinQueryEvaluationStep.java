@@ -199,7 +199,7 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 				long[] bindingSnapshot = new long[initialBinding.length];
 				long[] rightScratch = new long[initialBinding.length];
 				long[] rightQuadScratch = new long[4];
-				LmdbIdJoinIterator.RecordIteratorFactory rightFactory = leftRecord -> {
+				LmdbIdJoinIterator.RecordIteratorFactory rightFactory = (leftRecord, previousRight) -> {
 					System.arraycopy(initialBinding, 0, bindingSnapshot, 0, initialBinding.length);
 					for (String name : leftInfo.getVariableNames()) {
 						int pos = bindingInfo.getIndex(name);
@@ -211,7 +211,7 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 						}
 					}
 					return dataset.getRecordIterator(bindingSnapshot, subjIdx, predIdx, objIdx, ctxIdx, patternIds,
-							rightScratch, rightQuadScratch);
+							rightScratch, rightQuadScratch, previousRight);
 				};
 
 				return new LmdbIdJoinIterator(leftIterator, rightFactory, leftInfo, bindingInfo, sharedVariables,
@@ -222,7 +222,7 @@ public class LmdbIdJoinQueryEvaluationStep implements QueryEvaluationStep {
 			ValueStore valueStore = dataset.getValueStore();
 			RecordIterator leftIterator = dataset.getRecordIterator(leftPattern, bindings);
 
-			LmdbIdJoinIterator.RecordIteratorFactory rightFactory = leftRecord -> {
+			LmdbIdJoinIterator.RecordIteratorFactory rightFactory = (leftRecord, previousRight) -> {
 				MutableBindingSet bs = context.createBindingSet();
 				bindings.forEach(binding -> bs.addBinding(binding.getName(), binding.getValue()));
 				if (!leftInfo.applyRecord(leftRecord, bs, valueStore)) {

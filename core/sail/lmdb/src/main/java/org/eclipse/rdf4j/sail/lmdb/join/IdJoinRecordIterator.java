@@ -22,7 +22,7 @@ public final class IdJoinRecordIterator implements RecordIterator {
 
 	@FunctionalInterface
 	public interface RightFactory {
-		RecordIterator apply(long[] leftRecord) throws QueryEvaluationException;
+		RecordIterator apply(long[] leftRecord, RecordIterator previousRight) throws QueryEvaluationException;
 	}
 
 	private final RecordIterator left;
@@ -38,21 +38,30 @@ public final class IdJoinRecordIterator implements RecordIterator {
 	public long[] next() {
 		try {
 			while (true) {
-				if (currentRight != null) {
-					long[] rightRec = currentRight.next();
+				RecordIterator previousRight = currentRight;
+				if (previousRight != null) {
+					long[] rightRec = previousRight.next();
 					if (rightRec != null) {
 						return rightRec;
 					}
-					currentRight.close();
 					currentRight = null;
 				}
 
 				long[] leftRec = left.next();
 				if (leftRec == null) {
+					if (previousRight != null) {
+						previousRight.close();
+					}
 					return null;
 				}
 
-				currentRight = rightFactory.apply(leftRec);
+				try {
+					currentRight = rightFactory.apply(leftRec, previousRight);
+				} finally {
+					if (previousRight != null && currentRight != previousRight) {
+						previousRight.close();
+					}
+				}
 				if (currentRight == null) {
 					currentRight = LmdbIdJoinIterator.emptyRecordIterator();
 				}

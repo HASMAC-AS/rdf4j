@@ -234,6 +234,80 @@ public class LmdbIdBGPEvaluationTest {
 		}
 	}
 
+	@Test
+	public void bgpPassesPreviousRightToLaterProbe(@TempDir java.nio.file.Path tempDir) throws Exception {
+		LmdbStore store = new LmdbStore(tempDir.toFile());
+		SailRepository repository = new SailRepository(store);
+		repository.init();
+
+		ValueFactory vf = SimpleValueFactory.getInstance();
+		IRI alice = vf.createIRI(NS, "alice");
+		IRI bob = vf.createIRI(NS, "bob");
+		IRI carol = vf.createIRI(NS, "carol");
+		IRI knows = vf.createIRI(NS, "knows");
+		IRI likes = vf.createIRI(NS, "likes");
+		IRI pizza = vf.createIRI(NS, "pizza");
+		IRI salad = vf.createIRI(NS, "salad");
+
+		try (RepositoryConnection conn = repository.getConnection()) {
+			conn.add(alice, knows, bob);
+			conn.add(alice, likes, pizza);
+			conn.add(bob, knows, carol);
+			conn.add(bob, likes, salad);
+		}
+
+		String query = "SELECT ?person ?item\n" +
+				"WHERE {\n" +
+				"  ?person <http://example.com/knows> ?other .\n" +
+				"  ?person <http://example.com/likes> ?item .\n" +
+				"}";
+
+		ParsedTupleQuery parsed = QueryParserUtil.parseTupleQuery(QueryLanguage.SPARQL, query, null);
+		TupleExpr tupleExpr = parsed.getTupleExpr();
+		TupleExpr current = tupleExpr;
+		if (current instanceof org.eclipse.rdf4j.query.algebra.QueryRoot) {
+			current = ((org.eclipse.rdf4j.query.algebra.QueryRoot) current).getArg();
+		}
+		if (current instanceof org.eclipse.rdf4j.query.algebra.Projection) {
+			current = ((org.eclipse.rdf4j.query.algebra.Projection) current).getArg();
+		}
+		if (!(current instanceof Join)) {
+			throw new AssertionError("expected Join at root of algebra");
+		}
+		Join join = (Join) current;
+
+		List<org.eclipse.rdf4j.query.algebra.StatementPattern> patterns = new ArrayList<>();
+		boolean flattened = LmdbIdBGPQueryEvaluationStep.flattenBGP(join, patterns);
+		assertThat(flattened).isTrue();
+		assertThat(patterns).hasSize(2);
+
+		SailSource branch = store.getBackingStore().getExplicitSailSource();
+		SailDataset dataset = branch.dataset(IsolationLevels.SNAPSHOT_READ);
+
+		try {
+			LmdbEvaluationDataset lmdbDataset = (LmdbEvaluationDataset) dataset;
+			RecordingDataset recordingDataset = new RecordingDataset(lmdbDataset);
+			SailDatasetTripleSource tripleSource = new SailDatasetTripleSource(repository.getValueFactory(), dataset);
+
+			QueryEvaluationContext ctx = new LmdbQueryEvaluationContext(null, tripleSource.getValueFactory(),
+					tripleSource.getComparator(), recordingDataset, lmdbDataset.getValueStore());
+
+			LmdbIdBGPQueryEvaluationStep step = new LmdbIdBGPQueryEvaluationStep(join, patterns, ctx, null);
+
+			try (CloseableIteration<BindingSet> iter = step.evaluate(EmptyBindingSet.getInstance())) {
+				List<BindingSet> results = org.eclipse.rdf4j.common.iteration.Iterations.asList(iter);
+				assertThat(results).hasSize(2);
+			}
+
+			assertThat(recordingDataset.wasArrayApiUsed()).isTrue();
+			assertThat(recordingDataset.wasPreviousRightSeen()).isTrue();
+		} finally {
+			dataset.close();
+			branch.close();
+			repository.shutDown();
+		}
+	}
+
 	private static final class RecordingDataset implements LmdbEvaluationDataset {
 		private final LmdbEvaluationDataset delegate;
 
@@ -256,12 +330,26 @@ public class LmdbIdBGPEvaluationTest {
 			return delegate.getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds);
 		}
 
+		@Override
+		public RecordIterator getRecordIterator(long[] binding, int subjIndex, int predIndex, int objIndex,
+				int ctxIndex, long[] patternIds, long[] bindingReuse, long[] quadReuse, RecordIterator previousRight)
+				throws QueryEvaluationException {
+			arrayApiUsed = true;
+			previousRightSeen |= previousRight != null;
+			return delegate.getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds,
+					bindingReuse, quadReuse, previousRight);
+		}
+
 		boolean wasLegacyApiUsed() {
 			return legacyApiUsed;
 		}
 
 		boolean wasArrayApiUsed() {
 			return arrayApiUsed;
+		}
+
+		boolean wasPreviousRightSeen() {
+			return previousRightSeen;
 		}
 
 		@Override
@@ -276,5 +364,6 @@ public class LmdbIdBGPEvaluationTest {
 
 		private boolean legacyApiUsed;
 		private boolean arrayApiUsed;
+		private boolean previousRightSeen;
 	}
 }

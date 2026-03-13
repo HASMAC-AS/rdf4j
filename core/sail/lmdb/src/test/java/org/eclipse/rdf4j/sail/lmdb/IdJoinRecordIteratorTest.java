@@ -30,7 +30,7 @@ class IdJoinRecordIteratorTest {
 				new long[] { 1L, 0L, 2L },
 				new long[] { 7L, 0L, 8L });
 
-		IdJoinRecordIterator.RightFactory rightFactory = leftRecord -> {
+		IdJoinRecordIterator.RightFactory rightFactory = (leftRecord, previousRight) -> {
 			long a = leftInfo.getId(leftRecord, "a");
 			long b = leftInfo.getId(leftRecord, "b");
 			if (a == 1L) {
@@ -46,6 +46,28 @@ class IdJoinRecordIteratorTest {
 		assertThat(iterator.next()).containsExactly(7L, 8L, 50L);
 		assertThat(iterator.next()).containsExactly(7L, 8L, 60L);
 		assertThat(iterator.next()).isNull();
+	}
+
+	@Test
+	void secondProbeReceivesPreviousRightIterator() {
+		TrackingRecordIterator firstRight = new TrackingRecordIterator();
+		RecordIterator[] seenPrevious = new RecordIterator[1];
+		boolean[] previousStillOpen = new boolean[1];
+
+		IdJoinRecordIterator iterator = new IdJoinRecordIterator(recordIterator(new long[] { 1L }, new long[] { 2L }),
+				(leftRecord, previousRight) -> {
+					if (leftRecord[0] == 1L) {
+						return firstRight;
+					}
+					seenPrevious[0] = previousRight;
+					previousStillOpen[0] = !firstRight.closed;
+					return recordIterator(new long[] { 9L });
+				});
+
+		assertThat(iterator.next()).containsExactly(9L);
+		assertThat(seenPrevious[0]).isSameAs(firstRight);
+		assertThat(previousStillOpen[0]).isTrue();
+		assertThat(firstRight.closed).isTrue();
 	}
 
 	private static RecordIterator recordIterator(long[]... records) {
@@ -65,6 +87,20 @@ class IdJoinRecordIteratorTest {
 				// no-op
 			}
 		};
+	}
+
+	private static final class TrackingRecordIterator implements RecordIterator {
+		private boolean closed;
+
+		@Override
+		public long[] next() {
+			return null;
+		}
+
+		@Override
+		public void close() {
+			closed = true;
+		}
 	}
 
 	private static IdBindingInfo bindingInfo(Map<String, Integer> indexByVar) {

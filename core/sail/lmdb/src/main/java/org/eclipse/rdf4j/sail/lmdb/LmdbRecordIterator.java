@@ -46,16 +46,16 @@ class LmdbRecordIterator implements RecordIterator {
 
 	private final TripleIndex index;
 
-	private final long subj;
-	private final long pred;
-	private final long obj;
-	private final long context;
+	private long subj;
+	private long pred;
+	private long obj;
+	private long context;
 
 	private final long cursor;
 
-	private final MDBVal maxKey;
+	private MDBVal maxKey;
 
-	private final boolean matchValues;
+	private boolean matchValues;
 	private GroupMatcher groupMatcher;
 
 	/**
@@ -63,17 +63,19 @@ class LmdbRecordIterator implements RecordIterator {
 	 * value-level filtering. When false, range bounds already guarantee that every visited key matches and the
 	 * GroupMatcher is redundant.
 	 */
-	private final boolean needMatcher;
+	private boolean needMatcher;
 
 	private final Txn txnRef;
 
 	private long txnRefVersion;
 
-	private final long txn;
+	private long txn;
 
 	private final int dbi;
 
 	private volatile boolean closed = false;
+	private boolean exhausted = false;
+	private boolean transferred = false;
 
 	private final MDBVal keyData;
 
@@ -94,83 +96,48 @@ class LmdbRecordIterator implements RecordIterator {
 	private long sourceRowsScannedActual;
 	private long sourceRowsMatchedActual;
 	private long sourceRowsFilteredActual;
+	private final boolean reusableOnExhaustion;
 
 	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
 			long context, boolean explicit, Txn txnRef) throws IOException {
-		this(index, null, rangeSearch, subj, pred, obj, context, explicit, txnRef, null);
+		this(index, null, rangeSearch, subj, pred, obj, context, explicit, txnRef, null, false);
 	}
 
 	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
 			long context, boolean explicit, Txn txnRef, long[] quadReuse) throws IOException {
-		this(index, null, rangeSearch, subj, pred, obj, context, explicit, txnRef, quadReuse);
+		this(index, null, rangeSearch, subj, pred, obj, context, explicit, txnRef, quadReuse, false);
+	}
+
+	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
+			long context, boolean explicit, Txn txnRef, long[] quadReuse, boolean reusableOnExhaustion)
+			throws IOException {
+		this(index, null, rangeSearch, subj, pred, obj, context, explicit, txnRef, quadReuse,
+				reusableOnExhaustion);
 	}
 
 	LmdbRecordIterator(TripleIndex index, KeyBuilder keyBuilder, boolean rangeSearch, long subj,
 			long pred, long obj, long context, boolean explicit, Txn txnRef) throws IOException {
-		this(index, keyBuilder, rangeSearch, subj, pred, obj, context, explicit, txnRef, null);
+		this(index, keyBuilder, rangeSearch, subj, pred, obj, context, explicit, txnRef, null, false);
 	}
 
 	LmdbRecordIterator(TripleIndex index, KeyBuilder keyBuilder, boolean rangeSearch, long subj,
 			long pred, long obj, long context, boolean explicit, Txn txnRef, long[] quadReuse) throws IOException {
-		this.subj = subj;
-		this.pred = pred;
-		this.obj = obj;
-		this.context = context;
+		this(index, keyBuilder, rangeSearch, subj, pred, obj, context, explicit, txnRef, quadReuse, false);
+	}
+
+	LmdbRecordIterator(TripleIndex index, KeyBuilder keyBuilder, boolean rangeSearch, long subj,
+			long pred, long obj, long context, boolean explicit, Txn txnRef, long[] quadReuse,
+			boolean reusableOnExhaustion) throws IOException {
+		this.reusableOnExhaustion = reusableOnExhaustion;
 		if (quadReuse != null && quadReuse.length >= 4) {
 			this.quad = quadReuse;
-			this.quad[0] = subj;
-			this.quad[1] = pred;
-			this.quad[2] = obj;
-			this.quad[3] = context;
 		} else {
-			this.quad = new long[] { subj, pred, obj, context };
+			this.quad = new long[4];
 		}
 		this.pool = Pool.get();
 		this.keyData = pool.getVal();
 		this.valueData = pool.getVal();
 		this.index = index;
-		if (rangeSearch) {
-			minKeyBuf = pool.getKeyBuffer();
-			if (keyBuilder != null) {
-				minKeyBuf.clear();
-				keyBuilder.writeMin(minKeyBuf);
-			} else {
-				index.getMinKey(minKeyBuf, subj, pred, obj, context);
-			}
-			minKeyBuf.flip();
-
-			this.maxKey = pool.getVal();
-			this.maxKeyBuf = pool.getKeyBuffer();
-			if (keyBuilder != null) {
-				maxKeyBuf.clear();
-				keyBuilder.writeMax(maxKeyBuf);
-			} else {
-				index.getMaxKey(maxKeyBuf, subj, pred, obj, context);
-			}
-			maxKeyBuf.flip();
-			this.maxKey.mv_data(maxKeyBuf);
-
-		} else {
-			// Even when we can't bound with a prefix (no rangeSearch), we can still
-			// position the cursor closer to the first potentially matching key when
-			// there are any constraints (matchValues). This avoids scanning from the
-			// absolute beginning for patterns like ?p ?o constC etc.
-			if (subj > 0 || pred > 0 || obj > 0 || context >= 0) {
-				minKeyBuf = pool.getKeyBuffer();
-				index.getMinKey(minKeyBuf, subj, pred, obj, context);
-				minKeyBuf.flip();
-			} else {
-				minKeyBuf = null;
-			}
-			this.maxKey = null;
-			this.maxKeyBuf = null;
-		}
-
-		this.matchValues = subj > 0 || pred > 0 || obj > 0 || context >= 0;
-		int prefixLen = index.getPatternScore(subj, pred, obj, context);
-		int boundCount = (subj > 0 ? 1 : 0) + (pred > 0 ? 1 : 0) + (obj > 0 ? 1 : 0) + (context >= 0 ? 1 : 0);
-		this.needMatcher = boundCount > prefixLen;
-
 		this.dbi = index.getDB(explicit);
 		this.txnRef = txnRef;
 		this.txnLockManager = txnRef.lockManager();
@@ -219,6 +186,32 @@ class LmdbRecordIterator implements RecordIterator {
 		} finally {
 			txnLockManager.unlockRead(readStamp);
 		}
+		retarget(keyBuilder, rangeSearch, subj, pred, obj, context);
+	}
+
+	private LmdbRecordIterator(TripleIndex index, KeyBuilder keyBuilder, boolean rangeSearch, long subj,
+			long pred, long obj, long context, boolean explicit, Txn txnRef,
+			StampedLongAdderLockManager txnLockManager, int dbi, long cursor, Pool pool, MDBVal keyData,
+			MDBVal valueData, MDBVal maxKey, ByteBuffer minKeyBuf, ByteBuffer maxKeyBuf, long[] quadReuse,
+			boolean reusableOnExhaustion) {
+		this.reusableOnExhaustion = reusableOnExhaustion;
+		if (quadReuse != null && quadReuse.length >= 4) {
+			this.quad = quadReuse;
+		} else {
+			this.quad = new long[4];
+		}
+		this.pool = pool;
+		this.keyData = keyData;
+		this.valueData = valueData;
+		this.index = index;
+		this.dbi = dbi;
+		this.txnRef = txnRef;
+		this.txnLockManager = txnLockManager;
+		this.cursor = cursor;
+		this.maxKey = maxKey;
+		this.minKeyBuf = minKeyBuf;
+		this.maxKeyBuf = maxKeyBuf;
+		retarget(keyBuilder, rangeSearch, subj, pred, obj, context);
 	}
 
 	@Override
@@ -230,7 +223,7 @@ class LmdbRecordIterator implements RecordIterator {
 			throw new SailException(e);
 		}
 		try {
-			if (closed) {
+			if (closed || exhausted || transferred) {
 				log.debug("Calling next() on an LmdbRecordIterator that is already closed, returning null");
 				return null;
 			}
@@ -239,6 +232,7 @@ class LmdbRecordIterator implements RecordIterator {
 			if (txnRefVersion != txnRef.version()) {
 				// TODO: None of the tests in the LMDB Store cover this case!
 				// cursor must be renewed
+				this.txn = txnRef.get();
 				mdb_cursor_renew(txn, cursor);
 				if (fetchNext) {
 					// cursor must be positioned on last item, reuse minKeyBuf if available
@@ -255,7 +249,7 @@ class LmdbRecordIterator implements RecordIterator {
 						lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_SET_RANGE);
 					}
 					if (lastResult != MDB_SUCCESS) {
-						closeInternal(false);
+						markExhausted();
 						return null;
 					}
 				}
@@ -296,11 +290,93 @@ class LmdbRecordIterator implements RecordIterator {
 					return quad;
 				}
 			}
-			closeInternal(false);
+			markExhausted();
 			return null;
 		} finally {
 			txnLockManager.unlockRead(readStamp);
 		}
+	}
+
+	LmdbRecordIterator tryTransfer(TripleIndex index, KeyBuilder keyBuilder, boolean rangeSearch, long subj,
+			long pred, long obj, long context, boolean explicit, Txn txnRef, long[] quadReuse) {
+		if (!reusableOnExhaustion || transferred || closed || !exhausted || this.index != index || this.txnRef != txnRef
+				|| this.dbi != index.getDB(explicit)) {
+			return null;
+		}
+		transferred = true;
+		return new LmdbRecordIterator(index, keyBuilder, rangeSearch, subj, pred, obj, context, explicit, txnRef,
+				txnLockManager, dbi, cursor, pool, keyData, valueData, maxKey, minKeyBuf, maxKeyBuf, quadReuse,
+				reusableOnExhaustion);
+	}
+
+	private void retarget(KeyBuilder keyBuilder, boolean rangeSearch, long subj, long pred, long obj, long context) {
+		this.subj = subj;
+		this.pred = pred;
+		this.obj = obj;
+		this.context = context;
+		this.txn = txnRef.get();
+		this.txnRefVersion = txnRef.version();
+		this.quad[0] = subj;
+		this.quad[1] = pred;
+		this.quad[2] = obj;
+		this.quad[3] = context;
+		this.groupMatcher = null;
+		this.fetchNext = false;
+		this.exhausted = false;
+		this.sourceRowsScannedActual = 0;
+		this.sourceRowsMatchedActual = 0;
+		this.sourceRowsFilteredActual = 0;
+
+		if (rangeSearch) {
+			if (minKeyBuf == null) {
+				minKeyBuf = pool.getKeyBuffer();
+			}
+			if (maxKey == null) {
+				maxKey = pool.getVal();
+			}
+			if (maxKeyBuf == null) {
+				maxKeyBuf = pool.getKeyBuffer();
+			}
+			minKeyBuf.clear();
+			if (keyBuilder != null) {
+				keyBuilder.writeMin(minKeyBuf);
+			} else {
+				index.getMinKey(minKeyBuf, subj, pred, obj, context);
+			}
+			minKeyBuf.flip();
+
+			maxKeyBuf.clear();
+			if (keyBuilder != null) {
+				keyBuilder.writeMax(maxKeyBuf);
+			} else {
+				index.getMaxKey(maxKeyBuf, subj, pred, obj, context);
+			}
+			maxKeyBuf.flip();
+			maxKey.mv_data(maxKeyBuf);
+		} else {
+			if (subj > 0 || pred > 0 || obj > 0 || context >= 0) {
+				if (minKeyBuf == null) {
+					minKeyBuf = pool.getKeyBuffer();
+				}
+				minKeyBuf.clear();
+				index.getMinKey(minKeyBuf, subj, pred, obj, context);
+				minKeyBuf.flip();
+			} else if (minKeyBuf != null) {
+				pool.free(minKeyBuf);
+				minKeyBuf = null;
+			}
+			if (maxKey != null) {
+				pool.free(maxKeyBuf);
+				pool.free(maxKey);
+				maxKeyBuf = null;
+				maxKey = null;
+			}
+		}
+
+		this.matchValues = subj > 0 || pred > 0 || obj > 0 || context >= 0;
+		int prefixLen = index.getPatternScore(subj, pred, obj, context);
+		int boundCount = (subj > 0 ? 1 : 0) + (pred > 0 ? 1 : 0) + (obj > 0 ? 1 : 0) + (context >= 0 ? 1 : 0);
+		this.needMatcher = boundCount > prefixLen;
 	}
 
 	private boolean matches() {
@@ -316,6 +392,13 @@ class LmdbRecordIterator implements RecordIterator {
 			return !this.groupMatcher.matches(keyData.mv_data());
 		} else {
 			return false;
+		}
+	}
+
+	private void markExhausted() {
+		exhausted = true;
+		if (!reusableOnExhaustion) {
+			closeInternal(false);
 		}
 	}
 
@@ -359,6 +442,9 @@ class LmdbRecordIterator implements RecordIterator {
 
 	@Override
 	public void close() {
+		if (transferred) {
+			return;
+		}
 		closeInternal(true);
 	}
 

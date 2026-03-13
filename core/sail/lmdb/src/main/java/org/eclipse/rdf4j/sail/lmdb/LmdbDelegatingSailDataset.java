@@ -107,13 +107,22 @@ final class LmdbDelegatingSailDataset implements SailDataset, LmdbEvaluationData
 	@Override
 	public RecordIterator getRecordIterator(long[] binding, int subjIndex, int predIndex, int objIndex, int ctxIndex,
 			long[] patternIds, long[] reuse, long[] quadReuse) throws QueryEvaluationException {
+		return getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds, reuse, quadReuse,
+				null);
+	}
+
+	@Override
+	public RecordIterator getRecordIterator(long[] binding, int subjIndex, int predIndex, int objIndex, int ctxIndex,
+			long[] patternIds, long[] reuse, long[] quadReuse, RecordIterator previousRight)
+			throws QueryEvaluationException {
 		if (delegate instanceof LmdbEvaluationDataset) {
 			return ((LmdbEvaluationDataset) delegate).getRecordIterator(binding, subjIndex, predIndex, objIndex,
-					ctxIndex, patternIds, reuse, quadReuse);
+					ctxIndex, patternIds, reuse, quadReuse, previousRight);
 		}
 		// Fallback via TripleSource with Value conversion
 		return new LmdbSailDatasetTripleSource(valueStore, delegate)
-				.getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds, reuse, quadReuse);
+				.getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds, reuse, quadReuse,
+						previousRight);
 	}
 
 	@Override

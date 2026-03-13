@@ -16,7 +16,7 @@ if [[ ${STATUS} -ne 0 ]]; then
         exit ${STATUS}
 fi
 
-if [[ "${OUTPUT}" != *"mvn -pl testsuites/benchmark -am -P benchmarks -DskipTests package"* ]]; then
+if [[ "${OUTPUT}" != *"mvn -pl testsuites/benchmark -am -P benchmarks\\,quick -DskipTests clean package"* ]]; then
         echo "Expected Maven command not found in output" >&2
         exit 1
 fi
@@ -89,8 +89,34 @@ if [[ ${JFR_CPU_STATUS} -ne 0 ]]; then
         exit ${JFR_CPU_STATUS}
 fi
 
-if [[ "${JFR_CPU_OUTPUT}" != *"-XX:FlightRecorderOptions=enableThreadCpuTime=true\\,enableProcessCpuTime=true"* ]]; then
-        echo "Expected CPU time options to be appended when requested" >&2
+if [[ "${JFR_CPU_OUTPUT}" != *"jdk.CPUTimeSample#enabled=true"* ]]; then
+        echo "Expected CPU time sample event to be enabled when requested" >&2
+        exit 1
+fi
+
+if [[ "${JFR_CPU_OUTPUT}" != *"report-on-exit=cpu-time-hot-methods"* ]]; then
+        echo "Expected CPU time report to be emitted on exit when requested" >&2
+        exit 1
+fi
+
+set +e
+PARAM_OUTPUT="$(bash "${SCRIPT}" --dry-run --module core/sail/lmdb --class org.eclipse.rdf4j.sail.lmdb.benchmark.ThemeQueryBenchmark --method executeQuery --enable-jfr --param themeName=MEDICAL_RECORDS --param z_queryIndex=0 2>&1)"
+PARAM_STATUS=$?
+set -e
+
+echo "${PARAM_OUTPUT}"
+
+if [[ ${PARAM_STATUS} -ne 0 ]]; then
+        exit ${PARAM_STATUS}
+fi
+
+if [[ "${PARAM_OUTPUT}" != *"-p themeName=MEDICAL_RECORDS"* ]]; then
+        echo "Expected named benchmark parameter to be forwarded as a JMH -p argument" >&2
+        exit 1
+fi
+
+if [[ "${PARAM_OUTPUT}" != *"-p z_queryIndex=0"* ]]; then
+        echo "Expected numeric benchmark parameter to be forwarded as a JMH -p argument" >&2
         exit 1
 fi
 

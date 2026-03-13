@@ -473,13 +473,35 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 		@Override
 		public long[] next() throws QueryEvaluationException {
 			while (true) {
-				if (currentRight != null) {
-					long[] next = currentRight.next();
+				RecordIterator previousRight = currentRight;
+				if (previousRight != null) {
+					long[] next = previousRight.next();
 					if (next != null) {
 						return next;
 					}
-					currentRight.close();
 					currentRight = null;
+
+					long[] leftBinding = left.next();
+					if (leftBinding == null) {
+						previousRight.close();
+						return null;
+					}
+					if (rightScratch == null || rightScratch.length < leftBinding.length) {
+						rightScratch = new long[leftBinding.length];
+					}
+					if (quadScratch == null) {
+						quadScratch = new long[4];
+					}
+					try {
+						currentRight = dataset.getRecordIterator(leftBinding, plan.subjIndex, plan.predIndex,
+								plan.objIndex, plan.ctxIndex, plan.patternIds, rightScratch, quadScratch,
+								previousRight);
+					} finally {
+						if (currentRight != previousRight) {
+							previousRight.close();
+						}
+					}
+					continue;
 				}
 
 				long[] leftBinding = left.next();
@@ -493,7 +515,7 @@ public final class LmdbIdBGPQueryEvaluationStep implements QueryEvaluationStep {
 					quadScratch = new long[4];
 				}
 				currentRight = dataset.getRecordIterator(leftBinding, plan.subjIndex, plan.predIndex, plan.objIndex,
-						plan.ctxIndex, plan.patternIds, rightScratch, quadScratch);
+						plan.ctxIndex, plan.patternIds, rightScratch, quadScratch, null);
 			}
 		}
 

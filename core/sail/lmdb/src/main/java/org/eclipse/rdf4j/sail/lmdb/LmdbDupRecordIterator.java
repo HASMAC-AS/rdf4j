@@ -70,8 +70,8 @@ class LmdbDupRecordIterator implements RecordIterator {
 	private final long[] quad;
 
 	/** Scalars defining the prefix to scan (subject, predicate). */
-	private final long prefixSubj;
-	private final long prefixPred;
+	private long prefixSubj;
+	private long prefixPred;
 
 	private ByteBuffer prefixKeyBuf;
 
@@ -82,12 +82,22 @@ class LmdbDupRecordIterator implements RecordIterator {
 
 	private int lastResult;
 	private boolean closed = false;
+	private boolean exhausted = false;
+	private boolean transferred = false;
+	private final boolean reusableOnExhaustion;
 
-	private final RecordIterator fallback;
-	private final FallbackSupplier fallbackSupplier;
+	private RecordIterator fallback;
+	private FallbackSupplier fallbackSupplier;
 
 	LmdbDupRecordIterator(DupIndex index, long subj, long pred,
 			boolean explicit, Txn txnRef, FallbackSupplier fallbackSupplier) throws IOException {
+		this(index, subj, pred, explicit, txnRef, fallbackSupplier, false);
+	}
+
+	LmdbDupRecordIterator(DupIndex index, long subj, long pred,
+			boolean explicit, Txn txnRef, FallbackSupplier fallbackSupplier, boolean reusableOnExhaustion)
+			throws IOException {
+		this.reusableOnExhaustion = reusableOnExhaustion;
 		this.index = index;
 
 		// Output buffer (s,p are constant for the life of this iterator)
@@ -109,8 +119,6 @@ class LmdbDupRecordIterator implements RecordIterator {
 		this.txnRef = txnRef;
 		this.txnLockManager = txnRef.lockManager();
 
-		RecordIterator fallbackIterator = null;
-
 		long readStamp;
 		try {
 			readStamp = txnLockManager.readLock();
@@ -122,31 +130,37 @@ class LmdbDupRecordIterator implements RecordIterator {
 			this.txn = txnRef.get();
 
 			cursor = openCursor(txn, dupDbi, txnRef.isReadOnly());
-
-			prefixKeyBuf = pool.getKeyBuffer();
-			prefixKeyBuf.clear();
-			Varint.writeUnsigned(prefixKeyBuf, prefixSubj);
-			Varint.writeUnsigned(prefixKeyBuf, prefixPred);
-			// index.toDupKeyPrefix(prefixKeyBuf, subj, pred, 0, 0);
-			prefixKeyBuf.flip();
-
-			boolean positioned = positionOnPrefix();
-			if (positioned) {
-				positioned = primeDuplicateBlock();
-			}
-			if (!positioned) {
-				closeInternal(false);
-				fallbackIterator = createFallback();
-			}
 		} finally {
 			txnLockManager.unlockRead(readStamp);
 		}
+		retarget(subj, pred, fallbackSupplier);
+	}
 
-		this.fallback = fallbackIterator;
+	private LmdbDupRecordIterator(DupIndex index, int dupDbi, long subj, long pred, Txn txnRef,
+			StampedLongAdderLockManager txnLockManager, long cursor, Pool pool, MDBVal keyData, MDBVal valueData,
+			ByteBuffer prefixKeyBuf, FallbackSupplier fallbackSupplier, boolean reusableOnExhaustion)
+			throws IOException {
+		this.reusableOnExhaustion = reusableOnExhaustion;
+		this.index = index;
+		this.quad = new long[4];
+		this.quad[2] = -1L;
+		this.quad[3] = -1L;
+		this.pool = pool;
+		this.keyData = keyData;
+		this.valueData = valueData;
+		this.dupDbi = dupDbi;
+		this.txnRef = txnRef;
+		this.txnLockManager = txnLockManager;
+		this.cursor = cursor;
+		this.prefixKeyBuf = prefixKeyBuf;
+		retarget(subj, pred, fallbackSupplier);
 	}
 
 	@Override
 	public long[] next() {
+		if (transferred) {
+			return null;
+		}
 		if (fallback != null) {
 			return fallback.next();
 		}
@@ -158,7 +172,7 @@ class LmdbDupRecordIterator implements RecordIterator {
 			throw new SailException(e);
 		}
 		try {
-			if (closed) {
+			if (closed || exhausted) {
 				return null;
 			}
 
@@ -168,7 +182,7 @@ class LmdbDupRecordIterator implements RecordIterator {
 				E(mdb_cursor_renew(txn, cursor));
 				txnRefVersion = txnRef.version();
 				if (!positionOnPrefix() || !primeDuplicateBlock()) {
-					closeInternal(false);
+					markExhausted();
 					return null;
 				}
 			}
@@ -200,12 +214,12 @@ class LmdbDupRecordIterator implements RecordIterator {
 				do {
 					lastResult = mdb_cursor_get(cursor, keyData, valueData, MDB_NEXT);
 					if (lastResult != MDB_SUCCESS) {
-						closeInternal(false);
+						markExhausted();
 						return null;
 					}
 					// Ensure we're still within the requested (subj,pred) prefix
 					if (!currentKeyHasPrefix() && !adjustCursorToPrefix()) {
-						closeInternal(false);
+						markExhausted();
 						return null;
 					}
 				} while (!primeDuplicateBlock()); // skip any keys without a duplicate block (defensive)
@@ -214,6 +228,50 @@ class LmdbDupRecordIterator implements RecordIterator {
 			throw new SailException(e);
 		} finally {
 			txnLockManager.unlockRead(readStamp);
+		}
+	}
+
+	LmdbDupRecordIterator tryTransfer(long subj, long pred, boolean explicit, Txn txnRef,
+			FallbackSupplier fallbackSupplier) {
+		if (!reusableOnExhaustion || transferred || closed || !exhausted || fallback != null || this.txnRef != txnRef
+				|| this.dupDbi != index.getDupDB(explicit)) {
+			return null;
+		}
+		transferred = true;
+		try {
+			return new LmdbDupRecordIterator(index, dupDbi, subj, pred, txnRef, txnLockManager, cursor, pool, keyData,
+					valueData, prefixKeyBuf, fallbackSupplier, reusableOnExhaustion);
+		} catch (IOException e) {
+			transferred = false;
+			throw new SailException(e);
+		}
+	}
+
+	private void retarget(long subj, long pred, FallbackSupplier fallbackSupplier) throws IOException {
+		this.prefixSubj = subj;
+		this.prefixPred = pred;
+		this.fallbackSupplier = fallbackSupplier;
+		this.fallback = null;
+		this.quad[0] = subj;
+		this.quad[1] = pred;
+		this.quad[2] = -1L;
+		this.quad[3] = -1L;
+		this.dupBuf = null;
+		this.dupPos = 0;
+		this.dupLimit = 0;
+		this.lastResult = MDB_NOTFOUND;
+		this.exhausted = false;
+		this.txn = txnRef.get();
+		this.txnRefVersion = txnRef.version();
+		resetPrefixKey();
+
+		boolean positioned = positionOnPrefix();
+		if (positioned) {
+			positioned = primeDuplicateBlock();
+		}
+		if (!positioned) {
+			closeInternal(false);
+			fallback = createFallback();
 		}
 	}
 
@@ -268,6 +326,16 @@ class LmdbDupRecordIterator implements RecordIterator {
 
 	private boolean currentKeyHasPrefix() {
 		return comparePrefix() == 0;
+	}
+
+	private void resetPrefixKey() {
+		if (prefixKeyBuf == null) {
+			prefixKeyBuf = pool.getKeyBuffer();
+		}
+		prefixKeyBuf.clear();
+		Varint.writeUnsigned(prefixKeyBuf, prefixSubj);
+		Varint.writeUnsigned(prefixKeyBuf, prefixPred);
+		prefixKeyBuf.flip();
 	}
 
 	/* ---------- Duplicate block priming ---------- */
@@ -358,8 +426,18 @@ class LmdbDupRecordIterator implements RecordIterator {
 		}
 	}
 
+	private void markExhausted() {
+		exhausted = true;
+		if (!reusableOnExhaustion) {
+			closeInternal(false);
+		}
+	}
+
 	@Override
 	public void close() {
+		if (transferred) {
+			return;
+		}
 		if (fallback != null) {
 			fallback.close();
 		} else {

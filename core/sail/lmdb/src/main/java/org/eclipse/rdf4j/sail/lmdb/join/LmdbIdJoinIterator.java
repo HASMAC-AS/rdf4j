@@ -38,7 +38,7 @@ public class LmdbIdJoinIterator extends LookAheadIteration<BindingSet> {
 
 	@FunctionalInterface
 	interface RecordIteratorFactory {
-		RecordIterator apply(long[] leftRecord) throws QueryEvaluationException;
+		RecordIterator apply(long[] leftRecord, RecordIterator previousRight) throws QueryEvaluationException;
 	}
 
 	private static final RecordIterator EMPTY_RECORD_ITERATOR = new RecordIterator() {
@@ -248,9 +248,10 @@ public class LmdbIdJoinIterator extends LookAheadIteration<BindingSet> {
 	@Override
 	protected BindingSet getNextElement() throws QueryEvaluationException {
 		while (true) {
-			if (currentRightIterator != null) {
+			RecordIterator previousRight = currentRightIterator;
+			if (previousRight != null) {
 				long[] rightRecord;
-				while ((rightRecord = nextRecord(currentRightIterator)) != null) {
+				while ((rightRecord = nextRecord(previousRight)) != null) {
 					if (!matchesJoin(currentLeftRecord, rightRecord)) {
 						continue;
 					}
@@ -263,8 +264,28 @@ public class LmdbIdJoinIterator extends LookAheadIteration<BindingSet> {
 					}
 					return result;
 				}
-				currentRightIterator.close();
 				currentRightIterator = null;
+
+				long[] leftRecord = nextRecord(leftIterator);
+				if (leftRecord == null) {
+					previousRight.close();
+					return null;
+				}
+
+				currentLeftRecord = leftRecord;
+				currentLeftBinding = null;
+
+				try {
+					currentRightIterator = rightFactory.apply(leftRecord, previousRight);
+				} finally {
+					if (currentRightIterator != previousRight) {
+						previousRight.close();
+					}
+				}
+				if (currentRightIterator == null) {
+					currentRightIterator = emptyRecordIterator();
+				}
+				continue;
 			}
 
 			long[] leftRecord = nextRecord(leftIterator);
@@ -275,7 +296,7 @@ public class LmdbIdJoinIterator extends LookAheadIteration<BindingSet> {
 			currentLeftRecord = leftRecord;
 			currentLeftBinding = null;
 
-			currentRightIterator = rightFactory.apply(leftRecord);
+			currentRightIterator = rightFactory.apply(leftRecord, null);
 			if (currentRightIterator == null) {
 				currentRightIterator = emptyRecordIterator();
 			}

@@ -38,11 +38,19 @@ public interface LmdbIdTripleSource {
 	 */
 	default RecordIterator getRecordIterator(long[] binding, int subjIndex, int predIndex, int objIndex, int ctxIndex,
 			long[] patternIds, long[] bindingReuse) throws QueryEvaluationException {
-		return getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds, bindingReuse, null);
+		return getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds, bindingReuse, null,
+				null);
 	}
 
 	default RecordIterator getRecordIterator(long[] binding, int subjIndex, int predIndex, int objIndex, int ctxIndex,
 			long[] patternIds, long[] bindingReuse, long[] quadReuse) throws QueryEvaluationException {
+		return getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds, bindingReuse, quadReuse,
+				null);
+	}
+
+	default RecordIterator getRecordIterator(long[] binding, int subjIndex, int predIndex, int objIndex, int ctxIndex,
+			long[] patternIds, long[] bindingReuse, long[] quadReuse, RecordIterator previousRight)
+			throws QueryEvaluationException {
 		return getRecordIterator(binding, subjIndex, predIndex, objIndex, ctxIndex, patternIds);
 	}
 

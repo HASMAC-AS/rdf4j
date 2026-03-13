@@ -18,12 +18,20 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.MutableBindingSet;
+import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.evaluation.ArrayBindingSet;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
+import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
+import org.eclipse.rdf4j.sail.lmdb.IdAccessor;
 import org.eclipse.rdf4j.sail.lmdb.IdBindingInfo;
+import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.ValueStore;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 import org.junit.jupiter.api.Test;
@@ -63,6 +71,112 @@ class LmdbIdJoinLazyMaterializationTest {
 			assertThat(target.getValue("item")).isSameAs(materialized);
 		} finally {
 			System.clearProperty(PROPERTY);
+		}
+	}
+
+	@Test
+	void exhaustedRightStaysOpenUntilNextProbeCreated() {
+		TrackingRecordIterator firstRight = new TrackingRecordIterator();
+		boolean[] previousStillOpen = new boolean[1];
+
+		LmdbIdJoinIterator.RecordIteratorFactory rightFactory = new LmdbIdJoinIterator.RecordIteratorFactory() {
+			private int invocation;
+
+			@Override
+			public RecordIterator apply(long[] leftRecord, RecordIterator previousRight) {
+				if (invocation++ == 0) {
+					return firstRight;
+				}
+				assertThat(previousRight).isSameAs(firstRight);
+				previousStillOpen[0] = !firstRight.closed;
+				return new SingleRecordIterator();
+			}
+		};
+
+		LmdbIdJoinIterator iterator = new LmdbIdJoinIterator(
+				new TwoRecordIterator(),
+				rightFactory,
+				EMPTY_ACCESSOR,
+				EMPTY_ACCESSOR,
+				Collections.emptySet(),
+				new QueryEvaluationContext.Minimal(null),
+				EmptyBindingSet.getInstance(),
+				mock(ValueStore.class));
+
+		BindingSet next = iterator.next();
+		assertThat(next).isNotNull();
+		assertThat(previousStillOpen[0]).isTrue();
+	}
+
+	private static final IdAccessor EMPTY_ACCESSOR = new IdAccessor() {
+		@Override
+		public long getId(long[] record, String varName) {
+			return LmdbValue.UNKNOWN_ID;
+		}
+
+		@Override
+		public java.util.Set<String> getVariableNames() {
+			return Collections.emptySet();
+		}
+
+		@Override
+		public int getRecordIndex(String varName) {
+			return -1;
+		}
+
+		@Override
+		public boolean applyRecord(long[] record, MutableBindingSet target, ValueStore valueStore)
+				throws QueryEvaluationException {
+			return true;
+		}
+	};
+
+	private static final class TwoRecordIterator implements RecordIterator {
+		private int index;
+
+		@Override
+		public long[] next() {
+			if (index++ >= 2) {
+				return null;
+			}
+			return new long[0];
+		}
+
+		@Override
+		public void close() {
+			// no-op
+		}
+	}
+
+	private static final class TrackingRecordIterator implements RecordIterator {
+		private boolean closed;
+
+		@Override
+		public long[] next() {
+			return null;
+		}
+
+		@Override
+		public void close() {
+			closed = true;
+		}
+	}
+
+	private static final class SingleRecordIterator implements RecordIterator {
+		private boolean emitted;
+
+		@Override
+		public long[] next() {
+			if (emitted) {
+				return null;
+			}
+			emitted = true;
+			return new long[0];
+		}
+
+		@Override
+		public void close() {
+			// no-op
 		}
 	}
 }
