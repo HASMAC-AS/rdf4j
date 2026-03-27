@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -40,6 +41,7 @@ import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
+import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.InterruptedSailException;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.BackingSailSource;
@@ -63,6 +65,8 @@ class LmdbSailStore implements SailStore {
 	private final TripleStore tripleStore;
 
 	private final ValueStore valueStore;
+
+	private final File dataDir;
 
 	private final ExecutorService tripleStoreExecutor = Executors.newCachedThreadPool();
 	private final CircularBuffer<Operation> opQueue = new CircularBuffer<>(1024);
@@ -181,6 +185,7 @@ class LmdbSailStore implements SailStore {
 	 * Creates a new {@link LmdbSailStore}.
 	 */
 	public LmdbSailStore(File dataDir, LmdbStoreConfig config) throws IOException, SailException {
+		this.dataDir = dataDir;
 		this.setFactory = new PersistentSetFactory<>(dataDir);
 		Function<Long, byte[]> encode = element -> {
 			ByteBuffer bb = ByteBuffer.allocate(Long.BYTES).order(ByteOrder.BIG_ENDIAN);
@@ -208,6 +213,25 @@ class LmdbSailStore implements SailStore {
 	@Override
 	public ValueFactory getValueFactory() {
 		return valueStore;
+	}
+
+	void bulkLoad(Path dataFile, RDFFormat format) throws SailException {
+		sinkStoreAccessLock.lock();
+		try {
+			if (storeTxnStarted.get()) {
+				throw new SailException("Bulk load cannot run during an active transaction");
+			}
+			if (tripleStore.hasTriples(true) || tripleStore.hasTriples(false)) {
+				throw new SailException("Bulk load requires an empty store");
+			}
+			LmdbBulkLoader loader = new LmdbBulkLoader(dataDir.toPath(), valueStore, tripleStore);
+			loader.bulkLoad(dataFile, format);
+			mayHaveInferred = tripleStore.hasTriples(false);
+		} catch (IOException e) {
+			throw new SailException(e);
+		} finally {
+			sinkStoreAccessLock.unlock();
+		}
 	}
 
 	void rollback() throws SailException {

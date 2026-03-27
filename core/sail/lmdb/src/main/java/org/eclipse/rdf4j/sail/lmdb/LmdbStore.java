@@ -36,9 +36,11 @@ import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceRes
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolverClient;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategyFactory;
 import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
+import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.InterruptedSailException;
 import org.eclipse.rdf4j.sail.NotifyingSailConnection;
 import org.eclipse.rdf4j.sail.SailException;
+import org.eclipse.rdf4j.sail.SailReadOnlyException;
 import org.eclipse.rdf4j.sail.base.SailSource;
 import org.eclipse.rdf4j.sail.base.SailStore;
 import org.eclipse.rdf4j.sail.base.SnapshotSailStore;
@@ -415,6 +417,29 @@ public class LmdbStore extends AbstractNotifyingSail implements FederatedService
 	@Override
 	public Supplier<CollectionFactory> getCollectionFactory() {
 		return () -> new MapDb3CollectionFactory(getIterationCacheSyncThreshold());
+	}
+
+	/**
+	 * Bulk-loads RDF data into this store using LMDB index ordering.
+	 *
+	 * @param dataFile The RDF file to load.
+	 * @param format   The RDF format of the file.
+	 * @throws SailException If the bulk load fails or the store is not writable.
+	 */
+	public void bulkLoad(Path dataFile, RDFFormat format) throws SailException {
+		if (dataFile == null) {
+			throw new SailException("Data file must not be null");
+		}
+		if (format == null) {
+			throw new SailException("RDF format must not be null");
+		}
+		if (!isInitialized()) {
+			throw new SailException("Store must be initialized before bulk load");
+		}
+		if (!isWritable()) {
+			throw new SailReadOnlyException("Unable to bulk load: data file is locked or read-only");
+		}
+		backingStore.bulkLoad(dataFile, format);
 	}
 
 }
