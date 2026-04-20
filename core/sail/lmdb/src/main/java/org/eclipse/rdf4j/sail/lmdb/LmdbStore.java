@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -355,6 +356,21 @@ public class LmdbStore extends AbstractNotifyingSail implements FederatedService
 	@Override
 	public ValueFactory getValueFactory() {
 		return store.getValueFactory();
+	}
+
+	public LmdbCompactionResult compact(LmdbCompactionOptions options) throws IOException, SailException {
+		Objects.requireNonNull(options, "options");
+		if (isInitialized()) {
+			throw new SailException("Cannot compact an initialized store. Shut down the repository first.");
+		}
+
+		File dataDir = getDataDir();
+		if (dataDir == null) {
+			throw new SailException("Cannot compact store without a configured data directory");
+		}
+
+		LmdbCompactor compactor = new LmdbCompactor(dataDir.toPath(), config, options);
+		return compactor.run();
 	}
 
 	/**
