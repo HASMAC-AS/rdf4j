@@ -1737,12 +1737,13 @@ class ValueStore extends AbstractValueFactory {
 	}
 
 	private LmdbIRI data2uri(long id, byte[] data, LmdbIRI value) throws IOException {
-		ByteBuffer bb = ByteBuffer.wrap(data);
-		// skip type marker
-		bb.get();
-		long nsID = Varint.readUnsignedHeap(bb);
+		int pos = 1; // skip type marker
+		int nsIdLength = Varint.firstToLength(data[pos]);
+		long nsID = Varint.readUnsigned(data, pos, nsIdLength);
+		pos += nsIdLength;
+
 		String namespace = getNamespace(nsID);
-		String localName = new String(data, bb.position(), bb.remaining(), StandardCharsets.UTF_8);
+		String localName = new String(data, pos, data.length - pos, StandardCharsets.UTF_8);
 
 		if (value == null) {
 			return new LmdbIRI(revision, namespace, localName, id);
@@ -1764,11 +1765,12 @@ class ValueStore extends AbstractValueFactory {
 	}
 
 	private LmdbLiteral data2literal(long id, byte[] data, LmdbLiteral value) throws IOException {
-		ByteBuffer bb = ByteBuffer.wrap(data);
-		// skip type marker
-		bb.get();
-		// Get datatype
-		long datatypeID = Varint.readUnsignedHeap(bb);
+		int pos = 1; // skip type marker
+
+		int datatypeLength = Varint.firstToLength(data[pos]);
+		long datatypeID = Varint.readUnsigned(data, pos, datatypeLength);
+		pos += datatypeLength;
+
 		IRI datatype = null;
 		if (datatypeID != LmdbValue.UNKNOWN_ID) {
 			datatype = (IRI) getValue(datatypeID);
@@ -1776,14 +1778,15 @@ class ValueStore extends AbstractValueFactory {
 
 		// Get language tag
 		String lang = null;
-		int langLength = bb.get() & 0xFF;
+		int langLength = data[pos] & 0xFF;
+		pos++;
 		if (langLength > 0) {
-			lang = new String(data, bb.position(), langLength, StandardCharsets.UTF_8);
+			lang = new String(data, pos, langLength, StandardCharsets.UTF_8);
+			pos += langLength;
 		}
 
 		// Get label
-		String label = new String(data, bb.position() + langLength, data.length - bb.position() - langLength,
-				StandardCharsets.UTF_8);
+		String label = new String(data, pos, data.length - pos, StandardCharsets.UTF_8);
 
 		if (value == null) {
 			if (lang != null) {

@@ -272,42 +272,7 @@ public final class Varint {
 	 * @see #writeUnsigned(ByteBuffer, long)
 	 */
 	public static long readUnsigned(ByteBuffer bb) throws IllegalArgumentException {
-		final int a0 = bb.get() & 0xFF; // lead byte, unsigned
-
-		if (a0 <= 240) {
-			return a0;
-		}
-
-		final int extra = VARINT_EXTRA_BYTES[a0]; // 0..8 additional bytes
-
-		switch (extra) {
-		case 1: {
-			// 1 extra byte; 241..248
-			final int a1 = bb.get() & 0xFF;
-			// 240 + 256*(a0-241) + a1
-			return 240L + ((long) (a0 - 241) << 8) + a1;
-		}
-
-		case 2: {
-			// 2 extra bytes; lead byte == 249
-			final int a1 = bb.get() & 0xFF;
-			final int a2 = bb.get() & 0xFF;
-			// 2288 + 256*a1 + a2
-			return 2288L + ((long) a1 << 8) + a2;
-		}
-
-		case 3:
-		case 4:
-		case 5:
-		case 6:
-		case 7:
-		case 8:
-			return readSignificantBitsDirect(bb, extra);
-		// 3..8 extra bytes; 250..255
-		default:
-			throw new IllegalArgumentException("Bytes is higher than 8: " + extra);
-
-		}
+		return decodeUnsigned(bb, bb.position(), true);
 	}
 
 	public static void skipUnsigned(ByteBuffer bb) throws IllegalArgumentException {
@@ -317,54 +282,17 @@ public final class Varint {
 			return;
 		}
 
-		final int extra = VARINT_EXTRA_BYTES[a0]; // 0..8 additional bytes
-		bb.position(bb.position() + extra);
-
-	}
-
-	/** Lookup: lead byte (0..255) → number of additional bytes (0..8). */
-	private static final byte[] VARINT_EXTRA_BYTES = buildVarintExtraBytes();
-
-	private static byte[] buildVarintExtraBytes() {
-		final byte[] t = new byte[256];
-
-		// 0..240 → 0 extra bytes
-		for (int i = 0; i <= 240; i++) {
-			t[i] = 0;
+		final int len = FIRST_TO_LENGTH[a0 & 0xFF];
+		if (len == 0) {
+			throw new IllegalArgumentException("Invalid varint header: " + a0);
 		}
 
-		// 241..248 → 1 extra byte
-		for (int i = 241; i <= 248; i++) {
-			t[i] = 1;
-		}
+		bb.position(bb.position() + (len - 1));
 
-		// 249 → 2 extra bytes
-		t[249] = 2;
-
-		// 250..255 → 3..8 extra bytes
-		for (int i = 250; i <= 255; i++) {
-			t[i] = (byte) (i - 247); // 250→3, …, 255→8
-		}
-
-		return t;
 	}
 
 	public static long readUnsignedHeap(ByteBuffer bb) throws IllegalArgumentException {
-		int a0 = bb.get() & 0xFF;
-
-		if (a0 <= 240) {
-			return a0;
-		} else if (a0 <= 248) {
-			int a1 = bb.get() & 0xFF;
-			return 240 + 256 * (a0 - 241) + a1;
-		} else if (a0 == 249) {
-			int a1 = bb.get() & 0xFF;
-			int a2 = bb.get() & 0xFF;
-			return 2288 + 256 * a1 + a2;
-		} else {
-			int bytes = a0 - 250 + 3;
-			return readSignificantBitsHeap(bb, bytes);
-		}
+		return decodeUnsigned(bb, bb.position(), true);
 	}
 
 	/**
@@ -377,19 +305,138 @@ public final class Varint {
 	 * @see #writeUnsigned(ByteBuffer, long)
 	 */
 	public static long readUnsigned(ByteBuffer bb, int pos) throws IllegalArgumentException {
-		int a0 = bb.get(pos) & 0xFF;
-		if (a0 <= 240) {
-			return a0;
-		} else if (a0 <= 248) {
-			int a1 = bb.get(pos + 1) & 0xFF;
-			return 240 + 256 * (a0 - 241) + a1;
-		} else if (a0 == 249) {
-			int a1 = bb.get(pos + 1) & 0xFF;
-			int a2 = bb.get(pos + 2) & 0xFF;
-			return 2288 + 256 * a1 + a2;
+		return decodeUnsigned(bb, pos, false);
+	}
+
+	private static final long[] HEADER_BASE = buildHeaderBase();
+
+	private static long[] buildHeaderBase() {
+		long[] base = new long[256];
+
+		for (int header = 0; header <= 240; header++) {
+			base[header] = header;
+		}
+
+		for (int header = 241; header <= 248; header++) {
+			base[header] = 240L + ((long) (header - 241) << 8);
+		}
+
+		base[249] = 2288L;
+
+		return base;
+	}
+
+	private static long decodeUnsigned(ByteBuffer bb, int pos, boolean advance) {
+		final int a0 = bb.get(pos) & 0xFF;
+		final int len = FIRST_TO_LENGTH[a0];
+
+		if (len == 0) {
+			throw new IllegalArgumentException("Invalid varint header: " + a0);
+		}
+
+		final int payloadLen = len - 1;
+		final long base = HEADER_BASE[a0];
+		final long payload;
+
+		if (payloadLen == 0) {
+			payload = 0L;
+		} else if (bb.hasArray()) {
+			payload = readPayload(bb.array(), bb.arrayOffset() + pos + 1, payloadLen);
 		} else {
-			int bytes = a0 - 250 + 3;
-			return readSignificantBits(bb, pos + 1, bytes);
+			payload = readPayload(bb, pos + 1, payloadLen);
+		}
+
+		if (advance) {
+			bb.position(pos + len);
+		}
+
+		return base + payload;
+	}
+
+	private static long readPayload(ByteBuffer bb, int pos, int len) {
+		switch (len) {
+		case 0:
+			return 0L;
+		case 1:
+			return bb.get(pos) & 0xFFL;
+		case 2:
+			return ((bb.get(pos) & 0xFFL) << 8) | (bb.get(pos + 1) & 0xFFL);
+		default:
+			ByteBuffer dup = bb.duplicate().order(ByteOrder.BIG_ENDIAN);
+			dup.position(pos);
+			return readSignificantBitsDirect(dup, len);
+		}
+	}
+
+	static long readUnsigned(byte[] array, int offset, int len) {
+		if (len <= 0 || len > 9) {
+			throw new IllegalArgumentException("Invalid varint length: " + len);
+		}
+
+		final int header = array[offset] & 0xFF;
+		final long base = HEADER_BASE[header];
+		final long payload = readPayload(array, offset + 1, len - 1);
+
+		return base + payload;
+	}
+
+	public static long readUnsigned(byte[] array, int offset) {
+		int len = FIRST_TO_LENGTH[array[offset] & 0xFF];
+		if (len == 0) {
+			throw new IllegalArgumentException("Invalid varint header: " + (array[offset] & 0xFF));
+		}
+		return readUnsigned(array, offset, len);
+	}
+
+	private static long readPayload(byte[] array, int offset, int len) {
+		switch (len) {
+		case 0:
+			return 0L;
+		case 1:
+			return array[offset] & 0xFFL;
+		case 2:
+			return ((array[offset] & 0xFFL) << 8) | (array[offset + 1] & 0xFFL);
+		case 3:
+			return ((array[offset] & 0xFFL) << 16)
+					| ((array[offset + 1] & 0xFFL) << 8)
+					| (array[offset + 2] & 0xFFL);
+		case 4:
+			return ((array[offset] & 0xFFL) << 24)
+					| ((array[offset + 1] & 0xFFL) << 16)
+					| ((array[offset + 2] & 0xFFL) << 8)
+					| (array[offset + 3] & 0xFFL);
+		case 5:
+			return ((array[offset] & 0xFFL) << 32)
+					| ((array[offset + 1] & 0xFFL) << 24)
+					| ((array[offset + 2] & 0xFFL) << 16)
+					| ((array[offset + 3] & 0xFFL) << 8)
+					| (array[offset + 4] & 0xFFL);
+		case 6:
+			return ((array[offset] & 0xFFL) << 40)
+					| ((array[offset + 1] & 0xFFL) << 32)
+					| ((array[offset + 2] & 0xFFL) << 24)
+					| ((array[offset + 3] & 0xFFL) << 16)
+					| ((array[offset + 4] & 0xFFL) << 8)
+					| (array[offset + 5] & 0xFFL);
+		case 7:
+			return ((array[offset] & 0xFFL) << 48)
+					| ((array[offset + 1] & 0xFFL) << 40)
+					| ((array[offset + 2] & 0xFFL) << 32)
+					| ((array[offset + 3] & 0xFFL) << 24)
+					| ((array[offset + 4] & 0xFFL) << 16)
+					| ((array[offset + 5] & 0xFFL) << 8)
+					| (array[offset + 6] & 0xFFL);
+		case 8:
+			return ((array[offset] & 0xFFL) << 56)
+					| ((array[offset + 1] & 0xFFL) << 48)
+					| ((array[offset + 2] & 0xFFL) << 40)
+					| ((array[offset + 3] & 0xFFL) << 32)
+					| ((array[offset + 4] & 0xFFL) << 24)
+					| ((array[offset + 5] & 0xFFL) << 16)
+					| ((array[offset + 6] & 0xFFL) << 8)
+					| (array[offset + 7] & 0xFFL);
+		default:
+			throw new IllegalArgumentException("Unsupported payload length: " + len);
 		}
 	}
 
@@ -505,42 +552,12 @@ public final class Varint {
 		values[indexMap[3]] = readUnsigned(bb);
 	}
 
-	/**
-	 * Reads only the significant bytes of the given value in big-endian order.
-	 *
-	 * @param bb buffer for reading bytes
-	 * @param n  number of significant bytes
-	 */
-	private static long readSignificantBits(ByteBuffer bb, int n) {
-		if (bb.isDirect()) {
-			return readSignificantBitsDirect(bb, n);
-		} else {
-			return readSignificantBitsHeap(bb, n);
-		}
-	}
-
 	private static long readSignificantBitsDirect(ByteBuffer bb, int n) {
 		return SignificantBytesBE.readDirect(bb, n);
 	}
 
 	private static long readSignificantBitsHeap(ByteBuffer bb, int n) {
 		return SignificantBytesBE.read(bb, n);
-	}
-
-	/**
-	 * Reads only the significant bytes of the given value in big-endian order.
-	 *
-	 * @param bb    buffer for reading bytes
-	 * @param pos   position within the buffer
-	 * @param bytes number of significant bytes
-	 */
-	private static long readSignificantBits(ByteBuffer bb, int pos, int bytes) {
-		bytes--;
-		long value = (long) (bb.get(pos++) & 0xFF) << (bytes * 8);
-		while (bytes-- > 0) {
-			value |= (long) (bb.get(pos++) & 0xFF) << (bytes * 8);
-		}
-		return value;
 	}
 
 	private static int compareRegion(ByteBuffer bb1, int startIdx1, ByteBuffer bb2, int startIdx2, int length) {
