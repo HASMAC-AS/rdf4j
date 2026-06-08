@@ -16,8 +16,8 @@ import java.util.Objects;
 /**
  * Immutable bit mask over query-local variable-name ids.
  * <p>
- * The first 64 ids are stored directly in a {@code long}. Larger queries transparently spill into additional long words,
- * so callers get the fast path for common queries without imposing a hard 64-variable limit.
+ * The first 64 ids are stored directly in a {@code long}. Larger queries transparently spill into additional long
+ * words, so callers get the fast path for common queries without imposing a hard 64-variable limit.
  */
 final class VarNameMask {
 

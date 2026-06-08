@@ -168,7 +168,8 @@ public class FilterOptimizer implements QueryOptimizer {
 			ValueExpr rightCondition, VarNameMap varNames) {
 		VarNameMask assignmentNames = bindingSetAssignmentOnlyNames(filterArg, varNames);
 		if (assignmentNames != null) {
-			if (shouldSwapBindingSetAssignmentFilterConditions(leftCondition, rightCondition, assignmentNames, varNames)) {
+			if (shouldSwapBindingSetAssignmentFilterConditions(leftCondition, rightCondition, assignmentNames,
+					varNames)) {
 				return new And(rightCondition.clone(), leftCondition.clone());
 			}
 			return new And(leftCondition.clone(), rightCondition.clone());
@@ -255,7 +256,7 @@ public class FilterOptimizer implements QueryOptimizer {
 
 		@Override
 		public void meet(Filter filter) {
-			if (filter.getCondition() instanceof And and) {
+			if (filter.getCondition()instanceof And and) {
 				filter.setCondition(and.getLeftArg().clone());
 				Filter newFilter = new Filter(filter.getArg().clone(), and.getRightArg().clone());
 				transferScopeChange(filter, newFilter); // preserve scope flag
@@ -279,7 +280,7 @@ public class FilterOptimizer implements QueryOptimizer {
 		@Override
 		public void meet(Filter filter) {
 			super.meet(filter);
-			if (filter.getArg() instanceof Filter childFilter && filter.getParentNode() != null) {
+			if (filter.getArg()instanceof Filter childFilter && filter.getParentNode() != null) {
 
 				QueryModelNode parent = filter.getParentNode();
 				And merge = mergeConditionsInFilterOrder(childFilter.getArg(), childFilter.getCondition(),
@@ -299,7 +300,8 @@ public class FilterOptimizer implements QueryOptimizer {
 		private final boolean considerJoinPlacementCost;
 		private final VarNameMap varNames;
 
-		public FilterOrganizer(EvaluationStatistics statistics, boolean considerJoinPlacementCost, VarNameMap varNames) {
+		public FilterOrganizer(EvaluationStatistics statistics, boolean considerJoinPlacementCost,
+				VarNameMap varNames) {
 			super(false);
 			this.statistics = statistics;
 			this.considerJoinPlacementCost = considerJoinPlacementCost;

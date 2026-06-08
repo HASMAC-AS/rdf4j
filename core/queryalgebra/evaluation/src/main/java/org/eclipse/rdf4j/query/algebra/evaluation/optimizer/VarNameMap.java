@@ -19,8 +19,8 @@ import java.util.Objects;
 /**
  * Query-local mapping from public binding names to dense integer ids.
  * <p>
- * This deliberately preserves the current RDF4J string based public API at the boundary, while allowing optimizer code to
- * do repeated variable set operations as bit operations.
+ * This deliberately preserves the current RDF4J string based public API at the boundary, while allowing optimizer code
+ * to do repeated variable set operations as bit operations.
  */
 final class VarNameMap {
 
