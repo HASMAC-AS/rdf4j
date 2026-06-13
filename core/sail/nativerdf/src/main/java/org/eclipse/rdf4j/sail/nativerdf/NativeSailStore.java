@@ -19,6 +19,8 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,7 @@ import org.eclipse.rdf4j.common.iteration.ConvertingIteration;
 import org.eclipse.rdf4j.common.iteration.EmptyIteration;
 import org.eclipse.rdf4j.common.iteration.FilterIteration;
 import org.eclipse.rdf4j.common.iteration.UnionIteration;
+import org.eclipse.rdf4j.common.order.StatementOrder;
 import org.eclipse.rdf4j.common.transaction.IsolationLevel;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Namespace;
@@ -44,6 +47,7 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.util.LexicalValueComparator;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.BackingSailSource;
@@ -482,6 +486,74 @@ class NativeSailStore implements SailStore {
 		}
 	}
 
+	CloseableIteration<? extends Statement> createStatementIterator(StatementOrder order, Resource subj, IRI pred,
+			Value obj, boolean explicit, Resource... contexts) throws IOException {
+		int subjID = NativeValue.UNKNOWN_ID;
+		if (subj != null) {
+			subjID = valueStore.getID(subj);
+			if (subjID == NativeValue.UNKNOWN_ID) {
+				return new EmptyIteration<>();
+			}
+		}
+
+		int predID = NativeValue.UNKNOWN_ID;
+		if (pred != null) {
+			predID = valueStore.getID(pred);
+			if (predID == NativeValue.UNKNOWN_ID) {
+				return new EmptyIteration<>();
+			}
+		}
+
+		int objID = NativeValue.UNKNOWN_ID;
+		if (obj != null) {
+			objID = valueStore.getID(obj);
+
+			if (objID == NativeValue.UNKNOWN_ID) {
+				return new EmptyIteration<>();
+			}
+		}
+
+		List<Resource> contextList = new ArrayList<>(contexts.length == 0 ? 1 : contexts.length);
+		if (contexts.length == 0) {
+			contextList.add(null);
+		} else {
+			for (Resource context : contexts) {
+				if (context == null || !context.isTriple()) {
+					contextList.add(context);
+				}
+			}
+		}
+
+		if (contextList.isEmpty()) {
+			return new EmptyIteration<>();
+		}
+
+		if (contextList.size() == 1) {
+			Resource context = contextList.get(0);
+			int contextID = context == null ? 0 : valueStore.getID(context);
+			if (context != null && contextID == NativeValue.UNKNOWN_ID) {
+				return new EmptyIteration<>();
+			}
+			RecordIterator btreeIter = tripleStore.getTriples(order, subjID, predID, objID, contextID, explicit, false);
+			return new NativeStatementIterator(btreeIter, valueStore);
+		}
+
+		RecordIterator btreeIter = tripleStore.getTriples(order, subjID, predID, objID, NativeValue.UNKNOWN_ID,
+				explicit, false);
+		NativeStatementIterator statementIterator = new NativeStatementIterator(btreeIter, valueStore);
+		Set<Resource> allowedContexts = new HashSet<>(contextList);
+		return new FilterIteration<>(statementIterator) {
+			@Override
+			protected boolean accept(Statement statement) {
+				return allowedContexts.contains(statement.getContext());
+			}
+
+			@Override
+			protected void handleClose() {
+			}
+		};
+	}
+
 	double cardinality(Resource subj, IRI pred, Value obj, Resource context) throws IOException {
 		int subjID = NativeValue.UNKNOWN_ID;
 		if (subj != null) {
@@ -876,6 +948,7 @@ class NativeSailStore implements SailStore {
 	private final class NativeSailDataset implements SailDataset {
 
 		private final boolean explicit;
+		private final Comparator<Value> comparator = new StoreValueComparator();
 
 		public NativeSailDataset(boolean explicit) throws SailException {
 			this.explicit = explicit;
@@ -909,6 +982,61 @@ class NativeSailStore implements SailStore {
 			} catch (IOException e) {
 				throw new SailException("Unable to get statements", e);
 			}
+		}
+
+		@Override
+		public CloseableIteration<? extends Statement> getStatements(StatementOrder statementOrder, Resource subj,
+				IRI pred, Value obj, Resource... contexts) throws SailException {
+			if (!tripleStore.getSupportedOrders().contains(statementOrder)) {
+				throw new SailException("Statement ordering not supported by NativeSailDataset for order "
+						+ statementOrder);
+			}
+
+			try {
+				return createStatementIterator(statementOrder, subj, pred, obj, explicit, contexts);
+			} catch (IOException e) {
+				throw new SailException("Unable to get statements", e);
+			}
+		}
+
+		@Override
+		public Set<StatementOrder> getSupportedOrders(Resource subj, IRI pred, Value obj, Resource... contexts) {
+			return tripleStore.getSupportedOrders();
+		}
+
+		@Override
+		public Comparator<Value> getComparator() {
+			return comparator;
+		}
+	}
+
+	private final class StoreValueComparator implements Comparator<Value> {
+
+		private final LexicalValueComparator lexicalComparator = new LexicalValueComparator();
+
+		@Override
+		public int compare(Value left, Value right) {
+			if (left == right) {
+				return 0;
+			}
+			if (left == null) {
+				return -1;
+			}
+			if (right == null) {
+				return 1;
+			}
+
+			try {
+				int leftId = valueStore.getID(left);
+				int rightId = valueStore.getID(right);
+				if (leftId != NativeValue.UNKNOWN_ID && rightId != NativeValue.UNKNOWN_ID) {
+					return Integer.compare(leftId, rightId);
+				}
+			} catch (IOException e) {
+				throw new SailException("Unable to compare values", e);
+			}
+
+			return lexicalComparator.compare(left, right);
 		}
 	}
 
