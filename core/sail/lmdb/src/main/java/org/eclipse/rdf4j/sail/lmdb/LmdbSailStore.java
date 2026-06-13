@@ -71,6 +71,7 @@ class LmdbSailStore implements SailStore {
 	private final CircularBuffer<Operation> opQueue = new CircularBuffer<>(1024);
 	private volatile Throwable tripleStoreException;
 	private final AtomicBoolean running = new AtomicBoolean(false);
+	private final LmdbStatementIteratorCache statementIteratorCache = new LmdbStatementIteratorCache(10);
 	private boolean multiThreadingActive;
 	private volatile boolean asyncTransactionFinished;
 	private volatile boolean nextTransactionAsync;
@@ -274,6 +275,7 @@ class LmdbSailStore implements SailStore {
 	void rollback() throws SailException {
 		sinkStoreAccessLock.lock();
 		try {
+			statementIteratorCache.invalidateCache();
 			try {
 				valueStore.rollback();
 			} finally {
@@ -460,6 +462,41 @@ class LmdbSailStore implements SailStore {
 		}
 
 		ArrayList<LmdbStatementIterator> perContextIterList = new ArrayList<>(contextIDList.size());
+		final long iteratorSubjID = subjID;
+		final long iteratorPredID = predID;
+		final long iteratorObjID = objID;
+		LmdbStatementIteratorCache.IteratorKey key = new LmdbStatementIteratorCache.IteratorKey(subjID, predID, objID,
+				explicit, contextIDList);
+
+		if (statementIteratorCache.shouldBeCached(key)) {
+			List<Long> cached = statementIteratorCache.getCachedIterator(key,
+					() -> cacheMatchingQuads(txn, iteratorSubjID, iteratorPredID, iteratorObjID, explicit,
+							contextIDList));
+			return new LmdbStatementIterator(new RecordIterator() {
+				int offset;
+
+				@Override
+				public long[] next() {
+					if (offset >= cached.size()) {
+						return null;
+					}
+					long[] quad = new long[] {
+							cached.get(offset),
+							cached.get(offset + 1),
+							cached.get(offset + 2),
+							cached.get(offset + 3)
+					};
+					offset += 4;
+					return quad;
+				}
+
+				@Override
+				public void close() {
+					// nothing to close
+				}
+			}, valueStore);
+		}
+		statementIteratorCache.incrementIteratorFrequencyMap(key);
 
 		for (long contextID : contextIDList) {
 			RecordIterator records = tripleStore.getTriples(txn, subjID, predID, objID, contextID, explicit);
@@ -471,6 +508,26 @@ class LmdbSailStore implements SailStore {
 		} else {
 			return new UnionIteration<>(perContextIterList);
 		}
+	}
+
+	private List<Long> cacheMatchingQuads(Txn txn, long subjID, long predID, long objID, boolean explicit,
+			List<Long> contextIDList) {
+		ArrayList<Long> cachedQuads = new ArrayList<>();
+		for (long contextID : contextIDList) {
+			try (RecordIterator records = tripleStore.getTriples(txn, subjID, predID, objID, contextID, explicit)) {
+				long[] quad;
+				while ((quad = records.next()) != null) {
+					cachedQuads.add(quad[TripleStore.SUBJ_IDX]);
+					cachedQuads.add(quad[TripleStore.PRED_IDX]);
+					cachedQuads.add(quad[TripleStore.OBJ_IDX]);
+					cachedQuads.add(quad[TripleStore.CONTEXT_IDX]);
+				}
+			} catch (IOException e) {
+				throw new SailException(e);
+			}
+		}
+		cachedQuads.trimToSize();
+		return cachedQuads;
 	}
 
 	private final class LmdbSailSource extends BackingSailSource {
@@ -572,6 +629,7 @@ class LmdbSailStore implements SailStore {
 						}
 						handleRemovedIdsInValueStore();
 						valueStore.commit();
+						statementIteratorCache.invalidateCache();
 						// do not set flag to false until _after_ commit is successfully completed.
 						storeTxnStarted.set(false);
 					}
@@ -927,6 +985,7 @@ class LmdbSailStore implements SailStore {
 				throws SailException {
 			sinkStoreAccessLock.lock();
 			try {
+				statementIteratorCache.invalidateCache();
 				startTransaction(true);
 
 				AddQuadOperation q = new AddQuadOperation();
@@ -993,6 +1052,7 @@ class LmdbSailStore implements SailStore {
 
 			sinkStoreAccessLock.lock();
 			try {
+				statementIteratorCache.invalidateCache();
 				startTransaction(false);
 				final long subjID;
 				if (subj != null) {
