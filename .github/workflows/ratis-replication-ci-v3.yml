@@ -43,10 +43,55 @@ jobs:
           echo 'e1b57acdfd6663efdf3f413f1da1a1ad2085965fe0e9d2d2f7f087751b5576a4  /tmp/overlay-v2.zip' | sha256sum --check
           unzip -q -o /tmp/overlay-v2.zip -d /tmp/ratis-project
 
-          : > /tmp/overlay-v3.zip
-          for part in .ci/overlay-v3.b64.part00 .ci/overlay-v3.b64.part01 .ci/overlay-v3.b64.part02; do
-            tr -d '\r\n\t ' < "$part" | base64 --decode >> /tmp/overlay-v3.zip
-          done
+          python3 - <<'PY'
+          import base64
+          import io
+          import itertools
+          import pathlib
+          import zipfile
+
+          parts = [
+              pathlib.Path('.ci/overlay-v3.b64.part00'),
+              pathlib.Path('.ci/overlay-v3.b64.part01'),
+              pathlib.Path('.ci/overlay-v3.b64.part02'),
+          ]
+          encoded = ''.join(''.join(p.read_text().split()) for p in parts)
+          trailing = len(encoded) - len(encoded.rstrip('='))
+          body_end = len(encoded) - trailing
+          internal = [i for i, ch in enumerate(encoded[:body_end]) if ch == '=']
+          print(f'v3 encoded length={len(encoded)} trailing_padding={trailing} internal_padding={internal}')
+          if len(encoded) % 4:
+              raise SystemExit(f'v3 encoded length is not divisible by four: {len(encoded)}')
+          if len(internal) > 3:
+              raise SystemExit(f'too many corrupt internal padding characters to recover safely: {internal}')
+
+          alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+          candidates = itertools.product(alphabet, repeat=len(internal)) if internal else [()]
+          attempted = 0
+          for replacements in candidates:
+              attempted += 1
+              chars = list(encoded)
+              for pos, replacement in zip(internal, replacements):
+                  chars[pos] = replacement
+              candidate = ''.join(chars)
+              try:
+                  data = base64.b64decode(candidate, validate=True)
+                  with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                      bad = zf.testzip()
+                      if bad is not None:
+                          continue
+                      names = zf.namelist()
+                      if 'pom.xml' not in names or not any(name.endswith('RatisClusterRuntime.java') for name in names):
+                          continue
+                  pathlib.Path('/tmp/overlay-v3.zip').write_bytes(data)
+                  print(f'recovered v3 overlay after {attempted} candidate(s); replacements={replacements}; entries={len(names)}')
+                  break
+              except (ValueError, zipfile.BadZipFile, RuntimeError, EOFError):
+                  continue
+          else:
+              raise SystemExit(f'could not recover v3 overlay after {attempted} candidate(s)')
+          PY
+
           sha256sum /tmp/overlay-v3.zip | tee /tmp/overlay-v3.sha256
           unzip -t /tmp/overlay-v3.zip
           unzip -q -o /tmp/overlay-v3.zip -d /tmp/ratis-project
