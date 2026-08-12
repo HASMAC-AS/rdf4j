@@ -43,10 +43,11 @@ jobs:
           echo 'e1b57acdfd6663efdf3f413f1da1a1ad2085965fe0e9d2d2f7f087751b5576a4  /tmp/overlay-v2.zip' | sha256sum --check
           unzip -q -o /tmp/overlay-v2.zip -d /tmp/ratis-project
 
-          python3 - <<'PY'
+          PROJECT=/tmp/ratis-project python3 - <<'PY'
           import base64
           import io
           import itertools
+          import os
           import pathlib
           import zipfile
 
@@ -67,40 +68,74 @@ jobs:
 
           alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
           candidates = itertools.product(alphabet, repeat=len(internal)) if internal else [()]
+          best = None
           attempted = 0
           for replacements in candidates:
               attempted += 1
               chars = list(encoded)
               for pos, replacement in zip(internal, replacements):
                   chars[pos] = replacement
-              candidate = ''.join(chars)
               try:
-                  data = base64.b64decode(candidate, validate=True)
+                  data = base64.b64decode(''.join(chars), validate=True)
                   with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                      bad = zf.testzip()
-                      if bad is not None:
-                          continue
                       names = zf.namelist()
                       if 'pom.xml' not in names or not any(name.endswith('RatisClusterRuntime.java') for name in names):
                           continue
-                  pathlib.Path('/tmp/overlay-v3.zip').write_bytes(data)
-                  print(f'recovered v3 overlay after {attempted} candidate(s); replacements={replacements}; entries={len(names)}')
-                  break
+                      good = {}
+                      bad = []
+                      for info in zf.infolist():
+                          if info.is_dir():
+                              good[info.filename] = None
+                              continue
+                          try:
+                              good[info.filename] = zf.read(info)
+                          except (zipfile.BadZipFile, RuntimeError, EOFError, OSError) as error:
+                              bad.append((info.filename, type(error).__name__, str(error)))
+                  score = (len(good), -len(bad))
+                  if best is None or score > best[0]:
+                      best = (score, replacements, data, names, good, bad)
               except (ValueError, zipfile.BadZipFile, RuntimeError, EOFError):
                   continue
-          else:
-              raise SystemExit(f'could not recover v3 overlay after {attempted} candidate(s)')
+
+          if best is None:
+              raise SystemExit(f'could not parse any v3 overlay candidate after {attempted} attempts')
+
+          score, replacements, data, names, good, bad = best
+          pathlib.Path('/tmp/overlay-v3-recovered.zip').write_bytes(data)
+          project = pathlib.Path(os.environ['PROJECT']).resolve()
+          for name, payload in good.items():
+              target = (project / name).resolve()
+              if project != target and project not in target.parents:
+                  raise SystemExit(f'unsafe archive path: {name}')
+              if payload is None:
+                  target.mkdir(parents=True, exist_ok=True)
+              else:
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(payload)
+
+          report = [
+              f'attempted={attempted}',
+              f'replacements={replacements}',
+              f'entries={len(names)}',
+              f'crc_valid_entries={len(good)}',
+              f'damaged_entries={len(bad)}',
+          ]
+          report.extend(f'damaged={name} error={kind}: {message}' for name, kind, message in bad)
+          report_text = '\n'.join(report) + '\n'
+          pathlib.Path('/tmp/overlay-v3-recovery.txt').write_text(report_text)
+          print(report_text, end='')
+          if len(good) < len(names) - 2:
+              raise SystemExit('more than two v3 overlay entries are damaged; refusing partial recovery')
           PY
 
-          sha256sum /tmp/overlay-v3.zip | tee /tmp/overlay-v3.sha256
-          unzip -t /tmp/overlay-v3.zip
-          unzip -q -o /tmp/overlay-v3.zip -d /tmp/ratis-project
+          sha256sum /tmp/overlay-v3-recovered.zip | tee /tmp/overlay-v3.sha256
 
           if [ -d .ci/overlay ]; then
             cp -a .ci/overlay/. /tmp/ratis-project/
           fi
           mkdir -p /tmp/ratis-project/build-results
           cp /tmp/overlay-v3.sha256 /tmp/ratis-project/build-results/
+          cp /tmp/overlay-v3-recovery.txt /tmp/ratis-project/build-results/
 
       - name: Maven test
         working-directory: /tmp/ratis-project
