@@ -1,0 +1,103 @@
+name: Ratis Replication Sail CI v3
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ratis-replication-2pc-si-5.3.2
+    paths:
+      - '.ci/ratis-project.b64.part*'
+      - '.ci/overlay-v2.b64.part*'
+      - '.ci/overlay-v3.b64.part*'
+      - '.ci/overlay/**'
+      - '.github/workflows/ratis-replication-ci-v3.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Reconstruct project and overlays
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ratis-project
+          mkdir -p /tmp/ratis-project
+
+          cat .ci/ratis-project.b64.part* | tr -d '\r\n\t ' | base64 --decode > /tmp/base.zip
+          echo '77cfe72ddde266256c2434a4bd603a469c6ae47aea6274990d3e8068289bba16  /tmp/base.zip' | sha256sum --check
+          unzip -q /tmp/base.zip -d /tmp/ratis-project
+
+          cat .ci/overlay-v2.b64.part* | tr -d '\r\n\t ' | base64 --decode > /tmp/overlay-v2.zip
+          echo 'e1b57acdfd6663efdf3f413f1da1a1ad2085965fe0e9d2d2f7f087751b5576a4  /tmp/overlay-v2.zip' | sha256sum --check
+          unzip -q -o /tmp/overlay-v2.zip -d /tmp/ratis-project
+
+          cat .ci/overlay-v3.b64.part00 .ci/overlay-v3.b64.part01 .ci/overlay-v3.b64.part02 \
+            | tr -d '\r\n\t ' | base64 --decode > /tmp/overlay-v3.zip
+          sha256sum /tmp/overlay-v3.zip | tee /tmp/overlay-v3.sha256
+          unzip -t /tmp/overlay-v3.zip
+          unzip -q -o /tmp/overlay-v3.zip -d /tmp/ratis-project
+
+          if [ -d .ci/overlay ]; then
+            cp -a .ci/overlay/. /tmp/ratis-project/
+          fi
+          mkdir -p /tmp/ratis-project/build-results
+          cp /tmp/overlay-v3.sha256 /tmp/ratis-project/build-results/
+
+      - name: Maven test
+        working-directory: /tmp/ratis-project
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B -ntp -e -DtrimStackTrace=false test 2>&1 | tee build-results/mvn-test.log
+
+      - name: Maven package
+        working-directory: /tmp/ratis-project
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B -ntp -DskipTests package 2>&1 | tee build-results/mvn-package.log
+
+      - name: Full-transaction throughput benchmark
+        working-directory: /tmp/ratis-project
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B -ntp \
+            -Dratis.benchmark=true \
+            -Dratis.benchmark.transactions=20000 \
+            -Dratis.benchmark.warmup=2000 \
+            -Dratis.benchmark.concurrency=256 \
+            -Dtest=ThroughputBenchmarkTest test 2>&1 | tee build-results/benchmark.log
+
+      - name: Collect diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/ratis-project/build-results
+          cd /tmp/ratis-project
+          java -version > build-results/java-version.log 2>&1
+          mvn -version > build-results/maven-version.log 2>&1
+          find target -maxdepth 4 -type f -print | sort > build-results/target-files.log 2>&1
+          zip -qr /tmp/ratis-project-result.zip . -x 'target/surefire-reports/*.dumpstream'
+
+      - name: Upload complete result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ratis-replication-v3-result
+          path: /tmp/ratis-project-result.zip
+          if-no-files-found: error
+          retention-days: 7
