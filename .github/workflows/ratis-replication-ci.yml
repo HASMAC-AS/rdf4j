@@ -7,6 +7,7 @@ on:
       - ratis-replication-2pc-si-5.3.2
     paths:
       - '.ci/ratis-project.b64.part*'
+      - '.ci/overlay-v2.b64.part*'
       - '.ci/overlay/**'
       - '.github/workflows/ratis-replication-ci.yml'
 
@@ -37,10 +38,14 @@ jobs:
           rm -rf /tmp/ratis-project
           mkdir -p /tmp/ratis-project
           unzip -q /tmp/ratis-project.zip -d /tmp/ratis-project
+          cat .ci/overlay-v2.b64.part* | tr -d '\r\n\t ' | base64 --decode > /tmp/overlay-v2.zip
+          echo '7b2ed71c245e68ea37bfb744be2269dfdcb22cc6afe653263c0bcc2263f209a5  /tmp/overlay-v2.zip' | sha256sum --check
+          unzip -q -o /tmp/overlay-v2.zip -d /tmp/ratis-project
           if [ -d .ci/overlay ]; then
             cp -a .ci/overlay/. /tmp/ratis-project/
           fi
           unzip -t /tmp/ratis-project.zip
+          unzip -t /tmp/overlay-v2.zip
           find /tmp/ratis-project -maxdepth 2 -type f -print | sort
 
       - name: Maven test
