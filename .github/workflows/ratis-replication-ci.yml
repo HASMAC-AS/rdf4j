@@ -7,6 +7,7 @@ on:
       - ratis-replication-2pc-si-5.3.2
     paths:
       - '.ci/ratis-project.b64.part*'
+      - '.ci/overlay/**'
       - '.github/workflows/ratis-replication-ci.yml'
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 17 and Maven cache
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -31,11 +32,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .ci/ratis-project.b64.part* | base64 --decode > /tmp/ratis-project.zip
+          cat .ci/ratis-project.b64.part* | tr -d '\r\n\t ' | base64 --decode > /tmp/ratis-project.zip
           echo '77cfe72ddde266256c2434a4bd603a469c6ae47aea6274990d3e8068289bba16  /tmp/ratis-project.zip' | sha256sum --check
           rm -rf /tmp/ratis-project
           mkdir -p /tmp/ratis-project
           unzip -q /tmp/ratis-project.zip -d /tmp/ratis-project
+          if [ -d .ci/overlay ]; then
+            cp -a .ci/overlay/. /tmp/ratis-project/
+          fi
           unzip -t /tmp/ratis-project.zip
           find /tmp/ratis-project -maxdepth 2 -type f -print | sort
 
@@ -58,11 +62,11 @@ jobs:
 
       - name: Collect diagnostics
         if: always()
-        working-directory: /tmp/ratis-project
         shell: bash
         run: |
           set +e
-          mkdir -p build-results
+          mkdir -p /tmp/ratis-project/build-results
+          cd /tmp/ratis-project
           java -version > build-results/java-version.log 2>&1
           mvn -version > build-results/maven-version.log 2>&1
           find target -maxdepth 3 -type f -print > build-results/target-files.log 2>&1
