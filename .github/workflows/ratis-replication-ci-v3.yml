@@ -43,8 +43,10 @@ jobs:
           echo 'e1b57acdfd6663efdf3f413f1da1a1ad2085965fe0e9d2d2f7f087751b5576a4  /tmp/overlay-v2.zip' | sha256sum --check
           unzip -q -o /tmp/overlay-v2.zip -d /tmp/ratis-project
 
-          cat .ci/overlay-v3.b64.part00 .ci/overlay-v3.b64.part01 .ci/overlay-v3.b64.part02 \
-            | tr -d '\r\n\t ' | base64 --decode > /tmp/overlay-v3.zip
+          : > /tmp/overlay-v3.zip
+          for part in .ci/overlay-v3.b64.part00 .ci/overlay-v3.b64.part01 .ci/overlay-v3.b64.part02; do
+            tr -d '\r\n\t ' < "$part" | base64 --decode >> /tmp/overlay-v3.zip
+          done
           sha256sum /tmp/overlay-v3.zip | tee /tmp/overlay-v3.sha256
           unzip -t /tmp/overlay-v3.zip
           unzip -q -o /tmp/overlay-v3.zip -d /tmp/ratis-project
