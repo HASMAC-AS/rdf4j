@@ -39,7 +39,7 @@ jobs:
           mkdir -p /tmp/ratis-project
           unzip -q /tmp/ratis-project.zip -d /tmp/ratis-project
           cat .ci/overlay-v2.b64.part* | tr -d '\r\n\t ' | base64 --decode > /tmp/overlay-v2.zip
-          echo '7b2ed71c245e68ea37bfb744be2269dfdcb22cc6afe653263c0bcc2263f209a5  /tmp/overlay-v2.zip' | sha256sum --check
+          echo 'e1b57acdfd6663efdf3f413f1da1a1ad2085965fe0e9d2d2f7f087751b5576a4  /tmp/overlay-v2.zip' | sha256sum --check
           unzip -q -o /tmp/overlay-v2.zip -d /tmp/ratis-project
           if [ -d .ci/overlay ]; then
             cp -a .ci/overlay/. /tmp/ratis-project/
