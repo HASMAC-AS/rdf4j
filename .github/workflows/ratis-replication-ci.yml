@@ -1,0 +1,78 @@
+name: Ratis Replication Sail CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ratis-replication-2pc-si-5.3.2
+    paths:
+      - '.ci/ratis-project.b64.part*'
+      - '.github/workflows/ratis-replication-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out CI carrier branch
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 and Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Reconstruct project archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .ci/ratis-project.b64.part* | base64 --decode > /tmp/ratis-project.zip
+          echo '77cfe72ddde266256c2434a4bd603a469c6ae47aea6274990d3e8068289bba16  /tmp/ratis-project.zip' | sha256sum --check
+          rm -rf /tmp/ratis-project
+          mkdir -p /tmp/ratis-project
+          unzip -q /tmp/ratis-project.zip -d /tmp/ratis-project
+          unzip -t /tmp/ratis-project.zip
+          find /tmp/ratis-project -maxdepth 2 -type f -print | sort
+
+      - name: Maven test
+        id: test
+        working-directory: /tmp/ratis-project
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build-results
+          mvn -B -ntp -e -DtrimStackTrace=false test 2>&1 | tee build-results/mvn-test.log
+
+      - name: Maven package
+        if: success()
+        working-directory: /tmp/ratis-project
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B -ntp -DskipTests package 2>&1 | tee build-results/mvn-package.log
+
+      - name: Collect diagnostics
+        if: always()
+        working-directory: /tmp/ratis-project
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build-results
+          java -version > build-results/java-version.log 2>&1
+          mvn -version > build-results/maven-version.log 2>&1
+          find target -maxdepth 3 -type f -print > build-results/target-files.log 2>&1
+          zip -qr /tmp/ratis-project-result.zip . -x 'target/surefire-reports/*.dumpstream'
+
+      - name: Upload source, logs, test reports, and package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ratis-replication-build-result
+          path: /tmp/ratis-project-result.zip
+          if-no-files-found: error
+          retention-days: 7
