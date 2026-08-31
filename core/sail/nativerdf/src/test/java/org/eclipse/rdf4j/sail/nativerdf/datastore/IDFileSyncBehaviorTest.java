@@ -19,7 +19,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
-import org.eclipse.rdf4j.common.io.NioFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -47,16 +46,12 @@ public class IDFileSyncBehaviorTest {
 	}
 
 	private static TrackingFileChannel injectTrackingChannel(IDFile id) throws Exception {
-		Field nioFileField = IDFile.class.getDeclaredField("nioFile");
-		nioFileField.setAccessible(true);
-		NioFile nio = (NioFile) nioFileField.get(id);
-
-		Field fcField = NioFile.class.getDeclaredField("fc");
-		fcField.setAccessible(true);
-		FileChannel delegate = (FileChannel) fcField.get(nio);
+		Field channelField = IDFile.class.getDeclaredField("fileChannel");
+		channelField.setAccessible(true);
+		FileChannel delegate = (FileChannel) channelField.get(id);
 
 		TrackingFileChannel tracking = new TrackingFileChannel(delegate);
-		fcField.set(nio, tracking);
+		channelField.set(id, tracking);
 		return tracking;
 	}
 
