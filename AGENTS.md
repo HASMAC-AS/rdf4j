@@ -905,6 +905,12 @@ rdf4j: root project
   * Prefer reusing the current branch prefix if it already starts with `GH-XXXX-...`.
   * Otherwise, use `GH-0000` and explicitly mention the missing issue number in the final summary/handoff.
 
+### Version Control Conventions
+
+* Branch names must always start with the GitHub issue identifier in the form `GH-XXXX`, where `XXXX` is the numeric issue number.
+* Every commit message must be prefixed with the corresponding `GH-XXXX` label.
+* Exception: if no GitHub issue number is available for the task, clearly note this in your handoff and align with the requester on an appropriate branch/commit prefix before proceeding.
+
 It is illegal to `-am` when running tests!
 It is illegal to `-q` when running tests!
 Always keep untracked artifacts!
