@@ -18,6 +18,7 @@ import org.eclipse.rdf4j.model.vocabulary.DC;
 import org.eclipse.rdf4j.sparqlbuilder.constraint.Expressions;
 import org.eclipse.rdf4j.sparqlbuilder.core.query.Queries;
 import org.eclipse.rdf4j.sparqlbuilder.core.query.SelectQuery;
+import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphPattern;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphPatternNotTriples;
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.GraphPatterns;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.Rdf;
@@ -150,6 +151,21 @@ public class SparqlBuilderTest {
 				.contains("FILTER ( ?price < 50 )");
 		assertThat(query.getQueryString())
 				.contains("FILTER ( ?price > 30 )");
+	}
+
+	@Test
+	public void testUnionWrapsOptionalPatternInGroup() {
+		Variable subject = SparqlBuilder.var("subject");
+
+		GraphPattern unionPattern = GraphPatterns
+				.union(GraphPatterns.optional(subject.isA(Rdf.iri("http://example.org/Class"))))
+				.union(subject.has(Rdf.iri("http://example.org/secondpred"), Rdf.literalOf("test")));
+
+		SelectQuery select = Queries.SELECT(subject).where(unionPattern);
+
+		assertThat(select.getQueryString())
+				.contains(
+						"{ OPTIONAL { ?subject a <http://example.org/Class> . } } UNION { ?subject <http://example.org/secondpred> \"test\" . }");
 	}
 
 }
