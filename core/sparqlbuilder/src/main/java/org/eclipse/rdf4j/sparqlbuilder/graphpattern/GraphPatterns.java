@@ -13,7 +13,6 @@ package org.eclipse.rdf4j.sparqlbuilder.graphpattern;
 
 import java.util.function.Consumer;
 
-import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Value;
@@ -80,10 +79,7 @@ public class GraphPatterns {
 	 * @see <a href="http://www.w3.org/TR/2013/REC-sparql11-query-20130321/#QSynTriples"> Triple pattern syntax</a>
 	 */
 	public static TriplePattern tp(Resource subject, RdfPredicate predicate, RdfObject... objects) {
-		if (subject instanceof IRI) {
-			return tp(Rdf.iri((IRI) subject), predicate, objects);
-		}
-		return tp(Rdf.bNode(((BNode) subject).getID()), predicate, objects);
+		return tp(Rdf.subject(subject), predicate, objects);
 	}
 
 	public static TriplePattern tp(Resource subject, RdfPredicate predicate, Value... objects) {
