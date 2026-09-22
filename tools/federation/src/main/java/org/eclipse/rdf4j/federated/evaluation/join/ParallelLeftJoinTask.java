@@ -90,14 +90,27 @@ public class ParallelLeftJoinTask extends ParallelTaskBase<BindingSet> {
 		@Override
 		protected BindingSet getNextElement() throws QueryEvaluationException {
 
+			if (isClosed()) {
+				return null;
+			}
+
 			if (rightIter == null) {
 				// lazy evaluation
 				rightIter = strategy.evaluate(join.getRightArg(), leftBindings);
 
+				if (isClosed()) {
+					closeRightIter();
+					return null;
+				}
+
 				if (!rightIter.hasNext() && !exhausted.getAndSet(true)) {
-					rightIter.close();
+					closeRightIter();
 					return leftBindings;
 				}
+			}
+
+			if (isClosed()) {
+				return null;
 			}
 
 			if (rightIter.hasNext()) {
@@ -124,20 +137,30 @@ public class ParallelLeftJoinTask extends ParallelTaskBase<BindingSet> {
 
 				// join did not work
 				if (leftBindings != null) {
+					exhausted.set(true);
+					closeRightIter();
 					return leftBindings;
 				}
 			}
 
 			// proactively close
-			rightIter.close();
+			closeRightIter();
 
 			return null;
 		}
 
 		@Override
 		protected void handleClose() throws QueryEvaluationException {
+			closeRightIter();
+		}
+
+		private void closeRightIter() throws QueryEvaluationException {
 			if (rightIter != null) {
-				rightIter.close();
+				try {
+					rightIter.close();
+				} finally {
+					rightIter = null;
+				}
 			}
 		}
 
