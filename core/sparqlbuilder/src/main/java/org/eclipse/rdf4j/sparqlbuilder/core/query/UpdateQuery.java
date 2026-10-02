@@ -142,4 +142,12 @@ abstract class UpdateQuery<T extends UpdateQuery<T>> implements QueryElement {
 						.getBracedString("GRAPH " + graph.getQueryString() + " " + triples.getQueryString()))
 				.orElseGet(triples::getQueryString));
 	}
+
+	protected void appendNamedGraphPatterns(StringBuilder queryString, Optional<GraphName> graphName,
+			QueryElement patterns) {
+		queryString.append(graphName
+				.map(graph -> SparqlBuilderUtils
+						.getBracedString("GRAPH " + graph.getQueryString() + " " + patterns.getQueryString()))
+				.orElseGet(patterns::getQueryString));
+	}
 }
