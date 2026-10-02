@@ -13,11 +13,14 @@
 package org.eclipse.rdf4j.sparqlbuilder.rdf;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import org.eclipse.rdf4j.common.net.ParsedIRI;
 import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Triple;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.sparqlbuilder.core.SparqlBuilder;
 import org.eclipse.rdf4j.sparqlbuilder.rdf.RdfBlankNode.AnonymousBlankNode;
@@ -117,6 +120,52 @@ public class Rdf {
 	 */
 	public static AnonymousBlankNode bNode() {
 		return new AnonymousBlankNode();
+	}
+
+	/**
+	 * creates an embedded RDF-star triple
+	 *
+	 * @param subject   the triple subject
+	 * @param predicate the triple predicate
+	 * @param object    the triple object
+	 * @return a new {@link RdfTriple}
+	 */
+	public static RdfTriple triple(RdfSubject subject, RdfPredicate predicate, RdfObject object) {
+		return new RdfTriple(Objects.requireNonNull(subject, "subject"),
+				Objects.requireNonNull(predicate, "predicate"),
+				Objects.requireNonNull(object, "object"));
+	}
+
+	/**
+	 * creates an embedded RDF-star triple from an RDF4J {@link Triple}
+	 *
+	 * @param triple the RDF4J triple
+	 * @return a new {@link RdfTriple}
+	 */
+	public static RdfTriple triple(Triple triple) {
+		return triple(subject(triple.getSubject()), iri(triple.getPredicate()), object(triple.getObject()));
+	}
+
+	/**
+	 * creates a subject representation from an RDF4J {@link Resource}
+	 *
+	 * @param resource the RDF resource
+	 * @return a {@link RdfSubject}
+	 */
+	public static RdfSubject subject(Resource resource) {
+		if (resource instanceof IRI) {
+			return iri((IRI) resource);
+		}
+
+		if (resource instanceof BNode) {
+			return bNode(((BNode) resource).getID());
+		}
+
+		if (resource instanceof Triple) {
+			return triple((Triple) resource);
+		}
+
+		throw new IllegalArgumentException("Unsupported resource type: " + resource.getClass());
 	}
 
 	/**
@@ -262,6 +311,10 @@ public class Rdf {
 
 		if (value instanceof BNode) {
 			return bNode(((BNode) value).getID());
+		}
+
+		if (value instanceof Triple) {
+			return triple((Triple) value);
 		}
 
 		Literal lit = (Literal) value;
