@@ -16,12 +16,18 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
-import org.eclipse.rdf4j.common.io.NioFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,12 +68,19 @@ public class DataFile implements Closeable {
 	 * Variables *
 	 *-----------*/
 
-	private final NioFile nioFile;
+	private static final Set<StandardOpenOption> FILE_OPEN_OPTIONS = EnumSet
+			.of(StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+
+	private final Path path;
+	private final Set<StandardOpenOption> openOptions;
+	private final Object channelLock = new Object();
+	private volatile FileChannel fileChannel;
+	private volatile boolean explicitlyClosed;
 
 	private final boolean forceSync;
 
 	// cached file size, also reflects buffer usage
-	private volatile long nioFileSize;
+	private volatile long fileSize;
 
 	// 4KB write buffer that is flushed on sync, close and any read operations
 	private final ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
@@ -81,39 +94,42 @@ public class DataFile implements Closeable {
 	}
 
 	public DataFile(File file, boolean forceSync) throws IOException {
-		this.nioFile = new NioFile(file);
+		this.path = file.toPath();
+		this.openOptions = EnumSet.copyOf(FILE_OPEN_OPTIONS);
 		this.forceSync = forceSync;
+		this.explicitlyClosed = false;
 
 		try {
-			// Open a read/write channel to the file
+			synchronized (channelLock) {
+				this.fileChannel = FileChannel.open(path, openOptions);
+			}
 
-			if (nioFile.size() == 0) {
-				// Empty file, write header
-				nioFile.writeBytes(MAGIC_NUMBER, 0);
-				nioFile.writeByte(FILE_FORMAT_VERSION, MAGIC_NUMBER.length);
-
+			long initialSize = size();
+			if (initialSize == 0L) {
+				writeBytes(MAGIC_NUMBER, 0L);
+				writeByte(FILE_FORMAT_VERSION, MAGIC_NUMBER.length);
 				sync();
-			} else if (nioFile.size() < HEADER_LENGTH) {
+			} else if (initialSize < HEADER_LENGTH) {
 				throw new IOException("File too small to be a compatible data file");
 			} else {
-				// Verify file header
-				if (!Arrays.equals(MAGIC_NUMBER, nioFile.readBytes(0, MAGIC_NUMBER.length))) {
+				byte[] magic = readBytes(0L, MAGIC_NUMBER.length);
+				if (!Arrays.equals(MAGIC_NUMBER, magic)) {
 					throw new IOException("File doesn't contain compatible data records");
 				}
 
-				byte version = nioFile.readByte(MAGIC_NUMBER.length);
+				byte version = readByte(MAGIC_NUMBER.length);
 				if (version > FILE_FORMAT_VERSION) {
 					throw new IOException("Unable to read data file; it uses a newer file format");
 				} else if (version != FILE_FORMAT_VERSION) {
 					throw new IOException("Unable to read data file; invalid file format version: " + version);
 				}
 			}
+
+			this.fileSize = size();
 		} catch (IOException e) {
-			this.nioFile.close();
+			closeQuietly();
 			throw e;
 		}
-
-		this.nioFileSize = nioFile.size();
 
 	}
 
@@ -122,7 +138,7 @@ public class DataFile implements Closeable {
 	 *---------*/
 
 	public File getFile() {
-		return nioFile.getFile();
+		return path.toFile();
 	}
 
 	/**
@@ -130,7 +146,7 @@ public class DataFile implements Closeable {
 	 */
 	public long getFileSize() throws IOException {
 		flush();
-		return nioFileSize;
+		return fileSize;
 	}
 
 	/**
@@ -146,7 +162,7 @@ public class DataFile implements Closeable {
 		long available = endOffset - (startOffset + 4);
 		int cap = 32 * 1024 * 1024; // 32MB cap for recovery
 		int toRead = (int) Math.min(Math.max(available, 0), cap);
-		return nioFile.readBytes(startOffset + 4L, toRead);
+		return readBytes(startOffset + 4L, toRead);
 	}
 
 	/**
@@ -158,7 +174,7 @@ public class DataFile implements Closeable {
 	synchronized public long storeData(byte[] data) throws IOException {
 		assert data != null : "data must not be null";
 
-		long offset = nioFileSize;
+		long offset = fileSize;
 
 		if (data.length + 4 > buffer.capacity()) {
 			// direct write because we are writing more data than the buffer can hold
@@ -169,11 +185,12 @@ public class DataFile implements Closeable {
 			ByteBuffer buf = ByteBuffer.allocate(data.length + 4);
 			buf.putInt(data.length);
 			buf.put(data);
-			buf.rewind();
+			buf.flip();
+			int total = buf.remaining();
 
-			nioFile.write(buf, offset);
+			writeFully(buf, offset);
 
-			nioFileSize += buf.array().length;
+			fileSize += total;
 
 		} else {
 			if (data.length + 4 > remainingBufferCapacity()) {
@@ -182,7 +199,7 @@ public class DataFile implements Closeable {
 
 			buffer.putInt(data.length);
 			buffer.put(data);
-			nioFileSize += data.length + 4;
+			fileSize += data.length + 4;
 		}
 
 		return offset;
@@ -194,14 +211,9 @@ public class DataFile implements Closeable {
 		if (position == 0) {
 			return;
 		}
-		buffer.position(0);
-
-		byte[] byteToWrite = new byte[position];
-		buffer.get(byteToWrite, 0, position);
-
-		nioFile.write(ByteBuffer.wrap(byteToWrite), nioFileSize - byteToWrite.length);
-
-		buffer.position(0);
+		buffer.flip();
+		writeFully(buffer, fileSize - position);
+		buffer.clear();
 
 	}
 
@@ -228,7 +240,7 @@ public class DataFile implements Closeable {
 		// operation even if that larger operation is unnecessarily large (within sensible limits).
 		byte[] data = new byte[(dataLengthApproximateAverage * 2) + 4];
 		ByteBuffer buf = ByteBuffer.wrap(data);
-		nioFile.read(buf, offset);
+		readFully(buf, offset);
 
 		int dataLength = (data[0] << 24) & 0xff000000 |
 				(data[1] << 16) & 0x00ff0000 |
@@ -268,7 +280,7 @@ public class DataFile implements Closeable {
 				// we didn't read enough data so we need to execute a new read
 				data = new byte[dataLength];
 				buf = ByteBuffer.wrap(data);
-				nioFile.read(buf, offset + 4L);
+				readFully(buf, offset + 4L);
 
 				return data;
 			}
@@ -379,14 +391,180 @@ public class DataFile implements Closeable {
 		return Math.toIntExact(Math.min(threshold, Integer.MAX_VALUE));
 	}
 
+	private FileChannel ensureChannel() throws IOException {
+		FileChannel channel = fileChannel;
+		if (channel != null && channel.isOpen()) {
+			return channel;
+		}
+
+		synchronized (channelLock) {
+			if (explicitlyClosed) {
+				throw new ClosedChannelException();
+			}
+			channel = fileChannel;
+			if (channel == null || !channel.isOpen()) {
+				fileChannel = FileChannel.open(path, openOptions);
+				channel = fileChannel;
+			}
+			return channel;
+		}
+	}
+
+	private void reopen(ClosedChannelException e) throws IOException {
+		if (explicitlyClosed) {
+			throw e;
+		}
+
+		synchronized (channelLock) {
+			FileChannel channel = fileChannel;
+			if (channel != null && channel.isOpen()) {
+				return;
+			}
+			fileChannel = FileChannel.open(path, openOptions);
+		}
+	}
+
+	private long size() throws IOException {
+		while (true) {
+			try {
+				return ensureChannel().size();
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private void truncate(long newSize) throws IOException {
+		while (true) {
+			try {
+				ensureChannel().truncate(newSize);
+				return;
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private void force(boolean metaData) throws IOException {
+		while (true) {
+			try {
+				ensureChannel().force(metaData);
+				return;
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private int writeFully(ByteBuffer buffer, long offset) throws IOException {
+		final int startPosition = buffer.position();
+		while (buffer.hasRemaining()) {
+			try {
+				FileChannel channel = ensureChannel();
+				long position = offset + (buffer.position() - startPosition);
+				int written = channel.write(buffer, position);
+				if (written == 0) {
+					continue;
+				}
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+		return buffer.position() - startPosition;
+	}
+
+	private int readFully(ByteBuffer buffer, long offset) throws IOException {
+		final int startPosition = buffer.position();
+		while (buffer.hasRemaining()) {
+			try {
+				FileChannel channel = ensureChannel();
+				long position = offset + (buffer.position() - startPosition);
+				int read = channel.read(buffer, position);
+				if (read < 0) {
+					if (buffer.position() == startPosition) {
+						return -1;
+					}
+					break;
+				}
+				if (read == 0) {
+					continue;
+				}
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+		return buffer.position() - startPosition;
+	}
+
+	private void writeBytes(byte[] value, long offset) throws IOException {
+		ByteBuffer buf = ByteBuffer.wrap(value);
+		writeFully(buf, offset);
+	}
+
+	private byte[] readBytes(long offset, int length) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(length);
+		int read = readFully(buf, offset);
+		if (read < length) {
+			throw new IOException("Unexpected EOF in DataFile.readBytes: expected " + length + ", read " + read);
+		}
+		return buf.array();
+	}
+
+	private void writeByte(byte value, long offset) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(1);
+		buf.put(0, value);
+		buf.position(0);
+		writeFully(buf, offset);
+	}
+
+	private byte readByte(long offset) throws IOException {
+		byte[] bytes = readBytes(offset, 1);
+		return bytes[0];
+	}
+
+	private void closeChannel() throws IOException {
+		FileChannel channel;
+		synchronized (channelLock) {
+			if (explicitlyClosed) {
+				channel = fileChannel;
+				fileChannel = null;
+			} else {
+				explicitlyClosed = true;
+				channel = fileChannel;
+				fileChannel = null;
+			}
+		}
+		if (channel != null) {
+			channel.close();
+		}
+	}
+
+	private void closeQuietly() {
+		try {
+			closeChannel();
+		} catch (IOException e) {
+			// ignore
+		}
+	}
+
 	/**
 	 * Discards all stored data.
 	 *
 	 * @throws IOException If an I/O error occurred.
 	 */
 	synchronized public void clear() throws IOException {
-		nioFile.truncate(HEADER_LENGTH);
-		nioFileSize = HEADER_LENGTH;
+		truncate(HEADER_LENGTH);
+		fileSize = HEADER_LENGTH;
 		buffer.clear();
 	}
 
@@ -397,14 +575,14 @@ public class DataFile implements Closeable {
 		flush();
 
 		if (forceSync) {
-			nioFile.force(false);
+			force(false);
 		}
 	}
 
 	synchronized public void sync(boolean force) throws IOException {
 		flush();
 
-		nioFile.force(force);
+		force(force);
 	}
 
 	/**
@@ -415,8 +593,11 @@ public class DataFile implements Closeable {
 	@Override
 	synchronized public void close() throws IOException {
 		flush();
-		nioFile.force(true);
-		nioFile.close();
+		try {
+			force(true);
+		} finally {
+			closeChannel();
+		}
 	}
 
 	/**
@@ -442,7 +623,7 @@ public class DataFile implements Closeable {
 		private long position = HEADER_LENGTH;
 
 		public boolean hasNext() {
-			return position < nioFileSize;
+			return position < fileSize;
 		}
 
 		public byte[] next() throws IOException {

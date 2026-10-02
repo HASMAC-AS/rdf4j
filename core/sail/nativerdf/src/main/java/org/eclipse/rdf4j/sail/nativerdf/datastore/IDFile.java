@@ -14,9 +14,15 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-
-import org.eclipse.rdf4j.common.io.NioFile;
+import java.util.EnumSet;
+import java.util.Set;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -60,7 +66,14 @@ public class IDFile implements Closeable {
 	 * Variables *
 	 *-----------*/
 
-	private final NioFile nioFile;
+	private static final Set<StandardOpenOption> FILE_OPEN_OPTIONS = EnumSet
+			.of(StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+
+	private final Path path;
+	private final Set<StandardOpenOption> openOptions;
+	private final Object channelLock = new Object();
+	private volatile FileChannel fileChannel;
+	private volatile boolean explicitlyClosed;
 
 	private final boolean forceSync;
 
@@ -78,7 +91,7 @@ public class IDFile implements Closeable {
 	private Long[] gcReducingCache;
 
 	// cached file size
-	private volatile long nioFileSize;
+	private volatile long fileSize;
 
 	/*--------------*
 	 * Constructors *
@@ -86,42 +99,45 @@ public class IDFile implements Closeable {
 
 	public IDFile(File file) throws IOException {
 		this(file, false);
-		nioFileSize = nioFile.size();
 	}
 
 	public IDFile(File file, boolean forceSync) throws IOException {
-		this.nioFile = new NioFile(file);
+		this.path = file.toPath();
+		this.openOptions = EnumSet.copyOf(FILE_OPEN_OPTIONS);
 		this.forceSync = forceSync;
+		this.explicitlyClosed = false;
 
 		try {
-			if (nioFile.size() == 0L) {
-				// Empty file, write header
-				nioFile.writeBytes(MAGIC_NUMBER, 0);
-				nioFile.writeByte(FILE_FORMAT_VERSION, 3);
-				nioFile.writeBytes(new byte[] { 0, 0, 0, 0 }, 4);
+			synchronized (channelLock) {
+				this.fileChannel = FileChannel.open(path, openOptions);
+			}
 
+			long initialSize = size();
+			if (initialSize == 0L) {
+				writeBytes(MAGIC_NUMBER, 0L);
+				writeByte(FILE_FORMAT_VERSION, 3L);
+				writeBytes(new byte[] { 0, 0, 0, 0 }, 4L);
 				sync();
-			} else if (nioFile.size() < HEADER_LENGTH) {
+			} else if (initialSize < HEADER_LENGTH) {
 				throw new IOException("File too small to be a compatible ID file");
 			} else {
-				// Verify file header
-				if (!Arrays.equals(MAGIC_NUMBER, nioFile.readBytes(0, MAGIC_NUMBER.length))) {
+				if (!Arrays.equals(MAGIC_NUMBER, readBytes(0L, MAGIC_NUMBER.length))) {
 					throw new IOException("File doesn't contain compatible ID records");
 				}
 
-				byte version = nioFile.readByte(MAGIC_NUMBER.length);
+				byte version = readByte(MAGIC_NUMBER.length);
 				if (version > FILE_FORMAT_VERSION) {
 					throw new IOException("Unable to read ID file; it uses a newer file format");
 				} else if (version != FILE_FORMAT_VERSION) {
 					throw new IOException("Unable to read ID file; invalid file format version: " + version);
 				}
 			}
+
+			fileSize = size();
 		} catch (IOException e) {
-			this.nioFile.close();
+			closeQuietly();
 			throw e;
 		}
-
-		nioFileSize = nioFile.size();
 
 	}
 
@@ -130,7 +146,7 @@ public class IDFile implements Closeable {
 	 *---------*/
 
 	public final File getFile() {
-		return nioFile.getFile();
+		return path.toFile();
 	}
 
 	/**
@@ -139,17 +155,17 @@ public class IDFile implements Closeable {
 	 * @return The largest ID, or <var>0</var> if the file does not contain any data.
 	 */
 	public int getMaxID() {
-		return (int) (nioFileSize / ITEM_SIZE) - 1;
+		return (int) (fileSize / ITEM_SIZE) - 1;
 	}
 
 	/**
 	 * Stores the offset of a new data entry, returning the ID under which is stored.
 	 */
 	public int storeOffset(long offset) throws IOException {
-		long fileSize = nioFileSize;
-		nioFile.writeLong(offset, fileSize);
-		nioFileSize += ITEM_SIZE;
-		return (int) (fileSize / ITEM_SIZE);
+		long currentSize = fileSize;
+		writeLong(offset, currentSize);
+		fileSize += ITEM_SIZE;
+		return (int) (currentSize / ITEM_SIZE);
 	}
 
 	/**
@@ -161,7 +177,7 @@ public class IDFile implements Closeable {
 	public void setOffset(int id, long offset) throws IOException {
 		assert id > 0 : "id must be larger than 0, is: " + id;
 
-		nioFile.writeLong(offset, ITEM_SIZE * id);
+		writeLong(offset, ITEM_SIZE * id);
 
 		// We need to update the cache after writing to file (not before) so that if anyone refreshes the cache it will
 		// include the write above.
@@ -208,7 +224,7 @@ public class IDFile implements Closeable {
 		if (getMaxID() > cacheLineSize && id < getMaxID() - cacheLineSize) {
 
 			// doing one big read is considerably faster than doing a single read per id
-			byte[] bytes = nioFile.readBytes(ITEM_SIZE * (cacheLookupIndex << cacheLineShift),
+			byte[] bytes = readBytes(ITEM_SIZE * (cacheLookupIndex << cacheLineShift),
 					(int) (ITEM_SIZE * cacheLineSize));
 
 			cacheLine = convertBytesToLongs(bytes);
@@ -227,7 +243,7 @@ public class IDFile implements Closeable {
 		}
 
 		// we did not find a cached value and we did not create a new cache line
-		return nioFile.readLong(ITEM_SIZE * id);
+		return readLong(ITEM_SIZE * id);
 	}
 
 	/**
@@ -240,7 +256,7 @@ public class IDFile implements Closeable {
 	 */
 	public long getOffsetNoCache(int id) throws IOException {
 		assert id > 0 : "id must be larger than 0, is: " + id;
-		return nioFile.readLong(ITEM_SIZE * id);
+		return readLong(ITEM_SIZE * id);
 	}
 
 	/**
@@ -249,8 +265,8 @@ public class IDFile implements Closeable {
 	 * @throws IOException If an I/O error occurred.
 	 */
 	public void clear() throws IOException {
-		nioFile.truncate(HEADER_LENGTH);
-		nioFileSize = nioFile.size();
+		truncate(HEADER_LENGTH);
+		fileSize = HEADER_LENGTH;
 		clearCache();
 	}
 
@@ -259,12 +275,12 @@ public class IDFile implements Closeable {
 	 */
 	public void sync() throws IOException {
 		if (forceSync) {
-			nioFile.force(false);
+			force(false);
 		}
 	}
 
 	public void sync(boolean force) throws IOException {
-		nioFile.force(force);
+		force(force);
 	}
 
 	/**
@@ -274,7 +290,7 @@ public class IDFile implements Closeable {
 	 */
 	@Override
 	public void close() throws IOException {
-		nioFile.close();
+		closeChannel();
 	}
 
 	synchronized private Long[] getCacheLine(int cacheLookupIndex) {
@@ -282,6 +298,188 @@ public class IDFile implements Closeable {
 			return gcReducingCache;
 		} else {
 			return cache.getIfPresent(cacheLookupIndex);
+		}
+	}
+
+	private FileChannel ensureChannel() throws IOException {
+		FileChannel channel = fileChannel;
+		if (channel != null && channel.isOpen()) {
+			return channel;
+		}
+
+		synchronized (channelLock) {
+			if (explicitlyClosed) {
+				throw new ClosedChannelException();
+			}
+			channel = fileChannel;
+			if (channel == null || !channel.isOpen()) {
+				fileChannel = FileChannel.open(path, openOptions);
+				channel = fileChannel;
+			}
+			return channel;
+		}
+	}
+
+	private void reopen(ClosedChannelException e) throws IOException {
+		if (explicitlyClosed) {
+			throw e;
+		}
+
+		synchronized (channelLock) {
+			FileChannel channel = fileChannel;
+			if (channel != null && channel.isOpen()) {
+				return;
+			}
+			fileChannel = FileChannel.open(path, openOptions);
+		}
+	}
+
+	private long size() throws IOException {
+		while (true) {
+			try {
+				return ensureChannel().size();
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private void truncate(long newSize) throws IOException {
+		while (true) {
+			try {
+				ensureChannel().truncate(newSize);
+				return;
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private void force(boolean metaData) throws IOException {
+		while (true) {
+			try {
+				ensureChannel().force(metaData);
+				return;
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+	}
+
+	private int writeFully(ByteBuffer buffer, long offset) throws IOException {
+		final int startPosition = buffer.position();
+		while (buffer.hasRemaining()) {
+			try {
+				FileChannel channel = ensureChannel();
+				long position = offset + (buffer.position() - startPosition);
+				int written = channel.write(buffer, position);
+				if (written == 0) {
+					continue;
+				}
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+		return buffer.position() - startPosition;
+	}
+
+	private int readFully(ByteBuffer buffer, long offset) throws IOException {
+		final int startPosition = buffer.position();
+		while (buffer.hasRemaining()) {
+			try {
+				FileChannel channel = ensureChannel();
+				long position = offset + (buffer.position() - startPosition);
+				int read = channel.read(buffer, position);
+				if (read < 0) {
+					if (buffer.position() == startPosition) {
+						return -1;
+					}
+					break;
+				}
+				if (read == 0) {
+					continue;
+				}
+			} catch (ClosedByInterruptException e) {
+				throw e;
+			} catch (ClosedChannelException e) {
+				reopen(e);
+			}
+		}
+		return buffer.position() - startPosition;
+	}
+
+	private void writeLong(long value, long offset) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
+		buf.putLong(0, value);
+		buf.position(0);
+		writeFully(buf, offset);
+	}
+
+	private long readLong(long offset) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
+		int read = readFully(buf, offset);
+		if (read < Long.BYTES) {
+			throw new IOException("Unexpected EOF in IDFile.readLong: expected " + Long.BYTES + ", read " + read);
+		}
+		return buf.getLong(0);
+	}
+
+	private void writeBytes(byte[] value, long offset) throws IOException {
+		ByteBuffer buf = ByteBuffer.wrap(value);
+		writeFully(buf, offset);
+	}
+
+	private byte[] readBytes(long offset, int length) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(length);
+		int read = readFully(buf, offset);
+		if (read < length) {
+			throw new IOException("Unexpected EOF in IDFile.readBytes: expected " + length + ", read " + read);
+		}
+		return buf.array();
+	}
+
+	private void writeByte(byte value, long offset) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate(1);
+		buf.put(0, value);
+		buf.position(0);
+		writeFully(buf, offset);
+	}
+
+	private byte readByte(long offset) throws IOException {
+		byte[] bytes = readBytes(offset, 1);
+		return bytes[0];
+	}
+
+	private void closeChannel() throws IOException {
+		FileChannel channel;
+		synchronized (channelLock) {
+			if (explicitlyClosed) {
+				channel = fileChannel;
+				fileChannel = null;
+			} else {
+				explicitlyClosed = true;
+				channel = fileChannel;
+				fileChannel = null;
+			}
+		}
+		if (channel != null) {
+			channel.close();
+		}
+	}
+
+	private void closeQuietly() {
+		try {
+			closeChannel();
+		} catch (IOException e) {
+			// ignore
 		}
 	}
 
