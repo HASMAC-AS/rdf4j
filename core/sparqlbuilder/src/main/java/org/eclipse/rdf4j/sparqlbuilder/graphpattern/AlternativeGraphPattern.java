@@ -11,7 +11,10 @@
 
 package org.eclipse.rdf4j.sparqlbuilder.graphpattern;
 
+import java.util.stream.Collectors;
+
 import org.eclipse.rdf4j.sparqlbuilder.core.QueryElementCollection;
+import org.eclipse.rdf4j.sparqlbuilder.util.SparqlBuilderUtils;
 
 /**
  * A SPARQL Alternative Graph Pattern.
@@ -46,5 +49,22 @@ class AlternativeGraphPattern extends QueryElementCollection<GroupGraphPattern> 
 		addElements(GraphPatterns::extractOrConvertToGGP, patterns);
 
 		return this;
+	}
+
+	@Override
+	public String getQueryString() {
+		return elements.stream()
+				.map(this::formatGroupForUnion)
+				.collect(Collectors.joining(DELIMETER));
+	}
+
+	private String formatGroupForUnion(GroupGraphPattern pattern) {
+		String queryString = pattern.getQueryString();
+
+		if (pattern.isOptional) {
+			return SparqlBuilderUtils.getBracedString(queryString);
+		}
+
+		return queryString;
 	}
 }
