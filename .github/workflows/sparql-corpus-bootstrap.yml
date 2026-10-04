@@ -1,0 +1,54 @@
+name: SPARQL corpus bootstrap
+on:
+  push:
+    branches: [test/qlever-jena-corpus-20261004]
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Retrieve pinned public test sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p export upstream
+          for spec in 'apache/jena df0d523eed42cd0b7c9ef11c74eeb0a63302a423 jena' 'ad-freiburg/qlever a815b3b71a6c764d927332dcd5505fe6436ad214 qlever'; do
+            read -r repo sha name <<< "$spec"
+            git init "upstream/$name"
+            git -C "upstream/$name" fetch --depth=1 "https://github.com/$repo.git" "$sha"
+            git -C "upstream/$name" checkout --detach FETCH_HEAD
+            test "$(git -C "upstream/$name" rev-parse HEAD)" = "$sha"
+            git -C "upstream/$name" ls-files --stage > "export/$name-git-files.txt"
+            printf '%s %s\n' "$repo" "$sha" >> export/revisions.txt
+          done
+          tar --exclude=.git -czf export/upstream-sources.tar.gz upstream
+      - name: Resolve harness dependencies and compiler toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn -B -f bootstrap/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DincludeScope=test -DoutputDirectory="$PWD/export/jars"
+          mvn -B -f bootstrap/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:go-offline
+          mkdir -p toolchain
+          cp -a "$JAVA_HOME" toolchain/jdk
+          mvnhome="$(dirname "$(dirname "$(readlink -f "$(command -v mvn)")")")"
+          cp -a "$mvnhome" toolchain/maven
+          tar -czf export/toolchain.tar.gz toolchain
+          tar -czf export/maven-repository.tar.gz -C "$HOME/.m2" repository
+          cd export
+          sha256sum upstream-sources.tar.gz toolchain.tar.gz maven-repository.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sparql-corpus-bootstrap
+          path: export/
+          retention-days: 7
+          compression-level: 0

@@ -1,3 +1,0 @@
----
-name: "Håvard M. Ottestad"
----
