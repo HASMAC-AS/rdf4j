@@ -16,38 +16,26 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Retrieve pinned public conformance and reference-engine sources
+      - name: Build pinned Jena query-engine modules and test classes
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p export upstream
-          for spec in 'apache/jena df0d523eed42cd0b7c9ef11c74eeb0a63302a423 jena' 'w3c/rdf-tests 3d0b0613d0177d25aad7ec60e88df2338f461516 w3c-rdf-tests' 'ad-freiburg/sparql-conformance dcff46a3f27e25f21724c6903559ea750fc63e70 qlever-conformance' 'ad-freiburg/sparql-conformance 7482f394873558d4d1ca3a5a3f91f593865e2a82 qlever-conformance-old'; do
-            read -r repo sha name <<< "$spec"
-            git init "upstream/$name"
-            git -C "upstream/$name" fetch --depth=1 "https://github.com/$repo.git" "$sha"
-            git -C "upstream/$name" checkout --detach FETCH_HEAD
-            test "$(git -C "upstream/$name" rev-parse HEAD)" = "$sha"
-            git -C "upstream/$name" ls-files --stage > "export/$name-git-files.txt"
-            printf '%s %s\n' "$repo" "$sha" >> export/revisions.txt
+          git init upstream/jena
+          git -C upstream/jena fetch --depth=1 https://github.com/apache/jena.git df0d523eed42cd0b7c9ef11c74eeb0a63302a423
+          git -C upstream/jena checkout --detach FETCH_HEAD
+          modules=jena-tdb1,jena-tdb2,jena-serviceenhancer,jena-text,jena-geosparql,jena-querybuilder,jena-rdfconnection
+          mvn -B -f upstream/jena/pom.xml -pl "$modules" -am -DskipTests -Dmaven.javadoc.skip=true install > export/jena-build.log 2>&1
+          for module in ${modules//,/ }; do
+            mvn -B -f "upstream/jena/$module/pom.xml" org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DincludeScope=test -DoutputDirectory="$PWD/export/jars/$module" >> export/jena-build.log 2>&1
           done
-          tar --exclude=.git -czf export/conformance-sources.tar.gz upstream/w3c-rdf-tests upstream/qlever-conformance upstream/qlever-conformance-old
-          mkdir -p toolchain
-          cp -aL "$JAVA_HOME" toolchain/jdk
-          tar -czf export/jdk25.tar.gz toolchain/jdk
-      - name: Build pinned Jena ARQ and test classes
-        shell: bash
-        run: |
-          set -euo pipefail
-          mvn -B -f upstream/jena/pom.xml -pl jena-arq -am -DskipTests -Dmaven.javadoc.skip=true install > export/jena-build.log 2>&1
-          mvn -B -f upstream/jena/jena-arq/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DincludeScope=test -DoutputDirectory="$PWD/export/jena-jars" >> export/jena-build.log 2>&1
-          mvn -B -f bootstrap/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get -Dartifact=net.bytebuddy:byte-buddy:1.17.8 >> export/jena-build.log 2>&1
-          mvn -B -f bootstrap/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get -Dartifact=net.bytebuddy:byte-buddy-agent:1.17.8 >> export/jena-build.log 2>&1
-          tar --exclude=.git -czf export/jena-built.tar.gz upstream/jena
-          tar -czf export/maven-repository.tar.gz -C "$HOME/.m2" repository
+          tar --exclude=.git -czf export/jena-built-modules.tar.gz upstream/jena
+          cd export
+          sha256sum jena-built-modules.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sparql-corpus-reference-build
+          name: sparql-corpus-jena-modules
           path: export/
           retention-days: 7
           compression-level: 0
