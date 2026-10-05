@@ -22,6 +22,8 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 
 import org.eclipse.rdf4j.common.iteration.EmptyIteration;
+import org.eclipse.rdf4j.common.transaction.IsolationLevel;
+import org.eclipse.rdf4j.common.transaction.IsolationLevels;
 import org.eclipse.rdf4j.query.BooleanQuery;
 import org.eclipse.rdf4j.query.GraphQuery;
 import org.eclipse.rdf4j.query.Query;
@@ -29,6 +31,7 @@ import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.query.algebra.QueryRoot;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.explanation.Explanation;
+import org.eclipse.rdf4j.sail.Sail;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,13 +46,36 @@ public class SailRepositoryConnectionTest {
 	private SailRepositoryConnection subject;
 	private SailConnection sailConnection;
 	private SailRepository sailRepository;
+	private Sail sail;
 
 	@BeforeEach
 	public void setUp() {
 		sailConnection = mock(SailConnection.class);
 		sailRepository = mock(SailRepository.class);
+		sail = mock(Sail.class);
+
+		when(sailRepository.getSail()).thenReturn(sail);
 
 		subject = new SailRepositoryConnection(sailRepository, sailConnection);
+	}
+
+	@Test
+	public void beginIsolationLevelIsVisibleFromConnection() {
+		IsolationLevel isolationLevel = IsolationLevels.SERIALIZABLE;
+
+		subject.begin(isolationLevel);
+
+		assertThat(subject.getIsolationLevel()).isEqualTo(isolationLevel);
+	}
+
+	@Test
+	public void beginUsesDefaultIsolationLevelWhenNoneConfigured() {
+		IsolationLevel defaultIsolationLevel = IsolationLevels.READ_COMMITTED;
+		when(sail.getDefaultIsolationLevel()).thenReturn(defaultIsolationLevel);
+
+		subject.begin();
+
+		assertThat(subject.getIsolationLevel()).isEqualTo(defaultIsolationLevel);
 	}
 
 	@Test
