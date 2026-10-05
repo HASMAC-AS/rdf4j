@@ -10,16 +10,12 @@ import java.util.function.Supplier;
 import java.util.stream.*;
 import org.apache.jena.graph.Node;
 import org.apache.jena.sparql.ARQConstants;
-import org.apache.jena.sparql.expr.ExprEvalException;
 import org.apache.jena.sparql.expr.NodeValue;
+import org.apache.jena.sparql.function.library.leviathan.LeviathanConstants;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.jupiter.api.function.Executable;
 
-/**
- * Source-helper argument recorder. It never evaluates an actual expression to manufacture
- * an expected result. The original Java computes only helper arguments/expected constants.
- * This program performs extraction, not verification of the original Jena tests.
- */
+/** Records original helper arguments, not actual-query results. This is extraction, not a Jena test run. */
 public final class Capture {
     private static final class Context {
         String owner, method, invocation, expectedException; int ordinal; boolean completed;
@@ -29,11 +25,11 @@ public final class Capture {
     private static final ThreadLocal<Context> CURRENT=new ThreadLocal<>();
     private static BufferedWriter output,audit;
     private Capture() {}
-    public static void gap(String reason) { Context c=CURRENT.get();if(c!=null)c.gaps.add(reason); }
+    public static void gap(String reason) {Context c=CURRENT.get();if(c!=null)c.gaps.add(reason);}
     public static <T extends Throwable> T expectThrows(Class<T> type,Executable body) {
         Context c=Objects.requireNonNull(CURRENT.get(),"No extraction context");String previous=c.expectedException;c.expectedException=type.getName();
         try {body.execute();} catch(Throwable problem) {c.gaps.add("Uncaptured exception inside expected-exception wrapper: "+problem);}
-        finally {c.expectedException=previous;} return null;
+        finally {c.expectedException=previous;}return null;
     }
     public static <T extends Throwable> T expectThrows(Class<T> type,Executable body,String message) {return expectThrows(type,body);}
     public static <T extends Throwable> T expectThrows(Class<T> type,Executable body,Supplier<String> message) {return expectThrows(type,body);}
@@ -49,19 +45,20 @@ public final class Capture {
     private static void record(String expression,Map<String,Object> gold,String helper) {
         Context c=Objects.requireNonNull(CURRENT.get(),"Helper invoked outside recorded test");
         if(c.expectedException!=null) {
-            gold.clear();gold.put("mode",c.expectedException.endsWith("QueryParseException")?"syntax-negative":
-                    c.expectedException.endsWith("ExprEvalException")||c.expectedException.endsWith("ARQException")?"unbound":"unsupported-exception");
+            gold.clear();gold.put("mode",c.expectedException.endsWith("QueryParseException")?"syntax-negative":c.expectedException.endsWith("ExprEvalException")||c.expectedException.endsWith("ARQException")?"unbound":"unsupported-exception");
             gold.put("exception",c.expectedException);
         }
         Map<String,Object> event=new LinkedHashMap<>();event.put("class",c.owner);event.put("method",c.method);event.put("invocation",c.invocation);event.put("ordinal",c.ordinal++);
         event.put("expression",expression);event.put("expected",gold);event.put("helper",helper);
-        event.put("prefixes",new TreeMap<>(ARQConstants.getGlobalPrefixMap().getNsPrefixMap()));
+        Map<String,String> prefixes=new TreeMap<>(ARQConstants.getGlobalPrefixMap().getNsPrefixMap());
+        if(helper.startsWith("LibTestExpr."))prefixes.put("lfn",LeviathanConstants.LeviathanFunctionLibraryURI);
+        event.put("prefixes",prefixes);
         for(StackTraceElement frame:Thread.currentThread().getStackTrace()) {
             if(frame.getClassName().equals(c.owner)&&frame.getMethodName().equals(c.method)) {event.put("callLine",frame.getLineNumber());break;}
         }
         c.events.add(event);
     }
-    private static Map<String,Object> term(Node n) {
+    static Map<String,Object> term(Node n) {
         Map<String,Object> value=new LinkedHashMap<>();
         if(n.isURI()) {value.put("type","uri");value.put("value",n.getURI());}
         else if(n.isBlank()) {value.put("type","bnode");value.put("value",n.getBlankNodeLabel());}
@@ -87,7 +84,7 @@ public final class Capture {
         }
         if(value instanceof Boolean||value instanceof Number)return value.toString();
         if(value instanceof Map<?,?> map)return map.entrySet().stream().map(e->json(e.getKey().toString())+":"+json(e.getValue())).collect(Collectors.joining(",","{","}"));
-        if(value instanceof Iterable<?> it) {List<String> cells=new ArrayList<>();for(Object v:it)cells.add(json(v));return String.join(",",cells).transform(s->"["+s+"]");}
+        if(value instanceof Iterable<?> it) {List<String> cells=new ArrayList<>();for(Object v:it)cells.add(json(v));return "["+String.join(",",cells)+"]";}
         throw new IllegalArgumentException("Not JSON: "+value.getClass());
     }
     private static boolean annotated(Method m,String name) {return Arrays.stream(m.getAnnotations()).anyMatch(a->a.annotationType().getSimpleName().equals(name));}
@@ -97,7 +94,11 @@ public final class Capture {
         for(Class<?> c:chain)for(Method m:c.getDeclaredMethods())if(annotated(m,annotation)) {m.setAccessible(true);m.invoke(Modifier.isStatic(m.getModifiers())?null:instance);}
     }
     private static List<Object[]> parameters(Class<?> owner,Method m) throws Exception {
-        if(m.getParameterCount()==0)return List.<Object[]>of(new Object[0]);
+        if(m.getParameterCount()==0) {
+            int repetitions=1;
+            for(Annotation a:m.getAnnotations())if(a.annotationType().getSimpleName().equals("RepeatedTest"))repetitions=(int)a.annotationType().getMethod("value").invoke(a);
+            return Collections.nCopies(repetitions,new Object[0]);
+        }
         for(Annotation a:m.getAnnotations()) {
             if(a.annotationType().getSimpleName().equals("MethodSource")) {
                 String[] names=(String[])a.annotationType().getMethod("value").invoke(a);if(names.length==0)names=new String[]{m.getName()};
@@ -111,8 +112,8 @@ public final class Capture {
                     else if(values instanceof Iterable<?> iterable) {List<Object> list=new ArrayList<>();iterable.forEach(list::add);rows=list;}
                     else if(values instanceof Object[] array)rows=Arrays.asList(array);else throw new IllegalArgumentException("Unsupported method source "+values);
                     for(Object row:rows) {
-                        if(row instanceof Object[] args)result.add(args);
-                        else if(row instanceof org.junit.jupiter.params.provider.Arguments args)result.add(args.get());
+                        if(row instanceof Object[] params)result.add(params);
+                        else if(row instanceof org.junit.jupiter.params.provider.Arguments params)result.add(params.get());
                         else result.add(new Object[]{row});
                     }
                 }return result;
@@ -135,9 +136,24 @@ public final class Capture {
             CURRENT.remove();
         }
     }
+    private static void comparatorCalibration(Path file) throws Exception {
+        String[] terms={"1","'01'^^xsd:integer","1.0","1e0","'1'^^xsd:float","0e0","'-0.0'^^xsd:double","'NaN'^^xsd:double","'INF'^^xsd:double","'-INF'^^xsd:double","true","'1'^^xsd:boolean","false","'0'^^xsd:boolean","'hello'","'hello'@en","'hello'@fr","<urn:test>","'2000-01-01T00:00:00Z'^^xsd:dateTime","'2000-01-01T01:00:00+01:00'^^xsd:dateTime","'2000-01-01T00:00:00'^^xsd:dateTime","'PT60S'^^xsd:dayTimeDuration","'PT1M'^^xsd:dayTimeDuration","'01'^^<urn:unknown>","'1'^^<urn:unknown>","'bad'^^xsd:integer"};
+        Method comparator=Class.forName("org.apache.jena.sparql.expr.LibTestExpr").getDeclaredMethod("sameValueSameDatatype",NodeValue.class,NodeValue.class);comparator.setAccessible(true);
+        List<Map<String,Object>> matrix=new ArrayList<>();
+        for(String a:terms)for(String b:terms) {
+            Node left=org.apache.jena.sparql.sse.SSE.parseNode(a),right=org.apache.jena.sparql.sse.SSE.parseNode(b);
+            Map<String,Object> row=new LinkedHashMap<>();row.put("left",term(left));row.put("right",term(right));row.put("display",a+" / "+b);
+            try {row.put("accepts",comparator.invoke(null,NodeValue.makeNode(left),NodeValue.makeNode(right)));}
+            catch(InvocationTargetException e){row.put("accepts",false);row.put("sourceException",e.getCause().getClass().getName());}
+            matrix.add(row);
+        }
+        Files.writeString(file,json(matrix)+"\n",StandardCharsets.UTF_8);
+        System.out.println("SOURCE_COMPARATOR_CALIBRATION_PAIRS "+matrix.size());
+    }
     public static void main(String[] args) throws Exception {
         if(args.length<3)throw new IllegalArgumentException("Capture <events.jsonl> <audit.jsonl> <classes.txt>");
         Locale.setDefault(Locale.ROOT);TimeZone.setDefault(TimeZone.getTimeZone("UTC"));JenaSystem.init();NodeValue.VerboseWarnings=false;
+        comparatorCalibration(Path.of(args[0]).resolveSibling("jena-comparator-calibration.json"));
         try(BufferedWriter out=Files.newBufferedWriter(Path.of(args[0]),StandardCharsets.UTF_8);BufferedWriter log=Files.newBufferedWriter(Path.of(args[1]),StandardCharsets.UTF_8)) {
             output=out;audit=log;
             for(String className:Files.readAllLines(Path.of(args[2]),StandardCharsets.UTF_8)) {
