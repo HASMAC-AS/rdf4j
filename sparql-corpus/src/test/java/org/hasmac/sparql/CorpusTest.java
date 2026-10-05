@@ -134,12 +134,15 @@ public class CorpusTest {
     static ExpectedTuple readTuple(JsonNode gold) throws Exception {
         if (gold.path("kind").asText().equals("tuple-file")) {
             Path path=assetPath(gold.path("asset"));
-            TupleQueryResultFormat fmt=QueryResultIO.getParserFormatForFileName(path.toString()).orElseThrow(() -> new IllegalArgumentException("Unsupported tuple format: "+path));
-            List<Map<String,Value>> rows=new ArrayList<>(); List<String> variables;
-            try(InputStream in=Files.newInputStream(path); TupleQueryResult result=QueryResultIO.parseTuple(in,fmt)) {
-                variables=List.copyOf(result.getBindingNames()); while(result.hasNext()) rows.add(ResultOracle.row(result.next()));
-            }
-            return new ExpectedTuple(variables,rows);
+            QueryResultFormat fmt=QueryResultIO.getParserFormatForFileName(path.toString()).orElseThrow(() -> new IllegalArgumentException("Unsupported tuple format: "+path));
+            List<Map<String,Value>> rows=new ArrayList<>(); List<String> variables=new ArrayList<>();
+            TupleQueryResultParser parser=QueryResultIO.createTupleParser(fmt);
+            parser.setQueryResultHandler(new AbstractTupleQueryResultHandler() {
+                @Override public void startQueryResult(List<String> names) { variables.addAll(names); }
+                @Override public void handleSolution(BindingSet solution) { rows.add(ResultOracle.row(solution)); }
+            });
+            try(InputStream in=Files.newInputStream(path)) { parser.parseQueryResult(in); }
+            return new ExpectedTuple(List.copyOf(variables),List.copyOf(rows));
         }
         assertEquals("tuple",gold.path("kind").asText(),"expected result format");
         List<String> variables=new ArrayList<>(); gold.path("vars").forEach(x -> variables.add(x.asText()));
