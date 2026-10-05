@@ -2,11 +2,9 @@ package org.hasmac.sparql;
 
 import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.JsonNode;
-import java.math.*;
 import java.util.*;
 import javax.xml.datatype.*;
 import org.eclipse.rdf4j.model.*;
-import org.eclipse.rdf4j.model.base.CoreDatatype;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 
 /** Source-specific expression assertion modes; no SPARQL engine is used as the comparator. */
@@ -16,6 +14,9 @@ final class ExpressionOracle {
     private static final DatatypeFactory XML=DatatypeFactory.newDefaultInstance();
     private static final Set<String> INTEGERS=Set.of("integer","long","int","short","byte","nonPositiveInteger","negativeInteger","nonNegativeInteger","positiveInteger","unsignedLong","unsignedInt","unsignedShort","unsignedByte");
     private static final Set<String> CALENDARS=Set.of("dateTime","dateTimeStamp","date","time","gYear","gYearMonth","gMonth","gMonthDay","gDay");
+    private static final Set<String> FLOATING=Set.of("double","float");
+    private static final Set<String> DURATIONS=Set.of("duration","dayTimeDuration","yearMonthDuration");
+    private static final Set<String> DATETIMES=Set.of("dateTime","dateTimeStamp");
     private ExpressionOracle() {}
     static Value value(JsonNode term) {
         String type=term.path("type").asText(),lexical=term.path("value").asText();
@@ -40,24 +41,33 @@ final class ExpressionOracle {
     }
     static boolean integer(Value v) {return v instanceof Literal&&INTEGERS.contains(datatype(v));}
     static boolean decimal(Value v) {return integer(v)||datatype(v).equals("decimal");}
-    static boolean numeric(Value v) {return decimal(v)||Set.of("double","float").contains(datatype(v));}
+    static boolean numeric(Value v) {return decimal(v)||FLOATING.contains(datatype(v));}
     static boolean sameNumeric(Literal a,Literal b) {
         if(datatype(a).equals("double")||datatype(b).equals("double"))return a.doubleValue()==b.doubleValue();
         if(datatype(a).equals("float")||datatype(b).equals("float"))return a.floatValue()==b.floatValue();
         return a.decimalValue().compareTo(b.decimalValue())==0;
     }
     static boolean sameValue(Value a,Value b) {
+        // Match Jena NVCompare's exact-term fast path, except floating NaN.
+        // Identical ill-typed RDF literals are still identical terms.
+        if(a.equals(b)) {
+            if(a instanceof Literal l && FLOATING.contains(datatype(a))) {
+                try {return !Double.isNaN(l.doubleValue());}catch(IllegalArgumentException error){return true;}
+            }
+            return true;
+        }
         if(numeric(a)&&numeric(b)) {
             try{return sameNumeric((Literal)a,(Literal)b);}catch(IllegalArgumentException ex){return false;}
         }
-        if(a.equals(b))return true;
+        if(a instanceof TripleTerm x && b instanceof TripleTerm y)
+            return sameValue(x.getSubject(),y.getSubject())&&sameValue(x.getPredicate(),y.getPredicate())&&sameValue(x.getObject(),y.getObject());
         if(!(a instanceof Literal x)||!(b instanceof Literal y)||!x.getDatatype().equals(y.getDatatype()))return false;
         if(!x.getLanguage().equals(y.getLanguage())||x.getBaseDirection()!=y.getBaseDirection())return false;
         String dt=datatype(a);
         try {
             if(dt.equals("boolean"))return x.booleanValue()==y.booleanValue();
             if(CALENDARS.contains(dt))return XML.newXMLGregorianCalendar(x.getLabel()).compare(XML.newXMLGregorianCalendar(y.getLabel()))==DatatypeConstants.EQUAL;
-            if(Set.of("duration","dayTimeDuration","yearMonthDuration").contains(dt))return XML.newDuration(x.getLabel()).equals(XML.newDuration(y.getLabel()));
+            if(DURATIONS.contains(dt))return XML.newDuration(x.getLabel()).equals(XML.newDuration(y.getLabel()));
         }catch(IllegalArgumentException ex){return false;}
         return false;
     }
@@ -93,9 +103,9 @@ final class ExpressionOracle {
             case "isString"->datatype(value).equals("string");case "isBoolean"->datatype(value).equals("boolean");
             case "isInteger"->integer(value);case "isDecimal"->decimal(value);case "isDouble"->datatype(value).equals("double");
             case "isFloat"->datatype(value).equals("float");case "isNumber"->numeric(value);
-            case "isDateTime"->Set.of("dateTime","dateTimeStamp").contains(datatype(value));
+            case "isDateTime"->DATETIMES.contains(datatype(value));
             case "isDayTimeDuration"->datatype(value).equals("dayTimeDuration");case "isYearMonthDuration"->datatype(value).equals("yearMonthDuration");
-            case "isDuration"->Set.of("duration","dayTimeDuration","yearMonthDuration").contains(datatype(value));
+            case "isDuration"->DURATIONS.contains(datatype(value));
             default->throw new IllegalArgumentException("Unimplemented source predicate: "+name);
         };
     }

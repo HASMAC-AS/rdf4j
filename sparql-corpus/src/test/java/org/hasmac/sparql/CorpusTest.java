@@ -27,7 +27,7 @@ import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.junit.jupiter.api.*;
 
 public class CorpusTest {
-    static final ObjectMapper JSON=new ObjectMapper();
+    static final ObjectMapper JSON=JournalJson.mapper();
     static final ValueFactory VF=SimpleValueFactory.getInstance();
     static final String VIRTUAL="https://corpus.invalid/";
     static final IRI DEFAULT=VF.createIRI("urn:corpus:fixture:default");

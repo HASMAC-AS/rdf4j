@@ -5,9 +5,6 @@ on:
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: sparql-capture-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   port:
     runs-on: ubuntu-24.04
@@ -15,8 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
+      - name: Fetch the two explicit source-patch baselines
+        run: git fetch --no-tags --depth=1 origin a5ebbdb03ac304f69e054c90c4d9fb1cc8b100a3 4c8a3e9126e4b00a1f8db01ba1ee15f447458688
       - name: Save source before installation or tests
         run: python3 sparql-corpus/tools/package.py --stage source-before-tests
       - uses: actions/upload-artifact@v4
@@ -45,8 +44,9 @@ jobs:
           echo "JENA_REFERENCE_LIBS=$RUNNER_TEMP/reference-export/jena-jars" >> "$GITHUB_ENV"
       - name: Install importer dependencies and run calibration
         run: |
+          mkdir -p sparql-corpus/reports
           python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
-          python3 -m unittest discover -s sparql-corpus/tools/tests -v
+          python3 -m unittest discover -s sparql-corpus/tools/tests -v 2>&1 | tee sparql-corpus/reports/python-tests.log
           python3 -c "import sys; sys.path.insert(0,'sparql-corpus/tools'); import optional_ports,lazy_ports; optional_ports.calibration(); lazy_ports.calibration(); print('NATIVE_TABLE_CALIBRATION passed')"
       - name: Import pinned forks and capture native source expectations
         id: import
@@ -59,7 +59,7 @@ jobs:
         run: python3 sparql-corpus/tools/package.py --stage imported-before-tests
       - name: Compile and execute the RDF4J Jupiter suite
         id: java
-        if: steps.import.outcome == 'success'
+        if: ${{ !cancelled() && steps.import.outcome == 'success' }}
         continue-on-error: true
         run: |
           mkdir -p sparql-corpus/reports
@@ -88,16 +88,19 @@ jobs:
             sparql-corpus/reports/
             sparql-corpus/corpus/*summary.json
             sparql-corpus/corpus/*audit.jsonl
+            sparql-corpus/corpus/jena-comparator-calibration.json
             sparql-corpus/corpus/coverage.json
             sparql-corpus/corpus/import-errors.json
             sparql-corpus/corpus/native-adapter-gaps.json
             sparql-corpus/corpus/optional-port-audit.json
             sparql-corpus/corpus/lazy-port-audit.json
             deliverables/complete-source.patch
+            deliverables/incremental-source.patch
+            deliverables/PATCH-VERIFICATION.json
             deliverables/snapshot.json
           retention-days: 30
       - name: Preserve failing import or test status
-        if: steps.import.outcome != 'success' || steps.java.outcome != 'success'
+        if: ${{ !cancelled() && (steps.import.outcome != 'success' || steps.java.outcome != 'success') }}
         run: exit 1
   inspect:
     needs: port
@@ -115,6 +118,6 @@ jobs:
         run: |
           python3 sparql-corpus/tools/inspect_capture.py
           echo 'IMPORT LOG TAIL'
-          tail -45 sparql-corpus/reports/import.log || true
+          grep -v '^CAPTURE_COMMAND ' sparql-corpus/reports/import.log | tail -30 || true
           echo 'MAVEN LOG TAIL'
-          tail -30 sparql-corpus/reports/maven.log || true
+          tail -20 sparql-corpus/reports/maven.log || true
