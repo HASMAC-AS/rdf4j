@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 8
+          fetch-depth: 0
           persist-credentials: false
       - name: Save source before any installation or test
         run: python3 sparql-corpus/tools/package.py --stage source-before-tests
@@ -27,10 +27,14 @@ jobs:
       - name: Install importer dependencies
         run: python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
       - name: Test importer helpers
-        run: python3 -m unittest discover -s sparql-corpus/tools/tests -v
+        run: |
+          python3 -m unittest discover -s sparql-corpus/tools/tests -v
+          python3 -c "import sys; sys.path.insert(0, 'sparql-corpus/tools'); import optional_ports; optional_ports.calibration(); print('OPTIONAL_EXTRACTOR_CALIBRATION passed')"
       - name: Retrieve fork revisions and import tests
         id: import
-        run: python3 sparql-corpus/tools/build_corpus.py --download
+        run: |
+          python3 sparql-corpus/tools/build_corpus.py --download
+          python3 sparql-corpus/tools/optional_ports.py
       - name: Save expanded source before Java execution
         if: always()
         run: python3 sparql-corpus/tools/package.py --stage imported-before-tests
@@ -58,6 +62,20 @@ jobs:
           path: deliverables/
           retention-days: 30
           compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sparql-corpus-reports-and-patch
+          path: |
+            sparql-corpus/reports/
+            sparql-corpus/corpus/coverage.json
+            sparql-corpus/corpus/import-errors.json
+            sparql-corpus/corpus/native-adapter-gaps.json
+            sparql-corpus/corpus/optional-port-audit.json
+            deliverables/complete-source.patch
+            deliverables/snapshot.json
+          retention-days: 30
+          compression-level: 6
       - name: Preserve the failing test status
         if: steps.java.outcome != 'success'
         run: exit 1
