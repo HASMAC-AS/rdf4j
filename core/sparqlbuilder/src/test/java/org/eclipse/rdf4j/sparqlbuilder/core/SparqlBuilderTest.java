@@ -152,4 +152,23 @@ public class SparqlBuilderTest {
 				.contains("FILTER ( ?price > 30 )");
 	}
 
+	@Test
+	public void optionalGraphPatternShouldBeBracketedWhenUsingFrom() {
+		Prefix ns = SparqlBuilder.prefix("ns", iri(EXAMPLE_ORG_NS));
+		Variable x = SparqlBuilder.var("x"), o = SparqlBuilder.var("o");
+
+		GraphPatternNotTriples optionalGraphPattern = GraphPatterns.and(x.has(ns.iri("p"), o))
+				.from(ns.iri("graph"))
+				.optional();
+
+		query.prefix(ns)
+				.select(x)
+				.where(optionalGraphPattern);
+
+		String normalizedQuery = query.getQueryString().replaceAll("\\s+", " ").trim();
+
+		assertThat(normalizedQuery)
+				.contains("OPTIONAL { GRAPH ns:graph { ?x ns:p ?o . } }");
+	}
+
 }
