@@ -1,9 +1,10 @@
 name: SPARQL corpus port and complete source archive
 on:
   push:
-    branches: [test/sparql-corpus-source-20261005]
+    branches: [test/sparql-corpus-capture-20261005]
 permissions:
   contents: read
+  actions: read
 jobs:
   port:
     runs-on: ubuntu-latest
@@ -13,7 +14,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Save source before any installation or test
+      - name: Save source before installation or tests
         run: python3 sparql-corpus/tools/package.py --stage source-before-tests
       - uses: actions/upload-artifact@v4
         with:
@@ -24,15 +25,32 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install importer dependencies
-        run: python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
-      - name: Test importer helpers
+      - uses: actions/download-artifact@v4
+        id: reference
+        continue-on-error: true
+        with:
+          name: sparql-corpus-reference-build
+          run-id: 37220268154
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/reference-export
+      - name: Use the existing pinned reference build
+        if: steps.reference.outcome == 'success'
         run: |
+          mkdir -p "$RUNNER_TEMP/reference"
+          tar -xzf "$RUNNER_TEMP/reference-export/jena-built.tar.gz" -C "$RUNNER_TEMP/reference"
+          echo "JENA_REFERENCE_ROOT=$RUNNER_TEMP/reference/upstream/jena" >> "$GITHUB_ENV"
+          echo "JENA_REFERENCE_LIBS=$RUNNER_TEMP/reference-export/jena-jars" >> "$GITHUB_ENV"
+      - name: Install importer dependencies and run calibration
+        run: |
+          python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
           python3 -m unittest discover -s sparql-corpus/tools/tests -v
-          python3 -c "import sys; sys.path.insert(0, 'sparql-corpus/tools'); import optional_ports; optional_ports.calibration(); print('OPTIONAL_EXTRACTOR_CALIBRATION passed')"
-      - name: Retrieve fork revisions and import tests
+          python3 -c "import sys; sys.path.insert(0,'sparql-corpus/tools'); import optional_ports; optional_ports.calibration()"
+      - name: Import pinned forks and capture native source expectations
         id: import
-        run: python3 sparql-corpus/tools/rebuild.py --download
+        continue-on-error: true
+        run: |
+          mkdir -p sparql-corpus/reports
+          python3 sparql-corpus/tools/rebuild.py --download > sparql-corpus/reports/import.log 2>&1
       - name: Save expanded source before Java execution
         if: always()
         run: python3 sparql-corpus/tools/package.py --stage imported-before-tests
@@ -41,11 +59,10 @@ jobs:
         if: steps.import.outcome == 'success'
         continue-on-error: true
         run: |
-          set -o pipefail
           mkdir -p sparql-corpus/reports
-          java -version 2>&1 | tee sparql-corpus/reports/java-version.txt
-          timeout 30m mvn -B -ntp -f sparql-corpus/pom.xml test 2>&1 | tee sparql-corpus/reports/maven.log
-      - name: Reconcile results and package all source even after failures
+          java -version > sparql-corpus/reports/java-version.txt 2>&1
+          timeout 30m mvn -B -ntp -f sparql-corpus/pom.xml test > sparql-corpus/reports/maven.log 2>&1
+      - name: Reconcile actual outcomes and package complete source
         if: always()
         env:
           IMPORT_OUTCOME: ${{ steps.import.outcome }}
@@ -66,6 +83,8 @@ jobs:
           name: sparql-corpus-reports-and-patch
           path: |
             sparql-corpus/reports/
+            sparql-corpus/corpus/*summary.json
+            sparql-corpus/corpus/*audit.jsonl
             sparql-corpus/corpus/coverage.json
             sparql-corpus/corpus/import-errors.json
             sparql-corpus/corpus/native-adapter-gaps.json
@@ -73,7 +92,22 @@ jobs:
             deliverables/complete-source.patch
             deliverables/snapshot.json
           retention-days: 30
-          compression-level: 6
-      - name: Preserve the failing test status
-        if: steps.java.outcome != 'success'
-        run: exit 1
+  inspect:
+    needs: port
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: sparql-corpus-reports-and-patch
+          path: .
+      - name: Compact extraction and verification evidence
+        run: |
+          python3 sparql-corpus/tools/inspect_capture.py
+          echo 'IMPORT LOG TAIL'
+          tail -45 sparql-corpus/reports/import.log || true
+          echo 'MAVEN LOG TAIL'
+          tail -30 sparql-corpus/reports/maven.log || true

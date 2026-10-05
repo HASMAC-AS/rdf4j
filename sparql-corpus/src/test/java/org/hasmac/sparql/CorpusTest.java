@@ -111,6 +111,7 @@ public class CorpusTest {
                         while(result.hasNext() && (!qlever || actual.size()<5000)) {assertTrue(actual.size()<MAX_ROWS,"result exceeds suite.maxRows; no truncated result is accepted");actual.add(ResultOracle.row(result.next()));}
                     }
                     if(qlever) checkQlever(expected.path("checks"),vars,actual);
+                    else if(eKind.equals("expression")) ExpressionOracle.verify(expected,vars,actual);
                     else {
                         ExpectedTuple gold=readTuple(expected);
                         if(c.path("laxCardinality").asBoolean(false)) ReducedOracle.tuples(gold.variables(),gold.rows(),vars,actual);
@@ -144,15 +145,7 @@ public class CorpusTest {
         for(JsonNode row:gold.path("rows")) {Map<String,Value> result=new TreeMap<>();row.fields().forEachRemaining(e->result.put(e.getKey(),value(e.getValue())));rows.add(Map.copyOf(result));}
         return new ExpectedTuple(variables,rows);
     }
-    static Value value(JsonNode term) {
-        String type=term.path("type").asText(),lexical=term.path("value").asText();
-        return switch(type) {
-            case "uri"->VF.createIRI(lexical);
-            case "bnode"->VF.createBNode(lexical);
-            case "literal","typed-literal"->term.has("xml:lang")?VF.createLiteral(lexical,term.get("xml:lang").asText()):VF.createLiteral(lexical,VF.createIRI(term.path("datatype").asText("http://www.w3.org/2001/XMLSchema#string")));
-            default->throw new IllegalArgumentException("Unsupported result term: "+term);
-        };
-    }
+    static Value value(JsonNode term) {return ExpressionOracle.value(term);}
     static Path virtualPath(String uri) {Path path=ROOT.resolve(URI.create(uri).getPath().substring(1)).normalize();if(!path.startsWith(ROOT)) throw new IllegalArgumentException("Path escapes source root: "+uri);return path;}
     static Path assetPath(JsonNode asset) throws Exception {
         prerequisite(asset.has("path"),"missing asset: "+asset);Path path=ROOT.resolve(asset.path("path").asText()).normalize();assertTrue(path.startsWith(ROOT),"asset path escapes root");prerequisite(Files.isRegularFile(path),"missing asset file: "+path);
