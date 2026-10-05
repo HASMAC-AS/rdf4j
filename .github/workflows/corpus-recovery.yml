@@ -37,6 +37,7 @@ jobs:
           python3 -m pip install --break-system-packages -r suite/requirements.txt
           python3 -m unittest discover -s suite/tools -p 'test_*.py' -v 2>&1 | tee suite/reports/python-tests.log
           python3 suite/tools/build_corpus.py --download
+          python3 suite/tools/runner_registration.py
       - name: Checkpoint implementation plus corpus
         if: always()
         run: python3 suite/tools/package.py imported
@@ -49,6 +50,12 @@ jobs:
           mkdir -p suite/reports
           java -version 2>&1 | tee suite/reports/java-version.txt
           timeout 30m mvn -B -ntp -f suite/pom.xml -DfailIfNoTests=true test > suite/reports/maven.log 2>&1
+      - name: Audit saved failures with the exact pinned Jena comparator
+        id: oracle
+        if: steps.import.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: python3 suite/tools/run_reference_audit.py
       - name: Save actual outcomes and final source ZIP
         if: always()
         env:
@@ -56,7 +63,9 @@ jobs:
           JAVA_OUTCOME: ${{ steps.java.outcome }}
         run: |
           python3 suite/tools/report.py
+          python3 suite/tools/report_extras.py
           python3 suite/tools/package.py final
+          if [ -f suite/reports/reference-audit-tail.txt ]; then cat suite/reports/reference-audit-tail.txt; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -70,26 +79,23 @@ jobs:
           name: verification-report
           path: |
             suite/reports/verification.json
+            suite/reports/cohort-summary.json
+            suite/reports/native-failures.json
+            suite/reports/qlever-failures.json
             suite/reports/failure-sample.json
             suite/reports/import-gaps.json
             suite/reports/diagnostic-tail.txt
             suite/reports/python-tests.log
+            suite/reports/reference-audit-execution.json
+            suite/reports/reference-audit-tail.txt
+            suite/reports/upstream-oracle-summary.json
+            suite/reports/upstream-oracle-audit.json
+            suite/reports/upstream-comparison-policy-sites.json
+            suite/reports/patch-verification.json
             suite/corpus/native-audit.json
+            suite/corpus/registration-summary.json
             deliverables/snapshot.json
           retention-days: 30
       - name: Preserve failing test status
         if: steps.java.outcome != 'success'
         run: exit 1
-  inspect:
-    needs: build
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: verification-report
-          path: result
-      - name: Recorded counts, source gaps, and representative failures
-        run: find result -type f -name '*.json' -print -exec cat '{}' ';'
-      - name: Compiler or test diagnostic tail
-        run: find result -type f -name diagnostic-tail.txt -exec cat '{}' ';'
