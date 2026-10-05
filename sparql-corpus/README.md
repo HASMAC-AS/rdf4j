@@ -1,33 +1,54 @@
 # SPARQL correctness corpus — recoverable source edition
 
-This is a complete, independently buildable source package, not a claim of complete upstream test coverage. It is reconstructed from the pinned HASMAC-AS Jena and QLever forks because the expanded interactive workspace could not be recovered. It does not claim to contain the inaccessible v2/v3 working tree.
+A complete source package for the implemented importer and RDF4J/JUnit Jupiter harness. **This is not a claim that every upstream native test has been ported.** The project is reconstructed from the pinned HASMAC-AS forks because the expanded interactive workspace could not be recovered. It does not claim to contain the inaccessible prior v2/v3 working tree.
 
 ## Run
 
-Requires JDK 25, Maven, Python 3.11+, and network access for first-time dependencies.
+Requires JDK 25, Maven, and Python 3.11+ for regeneration. The imported source ZIP already includes all discovered corpus definitions, fixture files, upstream sources, per-case documentation and actual execution reports. To run that corpus, Python and repository downloads are unnecessary:
+
+```sh
+mvn test
+mvn test -Dsuite.filter=ExistsJoin
+mvn test -Dsuite.filter=extendedType
+```
+
+To rebuild the corpus from its packaged vendor trees:
 
 ```sh
 python3 -m pip install -r requirements.txt
-python3 tools/import.py --download
+python3 -m unittest discover -s tools/tests -v
+python3 tools/build_corpus.py
 mvn test
 python3 tools/report.py
 python3 tools/package.py --stage final
 ```
 
-The distributed archive already contains the materialized vendor sources and generated corpus whenever import completed, so re-downloading is unnecessary. `python3 tools/import.py` rebuilds from those vendor sources. `mvn test -Dsuite.filter=pattern` selects named cases. `-Dsuite.strict=true` makes blocked catalogue cases fail rather than abort. `-Drepository.factory=my.pkg.Factory` selects an implementation of `RepositoryFactory` with a public no-argument constructor. Supply any additional Sail dependencies through the POM. Every case gets a fresh repository, shut down in `finally`.
+Add `--download` to `build_corpus.py` only to retrieve the immutable fork revisions again. Download verifies every regular tracked file against its Git blob SHA. `tools/import.py` is the underlying base importer; use `build_corpus.py` to include the reviewed native expansions and assertion-policy refinements.
+
+## Select repositories and execution bounds
+
+`-Drepository.factory=my.pkg.Factory` selects an implementation of `RepositoryFactory` with a public no-argument constructor. Supply its additional Sail dependencies through the POM. Each case gets a fresh repository, shut down in `finally`. All fixture loading, transactions, parsing and query evaluation use `RepositoryConnection`.
+
+`-Dsuite.strict=true` turns unavailable prerequisites into failures rather than Jupiter aborts. Ordinary RDF4J mismatches always fail. `-Dsuite.timeoutSeconds=15` controls query timeouts. `-Dsuite.maxRows=500000` bounds collected result size; hitting it fails, rather than accepting truncation. Fixtures larger than `-Dsuite.maxFixtureBytes=20000000` are aborted by default; raise this limit explicitly to run the scientists dataset cases. This resource bound is visible in the execution report and is not a capability or coverage success.
 
 ## Scope and provenance
 
-Source pins are in `sources.json`. `corpus/cases.json` contains executable/blocked query and query-syntax definitions, not every low-level native unit test. `corpus/native-inventory.json` separately inventories Java/C++ native test declarations with file/line provenance; inventory-only records are NOT represented as ported tests. Native generated/parameterized test invocation expansion is incomplete and is explicitly reported. Transitive external conformance suites not present in these pinned forks are not silently invented. All vendor files are retained with an SHA-256 inventory, including upstream licenses and notices.
+`sources.json` pins HASMAC-AS/jena main and HASMAC-AS/qlever master. `corpus/cases.json` contains individual query and query-syntax definitions. `corpus/catalog.html` is a searchable local catalogue; `corpus/cases/` contains individual Markdown descriptions with query, prerequisites, full expected result or referenced graph asset, source links, source hashes, and adaptation notes. `corpus/native-inventory.json` records native Java/C++ test declarations separately. **Inventory-only records are not ported tests.** Repeated inherited/parameterized invocation expansion remains incomplete. `manifest-inventory.json`, `other-manifest-records.json`, `unregistered-query-files.json`, and `import-errors.json` expose additional scope and discovery gaps. Source instances in duplicated upstream test collections remain distinct records; the catalogue count is not a count of unique semantic behaviors.
 
-Every catalogue entry links its complete query, fixture files, original expected result, source location, prerequisites, and any limitation. Expected results are taken from upstream fixtures/assertions, never generated by RDF4J. Cases without a portable oracle remain blocked. Engine-specific extensions, entailment, and remote SERVICE prerequisites are recorded separately rather than being counted as passing.
+Every vendor source file and extracted test-archive member is retained, with licenses and notices. Non-test UI font binaries are omitted from the downloadable package; their paths are listed in `SNAPSHOT.json`. Existing test ZIPs are preserved. The corpus uses a stable virtual base (`https://corpus.invalid/`) for local assets, and never dereferences that hostname. Unprovided external FROM/SERVICE prerequisites are reported, not fetched from live endpoints.
 
-## Oracle
+## Result comparison
 
-SELECT comparison preserves duplicate rows, unbound bindings, term kinds and globally consistent blank-node identity. Blank-node-free bags use a hash-count fast path. Blank nodes are checked using isomorphism of an RDF encoding of the full result relation; ordered results attach row indexes, while unordered results do not. Graph results use graph isomorphism. RDF term lexical equality is the default (stricter than numeric-value comparison in some upstream harness modes); divergences are not automatically called RDF4J defects. QLever YAML cases retain their weaker original checks: wildcard cells, numeric tolerance 0.1, and at most 5,000 returned rows. Ordering checks that require ICU or unsupported runtime warnings are blocked instead of silently dropped.
+Expected results come from upstream fixtures and assertions, never from RDF4J execution. SELECT comparison preserves duplicates, unbound cells, RDF-term kinds and globally consistent blank-node identity. Blank-node-free bags use hash counts. Blank-node results use graph isomorphism of an encoding of the complete relation; triple terms are structurally encoded. Explicit upstream row indexes select sequence comparison. This can be stricter than valid alternative ORDER BY tie arrangements, so those divergences require review.
 
-## Always-created ZIP
+REDUCED `mf:LaxCardinality` cases accept each expected distinct solution between one and its source multiplicity. Blank-node variants use bounded backtracking with a global bijection; exhausting the oracle search budget is reported as inconclusive/error, never as a pass. Graph results use graph isomorphism.
 
-`tools/package.py` has no third-party dependencies. It creates a complete source ZIP before dependency installation, after import, and after execution (including failures). Source files, fixtures, reports and vendor source trees are included. Build classes and local caches are excluded. It verifies ZIP CRCs and includes per-file hashes. `complete-source.patch` is a git patch against the bootstrap branch's parent, not against the old v2 ZIP.
+RDF term lexical equality is the default, which is stricter than value-based comparison in some Jena modes. QLever YAML preserves its original weaker checks: wildcard cells, numeric tolerance 0.1, and at most 5000 returned rows. Unported warning/ICU ordering assertions remain blocked. CSV and SRT oracles are blocked pending their format-specific comparisons. Engine extensions, extended datatype behavior, native helper category assertions, entailment and implementation-defined DESCRIBE policies are not silently equated with standard SPARQL semantics.
 
-JUnit errors/failures are preserved in reports. A successful archive upload or Python import is not evidence that Java compilation or the tests passed. See `reports/verification.json` and `reports/VERIFICATION.md` for actual recorded outcomes.
+## Always-created complete ZIP and patch
+
+`tools/package.py` has no third-party dependencies. CI creates and uploads a ZIP before installation and an expanded ZIP after import/testing even when those steps fail. ZIP CRCs and the SHA-256 of every archived file are checked. Source, corpus, fixtures, vendor trees and reports are included; build classes and caches are excluded. The CI artifact bundles `sparql-corpus-complete-source.zip`, `complete-source.patch`, `SHA256SUMS`, and `snapshot.json`.
+
+The git patch is against the isolated bootstrap commit `a5ebbdb03ac304f69e054c90c4d9fb1cc8b100a3`, not against the old v2 ZIP. Packaging applies it to that baseline in a temporary checkout and checks all tracked source bytes. Generated corpus data is in the complete ZIP and regenerated by the importer, not duplicated in the git patch.
+
+`reports/verification.json` reconciles discovered cases with individually recorded executions and records importer/build status. `per-case-results.jsonl` has stable IDs, names and pinned provenance; `failures.json` isolates failures; Surefire XML and Maven logs retain full details. Packaging success, import success and Java compilation success are distinct from passing query correctness tests.

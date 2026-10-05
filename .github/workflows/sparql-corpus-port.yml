@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 8
           persist-credentials: false
       - name: Save source before any installation or test
         run: python3 sparql-corpus/tools/package.py --stage source-before-tests
@@ -26,9 +26,11 @@ jobs:
           java-version: '25'
       - name: Install importer dependencies
         run: python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
+      - name: Test importer helpers
+        run: python3 -m unittest discover -s sparql-corpus/tools/tests -v
       - name: Retrieve fork revisions and import tests
         id: import
-        run: python3 sparql-corpus/tools/import.py --download
+        run: python3 sparql-corpus/tools/build_corpus.py --download
       - name: Save expanded source before Java execution
         if: always()
         run: python3 sparql-corpus/tools/package.py --stage imported-before-tests
