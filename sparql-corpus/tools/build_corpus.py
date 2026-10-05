@@ -42,8 +42,7 @@ def cpp_array(text):
 
 def table(text):
     text=text.strip()
-    if text.startswith('makeIdTableFromVector('):
-        text=split_args(text[len('makeIdTableFromVector('):-1])[0]
+    if text.startswith('makeIdTableFromVector('): text=split_args(text[len('makeIdTableFromVector('):-1])[0]
     if text.startswith('IdTable'):
         m=re.match(r'IdTable\s*[({]\s*(\d+)',text)
         if not m: raise ValueError('unrecognized empty IdTable: '+text)
@@ -56,20 +55,22 @@ def token(v): return 'UNDEF' if v is None else '<urn:qlever:vid:'+str(v)+'>'
 def values(prefix,rows,width):
     return 'VALUES ('+' '.join('?'+prefix+str(i) for i in range(width))+') { '+' '.join('('+' '.join(token(v) for v in row)+')' for row in rows)+' }'
 
-def native_case(p,name,line,query,vars,rows,assertion,notes):
+def native_case(p,name,line,query,variables,rows,assertion,notes):
     key=base.rel(p)+'#'+name
-    return {'id':base.digest(key.encode())[:20],'name':name,'family':p.relative_to(base.VENDOR).parts[0]+'-native-adapted','kind':'evaluation','status':'ready','source':base.source(p,line),'base':'http://base/','query':query,'fixtures':[],'expected':{'kind':'tuple','vars':vars,'rows':rows},'sourceAssertion':assertion,'limitations':notes,'comparison':'unordered-bag'}
+    return {'id':base.digest(key.encode())[:20],'name':name,'family':p.relative_to(base.VENDOR).parts[0]+'-native-adapted','kind':'evaluation','status':'ready','source':base.source(p,line),'base':'http://base/','query':query,'fixtures':[],'expected':{'kind':'tuple','vars':variables,'rows':rows},'sourceAssertion':assertion,'limitations':notes,'comparison':'unordered-bag'}
 
 def exists_ports():
     p=base.VENDOR/'qlever/test/engine/ExistsJoinTest.cpp'; text=p.read_text()
-    start=re.search(r'TEST\(ExistsJoin,\s*computeResult\)\s*\{',text)
-    if not start: raise ValueError('ExistsJoin.computeResult not found')
+    start=re.search(r'\bTEST(?:_F|_P)?\s*\(\s*ExistsJoin\s*,\s*computeResult\s*\)\s*\{',text)
+    if not start:
+        declarations=[m.group(0) for m in base.CPP_METHOD.finditer(text)]
+        raise ValueError('ExistsJoin.computeResult not found; source='+json.dumps(base.source(p))+'; declarations='+json.dumps(declarations[:30]))
     end=base.block_end(text,start.end()); original=text[start.end():end-1]
     body=re.sub(r'//[^\n]*',lambda m:' '*len(m.group()),original)
     generated=[]
     for ordinal,m in enumerate(re.finditer(r'\b(testExists|testExistsFromIdTable)\s*\(',body)):
         stop=close_paren(body,m.end()); args=split_args(body[m.end():stop])
-        if len(args)!=4: raise ValueError('unsupported existence helper shape')
+        if len(args)!=4: raise ValueError('unsupported existence helper shape: '+repr(args))
         left,lw=table(args[0]); right,rw=table(args[1]); flags=cpp_array(args[2]); joins=int(args[3])
         if len(left)!=len(flags) or joins>min(lw,rw): raise ValueError('bad existence assertion')
         predicates=['(!BOUND(?l'+str(i)+') || !BOUND(?r'+str(i)+') || sameTerm(?l'+str(i)+',?r'+str(i)+'))' for i in range(joins)]
@@ -88,9 +89,9 @@ def binding_ports():
     p=base.VENDOR/'jena/jena-arq/src/test/java/org/apache/jena/sparql/expr/TestExpressions3.java'; text=p.read_text(); result=[]
     for m in base.JAVA_METHOD.finditer(text):
         end=base.block_end(text,m.end()); body=text[m.end():end-1]
-        call=re.search(r'\b(evalExpr|eval)\("([^"\\]*)",\s*"([^"\\]*)",\s*(true|false)\)',body)
+        call=re.search(r'\b(evalExpr|eval)\s*\(\s*"([^"\\]*)"\s*,\s*"([^"\\]*)"\s*,\s*(true|false)\s*\)',body)
         if not call: continue
-        helper,expr,binding,boolean=call.groups(); match=re.fullmatch(r'\(\?(\w+) (\d+)\)',binding)
+        helper,expr,binding,boolean=call.groups(); match=re.fullmatch(r'\(\?(\w+)\s+(\d+)\)',binding)
         bindings='VALUES ?'+match.group(1)+' { '+match.group(2)+' } ' if match else ''
         if not match and binding!='()': raise ValueError('unsupported source binding')
         if helper=='eval': expression=expr; setup=''
@@ -104,11 +105,17 @@ def binding_ports():
         query='SELECT ?result WHERE { '+bindings+setup+'BIND(('+expression+') AS ?result) }'
         row={'result':{'type':'literal','value':boolean,'datatype':base.XSD+'boolean'}}
         result.append(native_case(p,p.stem+'.'+m.group(1),text.count('\n',0,m.start())+1,query,['result'],[row],body,['Source bindings are supplied by VALUES. Generalized algebra BOUND expressions are lowered through a fresh BIND variable.']))
-    if len(result)!=8: raise ValueError('Expected eight reviewed binding cases')
+    if len(result)!=8: raise ValueError('Expected eight reviewed binding cases, found '+str(len(result)))
     return result
 
 def enrich():
-    additions=exists_ports()+binding_ports(); base.cases.extend(additions)
+    additions=[]; adapter_gaps=[]
+    for adapter in (exists_ports,binding_ports):
+        try: additions.extend(adapter())
+        except (ValueError,OSError) as exc:
+            gap={'adapter':adapter.__name__,'status':'not-ported','reason':str(exc)}; adapter_gaps.append(gap)
+            print('NATIVE_ADAPTER_GAP '+json.dumps(gap),flush=True)
+    base.cases.extend(additions)
     for c in base.cases:
         if c.get('laxCardinality'):
             c['limitations']=[x for x in c['limitations'] if not x.startswith('REDUCED cardinality interval')]
@@ -126,7 +133,8 @@ def enrich():
         c['querySha256']=base.digest(c['query'].encode())
     for n in base.native:
         if n['project']=='qlever' and n['name']=='ExistsJoin.computeResult':
-            n['disposition']='adapted-query'; n['caseIds']=[c['id'] for c in additions if c['family']=='qlever-native-adapted']
+            child_ids=[c['id'] for c in additions if c['family']=='qlever-native-adapted']
+            if child_ids: n['disposition']='adapted-query'; n['caseIds']=child_ids
         for c in additions:
             if c['family']=='jena-native-adapted' and c['name'].endswith('.'+n['name']) and n['path'].endswith(c['source']['path']): n['disposition']='adapted-query'; n['caseId']=c['id']
     base.cases.sort(key=lambda c:(c['family'],c['source']['path'],c['name'],c['id']))
@@ -134,7 +142,8 @@ def enrich():
     if len(ids)!=len(set(ids)): raise ValueError('duplicate IDs after native expansion')
     (base.OUT/'cases.json').write_text(json.dumps(base.cases,ensure_ascii=False,indent=2)+'\n')
     (base.OUT/'native-inventory.json').write_text(json.dumps(base.native,indent=2)+'\n')
-    stats=json.loads((base.OUT/'coverage.json').read_text()); stats.update({'cases':len(base.cases),'status':dict(collections.Counter(c['status'] for c in base.cases)),'families':dict(collections.Counter(c['family'] for c in base.cases)),'reviewedNativeAdditions':len(additions),'nativeAdapted':sum(n['disposition']=='adapted-query' for n in base.native)})
+    (base.OUT/'native-adapter-gaps.json').write_text(json.dumps(adapter_gaps,indent=2)+'\n')
+    stats=json.loads((base.OUT/'coverage.json').read_text()); stats.update({'cases':len(base.cases),'status':dict(collections.Counter(c['status'] for c in base.cases)),'families':dict(collections.Counter(c['family'] for c in base.cases)),'reviewedNativeAdditions':len(additions),'nativeAdapterGaps':len(adapter_gaps),'nativeAdapted':sum(n['disposition']=='adapted-query' for n in base.native)})
     (base.OUT/'coverage.json').write_text(json.dumps(stats,indent=2)+'\n'); base.document(); print('ENRICHED_COVERAGE '+json.dumps(stats),flush=True)
 
 if __name__=='__main__': base.main(); enrich()
