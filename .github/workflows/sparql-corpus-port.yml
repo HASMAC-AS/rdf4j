@@ -1,0 +1,61 @@
+name: SPARQL corpus port and complete source archive
+on:
+  push:
+    branches: [test/sparql-corpus-source-20261005]
+permissions:
+  contents: read
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Save source before any installation or test
+        run: python3 sparql-corpus/tools/package.py --stage source-before-tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: complete-source-before-tests
+          path: deliverables/
+          retention-days: 30
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Install importer dependencies
+        run: python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
+      - name: Retrieve fork revisions and import tests
+        id: import
+        run: python3 sparql-corpus/tools/import.py --download
+      - name: Save expanded source before Java execution
+        if: always()
+        run: python3 sparql-corpus/tools/package.py --stage imported-before-tests
+      - name: Compile and execute the RDF4J Jupiter suite
+        id: java
+        if: steps.import.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p sparql-corpus/reports
+          java -version 2>&1 | tee sparql-corpus/reports/java-version.txt
+          timeout 30m mvn -B -ntp -f sparql-corpus/pom.xml test 2>&1 | tee sparql-corpus/reports/maven.log
+      - name: Reconcile results and package all source even after failures
+        if: always()
+        env:
+          IMPORT_OUTCOME: ${{ steps.import.outcome }}
+          JAVA_OUTCOME: ${{ steps.java.outcome }}
+        run: |
+          python3 sparql-corpus/tools/report.py
+          python3 sparql-corpus/tools/package.py --stage final
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: complete-sparql-corpus-source-and-results
+          path: deliverables/
+          retention-days: 30
+          compression-level: 0
+      - name: Preserve the failing test status
+        if: steps.java.outcome != 'success'
+        run: exit 1
