@@ -1,0 +1,64 @@
+name: Recover SPARQL correctness corpus
+on:
+  push:
+    branches: [test/sparql-corpus-recovery-20261005]
+permissions:
+  contents: read
+concurrency:
+  group: sparql-corpus-recovery
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkpoint complete implementation source
+        run: python3 suite/tools/package.py initial
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-checkpoint
+          path: deliverables/
+          retention-days: 30
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Import the pinned HASMAC-AS forks
+        id: import
+        run: |
+          python3 -m pip install --break-system-packages -r suite/requirements.txt
+          python3 suite/tools/import_corpus.py --download
+      - name: Checkpoint implementation plus corpus
+        if: always()
+        run: python3 suite/tools/package.py imported
+      - name: Compile and execute Jupiter tests
+        id: java
+        if: steps.import.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p suite/reports
+          java -version 2>&1 | tee suite/reports/java-version.txt
+          timeout 30m mvn -B -ntp -f suite/pom.xml test 2>&1 | tee suite/reports/maven.log
+      - name: Save actual outcomes and final source ZIP
+        if: always()
+        env:
+          IMPORT_OUTCOME: ${{ steps.import.outcome }}
+          JAVA_OUTCOME: ${{ steps.java.outcome }}
+        run: |
+          python3 suite/tools/report.py
+          python3 suite/tools/package.py final
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: complete-source-corpus-and-results
+          path: deliverables/
+          compression-level: 0
+          retention-days: 30
+      - name: Preserve failing test status
+        if: steps.java.outcome != 'success'
+        run: exit 1
