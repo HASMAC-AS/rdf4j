@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single reproducible entry point for all implemented source cohorts and oracle policies."""
+"""Single reproducible entry point for all implemented source cohorts and integrity checks."""
 import argparse, subprocess, sys
 from pathlib import Path
 
@@ -16,6 +16,7 @@ def main():
         ('native_capture.py',[]),
         ('qlever_fixture.py',[]),
         ('finalize_corpus.py',[]),
+        ('verify_corpus.py',[]),
     ]
     for name,arguments in commands:
         subprocess.run([sys.executable,str(tools/name),*arguments],check=True)

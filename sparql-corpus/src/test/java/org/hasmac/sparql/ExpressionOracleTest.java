@@ -17,7 +17,7 @@ class ExpressionOracleTest {
     @Test void exactTermRetainsLexicalForm(){assertThrows(AssertionError.class,()->check(expected("term","01","integer"),l("1","integer")));}
     @Test void valueDatatypeAllowsNumericLexicalVariants(){check(expected("value-datatype","01","integer"),l("1","integer"));}
     @Test void valueDatatypeRejectsDifferentDatatype(){assertThrows(AssertionError.class,()->check(expected("value-datatype","1","integer"),l("1.0","decimal")));}
-    @Test void negativeZeroHasSameNumericValue(){check(expected("value-datatype","-0.0","double"),l("0.0","double"));}
+    @Test void sourceComparatorDistinguishesSignedZero(){assertThrows(AssertionError.class,()->check(expected("value-datatype","-0.0","double"),l("0.0","double")));}
     @Test void nanIsNotNumericEquality(){assertThrows(AssertionError.class,()->check(expected("value-datatype","NaN","double"),l("NaN","double")));}
     @Test void exactNanWorks(){check(expected("term","NaN","double"),l("NaN","double"));}
     @Test void toleranceRetainsOriginalBound(){ObjectNode e=J.createObjectNode().put("mode","double-tolerance").put("number","1.0").put("delta","0.1");check(e,l("1.05","double"));assertThrows(AssertionError.class,()->check(e,l("1.2","double")));}

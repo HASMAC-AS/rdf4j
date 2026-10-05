@@ -43,8 +43,10 @@ final class ExpressionOracle {
     static boolean decimal(Value v) {return integer(v)||datatype(v).equals("decimal");}
     static boolean numeric(Value v) {return decimal(v)||FLOATING.contains(datatype(v));}
     static boolean sameNumeric(Literal a,Literal b) {
-        if(datatype(a).equals("double")||datatype(b).equals("double"))return a.doubleValue()==b.doubleValue();
-        if(datatype(a).equals("float")||datatype(b).equals("float"))return a.floatValue()==b.floatValue();
+        // Preserve the pinned Jena XSDFuncOp.compareNumeric implementation,
+        // including its signed-zero distinction. This is not a generic SPARQL equality policy.
+        if(datatype(a).equals("double")||datatype(b).equals("double"))return Double.compare(a.doubleValue(),b.doubleValue())==0;
+        if(datatype(a).equals("float")||datatype(b).equals("float"))return Float.compare(a.floatValue(),b.floatValue())==0;
         return a.decimalValue().compareTo(b.decimalValue())==0;
     }
     static boolean sameValue(Value a,Value b) {
