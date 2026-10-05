@@ -4,11 +4,9 @@ from __future__ import annotations
 import argparse,collections,json,re
 import import_corpus as c
 import native_adapters as native
+import reviewed_cases
 
 def normalize_registered_prefixes(case):
-    # QueryFactory's programmatically registered prefixes need not be legal declarations.
-    # In particular TestExpressions registers 'x.' even for expressions that never use it.
-    # Do not make otherwise portable expressions fail by emitting unused illegal labels.
     expr=case.get('decodedExpression')
     if expr is None:return
     used=c.mask(expr);removed=[];lines=[]
@@ -33,7 +31,7 @@ def main():
             if p.suffix.lower() in {'.ttl','.n3'}:c.read_manifest(project,p)
     native.discover_native(c)
     c.jena_native();c.qlever_native();c.qlever_yaml()
-    native.jena_expressions(c);native.optional_joins(c);native.fix_exists_queries(c);native.annotate_requirements(c)
+    native.jena_expressions(c);native.optional_joins(c);native.fix_exists_queries(c);reviewed_cases.add(c);native.annotate_requirements(c)
     for case in c.CASES:normalize_registered_prefixes(case)
     c.CASES.sort(key=lambda x:(x['project'],x['source']['path'],x['name'],x['id']))
     ids=[x['id'] for x in c.CASES]
