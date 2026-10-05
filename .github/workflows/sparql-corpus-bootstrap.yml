@@ -4,38 +4,75 @@ on:
     branches: [test/qlever-jena-corpus-20261004]
 permissions:
   contents: read
+  actions: read
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          persist-credentials: false
-      - uses: actions/setup-java@v4
+          name: sparql-corpus-bootstrap
+          run-id: 37220020151
+          github-token: ${{ github.token }}
+          path: cache/initial
+      - uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: '25'
-      - name: Build pinned Jena query-engine modules and test classes
+          name: sparql-corpus-reference-build
+          run-id: 37220268154
+          github-token: ${{ github.token }}
+          path: cache/reference
+      - uses: actions/download-artifact@v4
+        with:
+          name: sparql-corpus-jena-modules
+          run-id: 37221622922
+          github-token: ${{ github.token }}
+          path: cache/modules
+      - name: Prepare bounded archives
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p export upstream
-          git init upstream/jena
-          git -C upstream/jena fetch --depth=1 https://github.com/apache/jena.git df0d523eed42cd0b7c9ef11c74eeb0a63302a423
-          git -C upstream/jena checkout --detach FETCH_HEAD
-          modules=jena-tdb1,jena-tdb2,jena-serviceenhancer,jena-text,jena-geosparql,jena-querybuilder,jena-rdfconnection
-          mvn -B -f upstream/jena/pom.xml -pl "$modules" -am -DskipTests -Dmaven.javadoc.skip=true install > export/jena-build.log 2>&1
-          for module in ${modules//,/ }; do
-            mvn -B -f "upstream/jena/$module/pom.xml" org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DincludeScope=test -DoutputDirectory="$PWD/export/jars/$module" >> export/jena-build.log 2>&1
-          done
-          tar --exclude=.git -czf export/jena-built-modules.tar.gz upstream/jena
-          cd export
-          sha256sum jena-built-modules.tar.gz > SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: sparql-corpus-jena-modules
-          path: export/
-          retention-days: 7
-          compression-level: 0
+          mkdir -p stage bundles parts
+          tar -xzf cache/initial/upstream-sources.tar.gz -C stage
+          tar -xzf cache/reference/jena-built.tar.gz -C stage
+          tar -xzf cache/reference/conformance-sources.tar.gz -C stage
+          tar -xzf cache/reference/jdk25.tar.gz -C stage
+          tar -xzf cache/modules/jena-built-modules.tar.gz -C stage
+          cp stage/upstream/qlever/e2e/scientist-collection.zip bundles/scientist-collection.zip
+          rm stage/upstream/qlever/e2e/scientist-collection.zip
+          tar --exclude=target --exclude=.git -czf bundles/upstream-sources.tar.gz -C stage upstream
+          tar -czf bundles/rdf4j-jars.tar.gz -C cache/initial jars
+          tar -czf bundles/jena-jars.tar.gz -C cache/reference jena-jars
+          tar -czf bundles/jena-module-jars.tar.gz -C cache/modules jars
+          find stage/upstream/jena -type d -name target -print0 | tar --null -T - -czf bundles/jena-targets.tar.gz
+          rm -rf stage/toolchain/jdk/jmods stage/toolchain/jdk/demo stage/toolchain/jdk/man stage/toolchain/jdk/include stage/toolchain/jdk/lib/src.zip
+          tar -czf bundles/jdk25-runtime-compiler.tar.gz -C stage toolchain
+          cp cache/initial/*-git-files.txt cache/reference/*-git-files.txt bundles/
+          cp cache/reference/revisions.txt bundles/reference-revisions.txt
+          cp cache/initial/revisions.txt bundles/initial-revisions.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          listing=[]
+          for p in sorted(Path('bundles').iterdir()):
+              data=p.read_bytes(); names=[]
+              for n,offset in enumerate(range(0,len(data),35*1024*1024)):
+                  name=p.name+'.part%03d'%n
+                  (Path('parts')/name).write_bytes(data[offset:offset+35*1024*1024]); names.append(name)
+              listing.append(dict(file=p.name,size=len(data),sha256=hashlib.sha256(data).hexdigest(),parts=names))
+          Path('parts/transfer-index.json').write_text(json.dumps(listing,indent=2))
+          print(json.dumps(listing,indent=2))
+          PY
+          npm install --no-audit --no-fund @actions/artifact@4
+      - name: Upload each transfer part separately
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {DefaultArtifactClient} from '@actions/artifact';
+          const client = new DefaultArtifactClient();
+          for (const file of fs.readdirSync('parts').sort()) {
+            const result = await client.uploadArtifact('transfer-'+file, [path.resolve('parts',file)], path.resolve('parts'), {retentionDays:7,compressionLevel:0});
+            console.log(JSON.stringify({file,...result}));
+          }
+          JS
