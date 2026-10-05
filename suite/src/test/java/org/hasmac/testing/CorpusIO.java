@@ -85,13 +85,14 @@ final class CorpusIO {
     static Table consume(TupleQueryResult result, int cap) {
         List<String> vars = result.getBindingNames();
         List<Map<String, Value>> rows = new ArrayList<>();
-        while (result.hasNext() && rows.size() < cap) {
-            BindingSet bindings = result.next();
-            Map<String, Value> row = new LinkedHashMap<>();
-            for (Binding binding : bindings) row.put(binding.getName(), binding.getValue());
-            rows.add(Collections.unmodifiableMap(row));
-        }
+        while (result.hasNext() && rows.size() < cap) rows.add(copy(result.next()));
         return new Table(vars, rows);
+    }
+
+    private static Map<String, Value> copy(BindingSet bindings) {
+        Map<String, Value> row = new LinkedHashMap<>();
+        for (Binding binding : bindings) row.put(binding.getName(), binding.getValue());
+        return Collections.unmodifiableMap(row);
     }
 
     static Table expectedTable(JsonNode spec) throws Exception {
@@ -109,9 +110,15 @@ final class CorpusIO {
         Path p = file(spec);
         var format = QueryResultIO.getParserFormatForFileName(p.toString());
         if (format.isPresent()) {
-            try (InputStream in = Files.newInputStream(p); TupleQueryResult result = QueryResultIO.parseTuple(in, format.get())) {
-                return consume(result, Integer.MAX_VALUE);
-            }
+            List<String> variables = new ArrayList<>();
+            List<Map<String,Value>> rows = new ArrayList<>();
+            // Synchronous handler avoids per-file worker threads and supports RDF4J 6's API.
+            TupleQueryResultHandler handler = new AbstractTupleQueryResultHandler() {
+                @Override public void startQueryResult(List<String> names) { variables.addAll(names); }
+                @Override public void handleSolution(BindingSet bindings) { rows.add(copy(bindings)); }
+            };
+            try (InputStream in = Files.newInputStream(p)) { QueryResultIO.parseTuple(in, format.get(), handler, VF); }
+            return new Table(variables, rows);
         }
         Model model = model(spec);
         List<Resource> roots = model.filter(null, RDF.TYPE, iri("ResultSet")).subjects().stream().toList();
@@ -172,7 +179,5 @@ final class CorpusIO {
         throw new IllegalArgumentException("FROM requires an unmaterialized external document: " + uri);
     }
 
-    static String brief(Table table) {
-        return table.variables + " (" + table.rows.size() + " rows) " + table.rows.stream().limit(12).toList();
-    }
+    static String brief(Table table) { return table.variables + " (" + table.rows.size() + " rows) " + table.rows.stream().limit(12).toList(); }
 }

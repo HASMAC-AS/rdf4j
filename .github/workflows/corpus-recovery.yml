@@ -14,8 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
+      - name: Fetch the defined source-patch baseline
+        run: git fetch --no-tags --depth=1 origin a5ebbdb03ac304f69e054c90c4d9fb1cc8b100a3
       - name: Checkpoint complete implementation source
         run: python3 suite/tools/package.py initial
       - uses: actions/upload-artifact@v4
@@ -30,7 +32,10 @@ jobs:
       - name: Import the pinned HASMAC-AS forks
         id: import
         run: |
+          set -o pipefail
+          mkdir -p suite/reports
           python3 -m pip install --break-system-packages -r suite/requirements.txt
+          python3 -m unittest discover -s suite/tools -p test_importer.py -v 2>&1 | tee suite/reports/python-tests.log
           python3 suite/tools/import_corpus.py --download
       - name: Checkpoint implementation plus corpus
         if: always()
@@ -43,7 +48,7 @@ jobs:
           set -o pipefail
           mkdir -p suite/reports
           java -version 2>&1 | tee suite/reports/java-version.txt
-          timeout 30m mvn -B -ntp -f suite/pom.xml test 2>&1 | tee suite/reports/maven.log
+          timeout 30m mvn -B -ntp -f suite/pom.xml -DfailIfNoTests=true test > suite/reports/maven.log 2>&1
       - name: Save actual outcomes and final source ZIP
         if: always()
         env:
@@ -59,6 +64,31 @@ jobs:
           path: deliverables/
           compression-level: 0
           retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-report
+          path: |
+            suite/reports/verification.json
+            suite/reports/failure-sample.json
+            suite/reports/import-gaps.json
+            suite/reports/diagnostic-tail.txt
+            suite/reports/python-tests.log
+            deliverables/snapshot.json
+          retention-days: 30
       - name: Preserve failing test status
         if: steps.java.outcome != 'success'
         run: exit 1
+  inspect:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verification-report
+          path: result
+      - name: Recorded counts, source gaps, and representative failures
+        run: find result -type f -name '*.json' -print -exec cat '{}' ';'
+      - name: Compiler or test diagnostic tail
+        run: find result -type f -name diagnostic-tail.txt -exec cat '{}' ';'
