@@ -5,9 +5,12 @@ on:
 permissions:
   contents: read
   actions: read
+concurrency:
+  group: sparql-capture-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   port:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +47,7 @@ jobs:
         run: |
           python3 -m pip install --break-system-packages -r sparql-corpus/requirements.txt
           python3 -m unittest discover -s sparql-corpus/tools/tests -v
-          python3 -c "import sys; sys.path.insert(0,'sparql-corpus/tools'); import optional_ports; optional_ports.calibration()"
+          python3 -c "import sys; sys.path.insert(0,'sparql-corpus/tools'); import optional_ports,lazy_ports; optional_ports.calibration(); lazy_ports.calibration(); print('NATIVE_TABLE_CALIBRATION passed')"
       - name: Import pinned forks and capture native source expectations
         id: import
         continue-on-error: true
@@ -89,13 +92,17 @@ jobs:
             sparql-corpus/corpus/import-errors.json
             sparql-corpus/corpus/native-adapter-gaps.json
             sparql-corpus/corpus/optional-port-audit.json
+            sparql-corpus/corpus/lazy-port-audit.json
             deliverables/complete-source.patch
             deliverables/snapshot.json
           retention-days: 30
+      - name: Preserve failing import or test status
+        if: steps.import.outcome != 'success' || steps.java.outcome != 'success'
+        run: exit 1
   inspect:
     needs: port
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
