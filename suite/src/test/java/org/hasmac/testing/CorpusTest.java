@@ -40,13 +40,11 @@ public final class CorpusTest {
         String type = System.getProperty("repository.factory", MemoryRepositoryFactory.class.getName());
         factory = (RepositoryFactory) Class.forName(type).getDeclaredConstructor().newInstance();
     }
-
     private record Holder(Repository repository, Dataset dataset) implements AutoCloseable {
         @Override public void close() { repository.shutDown(); }
     }
 
-    @TestFactory
-    Stream<DynamicTest> queryCases() throws Exception {
+    @TestFactory Stream<DynamicTest> queryCases() throws Exception {
         JsonNode data = CorpusIO.JSON.readTree(CorpusIO.ROOT.resolve("corpus/cases.json").toFile());
         assertTrue(data.isArray() && !data.isEmpty(), "Importer must produce non-empty cases.json");
         Files.createDirectories(journal.getParent()); Files.writeString(journal, "");
@@ -65,9 +63,21 @@ public final class CorpusTest {
         finally {
             var item = CorpusIO.JSON.createObjectNode(); item.put("id", c.path("id").asText()); item.put("name", c.path("name").asText());
             item.put("status", status); item.put("seconds", (System.nanoTime() - start) / 1_000_000_000.0); item.put("detail", detail);
-            try { Files.writeString(journal, item + "\n", StandardOpenOption.APPEND); }
-            catch (Exception e) { System.err.println("Cannot record case outcome: " + e); }
+            try { Files.writeString(journal, asciiJson(CorpusIO.JSON.writeValueAsString(item)) + "\n", StandardOpenOption.APPEND); }
+            catch (Exception e) { System.err.println("Cannot record case " + c.path("id").asText() + ": " + e); }
         }
+    }
+
+    /** Preserve unpaired surrogate test diagnostics as JSON escapes, never invalid UTF-8. */
+    static String asciiJson(String json) {
+        StringBuilder out = new StringBuilder(json.length());
+        String hex = "0123456789abcdef";
+        for (int i = 0; i < json.length(); i++) {
+            char ch = json.charAt(i);
+            if (ch < 128) out.append(ch);
+            else out.append("\\u").append(hex.charAt((ch >>> 12) & 15)).append(hex.charAt((ch >>> 8) & 15)).append(hex.charAt((ch >>> 4) & 15)).append(hex.charAt(ch & 15));
+        }
+        return out.toString();
     }
 
     private void execute(JsonNode c) throws Exception {
@@ -101,17 +111,20 @@ public final class CorpusTest {
                     if (!yaml && result.hasNext()) throw new IllegalStateException("Query exceeded explicit suite.maxRows guard; no truncated comparison performed");
                     try {
                         if (yaml) qleverChecks(c, actual);
+                        else if ("native-assertion".equals(expected.path("type").asText())) NativeAssertionOracle.compare(expected, actual);
                         else {
                             Table reference = CorpusIO.expectedTable(expected);
                             boolean ordered = c.hasNonNull("ordered") ? c.get("ordered").asBoolean() : hasTopOrder(text);
                             List<String> keys = ordered ? tieKeys(parsed, reference.variables()) : List.of();
                             ResultOracle.compare(reference, actual, ordered, keys, c.path("lax").asBoolean());
                         }
-                    } catch (AssertionError | RuntimeException failure) { saveActual(c, actual); throw failure; }
+                    } catch (AssertionError | RuntimeException failure) {
+                        try { saveActual(c, actual); } catch (Exception recording) { failure.addSuppressed(recording); }
+                        throw failure;
+                    }
                 }
-            } else if (query instanceof BooleanQuery ask) {
-                assertEquals(CorpusIO.expectedBoolean(expected), ask.evaluate(), "ASK result");
-            } else if (query instanceof GraphQuery graphQuery) {
+            } else if (query instanceof BooleanQuery ask) assertEquals(CorpusIO.expectedBoolean(expected), ask.evaluate(), "ASK result");
+            else if (query instanceof GraphQuery graphQuery) {
                 Model actual = new LinkedHashModel();
                 try (GraphQueryResult result = graphQuery.evaluate()) { while (result.hasNext()) actual.add(result.next()); }
                 Model reference = CorpusIO.model(expected);
@@ -262,7 +275,8 @@ public final class CorpusTest {
         Path dir = CorpusIO.ROOT.resolve("reports/actual-results"); Files.createDirectories(dir);
         List<Map<String,String>> rows = new ArrayList<>();
         for (var row : table.rows()) { Map<String,String> out = new LinkedHashMap<>(); row.forEach((k,v) -> out.put(k, NTriplesUtil.toNTriplesString(v))); rows.add(out); }
-        CorpusIO.JSON.writerWithDefaultPrettyPrinter().writeValue(dir.resolve(c.path("id").asText() + ".json").toFile(), Map.of("variables", table.variables(), "rows", rows));
+        String json = CorpusIO.JSON.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of("variables", table.variables(), "rows", rows));
+        Files.writeString(dir.resolve(c.path("id").asText() + ".json"), asciiJson(json));
     }
 
     @AfterAll void closeRepositories() {
