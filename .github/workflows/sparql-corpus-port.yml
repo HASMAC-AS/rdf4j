@@ -32,9 +32,7 @@ jobs:
           python3 -c "import sys; sys.path.insert(0, 'sparql-corpus/tools'); import optional_ports; optional_ports.calibration(); print('OPTIONAL_EXTRACTOR_CALIBRATION passed')"
       - name: Retrieve fork revisions and import tests
         id: import
-        run: |
-          python3 sparql-corpus/tools/build_corpus.py --download
-          python3 sparql-corpus/tools/optional_ports.py
+        run: python3 sparql-corpus/tools/rebuild.py --download
       - name: Save expanded source before Java execution
         if: always()
         run: python3 sparql-corpus/tools/package.py --stage imported-before-tests

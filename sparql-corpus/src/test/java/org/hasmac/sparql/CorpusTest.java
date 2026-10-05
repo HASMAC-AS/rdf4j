@@ -39,7 +39,7 @@ public class CorpusTest {
 
     @TestFactory Stream<DynamicTest> importedCases() throws IOException {
         Path file=CORPUS.resolve("cases.json");
-        assertTrue(Files.isRegularFile(file),"Missing corpus/cases.json; run python3 tools/build_corpus.py --download");
+        assertTrue(Files.isRegularFile(file),"Missing corpus/cases.json; run python3 tools/rebuild.py --download");
         List<JsonNode> all=new ArrayList<>();JSON.readTree(file.toFile()).forEach(all::add);
         Pattern filter=Pattern.compile(System.getProperty("suite.filter",".*"));
         List<JsonNode> selected=all.stream().filter(c->filter.matcher(c.path("family").asText()+" / "+c.path("name").asText()+" "+c.path("id").asText()).find()).toList();
@@ -111,9 +111,12 @@ public class CorpusTest {
                         while(result.hasNext() && (!qlever || actual.size()<5000)) {assertTrue(actual.size()<MAX_ROWS,"result exceeds suite.maxRows; no truncated result is accepted");actual.add(ResultOracle.row(result.next()));}
                     }
                     if(qlever) checkQlever(expected.path("checks"),vars,actual);
-                    else {ExpectedTuple gold=readTuple(expected);
+                    else {
+                        ExpectedTuple gold=readTuple(expected);
                         if(c.path("laxCardinality").asBoolean(false)) ReducedOracle.tuples(gold.variables(),gold.rows(),vars,actual);
-                        else ResultOracle.tuples(gold.variables(),gold.rows(),vars,actual,expected.path("ordered").asBoolean(false));}
+                        else ResultOracle.tuples(gold.variables(),gold.rows(),vars,actual,expected.path("ordered").asBoolean(false));
+                        if(c.has("orderBy")) OrderOracle.verify(vars,actual,c.get("orderBy"));
+                    }
                 } else if(prepared instanceof GraphQuery graph) {
                     assertEquals("graph",eKind,"upstream result kind");Model gold=readModel(expected.path("asset")),actual=new LinkedHashModel();
                     try(GraphQueryResult result=graph.evaluate()) {while(result.hasNext()) {assertTrue(actual.size()<MAX_ROWS,"graph exceeds suite.maxRows");actual.add(result.next());}}
