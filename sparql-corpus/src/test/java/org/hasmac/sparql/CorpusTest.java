@@ -16,6 +16,8 @@ import org.eclipse.rdf4j.model.impl.*;
 import org.eclipse.rdf4j.model.util.Models;
 import org.eclipse.rdf4j.query.*;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
+import org.eclipse.rdf4j.query.impl.TupleQueryResultBuilder;
+import org.eclipse.rdf4j.query.parser.QueryParserUtil;
 import org.eclipse.rdf4j.query.resultio.*;
 import org.eclipse.rdf4j.repository.*;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
@@ -81,7 +83,8 @@ public class CorpusTest {
                 Set<IRI> names=new LinkedHashSet<>();con.begin();
                 try {
                     for(JsonNode fixture:c.path("fixtures")) loadFixture(con,fixture,names);
-                    Dataset explicit=prepared.getDataset();
+                    // getDataset() only returns an API override. FROM/FROM NAMED live in the parsed query.
+                    Dataset explicit=QueryParserUtil.parseQuery(QueryLanguage.SPARQL,query,base).getDataset();
                     if(explicit!=null) {
                         Set<IRI> requested=new LinkedHashSet<>(explicit.getDefaultGraphs());requested.addAll(explicit.getNamedGraphs());
                         for(IRI iri:requested) {
@@ -91,7 +94,11 @@ public class CorpusTest {
                             prerequisite(Files.size(file)<=MAX_FIXTURE_BYTES,"FROM fixture exceeds suite.maxFixtureBytes");
                             try(InputStream in=Files.newInputStream(file)) {con.add(in,iri.stringValue(),format(file),iri);}names.add(iri);
                         }
-                    } else {SimpleDataset dataset=new SimpleDataset();dataset.addDefaultGraph(DEFAULT);names.forEach(dataset::addNamedGraph);prepared.setDataset(dataset);}
+                        prepared.setDataset(explicit);
+                    } else {
+                        SimpleDataset dataset=new SimpleDataset();dataset.addDefaultGraph(DEFAULT);
+                        names.forEach(dataset::addNamedGraph);prepared.setDataset(dataset);
+                    }
                     con.commit();
                 } catch(Throwable error) {if(con.isActive()) con.rollback();throw error;}
                 prepared.setIncludeInferred(false);prepared.setMaxExecutionTime(Integer.getInteger("suite.timeoutSeconds",15));
@@ -120,12 +127,12 @@ public class CorpusTest {
         if(gold.path("kind").asText().equals("tuple-file")) {
             Path path=assetPath(gold.path("asset"));var candidate=QueryResultIO.getParserFormatForFileName(path.toString());
             prerequisite(candidate.isPresent(),"Unsupported tuple format: "+path);QueryResultFormat fmt=candidate.orElseThrow();
-            List<Map<String,Value>> rows=new ArrayList<>();List<String> variables=new ArrayList<>();
-            try(InputStream in=Files.newInputStream(path)) {
-                QueryResultIO.parseTuple(in,fmt,new AbstractTupleQueryResultHandler() {
-                    @Override public void startQueryResult(List<String> names) {variables.addAll(names);}
-                    @Override public void handleSolution(BindingSet binding) {rows.add(ResultOracle.row(binding));}
-                },VF);
+            TupleQueryResultBuilder builder=new TupleQueryResultBuilder();
+            TupleQueryResultParser parser=QueryResultIO.createTupleParser(fmt);parser.setQueryResultHandler(builder);
+            try(InputStream in=Files.newInputStream(path)) {parser.parseQueryResult(in);}
+            List<Map<String,Value>> rows=new ArrayList<>();List<String> variables;
+            try(TupleQueryResult result=builder.getQueryResult()) {
+                variables=List.copyOf(result.getBindingNames());while(result.hasNext()) rows.add(ResultOracle.row(result.next()));
             }
             return new ExpectedTuple(variables,rows);
         }
