@@ -14,15 +14,24 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - name: Validate Artemis dependency
+      - name: Prepare validation dependencies
         run: |
-          mvn -B -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get -Dartifact=org.apache.activemq:artemis-journal:2.57.0 -Dtransitive=true
-          javap -classpath "$HOME/.m2/repository/org/apache/activemq/artemis-journal/2.57.0/artemis-journal-2.57.0.jar" org.apache.activemq.artemis.core.journal.impl.JournalImpl org.apache.activemq.artemis.core.io.nio.NIOSequentialFileFactory org.apache.activemq.artemis.core.journal.LoaderCallback
+          mkdir -p /tmp/txn-deps
+          cat > /tmp/txn-deps/pom.xml <<'EOF'
+          <project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>test</groupId><artifactId>dependencies</artifactId><version>1</version><dependencies><dependency><groupId>org.apache.artemis</groupId><artifactId>artemis-journal</artifactId><version>2.57.0</version></dependency><dependency><groupId>org.junit.platform</groupId><artifactId>junit-platform-console-standalone</artifactId><version>1.11.4</version></dependency><dependency><groupId>org.slf4j</groupId><artifactId>slf4j-simple</artifactId><version>2.0.17</version></dependency></dependencies></project>
+          EOF
+          mvn -B -f /tmp/txn-deps/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DoutputDirectory=/tmp/txn-deps/jars
+          javap -classpath '/tmp/txn-deps/jars/*' org.apache.activemq.artemis.core.journal.impl.JournalImpl org.apache.activemq.artemis.core.io.nio.NIOSequentialFileFactory org.apache.activemq.artemis.core.journal.LoaderCallback
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transaction-journal-validation-dependencies
+          path: /tmp/txn-deps/jars/*.jar
+          retention-days: 3
       - name: Run journal and recovery tests
         run: |
           if test -f experimental/transaction-journal/pom.xml; then
