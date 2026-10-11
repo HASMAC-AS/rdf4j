@@ -17,18 +17,8 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - name: Export pinned source and JDK toolchain
-        run: |
-          mkdir -p /tmp/native-assets
-          tar -czf /tmp/native-assets/native-source.tar.gz core/sail/base core/sail/nativerdf core/repository/sail core/model-api core/model core/common/transaction pom.xml core/pom.xml core/sail/pom.xml
-          tar -czf /tmp/native-assets/java25.tar.gz -C "$JAVA_HOME" bin lib conf release legal
-      - uses: actions/upload-artifact@v4
-        with:
-          name: native-journal-source-toolchain
-          path: /tmp/native-assets/*
-          retention-days: 3
       - name: Build NativeStore and repository dependencies
-        run: mvn -B -pl core/sail/nativerdf,core/repository/sail -am -Dmaven.test.skip=true -DskipTests -DskipITs -Dmaven.javadoc.skip=true -Dcheckstyle.skip=true -Dspotless.skip=true -Drat.skip=true -Denforcer.skip=true install
+        run: mvn -B -pl core/sail/nativerdf,core/repository/sail -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true -Dspotless.apply.skip=true -Dspotless.check.skip=true -Djapicmp.skip=true -Denforcer.skip=true install
       - name: Export runnable classpath
         run: |
           mkdir -p /tmp/native-classpath
