@@ -1,0 +1,35 @@
+name: Native journal local toolchain
+on:
+  push:
+    branches: [work/native-transaction-journal]
+    paths: [.github/workflows/native-journal-toolchain.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Export selected source modules and runtime
+        run: |
+          mkdir -p /tmp/validation
+          git archive --format=zip --output=/tmp/validation/rdf4j-targeted-source.zip HEAD core/sail/base core/sail/nativerdf core/sail/api core/sail/memory core/common core/model core/model-api core/model-vocabulary core/repository/api core/repository/sail core/rio/api core/rio/binary pom.xml AGENTS.md
+          tar -czf /tmp/validation/java25.tar.gz -C "$JAVA_HOME" bin lib conf release
+          cat >/tmp/validation/pom.xml <<'EOF'
+          <project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>test</groupId><artifactId>journal-dependencies</artifactId><version>1</version><dependencies><dependency><groupId>org.apache.artemis</groupId><artifactId>artemis-journal</artifactId><version>2.57.0</version></dependency><dependency><groupId>org.junit.platform</groupId><artifactId>junit-platform-console-standalone</artifactId><version>6.1.1</version></dependency></dependencies></project>
+          EOF
+          mvn -B -f /tmp/validation/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DoutputDirectory=/tmp/validation/jars
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-journal-focused-toolchain
+          path: |
+            /tmp/validation/rdf4j-targeted-source.zip
+            /tmp/validation/java25.tar.gz
+            /tmp/validation/jars/*.jar
+          retention-days: 3
