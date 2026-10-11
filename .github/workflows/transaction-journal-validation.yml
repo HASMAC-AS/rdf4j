@@ -1,0 +1,37 @@
+name: Transaction journal validation
+on:
+  push:
+    branches: [work/native-transaction-journal]
+    paths:
+      - experimental/transaction-journal/**
+      - .github/workflows/transaction-journal-validation.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  journal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Validate Artemis dependency
+        run: |
+          mvn -B -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get -Dartifact=org.apache.activemq:artemis-journal:2.57.0 -Dtransitive=true
+          javap -classpath "$HOME/.m2/repository/org/apache/activemq/artemis-journal/2.57.0/artemis-journal-2.57.0.jar" org.apache.activemq.artemis.core.journal.impl.JournalImpl org.apache.activemq.artemis.core.io.nio.NIOSequentialFileFactory org.apache.activemq.artemis.core.journal.LoaderCallback
+      - name: Run journal and recovery tests
+        run: |
+          if test -f experimental/transaction-journal/pom.xml; then
+            mvn -B -f experimental/transaction-journal/pom.xml verify
+          fi
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transaction-journal-test-reports
+          path: experimental/transaction-journal/target/*-reports/**
+          if-no-files-found: ignore
