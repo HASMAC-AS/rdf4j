@@ -17,6 +17,23 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Export pinned source and runtime
+        run: |
+          mkdir -p /tmp/native-validation
+          git archive --format=zip --output=/tmp/native-validation/rdf4j-source.zip HEAD
+          tar -czf /tmp/native-validation/java25.tar.gz -C "$JAVA_HOME" bin lib conf release
+          cat >/tmp/native-validation/pom.xml <<'EOF'
+          <project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>test</groupId><artifactId>journal-dependencies</artifactId><version>1</version><dependencies><dependency><groupId>org.apache.artemis</groupId><artifactId>artemis-journal</artifactId><version>2.57.0</version></dependency><dependency><groupId>org.junit.platform</groupId><artifactId>junit-platform-console-standalone</artifactId><version>6.1.1</version></dependency><dependency><groupId>org.slf4j</groupId><artifactId>slf4j-simple</artifactId><version>2.0.17</version></dependency></dependencies></project>
+          EOF
+          mvn -B -f /tmp/native-validation/pom.xml org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DoutputDirectory=/tmp/native-validation/jars
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-journal-validation-toolchain
+          path: |
+            /tmp/native-validation/rdf4j-source.zip
+            /tmp/native-validation/java25.tar.gz
+            /tmp/native-validation/jars/*.jar
+          retention-days: 3
       - name: Build NativeStore and repository dependencies
         run: mvn -B -pl core/sail/nativerdf,core/repository/sail -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true -Dspotless.apply.skip=true -Dspotless.check.skip=true -Djapicmp.skip=true -Denforcer.skip=true install
       - name: Export runnable classpath
