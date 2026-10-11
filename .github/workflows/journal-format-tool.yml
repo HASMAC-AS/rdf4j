@@ -1,0 +1,19 @@
+name: Journal source formatter
+on:
+  push:
+    branches: [work/native-transaction-journal]
+    paths: [.github/workflows/journal-format-tool.yml]
+permissions:
+  contents: read
+jobs:
+  formatter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch pinned formatter
+        run: curl --fail --location --retry 2 https://github.com/google/google-java-format/releases/download/v1.24.0/google-java-format-1.24.0-all-deps.jar --output google-java-format.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: journal-source-formatter
+          path: google-java-format.jar
+          retention-days: 1
