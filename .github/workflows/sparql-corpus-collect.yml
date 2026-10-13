@@ -1,0 +1,138 @@
+name: Collect all pinned triple-store tests
+on:
+  push:
+    branches: [test/sparql-corpus-collect-all-20261013]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: collect-all-tests-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Preserve source-transfer evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-source-transfer
+          path: bootstrap/collection-source.patch.gz.b64
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Materialize checksum-verified collector source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f bootstrap/collection-source.patch.gz.b64 ]; then
+            if [ -f bootstrap/repair_collection_transfer.py ]; then
+              python3 bootstrap/repair_collection_transfer.py
+            fi
+            python3 - <<'PY'
+          from pathlib import Path
+          import base64, gzip, hashlib
+          source = Path('bootstrap/collection-source.patch.gz.b64').read_bytes()
+          patch = gzip.decompress(base64.b64decode(source, validate=False))
+          expected = '7a2e2f2f8db1909d762e15a897df9f2574e0207c846a1c70e3f651f13d0923d8'
+          if hashlib.sha256(patch).hexdigest() != expected:
+              raise SystemExit('Collector source checksum mismatch; no code will be applied')
+          Path('/tmp/collection-source.patch').write_bytes(patch)
+          PY
+            git apply --check /tmp/collection-source.patch
+            git apply /tmp/collection-source.patch
+            git rm bootstrap/collection-source.patch.gz.b64
+            if [ -f bootstrap/repair_collection_transfer.py ]; then
+              git rm bootstrap/repair_collection_transfer.py
+            fi
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add sparql-corpus/tools/collect_all_tests.py sparql-corpus/tools/tests/test_collect_all_tests.py sparql-corpus/tools/package_collection.py sparql-corpus/collection/README.md
+            git commit -m 'Materialize verified whole-source test collector and regression tests'
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
+          git fetch --no-tags --depth=1 origin 59be16683be7c08beba32b931ce3568106dc2026
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Install collector dependencies
+        run: python3 -m pip install -r sparql-corpus/requirements.txt
+      - name: Restore verified source artifact
+        id: previous
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: complete-sparql-corpus-source-and-results
+          run-id: 37369069965
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/corpus-baseline
+      - name: Restore only vendor sources, catalogue, and historical reports
+        if: steps.previous.outcome == 'success'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, zipfile
+          root = Path.cwd().resolve()
+          old = Path(os.environ['RUNNER_TEMP']) / 'corpus-baseline/sparql-corpus-complete-source.zip'
+          prefixes = ('sparql-corpus/vendor/', 'sparql-corpus/corpus/', 'sparql-corpus/reports/')
+          with zipfile.ZipFile(old) as archive:
+              for info in archive.infolist():
+                  if info.is_dir() or not info.filename.startswith(prefixes):
+                      continue
+                  target = (root / info.filename).resolve()
+                  if not target.is_relative_to(root):
+                      raise SystemExit('Unsafe archive member: ' + info.filename)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(archive.read(info))
+          PY
+      - name: Rebuild original source collection when previous artifact is unavailable
+        if: steps.previous.outcome != 'success'
+        run: python3 sparql-corpus/tools/rebuild.py --download
+      - name: Test collector and original importers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p sparql-corpus/reports
+          python3 -m unittest discover -s sparql-corpus/tools/tests -v 2>&1 | tee sparql-corpus/reports/collection-python-tests.log
+      - name: Verify original catalogue integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 sparql-corpus/tools/verify_corpus.py 2>&1 | tee sparql-corpus/reports/collection-catalogue-integrity.log
+      - name: Collect every pinned source file and expand all test indexes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 sparql-corpus/tools/collect_all_tests.py 2>&1 | tee sparql-corpus/reports/collection.log
+      - name: Package complete source and verify Git patch roundtrip
+        run: python3 sparql-corpus/tools/package_collection.py
+      - name: Publish complete collection
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-triplestore-test-collection
+          path: deliverables-collection/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+      - name: Publish collection summary and verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-collection-index-and-reports
+          path: |
+            sparql-corpus/collection/summary.json
+            sparql-corpus/collection/sources.lock.json
+            sparql-corpus/collection/index-errors.json
+            sparql-corpus/collection/omitted-files.json
+            sparql-corpus/reports/collection*.log
+            deliverables-collection/verification.json
+            deliverables-collection/SHA256SUMS
+          if-no-files-found: ignore
+          retention-days: 90
