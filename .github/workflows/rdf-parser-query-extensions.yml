@@ -20,15 +20,37 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Build module prerequisites without tests
-        run: mvn -B -pl core/sail/rdf-parser -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true install
+        shell: bash
+        run: |
+          if ! mvn -B -ntp -U -pl core/sail/rdf-parser -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true clean install > /tmp/rdf-parser-build.log 2>&1; then
+            tail -120 /tmp/rdf-parser-build.log
+            exit 1
+          fi
+          tail -65 /tmp/rdf-parser-build.log
+      - name: Verify installed evaluator API
+        shell: bash
+        run: |
+          javap -classpath "$HOME/.m2/repository/org/eclipse/rdf4j/rdf4j-queryalgebra-evaluation/6.2.0-SNAPSHOT/rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar" org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext
       - name: Run parser and three-backend integration tests
-        run: mvn -B -pl core/sail/rdf-parser -Dtest=RdfDocumentParserTest,RdfParserIntegrationTest test
-      - name: Print focused test reports
+        shell: bash
+        run: |
+          if ! mvn -B -ntp -o -pl core/sail/rdf-parser -Dtest=RdfDocumentParserTest,RdfParserIntegrationTest test > /tmp/rdf-parser-test.log 2>&1; then
+            tail -100 /tmp/rdf-parser-test.log
+            exit 1
+          fi
+          tail -35 /tmp/rdf-parser-test.log
+      - name: Print focused test summaries
         if: always()
         shell: bash
         run: |
-          shopt -s nullglob
-          for report in core/sail/rdf-parser/target/surefire-reports/*.txt; do
-            echo "===== $report ====="
-            cat "$report"
-          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for report in sorted(Path('core/sail/rdf-parser/target/surefire-reports').glob('TEST-*.xml')):
+              suite = ET.parse(report).getroot()
+              print({key: suite.get(key) for key in ('name', 'tests', 'failures', 'errors', 'skipped')})
+              for case in suite.findall('testcase'):
+                  for error in list(case.findall('failure')) + list(case.findall('error')):
+                      print(case.get('name'), error.get('message'))
+                      print('\n'.join((error.text or '').splitlines()[:12]))
+          PY

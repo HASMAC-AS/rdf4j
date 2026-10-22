@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedService;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 
 /**
@@ -69,7 +70,9 @@ public final class RdfParseService implements FederatedService {
 		});
 		TupleExpr body = PropertyFunctionRewriter.rewrite(request.body(), functions);
 		body = strategy.optimize(body, new EvaluationStatistics(), bindings);
-		return strategy.precompile(body).evaluate(bindings);
+		// A private dataset needs its own context; never inherit a fixed-dataset view from the outer query.
+		var context = new QueryEvaluationContext.Minimal(dataset, source.getValueFactory(), source.getComparator());
+		return strategy.precompile(body, context).evaluate(bindings);
 	}
 
 	private static CloseableIteration<BindingSet> projected(CloseableIteration<BindingSet> result,
