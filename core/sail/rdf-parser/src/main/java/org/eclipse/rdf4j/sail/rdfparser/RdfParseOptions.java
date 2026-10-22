@@ -1,0 +1,27 @@
+/*******************************************************************************
+ * Copyright (c) 2026 Eclipse RDF4J contributors.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Distribution License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *******************************************************************************/
+package org.eclipse.rdf4j.sail.rdfparser;
+
+/**
+ * Immutable, per-Sail resource limits. Input size is measured as UTF-8 bytes; statement count includes duplicate
+ * parser events. Nesting counts Turtle structural delimiters, not characters inside strings, IRIs or comments.
+ * Limits apply to each document, not to the entire outer query. Ordinary query timeouts still apply.
+ */
+public record RdfParseOptions(long maxInputBytes, long maxStatements, int maxNesting, long maxParseMillis) {
+	public static final RdfParseOptions DEFAULT = new RdfParseOptions(8L * 1024 * 1024, 100_000, 64, 10_000);
+
+	public RdfParseOptions {
+		if (maxInputBytes < 1 || maxStatements < 1 || maxNesting < 1 || maxNesting > 256
+				|| maxParseMillis < 1 || maxParseMillis > 3_600_000) {
+			throw new IllegalArgumentException("Positive parsing limits required; nesting <= 256 and time <= 1 hour");
+		}
+	}
+}

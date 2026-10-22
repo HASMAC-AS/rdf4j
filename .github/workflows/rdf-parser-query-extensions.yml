@@ -1,0 +1,34 @@
+name: RDF parser query extensions
+
+on:
+  push:
+    branches: [ 'feature/rdf-parser-query-extensions' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+      - name: Build module prerequisites without tests
+        run: mvn -B -pl core/sail/rdf-parser -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true install
+      - name: Run parser and three-backend integration tests
+        run: mvn -B -pl core/sail/rdf-parser -Dtest=RdfDocumentParserTest,RdfParserIntegrationTest test
+      - name: Print focused test reports
+        if: always()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for report in core/sail/rdf-parser/target/surefire-reports/*.txt; do
+            echo "===== $report ====="
+            cat "$report"
+          done
