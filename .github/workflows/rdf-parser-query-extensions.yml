@@ -34,7 +34,7 @@ jobs:
       - name: Run parser and three-backend integration tests
         shell: bash
         run: |
-          if ! mvn -B -ntp -o -pl core/sail/rdf-parser -Dtest=RdfDocumentParserTest,RdfParserIntegrationTest test > /tmp/rdf-parser-test.log 2>&1; then
+          if ! mvn -B -ntp -nsu -pl core/sail/rdf-parser -Dtest=RdfDocumentParserTest,RdfParserIntegrationTest test > /tmp/rdf-parser-test.log 2>&1; then
             tail -100 /tmp/rdf-parser-test.log
             exit 1
           fi
