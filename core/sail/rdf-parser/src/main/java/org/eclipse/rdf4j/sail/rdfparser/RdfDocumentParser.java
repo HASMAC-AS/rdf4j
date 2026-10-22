@@ -13,6 +13,9 @@ package org.eclipse.rdf4j.sail.rdfparser;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -48,6 +51,20 @@ public final class RdfDocumentParser {
 
 	/** Parses completely before publishing the immutable graph. Every invocation gets a fresh blank-node scope. */
 	public Model parse(Value content, Value mediaType, Value baseIRI) {
+		Model result = new LinkedHashModel();
+		parseInto(content, mediaType, baseIRI, result, false);
+		return result.unmodifiable();
+	}
+
+	/** Tuple consumers need set semantics and encounter order, but never subject/predicate/object indexes. */
+	Set<Statement> parseStatements(Value content, Value mediaType, Value baseIRI, boolean graphOnly) {
+		Set<Statement> result = new LinkedHashSet<>();
+		parseInto(content, mediaType, baseIRI, result, graphOnly);
+		return Collections.unmodifiableSet(result);
+	}
+
+	private void parseInto(Value content, Value mediaType, Value baseIRI, Collection<Statement> result,
+			boolean graphOnly) {
 		String text = string(content, "content");
 		String mime = string(mediaType, "format");
 		String base = base(baseIRI);
@@ -59,7 +76,6 @@ public final class RdfDocumentParser {
 		}
 		Budget budget = new Budget(options.maxParseMillis());
 		checkInput(text, budget);
-		Model result = new LinkedHashModel();
 		RDFParser parser = Rio.createParser(format, SimpleValueFactory.getInstance());
 		ParserConfig config = new ParserConfig() {
 			private static final long serialVersionUID = 1L;
@@ -101,6 +117,10 @@ public final class RdfDocumentParser {
 								|| SESAME_NIL.equals(statement.getContext().stringValue()))) {
 					throw new QueryEvaluationException("Reserved default-graph marker used as an input graph name");
 				}
+				if (graphOnly && statement.getContext() != null) {
+					throw new QueryEvaluationException("Named graphs require parse:quads or SERVICE <urn:rdf4j:parse>; "
+							+ "a triple function will not silently discard graph names");
+				}
 				result.add(statement);
 			}
 		});
@@ -123,7 +143,6 @@ public final class RdfDocumentParser {
 		}) {
 			parser.parse(input, base);
 			budget.check();
-			return result.unmodifiable();
 		} catch (QueryEvaluationException e) {
 			throw e;
 		} catch (IOException | RuntimeException e) {

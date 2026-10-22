@@ -10,14 +10,16 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.rdfparser;
 
+import java.util.AbstractList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.RandomAccess;
 
 import org.eclipse.rdf4j.common.iteration.AbstractCloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
-import org.eclipse.rdf4j.model.Model;
+import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
@@ -27,6 +29,8 @@ import org.eclipse.rdf4j.query.algebra.evaluation.function.TupleFunction;
 
 /** A fixed-arity tuple function. A complete successful parse precedes lazy row production. */
 public final class RdfParseTupleFunction implements TupleFunction {
+	private static final Literal TURTLE_MIME = SimpleValueFactory.getInstance().createLiteral("text/turtle");
+
 	public enum Result {
 		TRIPLES(3), QUADS(4), TRIPLE_TERMS(1);
 
@@ -73,14 +77,10 @@ public final class RdfParseTupleFunction implements TupleFunction {
 					? "parse:turtle requires content and optionally baseIRI"
 					: "RDF parsing requires content, media type, and optionally baseIRI");
 		}
-		Value mime = turtle ? SimpleValueFactory.getInstance().createLiteral("text/turtle") : args[1];
+		Value mime = turtle ? TURTLE_MIME : args[1];
 		Value base = args.length == (turtle ? 2 : 3) ? args[args.length - 1] : null;
-		Model model = parser.parse(args[0], mime, base);
-		if (result != Result.QUADS && model.contexts().stream().anyMatch(Objects::nonNull)) {
-			throw new QueryEvaluationException("Named graphs require parse:quads or SERVICE <urn:rdf4j:parse>; "
-					+ "a triple function will not silently discard graph names");
-		}
-		return new Rows(model.iterator(), result, valueFactory);
+		var statements = parser.parseStatements(args[0], mime, base, result != Result.QUADS);
+		return new Rows(statements.iterator(), result, valueFactory);
 	}
 
 	private static final class Rows extends AbstractCloseableIteration<List<? extends Value>> {
@@ -117,9 +117,7 @@ public final class RdfParseTupleFunction implements TupleFunction {
 			}
 			Statement st = statements.next();
 			return switch (result) {
-			case TRIPLES -> List.of(st.getSubject(), st.getPredicate(), st.getObject());
-			case QUADS -> List.of(st.getSubject(), st.getPredicate(), st.getObject(),
-					st.getContext() == null ? RdfParseVocabulary.DEFAULT_GRAPH : st.getContext());
+			case TRIPLES, QUADS -> new StatementRow(st, result.arity());
 			case TRIPLE_TERMS -> List.of(valueFactory.createTripleTerm(
 					st.getSubject(), st.getPredicate(), st.getObject()));
 			};
@@ -133,6 +131,33 @@ public final class RdfParseTupleFunction implements TupleFunction {
 		@Override
 		protected void handleClose() {
 			statements = null;
+		}
+	}
+
+	/** One immutable object per row instead of a List plus a three/four-element backing array. */
+	private static final class StatementRow extends AbstractList<Value> implements RandomAccess {
+		private final Statement statement;
+		private final int size;
+
+		StatementRow(Statement statement, int size) {
+			this.statement = statement;
+			this.size = size;
+		}
+
+		@Override
+		public Value get(int index) {
+			Objects.checkIndex(index, size);
+			return switch (index) {
+			case 0 -> statement.getSubject();
+			case 1 -> statement.getPredicate();
+			case 2 -> statement.getObject();
+			default -> statement.getContext() == null ? RdfParseVocabulary.DEFAULT_GRAPH : statement.getContext();
+			};
+		}
+
+		@Override
+		public int size() {
+			return size;
 		}
 	}
 }

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.rdfparser;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,7 +44,7 @@ import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
  */
 final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEvaluationException> {
 	private final Map<IRI, RdfParseTupleFunction> functions;
-	private final String temporaryPrefix = "__rdf_parse_" + UUID.randomUUID().toString().replace("-", "") + "_";
+	private String temporaryPrefix;
 	private int nextVariable;
 
 	private PropertyFunctionRewriter(Map<IRI, RdfParseTupleFunction> functions) {
@@ -51,7 +52,12 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 	}
 
 	static TupleExpr rewrite(TupleExpr expression, Map<IRI, RdfParseTupleFunction> functions) {
-		QueryRoot root = new QueryRoot(expression.clone());
+		return rewriteOwned(expression.clone(), functions);
+	}
+
+	/** Only for private, already-cloned algebra. The caller transfers ownership to this method. */
+	static TupleExpr rewriteOwned(TupleExpr expression, Map<IRI, RdfParseTupleFunction> functions) {
+		QueryRoot root = new QueryRoot(expression);
 		root.visit(new PropertyFunctionRewriter(functions));
 		return root.getArg();
 	}
@@ -74,7 +80,11 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 		boolean hasCall = patterns.stream().anyMatch(pattern -> function(pattern) != null)
 				|| leaves.stream().anyMatch(PropertyFunctionRewriter::isLocalService);
 		if (!hasCall) {
-			super.meet(node);
+			// The whole conjunctive group has already been inspected. Visiting its Join children
+			// would repeatedly flatten every suffix of a left-deep BGP (quadratic work).
+			for (TupleExpr leaf : leaves) {
+				leaf.visit(this);
+			}
 			return;
 		}
 		replaceGroup(node, leaves, patterns);
@@ -101,6 +111,9 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 				consumed.add(local);
 			}
 		}
+		// Share these indexes between all calls in this conjunctive group. Build lazily so a
+		// group containing only a local SERVICE does not validate unrelated RDF collections.
+		CollectionIndex collections = null;
 		for (StatementPattern pattern : patterns) {
 			RdfParseTupleFunction function = function(pattern);
 			if (function == null) {
@@ -110,9 +123,12 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 				throw new QueryEvaluationException("RDF parser property calls must be outside GRAPH clauses");
 			}
 			consumed.add(pattern);
-			List<Var> args = collection(pattern.getSubjectVar(), patterns, consumed, cells,
+			if (collections == null) {
+				collections = new CollectionIndex(patterns);
+			}
+			List<Var> args = collection(pattern.getSubjectVar(), collections, consumed, cells,
 					function.isTurtle());
-			List<Var> outputs = collection(pattern.getObjectVar(), patterns, consumed, cells,
+			List<Var> outputs = collection(pattern.getObjectVar(), collections, consumed, cells,
 					function.resultArity() == 1);
 			int minArgs = function.isTurtle() ? 1 : 2;
 			if (args.size() < minArgs || args.size() > minArgs + 1
@@ -129,7 +145,7 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 			// equalities explicit instead of letting the last tuple column overwrite an earlier binding.
 			for (Var variable : outputs) {
 				if (!variable.hasValue() && !outputNames.add(variable.getName())) {
-					Var fresh = Var.of(temporaryPrefix + nextVariable++, true);
+					Var fresh = freshVariable();
 					call.addResultVar(fresh);
 					output = new Filter(output, new SameTerm(variable.clone(), fresh.clone()));
 				} else {
@@ -162,13 +178,19 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 			remaining = new SingletonSet();
 		}
 		Set<String> available = new HashSet<>(remaining.getBindingNames());
+		Map<String, Integer> producers = new HashMap<>();
+		for (Call call : calls) {
+			for (String output : call.outputs) {
+				producers.merge(output, 1, Integer::sum);
+			}
+		}
 		while (!calls.isEmpty()) {
 			Call ready = null;
 			for (Call candidate : calls) {
 				boolean blocked = false;
 				for (String input : candidate.inputs) {
-					if (!available.contains(input) && calls.stream().anyMatch(other -> other != candidate
-							&& other.outputs.contains(input))) {
+					if (!available.contains(input)
+							&& producers.getOrDefault(input, 0) > (candidate.outputs.contains(input) ? 1 : 0)) {
 						blocked = true;
 						break;
 					}
@@ -185,29 +207,19 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 			imports.addAll(ready.outputs); // Preserve prebound output constraints as well as document inputs.
 			remaining = new Lateral(remaining, ready.expression, imports);
 			available.addAll(ready.outputs);
+			for (String output : ready.outputs) {
+				producers.computeIfPresent(output, (name, count) -> count == 1 ? null : count - 1);
+			}
 			calls.remove(ready);
 		}
 		original.replaceWith(remaining);
 		remaining.visit(this);
 	}
 
-	private List<Var> collection(Var head, List<StatementPattern> patterns, Set<TupleExpr> consumed,
+	private List<Var> collection(Var head, CollectionIndex index, Set<TupleExpr> consumed,
 			Set<String> cells, boolean allowScalar) {
 		if (allowScalar && (head.hasValue() || !head.isAnonymous())) {
 			return List.of(head);
-		}
-		Map<String, StatementPattern> first = new HashMap<>();
-		Map<String, StatementPattern> rest = new HashMap<>();
-		for (StatementPattern pattern : patterns) {
-			if (pattern.getContextVar() != null || pattern.getSubjectVar().hasValue()
-					|| !pattern.getSubjectVar().isAnonymous()) {
-				continue;
-			}
-			Map<String, StatementPattern> index = RDF.FIRST.equals(pattern.getPredicateVar().getValue()) ? first
-					: RDF.REST.equals(pattern.getPredicateVar().getValue()) ? rest : null;
-			if (index != null && index.put(pattern.getSubjectVar().getName(), pattern) != null) {
-				throw new QueryEvaluationException("Ambiguous RDF collection in parser call");
-			}
 		}
 		List<Var> values = new ArrayList<>();
 		Var current = head;
@@ -215,8 +227,8 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 			if (current.hasValue() || !current.isAnonymous() || !cells.add(current.getName()) || values.size() >= 8) {
 				throw new QueryEvaluationException("Parser arguments must be unshared, acyclic syntactic RDF lists");
 			}
-			StatementPattern f = first.get(current.getName());
-			StatementPattern r = rest.get(current.getName());
+			StatementPattern f = index.first.get(current.getName());
+			StatementPattern r = index.rest.get(current.getName());
 			if (f == null || r == null || !consumed.add(f) || !consumed.add(r)) {
 				throw new QueryEvaluationException("Incomplete or shared RDF argument list in parser call");
 			}
@@ -236,11 +248,42 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 	}
 
 	private static void flatten(TupleExpr expression, List<TupleExpr> leaves) {
-		if (expression instanceof Join join) {
-			flatten(join.getLeftArg(), leaves);
-			flatten(join.getRightArg(), leaves);
-		} else {
-			leaves.add(expression);
+		ArrayDeque<TupleExpr> pending = new ArrayDeque<>();
+		pending.push(expression);
+		while (!pending.isEmpty()) {
+			TupleExpr node = pending.pop();
+			if (node instanceof Join join) {
+				pending.push(join.getRightArg());
+				pending.push(join.getLeftArg());
+			} else {
+				leaves.add(node);
+			}
+		}
+	}
+
+	private Var freshVariable() {
+		if (temporaryPrefix == null) {
+			temporaryPrefix = "__rdf_parse_" + UUID.randomUUID().toString().replace("-", "") + "_";
+		}
+		return Var.of(temporaryPrefix + nextVariable++, true);
+	}
+
+	private static final class CollectionIndex {
+		private final Map<String, StatementPattern> first = new HashMap<>();
+		private final Map<String, StatementPattern> rest = new HashMap<>();
+
+		CollectionIndex(List<StatementPattern> patterns) {
+			for (StatementPattern pattern : patterns) {
+				if (pattern.getContextVar() != null || pattern.getSubjectVar().hasValue()
+						|| !pattern.getSubjectVar().isAnonymous()) {
+					continue;
+				}
+				Map<String, StatementPattern> index = RDF.FIRST.equals(pattern.getPredicateVar().getValue()) ? first
+						: RDF.REST.equals(pattern.getPredicateVar().getValue()) ? rest : null;
+				if (index != null && index.put(pattern.getSubjectVar().getName(), pattern) != null) {
+					throw new QueryEvaluationException("Ambiguous RDF collection in parser call");
+				}
+			}
 		}
 	}
 

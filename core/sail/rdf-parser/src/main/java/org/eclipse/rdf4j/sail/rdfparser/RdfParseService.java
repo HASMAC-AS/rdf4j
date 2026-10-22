@@ -48,7 +48,7 @@ public final class RdfParseService implements FederatedService {
 
 	@Override
 	public boolean ask(Service service, BindingSet bindings, String baseUri) {
-		try (CloseableIteration<BindingSet> result = query(ServiceRequest.from(service), bindings)) {
+		try (CloseableIteration<BindingSet> result = query(prepare(service), bindings)) {
 			return result.hasNext();
 		}
 	}
@@ -57,10 +57,17 @@ public final class RdfParseService implements FederatedService {
 	public CloseableIteration<BindingSet> select(Service service, Set<String> projectionVars, BindingSet bindings,
 			String baseUri) {
 		// Parse failures occur here, before even the first row is returned to the outer SERVICE operator.
-		CloseableIteration<BindingSet> result = query(ServiceRequest.from(service), bindings);
+		CloseableIteration<BindingSet> result = query(prepare(service), bindings);
 		return projected(result, projectionVars, bindings);
 	}
 
+	private ServiceRequest prepare(Service service) {
+		ServiceRequest request = ServiceRequest.from(service);
+		return new ServiceRequest(PropertyFunctionRewriter.rewriteOwned(request.body(), functions),
+				request.content(), request.format(), request.base());
+	}
+
+	/** Consumes a private algebra tree; optimizers must never mutate the reusable batch template. */
 	private CloseableIteration<BindingSet> query(ServiceRequest request, BindingSet bindings) {
 		Model model = parser.parse(request.value(request.content(), bindings),
 				request.value(request.format(), bindings), request.value(request.base(), bindings));
@@ -71,14 +78,14 @@ public final class RdfParseService implements FederatedService {
 		});
 		// Optimizers require the root they receive to have no parent. Keep the rewritten subtree
 		// under an explicit root rather than exposing a child attached to the rewriter's temporary root.
-		TupleExpr body = new QueryRoot(PropertyFunctionRewriter.rewrite(request.body(), functions));
+		TupleExpr body = new QueryRoot(request.body());
 		body = strategy.optimize(body, new EvaluationStatistics(), bindings);
 		// A private dataset needs its own context; never inherit a fixed-dataset view from the outer query.
 		var context = new QueryEvaluationContext.Minimal(dataset, source.getValueFactory(), source.getComparator());
 		return strategy.precompile(body, context).evaluate(bindings);
 	}
 
-	private static CloseableIteration<BindingSet> projected(CloseableIteration<BindingSet> result,
+	static CloseableIteration<BindingSet> projected(CloseableIteration<BindingSet> result,
 			Set<String> variables, BindingSet bindings) {
 		return new LookAheadIteration<>() {
 			private CloseableIteration<BindingSet> delegate = result;
@@ -88,6 +95,9 @@ public final class RdfParseService implements FederatedService {
 				try {
 					while (delegate.hasNext()) {
 						BindingSet row = delegate.next();
+						if (canReuse(row, variables, bindings)) {
+							return row;
+						}
 						MapBindingSet merged = new MapBindingSet(bindings.size() + variables.size());
 						for (Binding binding : bindings) {
 							merged.addBinding(binding);
@@ -97,7 +107,7 @@ public final class RdfParseService implements FederatedService {
 							var value = row.getValue(variable);
 							if (value != null) {
 								var existing = merged.getValue(variable);
-								if (existing != null && !existing.equals(value)) {
+								if (existing != null && existing != value && !existing.equals(value)) {
 									compatible = false;
 									break;
 								}
@@ -126,12 +136,55 @@ public final class RdfParseService implements FederatedService {
 		};
 	}
 
+	private static boolean canReuse(BindingSet row, Set<String> variables, BindingSet bindings) {
+		// Normal evaluation already carries incoming bindings. Reuse that row only if projection
+		// would neither add/remove a binding nor replace an unprojected conflicting value.
+		if (row.size() < bindings.size()) {
+			return false;
+		}
+		for (Binding binding : bindings) {
+			var existing = row.getValue(binding.getName());
+			if (existing != binding.getValue() && !binding.getValue().equals(existing)) {
+				return false;
+			}
+		}
+		for (String name : row.getBindingNames()) {
+			if (!variables.contains(name) && !bindings.hasBinding(name)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	@Override
 	public CloseableIteration<BindingSet> evaluate(Service service, CloseableIteration<BindingSet> inputs,
 			String baseUri) {
 		// Do not collapse duplicate inputs into a set. Each row is a distinct correlated invocation.
+		Set<String> variables = Set.copyOf(service.getServiceVars());
 		return new LookAheadIteration<>() {
 			private CloseableIteration<BindingSet> current;
+			private ServiceRequest template;
+			private QueryEvaluationException preparationFailure;
+			private boolean prepared;
+
+			private CloseableIteration<BindingSet> selectInput(BindingSet input) {
+				// Prepare lazily: no input means no invocation, even for an invalid request.
+				// Keep failure handling inside the per-input SILENT boundary.
+				if (!prepared) {
+					prepared = true;
+					try {
+						template = prepare(service);
+					} catch (QueryEvaluationException failure) {
+						preparationFailure = failure;
+					}
+				}
+				if (preparationFailure != null) {
+					throw preparationFailure;
+				}
+				ServiceRequest invocation = new ServiceRequest(template.body().clone(),
+						template.content(), template.format(), template.base());
+				return projected(query(invocation, input), variables, input);
+			}
 
 			@Override
 			protected BindingSet getNextElement() {
@@ -149,10 +202,10 @@ public final class RdfParseService implements FederatedService {
 						}
 						BindingSet input = inputs.next();
 						if (!service.isSilent()) {
-							current = select(service, service.getServiceVars(), input, baseUri);
+							current = selectInput(input);
 						} else {
 							// SILENT is all-or-nothing for this invocation, including lazy evaluation failures.
-							try (var rows = select(service, service.getServiceVars(), input, baseUri)) {
+							try (var rows = selectInput(input)) {
 								List<BindingSet> completed = new ArrayList<>();
 								while (rows.hasNext()) {
 									completed.add(rows.next());
@@ -177,6 +230,8 @@ public final class RdfParseService implements FederatedService {
 						current = null;
 					}
 				} finally {
+					template = null;
+					preparationFailure = null;
 					inputs.close();
 				}
 			}
