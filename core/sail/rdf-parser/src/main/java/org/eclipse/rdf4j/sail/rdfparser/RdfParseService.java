@@ -4,7 +4,7 @@
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Distribution License v1.0
  * which accompanies this distribution, and is available at
- * http://www.eclipse.org/org/documents/edl-v10.php.
+ * http://www.eclipse.org/documents/edl-v10.php.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *******************************************************************************/
@@ -24,6 +24,7 @@ import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.algebra.QueryRoot;
 import org.eclipse.rdf4j.query.algebra.Service;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedService;
@@ -68,7 +69,9 @@ public final class RdfParseService implements FederatedService {
 		DefaultEvaluationStrategy strategy = new DefaultEvaluationStrategy(source, dataset, endpoint -> {
 			throw new QueryEvaluationException("Nested federation is disabled for parsed RDF");
 		});
-		TupleExpr body = PropertyFunctionRewriter.rewrite(request.body(), functions);
+		// Optimizers require the root they receive to have no parent. Keep the rewritten subtree
+		// under an explicit root rather than exposing a child attached to the rewriter's temporary root.
+		TupleExpr body = new QueryRoot(PropertyFunctionRewriter.rewrite(request.body(), functions));
 		body = strategy.optimize(body, new EvaluationStatistics(), bindings);
 		// A private dataset needs its own context; never inherit a fixed-dataset view from the outer query.
 		var context = new QueryEvaluationContext.Minimal(dataset, source.getValueFactory(), source.getComparator());
