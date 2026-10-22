@@ -36,7 +36,7 @@ final class RdfParserSailConnection extends SailConnectionWrapper {
 	@Override
 	public CloseableIteration<? extends BindingSet> evaluate(TupleExpr expression, Dataset dataset,
 			BindingSet bindings, boolean includeInferred) throws SailException {
-		return super.evaluate(PropertyFunctionRewriter.rewrite(expression, functions), dataset, bindings,
+		return super.evaluate(PropertyFunctionRewriter.rewrite(expression, functions, bindings), dataset, bindings,
 				includeInferred);
 	}
 

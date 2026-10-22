@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategy
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
+import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.query.parser.sparql.SPARQLParser;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -51,8 +52,11 @@ class RdfParserDependencyTest {
 					  ?doc parse:turtle (?source <urn:next> ?next)
 					}
 					""", null).getTupleExpr();
+			var bindings = new MapBindingSet();
+			bindings.addBinding("doc", vf.createLiteral(
+					"<urn:source> <urn:next> \"<urn:s> <urn:p> <urn:o> .\" ."));
 			TupleExpr[] plan = { new QueryRoot(PropertyFunctionRewriter.rewrite(parsed,
-					Map.of(RdfParseVocabulary.TURTLE, function))) };
+					Map.of(RdfParseVocabulary.TURTLE, function), optimize ? bindings : EmptyBindingSet.getInstance())) };
 			var source = new ParsedDatasetSource(new LinkedHashModel());
 			var dataset = source.dataset();
 			var strategy = new DefaultEvaluationStrategy(source, dataset, endpoint -> {
@@ -74,9 +78,7 @@ class RdfParserDependencyTest {
 					};
 				}
 			};
-			var bindings = new MapBindingSet();
-			bindings.addBinding("doc", vf.createLiteral(
-					"<urn:source> <urn:next> \"<urn:s> <urn:p> <urn:o> .\" ."));
+
 			if (optimize) {
 				plan[0] = strategy.optimize(plan[0], new EvaluationStatistics(), bindings);
 			}
@@ -87,7 +89,8 @@ class RdfParserDependencyTest {
 						source.getComparator());
 			}
 			int count = 0;
-			try (var rows = strategy.precompile(plan[0], context).evaluate(bindings)) {
+			try (var rows = strategy.precompile(plan[0], context)
+					.evaluate(optimize ? EmptyBindingSet.getInstance() : bindings)) {
 				while (rows.hasNext()) {
 					var row = rows.next();
 					assertEquals(vf.createIRI("urn:s"), row.getValue("s"));

@@ -97,6 +97,43 @@ class RdfParserOptimizationIntegrationTest {
 	}
 
 	@ParameterizedTest @EnumSource(Backend.class)
+	void chainedCallsRetainPreboundOutputConstraints(Backend backend) {
+		open(backend);
+		String document = "<urn:source> <urn:next> \"<urn:s> <urn:p> <urn:o> .\" .";
+		var query = connection.prepareTupleQuery(P + "SELECT ?s ?o WHERE { "
+				+ "?next parse:turtle (?s <urn:p> ?o) . ?doc parse:turtle (?source <urn:next> ?next) }");
+		query.setBinding("doc", VF.createLiteral(document));
+		query.setBinding("next", VF.createLiteral("<urn:s> <urn:p> <urn:o> ."));
+		try (var rows = query.evaluate()) {
+			assertTrue(rows.hasNext());
+			assertEquals(VF.createIRI("urn:s"), rows.next().getValue("s"));
+			assertFalse(rows.hasNext());
+		}
+		query.setBinding("next", VF.createLiteral("<urn:other> <urn:p> <urn:o> ."));
+		try (var rows = query.evaluate()) {
+			assertFalse(rows.hasNext());
+		}
+	}
+
+	@ParameterizedTest @EnumSource(Backend.class)
+	void tupleAndServiceCallsCanFeedEachOther(Backend backend) {
+		open(backend);
+		String document = "<urn:source> <urn:next> \"<urn:s> <urn:p> <urn:o> .\" .";
+		String[] bodies = {
+				"?next parse:turtle (?s <urn:p> ?o) . SERVICE <urn:rdf4j:parse> { "
+						+ CONFIG + "<urn:source> <urn:next> ?next }",
+				"SERVICE <urn:rdf4j:parse> { [] parse:content ?next; parse:format \"text/turtle\" . "
+						+ "?s <urn:p> ?o } ?doc parse:turtle (?source <urn:next> ?next)"
+		};
+		for (String body : bodies) {
+			var rows = select("SELECT ?s ?o WHERE { " + body + " }", document);
+			assertEquals(1, rows.size(), body);
+			assertEquals(VF.createIRI("urn:s"), rows.get(0).getValue("s"));
+			assertEquals(VF.createIRI("urn:o"), rows.get(0).getValue("o"));
+		}
+	}
+
+	@ParameterizedTest @EnumSource(Backend.class)
 	void serviceDuplicateInputsStillAllocateFreshBlankNodes(Backend backend) {
 		open(backend);
 		var rows = select("SELECT ?s ?copy WHERE { VALUES ?copy { 1 1 } SERVICE <urn:rdf4j:parse> { "

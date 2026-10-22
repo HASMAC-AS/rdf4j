@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
+import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.Join;
@@ -37,6 +38,7 @@ import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.TupleFunctionCall;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
+import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.BindingAssignerOptimizer;
 
 /**
  * Recognizes syntactic RDF collections within one conjunctive group, never stored RDF lists. It creates a lateral
@@ -53,6 +55,20 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 
 	static TupleExpr rewrite(TupleExpr expression, Map<IRI, RdfParseTupleFunction> functions) {
 		return rewriteOwned(expression.clone(), functions);
+	}
+
+	/** Capture API bindings using the original SPARQL scopes before synthetic dependency operators are introduced. */
+	static TupleExpr rewrite(TupleExpr expression, Map<IRI, RdfParseTupleFunction> functions, BindingSet bindings) {
+		TupleExpr owned = expression.clone();
+		if (bindings != null && !bindings.isEmpty()) {
+			// Sail stores execute optimized plans with an empty input mapping. The standard binding
+			// analysis can become conservative across chained tuple-function operators; substitute
+			// proven API values while the original, fully understood SPARQL algebra is still available.
+			QueryRoot root = new QueryRoot(owned);
+			new BindingAssignerOptimizer().optimize(root, null, bindings);
+			owned = root.getArg();
+		}
+		return rewriteOwned(owned, functions);
 	}
 
 	/** Only for private, already-cloned algebra. The caller transfers ownership to this method. */
