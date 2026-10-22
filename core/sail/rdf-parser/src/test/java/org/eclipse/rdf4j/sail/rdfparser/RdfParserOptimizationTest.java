@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.algebra.QueryModelNode;
 import org.eclipse.rdf4j.query.algebra.Service;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
@@ -225,8 +226,11 @@ class RdfParserOptimizationTest {
 		int[] calls = { 0 };
 		rewritten.visit(new AbstractQueryModelVisitor<RuntimeException>() {
 			@Override
-			public void meet(TupleFunctionCall call) {
-				calls[0]++;
+			public void meetOther(QueryModelNode node) {
+				if (node instanceof TupleFunctionCall) {
+					calls[0]++;
+				}
+				super.meetOther(node);
 			}
 		});
 		assertEquals(2, calls[0]);
@@ -244,8 +248,11 @@ class RdfParserOptimizationTest {
 		int[] calls = { 0 };
 		rewritten.visit(new AbstractQueryModelVisitor<RuntimeException>() {
 			@Override
-			public void meet(TupleFunctionCall call) {
-				calls[0]++;
+			public void meetOther(QueryModelNode node) {
+				if (node instanceof TupleFunctionCall) {
+					calls[0]++;
+				}
+				super.meetOther(node);
 			}
 			@Override
 			public void meet(StatementPattern pattern) {
