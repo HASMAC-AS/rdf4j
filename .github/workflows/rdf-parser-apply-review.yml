@@ -1,0 +1,119 @@
+name: Verify RDF parser review corrections
+on:
+  push:
+    branches: [ 'fix/rdf-parser-review' ]
+    paths: [ '.github/workflows/rdf-parser-apply-review.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.repository == 'HASMAC-AS/rdf4j' && github.ref == 'refs/heads/fix/rdf-parser-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 30
+      - uses: actions/setup-java@v6.0.1
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+      - name: Verify and apply the locally tested correction
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib, re, subprocess, os
+          parts = sorted(pathlib.Path('.github/review-fixes').glob('part*.b64'))
+          assert len(parts) == 4
+          data = gzip.decompress(base64.b64decode(''.join(p.read_text().strip() for p in parts), validate=True))
+          assert hashlib.sha256(data).hexdigest() == '90536a4fcd8784eae79aed9cf8682c612fd8a808906777aa16406f787dac8d11'
+          pathlib.Path('/tmp/review-fixes.patch').write_bytes(data)
+          subprocess.run(['git','apply','--check','--exclude=.github/*','/tmp/review-fixes.patch'],check=True)
+          subprocess.run(['git','apply','--exclude=.github/*','/tmp/review-fixes.patch'],check=True)
+          subprocess.run(['git','add','core'],check=True)
+          names = subprocess.check_output(['git','diff','--cached','--name-only']).decode().splitlines()
+          assert len(names) == 15, names
+          assert all(n.startswith(('core/rio/','core/queryalgebra/evaluation/','core/sail/rdf-parser/')) for n in names)
+          pathlib.Path('/tmp/review-allowed.txt').write_text('\n'.join(names)+'\n')
+          patterns = ','.join('.*'+re.escape('/'+n) for n in names if n.endswith('.java'))
+          with open(os.environ['GITHUB_ENV'],'a') as env:
+              env.write('MAVEN_ARGS=-ntp -DspotlessFiles='+patterns+'\n')
+          PY
+      - name: Build clean Java 25 reactor
+        shell: bash
+        run: |
+          if ! mvn -B -ntp -U -pl core/sail/rdf-parser -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true clean install > /tmp/review-build.log 2>&1; then tail -140 /tmp/review-build.log; exit 1; fi
+          tail -30 /tmp/review-build.log
+      - name: Test affected Rio modules and all parser extensions
+        shell: bash
+        run: |
+          if ! mvn -B -ntp -nsu -pl core/rio/api,core/rio/turtle,core/rio/trig,core/rio/ntriples,core/rio/nquads,core/sail/rdf-parser test > /tmp/review-tests.log 2>&1; then tail -140 /tmp/review-tests.log; exit 1; fi
+          tail -30 /tmp/review-tests.log
+      - name: Test shared native triple-term evaluator
+        shell: bash
+        run: |
+          if ! mvn -B -ntp -nsu -pl core/queryalgebra/evaluation -Dtest=NativeTripleTermMatchingTest,EvaluationStrategyWithTripleTermsTest test > /tmp/review-evaluator.log 2>&1; then tail -140 /tmp/review-evaluator.log; exit 1; fi
+          tail -25 /tmp/review-evaluator.log
+      - name: Commit only tested source to the isolated review branch
+        shell: bash
+        run: |
+          git add -u core
+          git diff --cached --check
+          python3 - <<'PY'
+          import pathlib, subprocess
+          allowed = set(pathlib.Path('/tmp/review-allowed.txt').read_text().splitlines())
+          actual = set(subprocess.check_output(['git','diff','--cached','--name-only']).decode().splitlines())
+          assert actual == allowed, (actual-allowed,allowed-actual)
+          assert not subprocess.check_output(['git','diff','--name-only']), 'Unstaged build changes'
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Fix RDF parser review findings and native triple-term matching'
+          git push origin HEAD:refs/heads/fix/rdf-parser-review
+      - name: Package exact sources, baseline and test evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p /tmp/review-evidence
+          python3 - <<'PY'
+          import pathlib, subprocess, zipfile, json, xml.etree.ElementTree as ET
+          root=pathlib.Path('.')
+          out=pathlib.Path('/tmp/review-evidence')
+          base='30b733258cc696d6e4396d3b002b4a1d94818cba'
+          head=subprocess.check_output(['git','rev-parse','HEAD']).decode().strip()
+          (out/'commit.txt').write_text(head+'\n')
+          (out/'tree.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD^{tree}']).decode())
+          paths=subprocess.check_output(['git','ls-files','core/sail/rdf-parser','core/sail/pom.xml']).decode().splitlines()
+          extra=pathlib.Path('/tmp/review-allowed.txt')
+          if extra.exists(): paths+=extra.read_text().splitlines()
+          paths=sorted(set(paths))
+          with zipfile.ZipFile(out/'tested-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for p in paths:
+                  if pathlib.Path(p).is_file(): z.write(p,p)
+          with zipfile.ZipFile(out/'baseline-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for p in paths:
+                  r=subprocess.run(['git','show',base+':'+p],capture_output=True)
+                  if r.returncode==0: z.writestr(p,r.stdout)
+          (out/'incremental.patch').write_bytes(subprocess.check_output(['git','diff','--binary',base,'HEAD','--','core']))
+          suites=[]
+          with zipfile.ZipFile(out/'test-reports.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for pattern in ['core/rio/*/target/surefire-reports/*','core/queryalgebra/evaluation/target/surefire-reports/*','core/sail/rdf-parser/target/surefire-reports/*']:
+                  for p in root.glob(pattern):
+                      if p.is_file():
+                          z.write(p,str(p))
+                          if p.name.startswith('TEST-') and p.suffix=='.xml':
+                              s=ET.parse(p).getroot()
+                              row={'path':str(p),**{k:s.get(k) for k in ('name','tests','failures','errors','skipped')}}
+                              suites.append(row)
+                              print(json.dumps(row))
+          (out/'suites.json').write_text(json.dumps(suites,indent=2)+'\n')
+          PY
+          cp /tmp/review-*.log /tmp/review-evidence/ 2>/dev/null || true
+          java -version 2> /tmp/review-evidence/java-version.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rdf-parser-review-verified
+          path: /tmp/review-evidence/
