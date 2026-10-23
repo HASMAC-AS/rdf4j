@@ -32,9 +32,11 @@ jobs:
           pathlib.Path('/tmp/review-fixes.patch').write_bytes(data)
           subprocess.run(['git','apply','--check','--exclude=.github/*','/tmp/review-fixes.patch'],check=True)
           subprocess.run(['git','apply','--exclude=.github/*','/tmp/review-fixes.patch'],check=True)
+          subprocess.run(['git','apply','--check','.github/review-fixes/settings.patch'],check=True)
+          subprocess.run(['git','apply','.github/review-fixes/settings.patch'],check=True)
           subprocess.run(['git','add','core'],check=True)
           names = subprocess.check_output(['git','diff','--cached','--name-only']).decode().splitlines()
-          assert len(names) == 15, names
+          assert len(names) == 19, names
           assert all(n.startswith(('core/rio/','core/queryalgebra/evaluation/','core/sail/rdf-parser/')) for n in names)
           pathlib.Path('/tmp/review-allowed.txt').write_text('\n'.join(names)+'\n')
           patterns = ','.join('.*'+re.escape('/'+n) for n in names if n.endswith('.java'))

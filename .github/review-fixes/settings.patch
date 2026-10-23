@@ -1,0 +1,63 @@
+diff --git a/core/rio/nquads/src/test/java/org/eclipse/rdf4j/rio/nquads/AbstractNQuadsParserUnitTest.java b/core/rio/nquads/src/test/java/org/eclipse/rdf4j/rio/nquads/AbstractNQuadsParserUnitTest.java
+index b798e98..5ca74da 100644
+--- a/core/rio/nquads/src/test/java/org/eclipse/rdf4j/rio/nquads/AbstractNQuadsParserUnitTest.java
++++ b/core/rio/nquads/src/test/java/org/eclipse/rdf4j/rio/nquads/AbstractNQuadsParserUnitTest.java
+@@ -679,7 +679,7 @@ public abstract class AbstractNQuadsParserUnitTest extends AbstractParserTest {
+ 
+ 	@Test
+ 	public void testSupportedSettings() {
+-		assertThat(parser.getSupportedSettings()).hasSize(14);
++		assertThat(parser.getSupportedSettings()).hasSize(15).contains(BasicParserSettings.MAX_NESTING_DEPTH);
+ 	}
+ 
+ 	protected abstract RDFParser createRDFParser();
+diff --git a/core/rio/ntriples/src/test/java/org/eclipse/rdf4j/rio/ntriples/AbstractNTriplesParserUnitTest.java b/core/rio/ntriples/src/test/java/org/eclipse/rdf4j/rio/ntriples/AbstractNTriplesParserUnitTest.java
+index 56e38ac..a973af9 100644
+--- a/core/rio/ntriples/src/test/java/org/eclipse/rdf4j/rio/ntriples/AbstractNTriplesParserUnitTest.java
++++ b/core/rio/ntriples/src/test/java/org/eclipse/rdf4j/rio/ntriples/AbstractNTriplesParserUnitTest.java
+@@ -250,7 +250,9 @@ public abstract class AbstractNTriplesParserUnitTest extends AbstractParserTest
+ 
+ 	@Test
+ 	public void testSupportedSettings() {
+-		assertEquals(14, createRDFParser().getSupportedSettings().size());
++		var settings = createRDFParser().getSupportedSettings();
++		assertEquals(15, settings.size());
++		assertTrue(settings.contains(BasicParserSettings.MAX_NESTING_DEPTH));
+ 	}
+ 
+ 	@Test
+diff --git a/core/rio/trig/src/test/java/org/eclipse/rdf4j/rio/trig/TriGParserCustomTest.java b/core/rio/trig/src/test/java/org/eclipse/rdf4j/rio/trig/TriGParserCustomTest.java
+index a41f8b3..2770862 100644
+--- a/core/rio/trig/src/test/java/org/eclipse/rdf4j/rio/trig/TriGParserCustomTest.java
++++ b/core/rio/trig/src/test/java/org/eclipse/rdf4j/rio/trig/TriGParserCustomTest.java
+@@ -36,6 +36,7 @@ import org.eclipse.rdf4j.rio.AbstractParserTest;
+ import org.eclipse.rdf4j.rio.RDFFormat;
+ import org.eclipse.rdf4j.rio.RDFParseException;
+ import org.eclipse.rdf4j.rio.RDFParser;
++import org.eclipse.rdf4j.rio.helpers.BasicParserSettings;
+ import org.eclipse.rdf4j.rio.Rio;
+ import org.eclipse.rdf4j.rio.helpers.StatementCollector;
+ import org.junit.jupiter.api.BeforeEach;
+@@ -181,7 +182,8 @@ public class TriGParserCustomTest extends AbstractParserTest {
+ 
+ 	@Test
+ 	public void testSupportedSettings() {
+-		assertThat(Rio.createParser(RDFFormat.TRIG).getSupportedSettings()).hasSize(15);
++		assertThat(Rio.createParser(RDFFormat.TRIG).getSupportedSettings()).hasSize(16)
++				.contains(BasicParserSettings.MAX_NESTING_DEPTH);
+ 	}
+ 
+ 	@Test
+diff --git a/core/rio/turtle/src/test/java/org/eclipse/rdf4j/rio/turtle/CustomTurtleParserTest.java b/core/rio/turtle/src/test/java/org/eclipse/rdf4j/rio/turtle/CustomTurtleParserTest.java
+index 9fb1caf..9870195 100644
+--- a/core/rio/turtle/src/test/java/org/eclipse/rdf4j/rio/turtle/CustomTurtleParserTest.java
++++ b/core/rio/turtle/src/test/java/org/eclipse/rdf4j/rio/turtle/CustomTurtleParserTest.java
+@@ -185,7 +185,7 @@ public class CustomTurtleParserTest {
+ 
+ 	@Test
+ 	public void testSupportedSettings() {
+-		assertThat(parser.getSupportedSettings()).hasSize(15);
++		assertThat(parser.getSupportedSettings()).hasSize(16).contains(BasicParserSettings.MAX_NESTING_DEPTH);
+ 	}
+ 
+ 	@Test
