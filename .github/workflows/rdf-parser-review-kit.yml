@@ -31,10 +31,11 @@ jobs:
           mvn -B -ntp -nsu -pl core/sail/rdf-parser dependency:copy-dependencies -DincludeScope=test -DoutputDirectory="$kit/deps"
           mvn -B -ntp -nsu dependency:get -Dartifact=org.junit.platform:junit-platform-console-standalone:6.1.3 -Dtransitive=false
           cp "$HOME/.m2/repository/org/junit/platform/junit-platform-console-standalone/6.1.3/junit-platform-console-standalone-6.1.3.jar" "$kit/console.jar"
-          git archive HEAD | tar -x -C "$kit/source"
+          git ls-files -z '*.java' 'pom.xml' '.github/workflows/*.yml' | tar --null -T - -cf - | tar -x -C "$kit/source"
           "$JAVA_HOME/bin/jlink" --add-modules java.se,jdk.compiler,jdk.unsupported,jdk.zipfs,jdk.management --strip-debug --no-header-files --no-man-pages --compress=zip-6 --output "$kit/jdk"
           git rev-parse HEAD > "$kit/COMMIT"
           java -version 2> "$kit/JAVA_VERSION"
+          du -sh "$kit"/*
           tar -C /tmp -czf /tmp/rdf-parser-review-kit.tar.gz rdf-parser-review-kit
           ls -lh /tmp/rdf-parser-review-kit.tar.gz
       - uses: actions/upload-artifact@v4
