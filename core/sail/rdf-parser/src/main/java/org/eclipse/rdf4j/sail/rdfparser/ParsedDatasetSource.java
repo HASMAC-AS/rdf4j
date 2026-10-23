@@ -10,25 +10,35 @@
  *******************************************************************************/
 package org.eclipse.rdf4j.sail.rdfparser;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
+import org.eclipse.rdf4j.common.iteration.EmptyIteration;
+import org.eclipse.rdf4j.common.iteration.FilterIteration;
+import org.eclipse.rdf4j.common.iteration.SingletonIteration;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.TripleTerm;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.RDF4J;
-import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
+import org.eclipse.rdf4j.query.algebra.evaluation.NativeTripleTermSource;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
 
 /** Indexed, read-only source with an explicit default graph, never a union of all parsed graphs. */
-final class ParsedDatasetSource implements TripleSource {
+final class ParsedDatasetSource implements NativeTripleTermSource {
 	private final Model model;
 	private final List<Resource> names;
+	private volatile TermIndex termIndex;
 
 	ParsedDatasetSource(Model model) {
 		this.model = model;
@@ -64,6 +74,100 @@ final class ParsedDatasetSource implements TripleSource {
 	@Override
 	public boolean hasStatements(Resource subject, IRI predicate, Value object, Resource... contexts) {
 		return model.contains(subject, predicate, object, contexts);
+	}
+
+	@Override
+	public CloseableIteration<? extends TripleTerm> getTripleTerms(Resource subject, IRI predicate, Value object) {
+		TermIndex index = termIndex;
+		if (index == null) {
+			synchronized (this) {
+				index = termIndex;
+				if (index == null) {
+					termIndex = index = new TermIndex(model);
+				}
+			}
+		}
+		if (subject != null && predicate != null && object != null) {
+			TripleTerm match = index.terms.get(getValueFactory().createTripleTerm(subject, predicate, object));
+			return match == null ? new EmptyIteration<>() : new SingletonIteration<>(match);
+		}
+		List<TripleTerm> candidates = index.all;
+		if (subject != null) {
+			candidates = index.subjects.get(subject);
+			if (candidates == null) {
+				return new EmptyIteration<>();
+			}
+		}
+		if (predicate != null) {
+			List<TripleTerm> matches = index.predicates.get(predicate);
+			if (matches == null) {
+				return new EmptyIteration<>();
+			}
+			if (matches.size() < candidates.size()) {
+				candidates = matches;
+			}
+		}
+		if (object != null) {
+			List<TripleTerm> matches = index.objects.get(object);
+			if (matches == null) {
+				return new EmptyIteration<>();
+			}
+			if (matches.size() < candidates.size()) {
+				candidates = matches;
+			}
+		}
+		var rows = new CloseableIteratorIteration<>(candidates.iterator()) {
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException("Parsed RDF is read-only");
+			}
+		};
+		if (subject == null && predicate == null && object == null) {
+			return rows;
+		}
+		return new FilterIteration<>(rows) {
+			@Override
+			protected void handleClose() {
+				// FilterIteration closes its wrapped iterator.
+			}
+
+			@Override
+			protected boolean accept(TripleTerm term) {
+				return (subject == null || subject.equals(term.getSubject()))
+						&& (predicate == null || predicate.equals(term.getPredicate()))
+						&& (object == null || object.equals(term.getObject()));
+			}
+		};
+	}
+
+	/** Built only when a triple-term pattern is evaluated; ordinary SERVICE queries pay no indexing cost. */
+	private static final class TermIndex {
+		private final List<TripleTerm> all;
+		private final Map<TripleTerm, TripleTerm> terms = new LinkedHashMap<>();
+		private final Map<Resource, List<TripleTerm>> subjects = new HashMap<>();
+		private final Map<IRI, List<TripleTerm>> predicates = new HashMap<>();
+		private final Map<Value, List<TripleTerm>> objects = new HashMap<>();
+
+		TermIndex(Model model) {
+			var pending = new ArrayDeque<TripleTerm>();
+			for (Statement statement : model) {
+				if (statement.getObject() instanceof TripleTerm term) {
+					pending.push(term);
+				}
+				while (!pending.isEmpty()) {
+					TripleTerm term = pending.pop();
+					if (terms.putIfAbsent(term, term) == null && term.getObject() instanceof TripleTerm nested) {
+						pending.push(nested);
+					}
+				}
+			}
+			all = List.copyOf(terms.values());
+			for (TripleTerm term : all) {
+				subjects.computeIfAbsent(term.getSubject(), ignored -> new ArrayList<>()).add(term);
+				predicates.computeIfAbsent(term.getPredicate(), ignored -> new ArrayList<>()).add(term);
+				objects.computeIfAbsent(term.getObject(), ignored -> new ArrayList<>()).add(term);
+			}
+		}
 	}
 
 	@Override

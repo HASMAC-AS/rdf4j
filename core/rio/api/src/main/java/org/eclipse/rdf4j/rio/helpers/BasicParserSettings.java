@@ -38,6 +38,17 @@ public class BasicParserSettings {
 	private final static Logger log = LoggerFactory.getLogger(BasicParserSettings.class);
 
 	/**
+	 * Maximum simultaneously nested collections, blank-node property lists, annotations and triple/reified terms in
+	 * Turtle/TriG, or triple terms in N-Triples/N-Quads. The limit is checked at recursive parser entry points. It must
+	 * be positive. The default preserves the historical effectively-unlimited behavior; applications accepting
+	 * untrusted input should set a finite limit.
+	 *
+	 * @since 6.2.0
+	 */
+	public static final IntegerRioSetting MAX_NESTING_DEPTH = new IntegerRioSetting(
+			"org.eclipse.rdf4j.rio.max_nesting_depth", "Maximum RDF structural nesting", Integer.MAX_VALUE);
+
+	/**
 	 * Boolean setting for parser to determine whether values for recognised datatypes are to be verified.
 	 * <p>
 	 * Verification is performed using registered DatatypeHandlers.

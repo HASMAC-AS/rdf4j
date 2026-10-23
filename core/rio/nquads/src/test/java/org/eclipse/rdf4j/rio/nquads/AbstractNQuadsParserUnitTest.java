@@ -679,7 +679,7 @@ public abstract class AbstractNQuadsParserUnitTest extends AbstractParserTest {
 
 	@Test
 	public void testSupportedSettings() {
-		assertThat(parser.getSupportedSettings()).hasSize(14);
+		assertThat(parser.getSupportedSettings()).hasSize(15).contains(BasicParserSettings.MAX_NESTING_DEPTH);
 	}
 
 	protected abstract RDFParser createRDFParser();

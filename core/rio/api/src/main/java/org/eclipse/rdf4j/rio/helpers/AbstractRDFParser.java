@@ -108,6 +108,8 @@ public abstract class AbstractRDFParser implements RDFParser {
 	 */
 	private ParserConfig parserConfig;
 
+	private int nestingDepth;
+
 	/*--------------*
 	 * Constructors *
 	 *--------------*/
@@ -288,6 +290,7 @@ public abstract class AbstractRDFParser implements RDFParser {
 	 * finishing the parse process.
 	 */
 	protected void clear() {
+		nestingDepth = 0;
 		baseURI = null;
 		nextBNodePrefix = createUniqueBNodePrefix();
 		namespaceTable.clear();
@@ -299,6 +302,19 @@ public abstract class AbstractRDFParser implements RDFParser {
 		}
 
 		initializeNamespaceTableFromConfiguration();
+	}
+
+	/** Enter a recursive RDF structure before consuming its body. Pair successful entry with exit in finally. */
+	protected final void enterNestingLevel() {
+		int limit = getParserConfig().get(BasicParserSettings.MAX_NESTING_DEPTH);
+		if (limit < 1 || nestingDepth >= limit) {
+			reportFatalError("RDF nesting limit exceeded: " + limit);
+		}
+		nestingDepth++;
+	}
+
+	protected final void exitNestingLevel() {
+		nestingDepth--;
 	}
 
 	protected void initializeNamespaceTableFromConfiguration() {

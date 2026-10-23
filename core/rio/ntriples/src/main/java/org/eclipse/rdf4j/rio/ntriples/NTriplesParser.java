@@ -328,33 +328,42 @@ public class NTriplesParser extends AbstractRDFParser {
 	}
 
 	private TripleTerm parseTripleTerm() {
-		if (currentIndex + 2 >= lineChars.length || lineChars[currentIndex] != '<' || lineChars[currentIndex + 1] != '<'
-				|| lineChars[currentIndex + 2] != '(') {
-			reportError(
-					"Triple term must start with '<<(', is: " + new String(Character.toChars(lineChars[currentIndex])),
-					NTriplesParserSettings.FAIL_ON_INVALID_LINES);
+		enterNestingLevel();
+		try {
+			if (currentIndex + 2 >= lineChars.length || lineChars[currentIndex] != '<'
+					|| lineChars[currentIndex + 1] != '<'
+					|| lineChars[currentIndex + 2] != '(') {
+				reportError(
+						"Triple term must start with '<<(', is: "
+								+ new String(Character.toChars(lineChars[currentIndex])),
+						NTriplesParserSettings.FAIL_ON_INVALID_LINES);
+			}
+			currentIndex += 3;
+
+			skipWhitespace(true);
+			final Resource ttSubject = parseSubject();
+
+			skipWhitespace(true);
+			final IRI ttPredicate = parsePredicate();
+
+			skipWhitespace(true);
+			final Value ttObject = parseObject();
+
+			skipWhitespace(true);
+
+			if (currentIndex + 2 >= lineChars.length || lineChars[currentIndex] != ')'
+					|| lineChars[currentIndex + 1] != '>'
+					|| lineChars[currentIndex + 2] != '>') {
+				reportError(
+						"Triple term must end with ')>>', is: "
+								+ new String(Character.toChars(lineChars[currentIndex])),
+						NTriplesParserSettings.FAIL_ON_INVALID_LINES);
+			}
+			currentIndex += 3;
+			return valueFactory.createTripleTerm(ttSubject, ttPredicate, ttObject);
+		} finally {
+			exitNestingLevel();
 		}
-		currentIndex += 3;
-
-		skipWhitespace(true);
-		final Resource ttSubject = parseSubject();
-
-		skipWhitespace(true);
-		final IRI ttPredicate = parsePredicate();
-
-		skipWhitespace(true);
-		final Value ttObject = parseObject();
-
-		skipWhitespace(true);
-
-		if (currentIndex + 2 >= lineChars.length || lineChars[currentIndex] != ')' || lineChars[currentIndex + 1] != '>'
-				|| lineChars[currentIndex + 2] != '>') {
-			reportError(
-					"Triple term must end with ')>>', is: " + new String(Character.toChars(lineChars[currentIndex])),
-					NTriplesParserSettings.FAIL_ON_INVALID_LINES);
-		}
-		currentIndex += 3;
-		return valueFactory.createTripleTerm(ttSubject, ttPredicate, ttObject);
 	}
 
 	private String parseLabel() {
@@ -559,6 +568,7 @@ public class NTriplesParser extends AbstractRDFParser {
 	@Override
 	public Collection<RioSetting<?>> getSupportedSettings() {
 		Collection<RioSetting<?>> result = new HashSet<>(super.getSupportedSettings());
+		result.add(BasicParserSettings.MAX_NESTING_DEPTH);
 
 		result.add(NTriplesParserSettings.FAIL_ON_INVALID_LINES);
 
