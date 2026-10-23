@@ -1,0 +1,44 @@
+name: RDF parser review harness
+on:
+  push:
+    branches: [ 'fix/rdf-parser-review' ]
+    paths: [ '.github/workflows/rdf-parser-review-kit.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.0.1
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+      - name: Build pinned dependencies
+        run: |
+          mvn -B -ntp -U -pl core/sail/rdf-parser -am -DskipTests -DskipITs -Dmaven.javadoc.skip=true clean install > /tmp/review-build.log 2>&1 || { tail -100 /tmp/review-build.log; exit 1; }
+          tail -30 /tmp/review-build.log
+      - name: Package public source and isolated test runtime
+        shell: bash
+        run: |
+          kit=/tmp/rdf-parser-review-kit
+          mkdir -p "$kit/deps" "$kit/source"
+          mvn -B -ntp -nsu -pl core/sail/rdf-parser dependency:copy-dependencies -DincludeScope=test -DoutputDirectory="$kit/deps"
+          mvn -B -ntp -nsu dependency:get -Dartifact=org.junit.platform:junit-platform-console-standalone:6.1.3 -Dtransitive=false
+          cp "$HOME/.m2/repository/org/junit/platform/junit-platform-console-standalone/6.1.3/junit-platform-console-standalone-6.1.3.jar" "$kit/console.jar"
+          git archive HEAD | tar -x -C "$kit/source"
+          "$JAVA_HOME/bin/jlink" --add-modules java.se,jdk.compiler,jdk.unsupported,jdk.zipfs,jdk.management --strip-debug --no-header-files --no-man-pages --compress=zip-6 --output "$kit/jdk"
+          git rev-parse HEAD > "$kit/COMMIT"
+          java -version 2> "$kit/JAVA_VERSION"
+          tar -C /tmp -czf /tmp/rdf-parser-review-kit.tar.gz rdf-parser-review-kit
+          ls -lh /tmp/rdf-parser-review-kit.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rdf-parser-review-kit
+          path: /tmp/rdf-parser-review-kit.tar.gz
+          retention-days: 1
