@@ -37,6 +37,7 @@ import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParseException;
 import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.Rio;
+import org.eclipse.rdf4j.rio.helpers.BasicParserSettings;
 import org.eclipse.rdf4j.rio.helpers.StatementCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,7 +182,8 @@ public class TriGParserCustomTest extends AbstractParserTest {
 
 	@Test
 	public void testSupportedSettings() {
-		assertThat(Rio.createParser(RDFFormat.TRIG).getSupportedSettings()).hasSize(15);
+		assertThat(Rio.createParser(RDFFormat.TRIG).getSupportedSettings()).hasSize(16)
+				.contains(BasicParserSettings.MAX_NESTING_DEPTH);
 	}
 
 	@Test

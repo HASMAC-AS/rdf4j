@@ -250,7 +250,9 @@ public abstract class AbstractNTriplesParserUnitTest extends AbstractParserTest 
 
 	@Test
 	public void testSupportedSettings() {
-		assertEquals(14, createRDFParser().getSupportedSettings().size());
+		var settings = createRDFParser().getSupportedSettings();
+		assertEquals(15, settings.size());
+		assertTrue(settings.contains(BasicParserSettings.MAX_NESTING_DEPTH));
 	}
 
 	@Test

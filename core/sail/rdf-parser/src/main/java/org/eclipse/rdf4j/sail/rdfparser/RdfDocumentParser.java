@@ -92,6 +92,7 @@ public final class RdfDocumentParser {
 		// Explicitly override relevant process-wide Rio defaults. No silently inherited prefixes, Skolemization,
 		// truncation, encoded-triple decoding, or caller-controlled blank-node IDs.
 		config.set(BasicParserSettings.NAMESPACES, Set.of());
+		config.set(BasicParserSettings.MAX_NESTING_DEPTH, options.maxNesting());
 		config.set(BasicParserSettings.PRESERVE_BNODE_IDS, false);
 		config.set(BasicParserSettings.SKOLEMIZE_ORIGIN, null);
 		config.set(BasicParserSettings.PROCESS_ENCODED_TRIPLE_TERMS, false);

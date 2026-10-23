@@ -11,9 +11,10 @@
 package org.eclipse.rdf4j.sail.rdfparser;
 
 /**
- * Immutable, per-Sail resource limits. Input size is measured as UTF-8 bytes; statement count includes duplicate
- * parser events. Nesting counts Turtle structural delimiters, not characters inside strings, IRIs or comments.
- * Limits apply to each document, not to the entire outer query. Ordinary query timeouts still apply.
+ * Immutable, per-Sail resource limits. Input size is measured as UTF-8 bytes; statement count includes duplicate parser
+ * events. Nesting bounds both the structural preflight and actual Rio parser recursion; characters inside strings, IRIs
+ * or comments do not count as structural delimiters. Limits apply to each document, not to the entire outer query.
+ * Ordinary query timeouts still apply.
  */
 public record RdfParseOptions(long maxInputBytes, long maxStatements, int maxNesting, long maxParseMillis) {
 	public static final RdfParseOptions DEFAULT = new RdfParseOptions(8L * 1024 * 1024, 100_000, 64, 10_000);

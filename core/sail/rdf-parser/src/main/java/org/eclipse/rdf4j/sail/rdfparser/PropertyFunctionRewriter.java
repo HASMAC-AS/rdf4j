@@ -19,6 +19,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,8 +38,8 @@ import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.TupleFunctionCall;
 import org.eclipse.rdf4j.query.algebra.Var;
-import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.BindingAssignerOptimizer;
+import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
 
 /**
  * Recognizes syntactic RDF collections within one conjunctive group, never stored RDF lists. It creates a lateral
@@ -123,7 +124,7 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 				Set<String> inputs = ServiceRequest.declaredInputs(local);
 				Set<String> outputs = new LinkedHashSet<>(local.getBindingNames());
 				outputs.removeAll(inputs);
-				calls.add(new Call(local, inputs, outputs));
+				calls.add(new Call(local, inputs, outputs, ServiceRequest.assuredOutputs(local, inputs)));
 				consumed.add(local);
 			}
 		}
@@ -174,7 +175,7 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 					inputs.add(arg.getName());
 				}
 			}
-			calls.add(new Call(output, inputs, outputNames));
+			calls.add(new Call(output, inputs, outputNames, outputNames));
 		}
 		TupleExpr remaining = null;
 		for (TupleExpr leaf : leaves) {
@@ -193,40 +194,10 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 		if (remaining == null) {
 			remaining = new SingletonSet();
 		}
-		Set<String> available = new HashSet<>(remaining.getBindingNames());
-		Map<String, Integer> producers = new HashMap<>();
-		for (Call call : calls) {
-			for (String output : call.outputs) {
-				producers.merge(output, 1, Integer::sum);
-			}
-		}
-		while (!calls.isEmpty()) {
-			Call ready = null;
-			for (Call candidate : calls) {
-				boolean blocked = false;
-				for (String input : candidate.inputs) {
-					if (!available.contains(input)
-							&& producers.getOrDefault(input, 0) > (candidate.outputs.contains(input) ? 1 : 0)) {
-						blocked = true;
-						break;
-					}
-				}
-				if (!blocked) {
-					ready = candidate;
-					break;
-				}
-			}
-			if (ready == null) {
-				throw new QueryEvaluationException("Cyclic RDF parser function dependencies");
-			}
+		for (Call ready : dependencyOrder(calls, remaining.getAssuredBindingNames())) {
 			Set<String> imports = new LinkedHashSet<>(ready.inputs);
 			imports.addAll(ready.outputs); // Preserve prebound output constraints as well as document inputs.
 			remaining = new Lateral(remaining, ready.expression, imports);
-			available.addAll(ready.outputs);
-			for (String output : ready.outputs) {
-				producers.computeIfPresent(output, (name, count) -> count == 1 ? null : count - 1);
-			}
-			calls.remove(ready);
 		}
 		original.replaceWith(remaining);
 		remaining.visit(this);
@@ -246,7 +217,7 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 			StatementPattern f = index.first.get(current.getName());
 			StatementPattern r = index.rest.get(current.getName());
 			if (f == null || r == null || !consumed.add(f) || !consumed.add(r)) {
-				throw new QueryEvaluationException("Incomplete or shared RDF argument list in parser call");
+				throw new QueryEvaluationException("Incomplete, ambiguous or shared RDF argument list in parser call");
 			}
 			values.add(f.getObjectVar());
 			current = r.getObjectVar();
@@ -296,13 +267,109 @@ final class PropertyFunctionRewriter extends AbstractQueryModelVisitor<QueryEval
 				}
 				Map<String, StatementPattern> index = RDF.FIRST.equals(pattern.getPredicateVar().getValue()) ? first
 						: RDF.REST.equals(pattern.getPredicateVar().getValue()) ? rest : null;
-				if (index != null && index.put(pattern.getSubjectVar().getName(), pattern) != null) {
-					throw new QueryEvaluationException("Ambiguous RDF collection in parser call");
+				if (index != null) {
+					String cell = pattern.getSubjectVar().getName();
+					// Ambiguous unrelated data is legal. Only a reachable argument cell is validated.
+					if (index.containsKey(cell)) {
+						index.put(cell, null);
+					} else {
+						index.put(cell, pattern);
+					}
 				}
 			}
 		}
 	}
 
-	private record Call(TupleExpr expression, Set<String> inputs, Set<String> outputs) {
+	/**
+	 * Stable topological scheduling. Possible bindings from OPTIONAL/UNION/SILENT must not hide a pending producer. A
+	 * consumer is released when its input becomes assured or all other possible producers have run. Each wait edge is
+	 * released once; the priority queue preserves textual order among ready calls.
+	 */
+	private static List<Call> dependencyOrder(List<Call> calls, Set<String> assured) {
+		Map<String, Producers> producers = new HashMap<>();
+		for (int i = 0; i < calls.size(); i++) {
+			for (String output : calls.get(i).outputs) {
+				Producers entry = producers.computeIfAbsent(output, ignored -> new Producers());
+				entry.remaining++;
+				entry.xor ^= i;
+			}
+		}
+		int[] blocked = new int[calls.size()];
+		var ready = new PriorityQueue<Integer>();
+		for (int i = 0; i < calls.size(); i++) {
+			Call call = calls.get(i);
+			for (String input : call.inputs) {
+				Producers entry = producers.get(input);
+				boolean selfProducer = call.outputs.contains(input);
+				if (!assured.contains(input) && entry != null && entry.remaining > (selfProducer ? 1 : 0)) {
+					Wait wait = new Wait(i);
+					entry.waits.add(wait);
+					if (selfProducer) {
+						entry.selfWaits.put(i, wait);
+					}
+					blocked[i]++;
+				}
+			}
+			if (blocked[i] == 0) {
+				ready.add(i);
+			}
+		}
+		List<Call> ordered = new ArrayList<>(calls.size());
+		while (!ready.isEmpty()) {
+			int i = ready.remove();
+			Call call = calls.get(i);
+			ordered.add(call);
+			for (String output : call.outputs) {
+				Producers entry = producers.get(output);
+				entry.remaining--;
+				entry.xor ^= i;
+				if (call.assuredOutputs.contains(output) || entry.remaining == 0) {
+					for (Wait wait : entry.waits) {
+						release(wait, blocked, ready);
+					}
+					entry.waits.clear();
+					entry.selfWaits.clear();
+				} else if (entry.remaining == 1) {
+					// A call cannot supply its own input. Once it is the last producer, its self-edge
+					// must no longer block it; the runtime still checks whether that input is bound.
+					Wait wait = entry.selfWaits.remove(entry.xor);
+					if (wait != null) {
+						release(wait, blocked, ready);
+					}
+				}
+			}
+		}
+		if (ordered.size() != calls.size()) {
+			throw new QueryEvaluationException("Cyclic RDF parser function dependencies");
+		}
+		return ordered;
+	}
+
+	private static void release(Wait wait, int[] blocked, PriorityQueue<Integer> ready) {
+		if (!wait.released) {
+			wait.released = true;
+			if (--blocked[wait.consumer] == 0) {
+				ready.add(wait.consumer);
+			}
+		}
+	}
+
+	private static final class Producers {
+		private int remaining;
+		private int xor;
+		private final List<Wait> waits = new ArrayList<>();
+		private final Map<Integer, Wait> selfWaits = new HashMap<>();
+	}
+
+	private static final class Wait {
+		private final int consumer;
+		private boolean released;
+
+		Wait(int consumer) {
+			this.consumer = consumer;
+		}
+	}
+
+	private record Call(TupleExpr expression, Set<String> inputs, Set<String> outputs, Set<String> assuredOutputs) {
 	}
 }

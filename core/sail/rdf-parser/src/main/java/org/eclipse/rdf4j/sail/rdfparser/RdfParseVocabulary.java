@@ -21,6 +21,9 @@ public final class RdfParseVocabulary {
 	public static final IRI QUADS = iri("quads");
 	public static final IRI TRIPLE_TERMS = iri("tripleTerms");
 	public static final IRI TURTLE = iri("turtle");
+	/** Explicit marker for the SERVICE configuration node. */
+	public static final IRI SOURCE = iri("Source");
+
 	public static final IRI CONTENT = iri("content");
 	public static final IRI FORMAT = iri("format");
 	public static final IRI BASE_IRI = iri("baseIRI");

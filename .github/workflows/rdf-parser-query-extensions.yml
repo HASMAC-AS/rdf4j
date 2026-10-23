@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Changed Java sources were formatted before publication; test the committed checkout unchanged.
+  MAVEN_ARGS: -ntp -Dspotless.skip=true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -37,6 +41,19 @@ jobs:
             exit 1
           fi
           tail -35 /tmp/rdf-parser-test.log
+      - name: Run affected Rio suites and native term evaluator regressions
+        shell: bash
+        run: |
+          if ! mvn -B -ntp -nsu -pl core/rio/api,core/rio/turtle,core/rio/trig,core/rio/ntriples,core/rio/nquads test > /tmp/rdf-parser-rio.log 2>&1; then
+            tail -120 /tmp/rdf-parser-rio.log
+            exit 1
+          fi
+          if ! mvn -B -ntp -nsu -pl core/queryalgebra/evaluation -Dtest=NativeTripleTermMatchingTest,EvaluationStrategyWithTripleTermsTest test > /tmp/rdf-parser-evaluator.log 2>&1; then
+            tail -120 /tmp/rdf-parser-evaluator.log
+            exit 1
+          fi
+          tail -20 /tmp/rdf-parser-rio.log
+          tail -20 /tmp/rdf-parser-evaluator.log
       - name: Compare original and optimized code with JMH
         shell: bash
         run: |
@@ -77,5 +94,7 @@ jobs:
           path: |
             core/sail/rdf-parser/src/
             core/sail/rdf-parser/target/surefire-reports/
+            core/rio/*/target/surefire-reports/
+            core/queryalgebra/evaluation/target/surefire-reports/
             core/sail/rdf-parser/target/benchmarks/*.json
             core/sail/rdf-parser/target/benchmarks/*.log
