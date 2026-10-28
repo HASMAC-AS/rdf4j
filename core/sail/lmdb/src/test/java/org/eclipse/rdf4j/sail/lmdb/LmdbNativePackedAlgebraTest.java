@@ -175,6 +175,18 @@ class LmdbNativePackedAlgebraTest {
 		assertSameBag(query, "packedFtree", null);
 	}
 
+	@ParameterizedTest(name = "default rows: {0}")
+	@MethodSource("rowQueries")
+	void defaultRowsMatchGeneric(String query) {
+		assertSameBag(query, null, null);
+	}
+
+	@ParameterizedTest(name = "default aggregate: {0}")
+	@MethodSource("aggregateQueries")
+	void defaultAggregatesMatchGeneric(String query) {
+		assertSameBag(query, null, null);
+	}
+
 	@Test
 	void unforcedNativeDropsEmptyUnionArmAndAppliesRangeFilter() {
 		String query = "SELECT * WHERE { { ?s ex:missing ?x } UNION { ?s ex:r ?x } FILTER(?x > 2) }";
@@ -299,6 +311,172 @@ class LmdbNativePackedAlgebraTest {
 	}
 
 	@Test
+	void nullableUnionCompatibilityAndOptionalPreserveExactDuplicateBag() {
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			ValueFactory vf = connection.getValueFactory();
+			IRI s = vf.createIRI(EX, "nullable"), a = vf.createIRI(EX, "a"), b = vf.createIRI(EX, "b"),
+					c = vf.createIRI(EX, "c");
+			connection.add(s, vf.createIRI(EX, "np"), a);
+			connection.add(s, vf.createIRI(EX, "np"), b);
+			connection.add(s, vf.createIRI(EX, "only"), vf.createLiteral(true));
+			connection.add(s, vf.createIRI(EX, "nq"), b);
+			connection.add(s, vf.createIRI(EX, "nq"), c);
+			connection.add(b, vf.createIRI(EX, "nr"), vf.createIRI(EX, "zb"));
+			connection.add(c, vf.createIRI(EX, "nr"), vf.createIRI(EX, "zc"));
+		}
+		String query = "SELECT ?s ?x ?z WHERE { { ?s ex:np ?x } UNION { ?s ex:only ?u } "
+				+ "OPTIONAL { ?s ex:nq ?x . ?x ex:nr ?z } }";
+		for (String forced : new String[] { null, "packedFtree" }) {
+			assertSameBag(query, forced, null);
+			List<BindingSet> rows = evaluate(query, forced, null);
+			assertEquals(4, rows.size());
+			assertEquals(1L, rows.stream().filter(r -> !r.hasBinding("z")).count());
+			assertEquals(2L, rows.stream().filter(r -> r.getValue("x").stringValue().equals(EX + "b")).count());
+		}
+	}
+
+	@Test
+	void samePreparedPlanReopensWithDifferentValuesAndUnboundEntry() {
+		String query = "SELECT ?s ?p ?q WHERE { { ?s ex:p ?p ; ex:q ?q } UNION { ?s ex:p ?p ; ex:q ?q } }";
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			for (String forced : new String[] { null, "packedFtree" }) {
+				SailTupleQuery prepared = (SailTupleQuery) connection.prepareTupleQuery(PREFIX + query);
+				if (forced != null)
+					prepared.setForcedLmdbExecutionStrategy(forced);
+				for (String value : new String[] { "s2", "s4", null, "missing", "s1" }) {
+					if (forced != null && "missing".equals(value)) {
+						// The optimizer reduces this entry to Empty, for which forcing packed is correctly unavailable.
+						continue;
+					}
+					Value subject = value == null ? null : connection.getValueFactory().createIRI(EX, value);
+					prepared.clearBindings();
+					if (subject != null)
+						prepared.setBinding("s", subject);
+					List<String> expected;
+					System.setProperty(NATIVE, "false");
+					try {
+						expected = canonical(evaluate(query, null, subject));
+					} finally {
+						System.setProperty(NATIVE, "true");
+					}
+					assertEquals(expected, canonical(QueryResults.asList(prepared.evaluate())));
+				}
+			}
+		}
+	}
+
+	@Test
+	void defaultComposedAggregateUsesSharedIndependentMarginals() {
+		addWideFanout(32);
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			ValueFactory vf = connection.getValueFactory();
+			IRI subject = vf.createIRI(EX, "wide");
+			for (int i = 0; i < 32; i++) {
+				connection.add(subject, vf.createIRI(EX, "otherP"), vf.createLiteral(i));
+				connection.add(subject, vf.createIRI(EX, "otherQ"), vf.createLiteral(i + 32));
+			}
+		}
+		String query = "SELECT ?s (COUNT(*) AS ?n) (SUM(?p) AS ?sp) (SUM(?q) AS ?sq) WHERE { "
+				+ "{ ?s ex:wideP ?p ; ex:wideQ ?q } UNION { ?s ex:otherP ?p ; ex:otherQ ?q } } GROUP BY ?s";
+		assertSameBag(query, null, null);
+		assertSameBag(query, "packedFtreeAggregate", null);
+		String runtime = explained(query).getPhysicalPlanPrelude();
+		assertTrue(runtime != null && runtime.contains("agg:shared-factor-projections"), runtime);
+		assertTrue(runtime.contains("observedFactorDemands:"), runtime);
+		assertTrue(runtime.matches(
+				"(?s).*PROJECTION prefixes=[1-9][0-9]* expandedGroups=[1-9][0-9]* preservedGroups=[1-9][0-9]*.*"),
+				runtime);
+	}
+
+	@Test
+	void defaultComposedProjectionUsesCostedFactorsAndPreservesHiddenBag() {
+		addWideFanout(1024);
+		String query = wideProjection();
+		Map<Value, Long> expected;
+		System.setProperty(NATIVE, "false");
+		try {
+			expected = projectedSubjectBag(query);
+		} finally {
+			System.setProperty(NATIVE, "true");
+		}
+		assertEquals(2097152L, expected.values().stream().mapToLong(Long::longValue).sum());
+		assertEquals(expected, projectedSubjectBag(query));
+		GenericPlanNode plan = explained(query);
+		String root = plan.getPhysicalPlanPrelude();
+		assertEquals("packedFtree", plan.getStringMetricActual("nativeExecutionPath"));
+		assertTrue(root != null && root.contains("strategy: packedFtree"), () -> "Root route: " + plan);
+		assertTrue(root.contains("observedFactorDemands:"), root);
+		assertTrue(root.matches("(?s).*PROJECTION prefixes=[1-9][0-9]* expandedGroups=0 preservedGroups=[1-9][0-9]*.*"),
+				root);
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void fullyDemandedComposedRowsKeepTheExistingAuthorityButRemainForceable(boolean distinct) {
+		addWideFanout(64);
+		String query = wideProjection().replace("SELECT ?s ?copy",
+				"SELECT " + (distinct ? "DISTINCT " : "") + "?s ?p ?q ?copy");
+		assertSameBag(query, null, null);
+		assertSameBag(query, "packedFtree", null);
+		GenericPlanNode plan = explained(query);
+		String proposals = plan.getStringMetricActual("nativeStrategyProposalCosts");
+		assertTrue(proposals != null && !proposals.contains("packedFtree="), () -> "Full export: " + plan);
+	}
+
+	@Test
+	void modestComposedFanoutOffersFactorsWithoutOverridingColdCostUncertainty() {
+		addWideFanout(64);
+		String query = wideProjection();
+		assertSameBag(query, null, null);
+		assertEquals(8192, evaluate(query, null, null).size());
+		GenericPlanNode plan = explained(query);
+		String root = plan.getPhysicalPlanPrelude();
+		assertEquals("irKernelInterpreted", plan.getStringMetricActual("nativeExecutionPath"));
+		assertTrue(root != null && root.contains("strategy: irKernelInterpreted"), () -> "Root route: " + plan);
+		assertTrue(plan.toString().contains("packedFtree="), () -> "Missing costed proposal: " + plan);
+	}
+
+	private static String wideProjection() {
+		return "SELECT ?s ?copy WHERE { { ?s ex:wideP ?p ; ex:wideQ ?q } UNION "
+				+ "{ ?s ex:wideP ?p ; ex:wideQ ?q } BIND(?s AS ?copy) }";
+	}
+
+	private void addWideFanout(int size) {
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			ValueFactory vf = connection.getValueFactory();
+			IRI subject = vf.createIRI(EX, "wide");
+			connection.begin();
+			for (int i = 0; i < size; i++) {
+				connection.add(subject, vf.createIRI(EX, "wideP"), vf.createLiteral(i));
+				connection.add(subject, vf.createIRI(EX, "wideQ"), vf.createLiteral(i + size));
+			}
+			connection.commit();
+		}
+	}
+
+	private Map<Value, Long> projectedSubjectBag(String query) {
+		Map<Value, Long> bag = new HashMap<>();
+		try (SailRepositoryConnection connection = repository.getConnection();
+				var rows = connection.prepareTupleQuery(PREFIX + query).evaluate()) {
+			while (rows.hasNext()) {
+				BindingSet row = rows.next();
+				assertEquals(2, row.size());
+				assertEquals(row.getValue("s"), row.getValue("copy"));
+				bag.merge(row.getValue("s"), 1L, Long::sum);
+			}
+		}
+		return bag;
+	}
+
+	private GenericPlanNode explained(String query) {
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			return ((SailTupleQuery) connection.prepareTupleQuery(PREFIX + query))
+					.explain(Explanation.Level.Telemetry)
+					.toGenericPlanNode();
+		}
+	}
+
+	@Test
 	void telemetryConfirmsBothForcedFamiliesRatherThanGenericFallback() {
 		assertPath("SELECT * WHERE { ?s ex:p ?p OPTIONAL { ?s ex:r ?r } BIND(?p + 1 AS ?x) }",
 				"packedFtree", "packedFtree");
@@ -309,7 +487,8 @@ class LmdbNativePackedAlgebraTest {
 	private void assertPath(String query, String forced, String expected) {
 		try (SailRepositoryConnection connection = repository.getConnection()) {
 			SailTupleQuery prepared = (SailTupleQuery) connection.prepareTupleQuery(PREFIX + query);
-			prepared.setForcedLmdbExecutionStrategy(forced);
+			if (forced != null)
+				prepared.setForcedLmdbExecutionStrategy(forced);
 			GenericPlanNode plan = prepared.explain(Explanation.Level.Telemetry).toGenericPlanNode();
 			assertTrue(hasPath(plan, expected), () -> "Missing " + expected + " in " + plan);
 		}

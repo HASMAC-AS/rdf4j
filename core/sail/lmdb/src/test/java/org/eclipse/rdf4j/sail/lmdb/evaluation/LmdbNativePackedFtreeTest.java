@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -34,6 +35,8 @@ import java.util.OptionalDouble;
 import java.util.OptionalLong;
 
 import org.codehaus.janino.SimpleCompiler;
+import org.eclipse.rdf4j.query.algebra.SingletonSet;
+import org.eclipse.rdf4j.query.explanation.TelemetryMetricNames;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.TripleIndex;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.NativeLmdbQuerySource.NativeAdjacency;
@@ -41,6 +44,8 @@ import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelContext;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.PackedFtreeContext;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.PackedFtreeKernel;
 import org.eclipse.rdf4j.sail.lmdb.factor.BorrowedFactorBatch;
+import org.eclipse.rdf4j.sail.lmdb.factor.BorrowedTupleContractTest.WeightedTuples;
+import org.eclipse.rdf4j.sail.lmdb.factor.FactorEnvironment;
 import org.eclipse.rdf4j.sail.lmdb.factor.HeapFactorSource;
 import org.junit.jupiter.api.Test;
 
@@ -769,6 +774,263 @@ class LmdbNativePackedFtreeTest {
 		assertTrue(weights[0] > 0L);
 		assertEquals(30L, weights[1]);
 		assertEquals(30L, weights[2]);
+	}
+
+	@Test
+	void sharedContractPricesIndependentDemandsAndMarginalsWithoutTheirProduct() {
+		TestGraph graph = new TestGraph();
+		graph.borrow = true;
+		for (int i = 0; i < 32; i++) {
+			graph.add(P1, 1, 100 + i, 0);
+			graph.add(P2, 1, 200 + i, 0);
+		}
+		RowState row = row(graph.source(), "s", "x", "y", "alias");
+		SlotPlan star = join(pricedPattern(0, P1, 1, 32), pricedPattern(0, P2, 2, 32));
+		SlotPlan composed = new ExtensionPlan(new UnionPlan(star, star),
+				new CopyBinding[] { CopyBinding.slot(3, 0) });
+		var hidden = LmdbNativeFactorPlan.estimate(composed, row, 0L, NativeFactorDemand.projection(1L));
+		var x = LmdbNativeFactorPlan.estimate(composed, row, 0L, NativeFactorDemand.projection(3L));
+		var xy = LmdbNativeFactorPlan.estimate(composed, row, 0L, NativeFactorDemand.projection(7L));
+		assertEquals(2D, hidden.projectedRows());
+		assertEquals(64D, x.projectedRows());
+		assertEquals(2048D, xy.projectedRows());
+		assertEquals(hidden.work(), xy.work(), "consumer-only expansion must not multiply pure BIND evaluations");
+		assertEquals(6L, hidden.possibleFactors());
+		assertEquals(2048D, hidden.logicalRows());
+		assertTrue(LmdbNativeFactorPlan.automaticRows(composed, row, new int[] { 0 }));
+		assertFalse(LmdbNativeFactorPlan.automaticRows(composed, row, new int[] { 0, 1, 2, 3 }),
+				"fully demanded borrowed groups do not justify a new automatic materialization boundary");
+		assertFalse(LmdbNativeFactorPlan.automaticRows(composed, row, new int[] { 0, 1, 2 }),
+				"hiding only a scalar alias is not retained factor representation");
+		assertEquals(composed.estimateWork(row, row.boundMask()),
+				LmdbNativeFactorPlan.rowsWork(composed, row, new int[] { 0, 1, 2 }));
+		assertEquals(composed.estimateWork(row, row.boundMask()),
+				LmdbNativeFactorPlan.rowsWork(composed, row, new int[] { 0, 1, 2, 3 }),
+				"a fully demanded composed export keeps its established ordinary producer quote");
+		assertEquals(hidden.projectedWork(), LmdbNativeFactorPlan.rowsWork(composed, row, new int[] { 0 }),
+				"proposal and admission use the same producer/conversion scope");
+		AggregateSpec[] sums = { AggregateSpec.slot("sx", 1, false, AggKind.SUM),
+				AggregateSpec.slot("sy", 2, false, AggKind.SUM) };
+		assertArrayEquals(new long[] { 1L, 3L, 5L },
+				LmdbNativeFactorPlan.aggregateDemands(composed, row, new int[] { 0 }, sums));
+		assertEquals(hidden.work().plus(LmdbNativeWork.exact(130D)),
+				LmdbNativeFactorPlan.aggregateWork(composed, row, new int[] { 0 }, sums));
+		var lowered = LmdbNativeKernelLowering.lowerAggregate(composed, row, new int[] { 0 }, sums, null);
+		assertNotNull(lowered);
+		assertEquals("agg:shared-factor-projections", lowered.planBridgeReason);
+		assertNotNull(lowered.kernel.aggregateProjections);
+		assertSame(composed, lowered.bindings.planRequests[0].plan);
+		var admission = new LmdbNativeKernelExecution.AggregateAdmission("test", lowered, true);
+		assertEquals(LmdbNativeFactorPlan.aggregateWork(composed, row, new int[] { 0 }, sums),
+				admission.serialWork(composed, row, new int[] { 0 }, sums, LmdbNativeWork.UNKNOWN));
+		var parallelRecipe = LmdbNativeKernelLowering.lowerAggregate(composed, row, new int[] { 0 }, sums,
+				null, null, false, false, false, false, false);
+		assertNotNull(parallelRecipe);
+		assertNull(parallelRecipe.kernel.aggregateProjections,
+				"parallel consumers retain the existing IR recipe rather than a serial borrowed producer");
+	}
+
+	@Test
+	void sharedContractPricesFilterEvaluationAtItsOwnDemand() {
+		TestGraph graph = new TestGraph();
+		for (int i = 0; i < 16; i++) {
+			graph.add(P1, 1, 100 + i, 0);
+			graph.add(P2, 1, 200 + i, 0);
+		}
+		RowState row = row(graph.source(), "s", "x", "y");
+		SlotPlan star = join(pricedPattern(0, P1, 1, 16), pricedPattern(0, P2, 2, 16));
+		SlotPlan filter = new FilterPlan(star, ignored -> true, 2L);
+		var x = LmdbNativeFactorPlan.estimate(filter, row, 0L, NativeFactorDemand.projection(0L));
+		var xy = LmdbNativeFactorPlan.estimate(filter, row, 0L, NativeFactorDemand.projection(4L));
+		assertEquals(16D, x.projectedRows());
+		assertEquals(256D, xy.projectedRows());
+		assertEquals(x.work(), xy.work());
+		assertEquals(4L, x.possibleFactors());
+	}
+
+	@Test
+	void nullableProducedSlotsAreCompatibilityDemandNotAssuredBoundness() {
+		TestGraph graph = new TestGraph();
+		for (int i = 0; i < 16; i++) {
+			graph.add(P1, 1, 100 + i, 0);
+		}
+		RowState row = row(graph.source(), "s", "x", "z");
+		SlotPlan nullable = new UnionPlan(pricedPattern(0, P1, 1, 16), SingletonPlan.INSTANCE);
+		SlotPlan right = pricedPattern(1, P2, 2, 100);
+		assertEquals(3L, LmdbNativeFactorPlan.contract(nullable).produced());
+		assertEquals(0L, LmdbNativeFactorPlan.contract(nullable).assured());
+		assertEquals(6L, NativeFactorDemand.join(right).compatibility());
+		var cost = LmdbNativeFactorPlan.estimate(new LeftJoinPlan(nullable, right), row, 0L,
+				NativeFactorDemand.projection(1L));
+		assertEquals(1700D, cost.logicalRows(), "nullable x must not price the RHS as an always-bound lookup");
+		assertEquals(0L, cost.possibleFactors(), "RHS writes consume the deferred x compatibility group");
+	}
+
+	@Test
+	void retainedFilterCanDependOnAnUnboundScalarSlot() throws Exception {
+		TestGraph graph = new TestGraph();
+		graph.borrow = true;
+		graph.add(P1, 1, 11, 0);
+		graph.add(P1, 1, 12, 0);
+		graph.add(P1, 1, 13, 0);
+		graph.add(P1, 1, 14, 0);
+		RowState row = row(graph.source(), "s", "x", "unbound");
+		FilterPlan filter = new FilterPlan(join(pattern(0, P1, 1)),
+				input -> input.slots[2] == LmdbNativeAggregateCompiler.UNKNOWN && input.slots[1] > 11L, 6L);
+		try (LmdbNativeFactorCursor selected = filter.openFactors(row)) {
+			assertNotNull(selected);
+			assertTrue(selected.next());
+			assertEquals(0L, selected.factors().mask(), "first witness is emitted promptly");
+			assertTrue(selected.next());
+			assertEquals(2L, selected.factors().mask());
+			assertEquals(2L, selected.factors().count(1));
+			assertEquals(5L, selected.factors().dependencies(1));
+			assertEquals(LmdbNativeAggregateCompiler.UNKNOWN, row.slots[2]);
+		}
+		try (LmdbNativeFactorCursor selected = filter.openFactors(row);
+				LmdbNativeFactorCursor expanded = LmdbNativeFactorRows.expand(selected, row,
+						NativeFactorDemand.projection(2L))) {
+			long count = 0L;
+			while (expanded.next()) {
+				assertTrue(row.slots[1] >= 12L && row.slots[1] <= 14L);
+				assertEquals(LmdbNativeAggregateCompiler.UNKNOWN, row.slots[2]);
+				count += expanded.multiplicity();
+			}
+			assertEquals(3L, count);
+		}
+	}
+
+	@Test
+	void logicalReplayKeepsItsFlattenReasonAndEmitsEveryWeightedMapping() throws Exception {
+		TestGraph graph = new TestGraph();
+		graph.borrow = true;
+		graph.add(P1, 1, 11, 0);
+		graph.add(P1, 1, 11, 1);
+		graph.add(P1, 1, 12, 0);
+		RowState row = row(graph.source(), "s", "x");
+		SingletonSet target = new SingletonSet();
+		target.setRuntimeTelemetryEnabled(true);
+		row.runtimePlan = LmdbNativeExplain.recordRuntimeEntryPlan(target, SingletonPlan.INSTANCE, row.layout, 0L);
+		try (LmdbNativeFactorCursor replay = LmdbNativeFactorRows.expand(
+				LmdbNativeFactorAlgebra.open(join(pattern(0, P1, 1)), row), row,
+				new NativeFactorDemand(0L, 0L, true, NativeFactorDemand.Reason.EFFECTFUL_EXPRESSION))) {
+			int count = 0;
+			while (replay.next()) {
+				assertEquals(1L, replay.multiplicity());
+				assertEquals(0L, replay.factors().mask());
+				count++;
+			}
+			assertEquals(3, count);
+		}
+		row.runtimePlan.complete();
+		String trace = target.getStringMetricActual(TelemetryMetricNames.RUNTIME_PHYSICAL_PLAN);
+		assertTrue(trace.contains("EFFECTFUL_EXPRESSION prefixes=1 expandedGroups=1 preservedGroups=0"), trace);
+	}
+
+	@Test
+	void demandExpandsWholeTupleButDoesNotReadOrOwnAnIndependentSibling() throws Exception {
+		RowState row = row(new TestGraph().source(), "s", "x", "y", "hidden");
+		row.bindOrCheckTerm(0, 47L);
+		WeightedTuples tuples = new WeightedTuples(2, new long[][] { { 11, 101 }, { 12, 202 } },
+				new long[] { 2, 5 });
+		FactorPlanKernelContractTest.Metadata hidden = new FactorPlanKernelContractTest.Metadata();
+		FactorEnvironment env = new FactorEnvironment(4);
+		env.bindTuple(new int[] { 1, 2 }, tuples.batch(), 0, 1L);
+		env.bind(3, hidden.batch(11), 0, 1L);
+		FactorEnvironment borrowedCopy = new FactorEnvironment(4);
+		boolean[] closed = { false };
+		LmdbNativeFactorCursor input = new LmdbNativeFactorCursor() {
+			boolean emitted;
+
+			@Override
+			public boolean next() {
+				if (emitted)
+					return false;
+				emitted = true;
+				return true;
+			}
+
+			@Override
+			public long multiplicity() {
+				return 3L;
+			}
+
+			@Override
+			public FactorEnvironment factors() {
+				return env;
+			}
+
+			@Override
+			public void close() {
+				closed[0] = true;
+				tuples.close();
+				hidden.close();
+			}
+		};
+		try (LmdbNativeFactorCursor expanded = LmdbNativeFactorRows.expand(input, row,
+				NativeFactorDemand.projection(2L))) {
+			assertTrue(expanded.next());
+			assertEquals(11L, row.slots[1]);
+			assertEquals(101L, row.slots[2]);
+			assertEquals(6L, expanded.multiplicity());
+			assertEquals(8L, expanded.factors().mask());
+			assertEquals(0, hidden.opens);
+			assertTrue(tuples.reads > 0);
+			borrowedCopy.append(expanded.factors(), -1L);
+		}
+		assertTrue(closed[0]);
+		assertEquals(1L, row.boundMask(), "early close restores entry, not expanded tuple bindings");
+		assertEquals(47L, row.slots[0]);
+		assertThrows(IllegalStateException.class, () -> borrowedCopy.count(3));
+		assertEquals(0, hidden.opens, "copying a descriptor never extends ownership or reads it");
+	}
+
+	@Test
+	void possibleBorrowingMetadataDoesNotChangeTheBagWhenPhysicalBorrowingDeclines() throws Exception {
+		TestGraph graph = new TestGraph();
+		for (int i = 0; i < 16; i++) {
+			graph.add(P1, 1, 100 + i, 0);
+			graph.add(P2, 1, 200 + i, 0);
+		}
+		RowState row = row(graph.source(), "s", "x", "y");
+		SlotPlan star = join(pricedPattern(0, P1, 1, 16), pricedPattern(0, P2, 2, 16));
+		SlotPlan union = new UnionPlan(star, star);
+		assertTrue(LmdbNativeFactorPlan.automaticRows(union, row, new int[] { 0 }));
+		assertEquals(0L, graph.neighborPayloadReads, "costing must not open or read storage");
+		try (LmdbNativeFactorCursor factors = LmdbNativeFactorAlgebra.open(union, row)) {
+			long count = 0L;
+			while (factors.next()) {
+				assertEquals(0L, factors.factors().mask(), "possible metadata is not observed retained groups");
+				count += factors.multiplicity();
+			}
+			assertEquals(512L, count);
+		}
+		assertEquals(0L, row.boundMask());
+	}
+
+	@Test
+	void tinyUnknownAndBoundaryPlansKeepConservativeAutomaticAdmission() {
+		TestGraph graph = new TestGraph();
+		graph.add(P1, 1, 2, 0);
+		RowState row = row(graph.source(), "s", "x", "z");
+		SlotPlan tiny = new UnionPlan(pricedPattern(0, P1, 1, 1), SingletonPlan.INSTANCE);
+		assertFalse(LmdbNativeFactorPlan.automaticRows(tiny, row, new int[] { 0 }));
+		assertFalse(LmdbNativeFactorPlan.automaticRows(new UnionPlan(SingletonPlan.INSTANCE,
+				SingletonPlan.INSTANCE), row, new int[0]));
+		SlotPlan opaque = new FilterPlan(tiny, ignored -> true, -1L);
+		assertEquals(LmdbNativeFactorPlan.Boundary.EFFECT, LmdbNativeFactorPlan.contract(opaque).boundary());
+		assertFalse(LmdbNativeFactorPlan.automaticRows(opaque, row, new int[] { 0 }));
+		SlotPlan lexical = new LeftJoinPlan(tiny, SingletonPlan.INSTANCE, new int[] { 0 });
+		assertEquals(LmdbNativeFactorPlan.Boundary.LEXICAL_FRAME,
+				LmdbNativeFactorPlan.contract(lexical).boundary());
+		assertFalse(LmdbNativeFactorPlan.automaticRows(lexical, row, new int[] { 0 }));
+		row.encounterOrderRequired = true;
+		assertFalse(LmdbNativeFactorPlan.automaticRows(tiny, row, new int[] { 0 }));
+	}
+
+	private static PatternPlan pricedPattern(int subject, long predicate, int object, double rows) {
+		return new PatternPlan(Term.slot(subject), Term.constant(predicate), Term.slot(object), Term.unbound(),
+				ContextConstraint.UNRESTRICTED, false, rows);
 	}
 
 	private static long[][] copyCounts(LmdbNativePackedFtree.Chunk chunk, boolean subtree) {

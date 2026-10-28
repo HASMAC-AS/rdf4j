@@ -1404,6 +1404,16 @@ final class NativeGroupIteration implements CloseableIteration<BindingSet>, Coop
 				? LmdbNativeKernelExecution.aggregateAdmission(arg, row, groupSlots, aggregates,
 						havingCondition, true, strictCompare, allowFixedContexts, explainTarget)
 				: null;
+		// Serial shared projections and parallel partitionable roots are different physical recipes. Never use
+		// the serial bridge's capability or work quote to advertise the existing parallel strategy.
+		LmdbNativeKernelExecution.AggregateAdmission compiledParallelAdmission = parallelIr && compiledIr
+				? LmdbNativeKernelExecution.aggregateAdmission(arg, row, groupSlots, aggregates,
+						havingCondition, false, strictCompare, allowFixedContexts, explainTarget, false)
+				: null;
+		LmdbNativeKernelExecution.AggregateAdmission interpretedParallelAdmission = parallelIr && interpretedIr
+				? LmdbNativeKernelExecution.aggregateAdmission(arg, row, groupSlots, aggregates,
+						havingCondition, true, strictCompare, allowFixedContexts, explainTarget, false)
+				: null;
 		String compiledSerialRoute = compiledAdmission == null ? null : compiledAdmission.route();
 		String interpretedSerialRoute = interpretedAdmission == null ? null : interpretedAdmission.route();
 		compiledIr = compiledIr && compiledSerialRoute != null;
@@ -1464,16 +1474,17 @@ final class NativeGroupIteration implements CloseableIteration<BindingSet>, Coop
 			}
 			final LmdbNativeWork irAggregateWork = candidateWork;
 			if (parallelIr) {
-				if (compiledIr) {
+				if (compiledIr && compiledParallelAdmission != null) {
 					arbiter.offer(() -> estimatedProposal(
 							() -> LmdbNativeKernelExecution.tryEvaluateAggregateParallel(arg, row, groupSlots,
 									aggregates, this, explainTarget, havingCondition, false, allowFixedContexts),
 							compiledParallelTag,
 							LmdbNativeKernelExecution.parallelProposalWork(irAggregateWork),
 							LmdbNativeKernelExecution.parallelStartupWork())
-									.withOptionalAggregatePhysicalPlan(compiledAdmission.physicalPlan(arg, row, true)));
+									.withOptionalAggregatePhysicalPlan(
+											compiledParallelAdmission.physicalPlan(arg, row, true)));
 				}
-				if (interpretedIr) {
+				if (interpretedIr && interpretedParallelAdmission != null) {
 					arbiter.offer(() -> estimatedProposal(
 							() -> LmdbNativeKernelExecution.tryEvaluateAggregateParallel(arg, row, groupSlots,
 									aggregates, this, explainTarget, havingCondition, true, allowFixedContexts),
@@ -1481,7 +1492,7 @@ final class NativeGroupIteration implements CloseableIteration<BindingSet>, Coop
 							LmdbNativeKernelExecution.parallelProposalWork(irAggregateWork),
 							LmdbNativeKernelExecution.parallelStartupWork())
 									.withOptionalAggregatePhysicalPlan(
-											interpretedAdmission.physicalPlan(arg, row, true)));
+											interpretedParallelAdmission.physicalPlan(arg, row, true)));
 				}
 			}
 			if (compiledIr) {
@@ -1489,7 +1500,7 @@ final class NativeGroupIteration implements CloseableIteration<BindingSet>, Coop
 					return LmdbNativeKernelExecution.tryEvaluateAggregateSerial(arg, row,
 							groupSlots, aggregates, this, explainTarget, havingCondition, false,
 							allowFixedContexts);
-				}, compiledSerialTag, irAggregateWork)
+				}, compiledSerialTag, compiledAdmission.serialWork(arg, row, groupSlots, aggregates, irAggregateWork))
 						.withOptionalAggregatePhysicalPlan(compiledAdmission.physicalPlan(arg, row, false)));
 			}
 			if (interpretedIr) {
@@ -1497,8 +1508,9 @@ final class NativeGroupIteration implements CloseableIteration<BindingSet>, Coop
 					return LmdbNativeKernelExecution.tryEvaluateAggregateSerial(arg, row,
 							groupSlots, aggregates, this, explainTarget, havingCondition, true,
 							allowFixedContexts);
-				}, interpretedSerialTag, irAggregateWork)
-						.withOptionalAggregatePhysicalPlan(interpretedAdmission.physicalPlan(arg, row, false)));
+				}, interpretedSerialTag,
+						interpretedAdmission.serialWork(arg, row, groupSlots, aggregates, irAggregateWork))
+								.withOptionalAggregatePhysicalPlan(interpretedAdmission.physicalPlan(arg, row, false)));
 			}
 		}
 		if (!typeMatrixOwned && replaySafe && orderedSinglePatternHandlesRow()) {

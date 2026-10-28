@@ -12,8 +12,6 @@
 
 package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
-import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeAggregateCompiler.memoReadMask;
-
 import java.io.IOException;
 
 import org.eclipse.rdf4j.sail.lmdb.factor.FactorEnvironment;
@@ -150,19 +148,14 @@ final class LmdbNativeFactorAlgebra {
 
 	private static LmdbNativeFactorCursor extension(ExtensionPlan plan, RowState row) throws IOException {
 		NativeExecutionPhaseEvent.activateInput("expressions", row.cancellation);
-		long reads = 0L;
-		for (CopyBinding copy : plan.copies) {
-			if (!copy.encounterOrderReplaySafe) {
-				return LmdbNativeFactorRows.scalar(new ExtensionCursor(
-						logical(openOrdered(plan.arg, row), row), plan.copies, row), row.slots.length);
-			}
-			// Targets must be scalar too: assignment compatibility cannot be checked against a hidden factor.
-			// OR-ing -1 is intentional for a pure expression with an opaque dependency set.
-			reads |= copy.requiredMask() | (1L << copy.targetSlot);
+		NativeFactorDemand demand = NativeFactorDemand.extension(plan.copies);
+		if (demand.logicalReplay()) {
+			return LmdbNativeFactorRows.scalar(new ExtensionCursor(
+					logical(openOrdered(plan.arg, row), row), plan.copies, row), row.slots.length);
 		}
 		LmdbNativeFactorCursor input = open(plan.arg, row);
 		try {
-			return new Extended(LmdbNativeFactorRows.expand(input, row, reads), plan.copies, row);
+			return new Extended(LmdbNativeFactorRows.expand(input, row, demand), plan.copies, row);
 		} catch (RuntimeException | Error failure) {
 			closeSuppressing(input, failure);
 			throw failure;
@@ -171,13 +164,12 @@ final class LmdbNativeFactorAlgebra {
 
 	private static LmdbNativeFactorCursor join(SlotPlan leftPlan, SlotPlan rightPlan, RowState row,
 			boolean optional) throws IOException {
-		boolean replaySafe = SlotPlan.encounterOrderReplaySafe(rightPlan);
-		LmdbNativeFactorCursor left = replaySafe ? open(leftPlan, row)
+		NativeFactorDemand demand = NativeFactorDemand.join(rightPlan);
+		LmdbNativeFactorCursor left = !demand.logicalReplay() ? open(leftPlan, row)
 				: LmdbNativeFactorRows.scalar(logical(openOrdered(leftPlan, row), row), row.slots.length);
 		try {
 			// Reads include correlation; writes include compatibility with a nullable UNION/OPTIONAL binding.
 			// Unknown reads expand everything, but do not grant permission to coalesce effectful invocations.
-			long demand = memoReadMask(rightPlan) | rightPlan.producedMask();
 			return new Joined(LmdbNativeFactorRows.expand(left, row, demand), rightPlan, row, optional);
 		} catch (RuntimeException | Error failure) {
 			closeSuppressing(left, failure);

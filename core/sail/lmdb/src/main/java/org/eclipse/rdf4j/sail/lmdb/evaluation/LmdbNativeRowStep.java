@@ -1572,13 +1572,13 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 					LmdbNativeAttemptMetrics.PATH_WCOJ, LmdbNativeWork.UNKNOWN,
 					estimatedRows(row)));
 		}
-		// Automatic packed rows are priced only for direct MultiJoinPlan inputs. A composed factor tree remains
-		// available
-		// when the caller explicitly forces packedFtree, but otherwise falls through to the ordinary native/IR ladder.
+		// Direct regions keep their existing authority. Composed regions enter automatically only with a shared
+		// demand/cost contract that beats scalar work; UNKNOWN must not win merely by this inventory position.
 		if (multiJoin != null) {
 			arbiter.offer(
 					() -> LmdbNativePackedFtree.proposeRows(multiJoin, row, retainedSlots, distinct, originalExpr));
-		} else if (LmdbNativeAttemptMetrics.PATH_PACKED_FTREE.equals(forcedExecutionStrategyName())) {
+		} else if (LmdbNativeAttemptMetrics.PATH_PACKED_FTREE.equals(forcedExecutionStrategyName())
+				|| LmdbNativeFactorPlan.automaticRows(arg, row, retainedSlots)) {
 			arbiter.offer(
 					() -> LmdbNativePackedFtree.proposeRows(arg, row, retainedSlots, distinct, originalExpr));
 		}

@@ -185,6 +185,7 @@ final class LmdbNativeRuntimePlan {
 		private String adaptiveEpochs = "[]";
 		private Integer adaptiveFinalDepth;
 		private LmdbFusedSipFactorizedRuntime.Telemetry fusedTelemetry = LmdbFusedSipFactorizedRuntime.Telemetry.EMPTY;
+		private final long[][] factorDemands = new long[NativeFactorDemand.Reason.values().length][3];
 		private boolean completed;
 		private long opens = 1L;
 		private SlotPlan[] lastRenderedOrder;
@@ -459,6 +460,17 @@ final class LmdbNativeRuntimePlan {
 			publishIfAllowed();
 		}
 
+		/** Observed live-prefix boundaries, not estimated work, payload reads or logical output rows. */
+		synchronized void factorDemand(NativeFactorDemand.Reason reason, long groupLeaders, long expanded) {
+			if (groupLeaders == 0L) {
+				return;
+			}
+			long[] counts = factorDemands[reason.ordinal()];
+			counts[0]++;
+			counts[1] += Long.bitCount(groupLeaders & expanded);
+			counts[2] += Long.bitCount(groupLeaders & ~expanded);
+		}
+
 		void fusedTelemetry(LmdbFusedSipFactorizedRuntime.Telemetry telemetry) {
 			if (telemetry == null) {
 				return;
@@ -561,6 +573,26 @@ final class LmdbNativeRuntimePlan {
 					.append(adaptiveEpochs)
 					.append("\n      finalDepth: ")
 					.append(adaptiveFinalDepth == null ? "<not applicable>" : adaptiveFinalDepth);
+			boolean heading = false;
+			for (NativeFactorDemand.Reason reason : NativeFactorDemand.Reason.values()) {
+				long[] counts = factorDemands[reason.ordinal()];
+				if (counts[0] == 0L) {
+					continue;
+				}
+				if (!heading) {
+					out.append("\n    observedFactorDemands:")
+							.append("\n      scope: shared-algebra/live-prefix-boundaries");
+					heading = true;
+				}
+				out.append("\n      ")
+						.append(reason)
+						.append(" prefixes=")
+						.append(counts[0])
+						.append(" expandedGroups=")
+						.append(counts[1])
+						.append(" preservedGroups=")
+						.append(counts[2]);
+			}
 			renderKernels(out, fusedTelemetry.kernelBinds());
 			renderRuntimeSip(out, fusedTelemetry);
 			renderFactorization(out, fusedTelemetry.factorization());

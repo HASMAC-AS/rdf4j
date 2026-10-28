@@ -927,8 +927,17 @@ final class LmdbNativeKernelLowering {
 	static Lowered lowerAggregate(SlotPlan arg, RowState row, int[] groupSlots, AggregateSpec[] aggregates,
 			LmdbNativeKernelIr.Having having, TupleExpr declineTarget, boolean preferScans,
 			boolean scanVariablePredicates, boolean strictCompare, boolean allowFixedContexts) {
+		return lowerAggregate(arg, row, groupSlots, aggregates, having, declineTarget, preferScans,
+				scanVariablePredicates, strictCompare, allowFixedContexts, true);
+	}
+
+	/** A borrowed composed PlanRows producer is serial; parallel admission must retain its partitionable IR root. */
+	static Lowered lowerAggregate(SlotPlan arg, RowState row, int[] groupSlots, AggregateSpec[] aggregates,
+			LmdbNativeKernelIr.Having having, TupleExpr declineTarget, boolean preferScans,
+			boolean scanVariablePredicates, boolean strictCompare, boolean allowFixedContexts,
+			boolean allowComposedFactorProjections) {
 		Lowered lowered = lowerAggregateInternal(arg, row, groupSlots, aggregates, having, declineTarget, preferScans,
-				scanVariablePredicates, allowFixedContexts);
+				scanVariablePredicates, allowFixedContexts, allowComposedFactorProjections);
 		return lowered == null ? null : lowered.withStrictOrderCompare(strictCompare);
 	}
 
@@ -936,13 +945,13 @@ final class LmdbNativeKernelLowering {
 	static Lowered lowerAggregate(SlotPlan arg, RowState row, int[] groupSlots, AggregateSpec[] aggregates,
 			LmdbNativeKernelIr.Having having, TupleExpr declineTarget, boolean preferScans) {
 		return lowerAggregateInternal(arg, row, groupSlots, aggregates, having, declineTarget, preferScans, false,
-				false);
+				false, true);
 	}
 
 	private static Lowered lowerAggregateInternal(SlotPlan arg, RowState row, int[] groupSlots,
 			AggregateSpec[] aggregates,
 			LmdbNativeKernelIr.Having having, TupleExpr declineTarget, boolean preferScans,
-			boolean scanVariablePredicates, boolean allowFixedContexts) {
+			boolean scanVariablePredicates, boolean allowFixedContexts, boolean allowComposedFactorProjections) {
 		if (SlotPlan.requiresPhysicalCells(arg)) {
 			long required = 0L;
 			for (int slot : groupSlots) {
@@ -995,11 +1004,13 @@ final class LmdbNativeKernelLowering {
 		// The physical grouped producer is independent of execution tier. Preserve its
 		// hierarchy for branching BGPs instead of replacing it with scalar IR probes. Other
 		// shortcuts above retain precedence; unsupported/effectful shapes keep their old path.
-		// Automatic admission is limited to a direct MultiJoinPlan: composed SlotPlan trees do not yet have a reusable
-		// structural plan or a cost for nested OPTIONAL/UNION reopening. Explicit packed forcing remains handled by the
-		// packed algebra dispatchers.
-		if (!preferScans && !scanVariablePredicates && arg instanceof MultiJoinPlan multi
-				&& LmdbNativePackedFtree.projectionAggregateCandidate(multi, row, groupSlots, aggregates)) {
+		// The same dependency/expansion cost used by composed SELECT also prices aggregate marginals and RHS
+		// reopening. Keep direct-region admission and all earlier authorities unchanged.
+		if (!preferScans && !scanVariablePredicates
+				&& (arg instanceof MultiJoinPlan multi
+						? LmdbNativePackedFtree.projectionAggregateCandidate(multi, row, groupSlots, aggregates)
+						: allowComposedFactorProjections
+								&& LmdbNativeFactorPlan.automaticAggregate(arg, row, groupSlots, aggregates))) {
 			Lowered projected = lowerAggregateWithPlanProducer(arg, row, groupSlots, aggregates, having);
 			if (projected != null && (projected.kernel.aggregateProjections != null
 					|| LmdbNativeKernelIr.weightedPlanCount(projected.kernel)))

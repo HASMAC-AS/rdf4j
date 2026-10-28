@@ -256,6 +256,17 @@ final class LmdbNativeKernelExecution {
 
 	/** Route and physical proof come from the very same lowering, including a compiled scan retry. */
 	record AggregateAdmission(String route, LmdbNativeKernelLowering.Lowered lowered, boolean interpreted) {
+		LmdbNativeWork serialWork(SlotPlan input, RowState row, int[] groups, AggregateSpec[] specs,
+				LmdbNativeWork fallback) {
+			if (!(input instanceof MultiJoinPlan) && "agg:shared-factor-projections".equals(lowered.planBridgeReason)) {
+				LmdbNativeWork shared = LmdbNativeFactorPlan.aggregateWork(input, row, groups, specs);
+				if (shared.known()) {
+					return shared;
+				}
+			}
+			return fallback;
+		}
+
 		NativeAggregatePhysicalPlan physicalPlan(SlotPlan input, RowState row, boolean parallel) {
 			// The actual lowered producer, including its projection schedule, owns its physical grain. Mixed
 			// pipelines and independent PlanFactors still need a separate compositional proof.
@@ -313,9 +324,17 @@ final class LmdbNativeKernelExecution {
 	static AggregateAdmission aggregateAdmission(SlotPlan arg, RowState row, int[] groupSlots,
 			AggregateSpec[] aggregates, ValueExpr havingCondition, boolean interpreted, boolean strictCompare,
 			boolean allowFixedContexts, TupleExpr explainTarget) {
+		return aggregateAdmission(arg, row, groupSlots, aggregates, havingCondition, interpreted, strictCompare,
+				allowFixedContexts, explainTarget, true);
+	}
+
+	static AggregateAdmission aggregateAdmission(SlotPlan arg, RowState row, int[] groupSlots,
+			AggregateSpec[] aggregates, ValueExpr havingCondition, boolean interpreted, boolean strictCompare,
+			boolean allowFixedContexts, TupleExpr explainTarget, boolean allowComposedFactorProjections) {
 		LmdbNativeKernelIr.Having having = LmdbNativeKernelLowering.recognizeHaving(havingCondition, aggregates);
 		LmdbNativeKernelLowering.Lowered lowered = LmdbNativeKernelLowering.lowerAggregate(arg, row, groupSlots,
-				aggregates, having, explainTarget, false, false, strictCompare, allowFixedContexts);
+				aggregates, having, explainTarget, false, false, strictCompare, allowFixedContexts,
+				allowComposedFactorProjections);
 		if (lowered == null) {
 			recordAggregateLoweringAdmissionDecline(row, explainTarget, interpreted, false, false);
 			return null;
@@ -326,7 +345,7 @@ final class LmdbNativeKernelExecution {
 			// Compiled wildcard code has a separately gated emitter. Mirror the execution retry that lowers variable
 			// predicate sites onto exact scans, so the preview names the mixed scan route when that retry is available.
 			lowered = LmdbNativeKernelLowering.lowerAggregate(arg, row, groupSlots, aggregates, having, explainTarget,
-					false, true, strictCompare, allowFixedContexts);
+					false, true, strictCompare, allowFixedContexts, allowComposedFactorProjections);
 		}
 		if (lowered == null) {
 			recordAggregateLoweringAdmissionDecline(row, explainTarget, interpreted, false, true);
@@ -494,7 +513,8 @@ final class LmdbNativeKernelExecution {
 		try {
 			LmdbNativeKernelLowering.Lowered semantic = LmdbNativeKernelLowering.lowerAggregate(arg, row, groupSlots,
 					aggregates, LmdbNativeKernelLowering.recognizeHaving(havingCondition, aggregates), explainTarget,
-					preferScans, scanVariablePredicates, emitter.strictCompare, allowFixedContexts);
+					preferScans, scanVariablePredicates, emitter.strictCompare, allowFixedContexts,
+					parallelExecution == ParallelExecution.DISABLE);
 			if (semantic == null) {
 				AGG_DECLINED.incrementAndGet();
 				if (row.runtimePlan != null) {

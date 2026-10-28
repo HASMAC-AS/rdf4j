@@ -29,7 +29,7 @@ final class LmdbNativeFactorProjections implements NativeFactorProjections {
 	private final LmdbNativeFactorCursor input;
 	private final RowState row;
 	private final FactorProductCursor[] readers;
-	private final long[] demands;
+	private final NativeFactorDemand[] demands;
 	private final boolean[] exact;
 	private int current = -1;
 	private int tick;
@@ -43,13 +43,15 @@ final class LmdbNativeFactorProjections implements NativeFactorProjections {
 		this.input = input;
 		this.row = row;
 		this.exact = exact.clone();
-		demands = new long[outputs.length];
+		demands = new NativeFactorDemand[outputs.length];
 		readers = new FactorProductCursor[outputs.length];
 		for (int p = 0; p < outputs.length; p++) {
+			long requested = 0L;
 			for (int slot : outputs[p]) {
 				Objects.checkIndex(slot, row.slots.length);
-				demands[p] |= 1L << slot;
+				requested |= 1L << slot;
 			}
+			demands[p] = NativeFactorDemand.projection(requested);
 			readers[p] = new FactorProductCursor(row.slots.length, 256);
 		}
 	}
@@ -99,7 +101,10 @@ final class LmdbNativeFactorProjections implements NativeFactorProjections {
 				for (int p = 0; p < readers.length; p++) {
 					// Count only on demand. A null aggregate argument and a presence-only consumer must not
 					// overflow merely because an unobserved product is larger than a signed long.
-					readers[p].bind(input.factors(), demands[p], input.multiplicity(), false);
+					demands[p].validatePrefix(input.factors(), row.boundMask());
+					readers[p].bind(input.factors(), demands[p].expandedMask(input.factors()), input.multiplicity(),
+							false);
+					demands[p].observe(row, input.factors(), readers[p].expandedMask());
 				}
 				active = true;
 				return true;

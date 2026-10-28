@@ -149,7 +149,8 @@ final class LmdbNativePackedFtree {
 			AggregateSpec[] aggregates) {
 		return plan instanceof MultiJoinPlan multi && !LmdbNativeFactorAlgebra.candidate(plan)
 				? estimateAggregateWork(multi, row, groupSlots, aggregates)
-				: LmdbNativeFactorAlgebra.candidate(plan) ? plan.estimateWork(row, row.boundMask())
+				: LmdbNativeFactorAlgebra.candidate(plan)
+						? LmdbNativeFactorPlan.aggregateWork(plan, row, groupSlots, aggregates)
 						: LmdbNativeWork.UNKNOWN;
 	}
 
@@ -168,8 +169,9 @@ final class LmdbNativePackedFtree {
 				row.runtimePlan.activate(LmdbNativeAttemptMetrics.PATH_PACKED_FTREE, new SlotPlan[] { input });
 			LmdbNativeExplain.recordExecutionPath(explainTarget, LmdbNativeAttemptMetrics.PATH_PACKED_FTREE);
 			return NativeUnorderedInput.rows(row, rows);
-		}, input.estimateWork(row, row.boundMask()), LmdbNativeAttemptMetrics.PATH_PACKED_FTREE, () -> {
-		});
+		}, LmdbNativeFactorPlan.rowsWork(input, row, retainedSlots),
+				LmdbNativeAttemptMetrics.PATH_PACKED_FTREE, () -> {
+				});
 	}
 
 	static List<BindingSet> tryEvaluateAggregate(SlotPlan input, RowState row, int[] groups,
@@ -313,6 +315,24 @@ final class LmdbNativePackedFtree {
 				LmdbNativeFactorAlgebra.closeSuppressing(runtime, failure);
 			throw failure;
 		}
+	}
+
+	/** Shared metadata-only region planning. No probe is opened and no entry binding is installed. */
+	static Plan factorPlan(MultiJoinPlan input, RowState row) {
+		if (!enabled() || !borrowedFactorsEnabled() || !LmdbNativeFactorRows.enabled()
+				|| row.encounterOrderRequired) {
+			return null;
+		}
+		MultiJoinPlan specialized = specializeEntry(input, row);
+		return specialized == null ? null
+				: Planner.plan(specialized, row,
+						LmdbNativeAggregateCompiler.slotsOf(specialized.producedMask()));
+	}
+
+	private static boolean borrowableTerminalShape(NodePlan node) {
+		return node.parent != null && node.children.length == 0 && node.constraintEdges.length == 0
+				&& node.unary.length == 0 && node.filters.length == 0 && node.witnesses.length == 0
+				&& contextFree(node.primary.pattern);
 	}
 
 	static MultiJoinPlan specializeEntry(MultiJoinPlan input, RowState row) {
@@ -1502,6 +1522,23 @@ final class LmdbNativePackedFtree {
 				mask |= subtreeMask(child);
 			}
 			return mask;
+		}
+
+		/** Potential borrowing inferred from snapshot-valid metadata; the physical opener can still decline. */
+		long possibleBorrowedMask(NativeLmdbQuerySource source) {
+			long result = 0L;
+			for (NodePlan node : nodes) {
+				if (borrowableTerminalShape(node)
+						&& source.adjacencyKeyDomainCardinality(node.primary.pattern.p.constant,
+								node.primary.keyIsSubject).isPresent()) {
+					result |= 1L << node.slot;
+				}
+			}
+			return result;
+		}
+
+		double projectedRowsEstimate(NativeLmdbQuerySource source, long demandedMask) {
+			return projectedRows(root, rootDomainEstimate(source), source, demandedMask);
 		}
 
 		double logicalRowsEstimate(NativeLmdbQuerySource source) {
@@ -3720,9 +3757,7 @@ final class LmdbNativePackedFtree {
 		}
 
 		private boolean borrowableTerminal(NodePlan node) {
-			return borrowEnabled && node.children.length == 0 && node.constraintEdges.length == 0
-					&& node.unary.length == 0 && node.filters.length == 0 && node.witnesses.length == 0
-					&& contextFree(node.primary.pattern);
+			return borrowEnabled && borrowableTerminalShape(node);
 		}
 
 		private static BorrowedFactorBatch ensureBorrowed(NodeData data, BorrowedFactorBatch.Source source,
