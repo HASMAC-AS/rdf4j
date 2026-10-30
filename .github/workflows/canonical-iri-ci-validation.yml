@@ -5,22 +5,118 @@ on:
     branches: [GH-0000-canonical-iri-ci-validation]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  source:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
+    env:
+      BASE: 4e635dd65211bf38033dc0dc47fe329def152b03
+      PKG: core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb
     steps:
       - uses: actions/checkout@v7.0.1
-        with:
-          ref: 4e635dd65211bf38033dc0dc47fe329def152b03
-      - name: Preserve relevant pinned sources without large datasets
+      - name: Isolate the candidate from validation infrastructure
         run: |
-          mkdir -p "$RUNNER_TEMP/canonical-ci-source"
-          git archive --format=tar.gz HEAD core/sail/lmdb/src/main/java core/sail/lmdb/src/test/java core/sail/base/src/main/java core/queryalgebra/evaluation/src/main/java core/sail/lmdb/pom.xml pom.xml .mvn AGENTS.md > "$RUNNER_TEMP/canonical-ci-source/source.tar.gz"
-      - uses: actions/upload-artifact@v4
+          cp scripts/ci/canonical-iri-repair.patch "$RUNNER_TEMP/candidate.patch"
+          git fetch --depth=1 origin "$BASE"
+          git checkout --detach "$BASE"
+          mkdir -p "$RUNNER_TEMP/canonical-validation"
+      - uses: actions/setup-java@v6.0.1
         with:
-          name: canonical-ci-focused-source
-          path: ${{ runner.temp }}/canonical-ci-source/source.tar.gz
-          retention-days: 3
+          java-version: 25
+          distribution: temurin
+          cache: maven
+      - name: Reuse Maven dependencies at the repository-required path
+        run: |
+          mkdir -p "$HOME/.m2/repository"
+          test -e .m2_repo || ln -s "$HOME/.m2/repository" .m2_repo
+      - name: Build dependencies without tests
+        run: mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -am install -Pquick -DskipTests -DskipITs -DskipFrontend=true
+      - name: Prove the new regression fails against the original helper
+        run: |
+          git apply --include="$PKG/LmdbOwningTestStoreMetadataTest.java" "$RUNNER_TEMP/candidate.patch"
+          status=0
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=LmdbOwningTestStoreMetadataTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/canonical-validation/red.log" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/canonical-validation/red.log"
+          test "$status" -ne 0
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          report = pathlib.Path('core/sail/lmdb/target/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.LmdbOwningTestStoreMetadataTest.xml')
+          root = ET.parse(report).getroot()
+          case = next(c for c in root.findall('testcase') if c.attrib['name'] == 'freshOwnerMetadataRemainsUnpublishedUntilNativeInitialization')
+          assert case.find('failure') is not None, 'the baseline must fail the intended lifecycle assertion, not compilation or infrastructure'
+          print('Confirmed expected failing lifecycle regression:', root.attrib)
+          PY
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/canonical-validation/red-reports"
+      - name: Apply the candidate and run the actual formatter
+        run: |
+          git apply --exclude="$PKG/LmdbOwningTestStoreMetadataTest.java" "$RUNNER_TEMP/candidate.patch"
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Pformatting spotless:apply
+          git diff --check
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -Pformatting spotless:check --fail-at-end > "$RUNNER_TEMP/canonical-validation/formatting.log" 2>&1
+          tail -n 12 "$RUNNER_TEMP/canonical-validation/formatting.log"
+      - name: Run affected classes and format-safety regressions
+        run: |
+          set -o pipefail
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=AdaptiveReplayIntegrationTest,TxnReplayPolicyTest,LmdbSailStoreOverlayStartupTest,LmdbDirectAdjacencyQueryTest,LmdbOwningTestStoreMetadataTest,LmdbCanonicalIriFormatPolicyTest,LmdbNativeFormatFenceTest,ValueStoreCanonicalIriTest,LmdbStoreFormatCompatibilityTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip 2>&1 | tee "$RUNNER_TEMP/canonical-validation/green.log"
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/canonical-validation/green-reports"
+      - name: Repeat the timing-sensitive scenarios without weakening assertions
+        run: |
+          cp "$PKG/LmdbDirectAdjacencyQueryTest.java" "$RUNNER_TEMP/direct.java"
+          cp "$PKG/LmdbSailStoreOverlayStartupTest.java" "$RUNNER_TEMP/overlay.java"
+          python3 - <<'PY'
+          import os, pathlib
+          p = pathlib.Path(os.environ['PKG'])
+          direct = p / 'LmdbDirectAdjacencyQueryTest.java'
+          text = direct.read_text()
+          old = '\t@Test\n\tvoid pagedBaseServesExactCountAndPredicateAnalytics()'
+          assert text.count(old) == 1
+          direct.write_text(text.replace(old, '\t@org.junit.jupiter.api.RepeatedTest(20)\n\tvoid pagedBaseServesExactCountAndPredicateAnalytics()'))
+          overlay = p / 'LmdbSailStoreOverlayStartupTest.java'
+          text = overlay.read_text()
+          pos = text.index('\t@ParameterizedTest\n\t@ValueSource(booleans = { false, true })')
+          end = text.index('\tvoid ownerWarmupPublishesAfterDurableRetirementRecovery', pos)
+          text = text[:pos] + text[end:]
+          wrappers = '\n\t@org.junit.jupiter.api.RepeatedTest(20)\n\t@Timeout(30)\n\tvoid repeatedRetirementOnly() throws Exception {\n\t\townerWarmupPublishesAfterDurableRetirementRecovery(false);\n\t}\n\n\t@org.junit.jupiter.api.RepeatedTest(20)\n\t@Timeout(30)\n\tvoid repeatedRetirementAndUnused() throws Exception {\n\t\townerWarmupPublishesAfterDurableRetirementRecovery(true);\n\t}\n'
+          overlay.write_text(text[:text.rfind('}')] + wrappers + '}\n')
+          PY
+          status=0
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test '-Dtest=LmdbDirectAdjacencyQueryTest#pagedBaseServesExactCountAndPredicateAnalytics,LmdbSailStoreOverlayStartupTest#repeatedRetirementOnly+repeatedRetirementAndUnused' -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/canonical-validation/stress.log" 2>&1 || status=$?
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/canonical-validation/stress-reports"
+          cp "$RUNNER_TEMP/direct.java" "$PKG/LmdbDirectAdjacencyQueryTest.java"
+          cp "$RUNNER_TEMP/overlay.java" "$PKG/LmdbSailStoreOverlayStartupTest.java"
+          cat "$RUNNER_TEMP/canonical-validation/stress.log"
+          exit "$status"
+      - name: Publish a clean validated candidate, not the PR branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for file in AdaptiveReplayIntegrationTest.java TxnReplayPolicyTest.java LmdbSailStoreOverlayStartupTest.java LmdbDirectAdjacencyQueryTest.java LmdbOwningTestStoreMetadata.java LmdbOwningTestStoreMetadataTest.java; do
+            git add "$PKG/$file"
+          done
+          test "$(git diff --cached --name-only | wc -l)" -eq 6
+          git diff --exit-code
+          git diff --cached --check
+          git commit -m 'GH-0000 Correct replay fixture publication and isolate startup/count tests'
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          git push origin HEAD:refs/heads/GH-0000-canonical-iri-ci-validated
+          git rev-parse HEAD > "$RUNNER_TEMP/canonical-validation/commit.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/canonical-validation/tree.txt"
+          git diff --binary --full-index "$BASE" HEAD > "$RUNNER_TEMP/canonical-validation/fix.patch"
+          git diff --name-only "$BASE" HEAD > "$RUNNER_TEMP/canonical-validation/files.txt"
+          git archive --format=zip HEAD $(cat "$RUNNER_TEMP/canonical-validation/files.txt") > "$RUNNER_TEMP/canonical-validation/changed-files.zip"
+      - name: Preserve current reports even when validation fails
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/canonical-validation"
+          if test -d core/sail/lmdb/target/surefire-reports; then
+            cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/canonical-validation/latest-reports"
+          fi
+          git diff --binary > "$RUNNER_TEMP/canonical-validation/working.patch"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-ci-validation
+          path: ${{ runner.temp }}/canonical-validation/
+          retention-days: 7

@@ -1,0 +1,285 @@
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AdaptiveReplayIntegrationTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AdaptiveReplayIntegrationTest.java
+index 3ca0e26..029e468 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AdaptiveReplayIntegrationTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AdaptiveReplayIntegrationTest.java
+@@ -296,6 +296,7 @@ class AdaptiveReplayIntegrationTest {
+ 		ValueStore values = new ValueStore(new File(directory, "values"), properties, config);
+ 		File triplesDirectory = new File(directory, "triples");
+ 		try (TripleStore triples = new TripleStore(triplesDirectory, properties, config, values)) {
++			LmdbOwningTestStoreMetadata.completeInitialization(directory, properties);
+ 			for (int i = 0; i < 64; i++) {
+ 				values.startTransaction(true);
+ 				triples.startTransaction();
+@@ -1516,6 +1517,7 @@ class AdaptiveReplayIntegrationTest {
+ 			triplesDirectory = new File(directory, "triples");
+ 			triples = new FaultyTripleStore(triplesDirectory, properties, config, values);
+ 			triples.initializeNamespaceSnapshot(Map.of());
++			LmdbOwningTestStoreMetadata.completeInitialization(directory, properties);
+ 		}
+ 
+ 		void warm() throws IOException {
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbDirectAdjacencyQueryTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbDirectAdjacencyQueryTest.java
+index 8b8d568..7b6f53f 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbDirectAdjacencyQueryTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbDirectAdjacencyQueryTest.java
+@@ -2747,13 +2747,14 @@ class LmdbDirectAdjacencyQueryTest {
+ 
+ 	@Test
+ 	void pagedBaseServesExactCountAndPredicateAnalytics() throws IOException {
++		// This is a cold AUTO physical-route assertion, not a latency contest after earlier tests or forced
++		// capability probes have trained the process-wide cost model.
++		KernelExecutionTestAccess.resetCostCalibration();
+ 		System.setProperty(LmdbDirectAdjacencyStore.SCAN_AGGREGATES_PROPERTY, "true");
+ 		System.setProperty("rdf4j.lmdb.nativeQueryEngine.enabled", "true");
+ 		openPreferStore();
+ 		String fixedQuery = "SELECT (COUNT(*) AS ?count) WHERE { ?s <" + P1 + "> ?o }";
+ 		String predicateQuery = "SELECT ?p (COUNT(*) AS ?count) WHERE { ?s ?p ?o } GROUP BY ?p";
+-		assertAdjacencyCapability(fixedQuery, "count");
+-		assertAdjacencyCapability(predicateQuery, "p", "count");
+ 		try (var pinnedDataset = dataset();
+ 				var unpinnedDataset = new CloseableDataset(
+ 						backing.getExplicitSailSource().dataset(IsolationLevels.NONE))) {
+@@ -2801,6 +2802,8 @@ class LmdbDirectAdjacencyQueryTest {
+ 				.as("the forced adjacency capability remains available for the same exact result")
+ 				.isGreaterThan(0);
+ 		assertThat(LmdbPrefixRunPlan.RUN_ROWS_COUNTED.get()).isEqualTo(3);
++		assertAdjacencyCapability(fixedQuery, "count");
++		assertAdjacencyCapability(predicateQuery, "p", "count");
+ 		assertThat(direct.snapshotMetrics().activeViews).isZero();
+ 	}
+ 
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadata.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadata.java
+index 95e69b4..89e3e06 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadata.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadata.java
+@@ -20,6 +20,7 @@ import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+ /**
+  * Creates the persisted owning-Sail metadata for tests that assemble a ValueStore and TripleStore directly. In
+  * particular, a reopened format-7 dictionary must not be mistaken for a metadata-free standalone dictionary.
++ * New metadata remains unpublished until both native stores have initialized successfully.
+  */
+ final class LmdbOwningTestStoreMetadata {
+ 
+@@ -36,10 +37,19 @@ final class LmdbOwningTestStoreMetadata {
+ 			String indexes = config.getTripleIndexes();
+ 			properties.setTripleIndexes(indexes == null || indexes.isBlank() ? "spoc,posc" : indexes);
+ 			LmdbStore.writeCoreLiteralReferenceMarker(directory.toPath());
+-			properties.save();
++			// Saving here would mark the descriptor as loaded before its native generation exists.
++		} else {
++			// Check the exact persisted policy and capability marker on every reopening.
++			LmdbStoreFormat.resolve(directory, properties, config);
+ 		}
+-		// Check the exact persisted policy and capability marker on every reopening.
+-		LmdbStoreFormat.resolve(directory, properties, config);
+ 		return properties;
+ 	}
++
++	static void completeInitialization(File directory, StoreProperties properties) throws IOException {
++		if (!Files.isRegularFile(directory.toPath().resolve("values/data.mdb"))
++				|| !Files.isRegularFile(directory.toPath().resolve("triples/data.mdb"))) {
++			throw new IOException("Both native test-store generations must exist before publishing owner metadata");
++		}
++		properties.save();
++	}
+ }
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadataTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadataTest.java
+new file mode 100644
+index 0000000..f0b4d9b
+--- /dev/null
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbOwningTestStoreMetadataTest.java
+@@ -0,0 +1,136 @@
++/*******************************************************************************
++ * Copyright (c) 2026 Eclipse RDF4J contributors.
++ *
++ * All rights reserved. This program and the accompanying materials
++ * are made available under the terms of the Eclipse Distribution License v1.0
++ * which accompanies this distribution, and is available at
++ * http://www.eclipse.org/org/documents/edl-v10.php.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ *******************************************************************************/
++// Some portions generated by Codex
++package org.eclipse.rdf4j.sail.lmdb;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import java.io.File;
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Map;
++
++import org.eclipse.rdf4j.model.IRI;
++import org.eclipse.rdf4j.model.util.Values;
++import org.eclipse.rdf4j.sail.SailException;
++import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++
++class LmdbOwningTestStoreMetadataTest {
++
++	@TempDir
++	Path directory;
++
++	@Test
++	void freshOwnerMetadataRemainsUnpublishedUntilNativeInitialization() throws Exception {
++		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory.toFile(), config());
++		assertThat(properties.isLoaded()).as("new owner metadata must not imply an existing native generation")
++				.isFalse();
++		assertThat(directory.resolve(StoreProperties.FILE_NAME)).doesNotExist();
++		assertThat(directory.resolve("values/data.mdb")).doesNotExist();
++		assertThat(directory.resolve("triples/data.mdb")).doesNotExist();
++		assertThat(directory.resolve(LmdbStore.CORE_LITERAL_REFERENCE_MARKER_FILE)).isRegularFile();
++		assertCapabilities(LmdbStoreFormat.fromProperties(properties, config()));
++	}
++
++	@Test
++	void initializedPairReopensWithTheSamePersistedCapabilitiesAndIds() throws Exception {
++		IRI iri = Values.iri("urn:owner-fixture:kept");
++		long id = seedPair(iri);
++		byte[] originalMetadata = Files.readAllBytes(directory.resolve(StoreProperties.FILE_NAME));
++		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory.toFile(), config());
++		assertThat(properties.isLoaded()).isTrue();
++		ValueStore values = new ValueStore(directory.resolve("values").toFile(), properties, config());
++		try (TripleStore triples = new TripleStore(directory.resolve("triples").toFile(), properties, config(), values)) {
++			assertCapabilities(values.getFormat());
++			assertThat(values.getId(iri)).isEqualTo(id);
++			properties.save();
++			assertThat(Files.readAllBytes(directory.resolve(StoreProperties.FILE_NAME))).isEqualTo(originalMetadata);
++		} finally {
++			values.close();
++		}
++	}
++
++	@Test
++	void missingMetadataCannotRelabelAnExistingPairAsNew() throws Exception {
++		seedPair(Values.iri("urn:owner-fixture:kept"));
++		Files.delete(directory.resolve(StoreProperties.FILE_NAME));
++		var before = LmdbCompatibilityFixtures.snapshot(directory);
++		assertThatThrownBy(() -> LmdbOwningTestStoreMetadata.open(directory.toFile(), config()))
++				.isInstanceOf(SailException.class).hasMessageContaining("Missing store.properties");
++		assertThat(LmdbCompatibilityFixtures.snapshot(directory)).isEqualTo(before);
++	}
++
++	@Test
++	void publishedMetadataWithoutNativeDataStillFailsWithoutMutation() throws Exception {
++		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory.toFile(), config());
++		// Deliberately reproduce a damaged existing generation; never relax its production admission fence.
++		properties.save();
++		var before = LmdbCompatibilityFixtures.snapshot(directory);
++		assertThatThrownBy(() -> {
++			ValueStore unexpected = new ValueStore(directory.resolve("values").toFile(), properties, config());
++			unexpected.close();
++		}).isInstanceOf(IOException.class)
++				.hasMessage("Missing native ValueStore generation for existing LmdbStore format 7");
++		assertThat(LmdbCompatibilityFixtures.snapshot(directory)).isEqualTo(before);
++	}
++
++	@Test
++	void incompatibleReopenDoesNotRewriteThePersistedPolicy() throws Exception {
++		seedPair(Values.iri("urn:owner-fixture:kept"));
++		var before = LmdbCompatibilityFixtures.snapshot(directory);
++		assertThatThrownBy(() -> LmdbOwningTestStoreMetadata.open(directory.toFile(),
++				config().setInlineLiterals(true))).isInstanceOf(SailException.class)
++				.hasMessageContaining("original setting");
++		assertThat(LmdbCompatibilityFixtures.snapshot(directory)).isEqualTo(before);
++	}
++
++	private long seedPair(IRI iri) throws Exception {
++		File owner = directory.toFile();
++		LmdbStoreConfig config = config();
++		StoreProperties properties = LmdbOwningTestStoreMetadata.open(owner, config);
++		ValueStore values = new ValueStore(directory.resolve("values").toFile(), properties, config);
++		try (TripleStore triples = new TripleStore(directory.resolve("triples").toFile(), properties, config, values)) {
++			triples.initializeNamespaceSnapshot(Map.of());
++			properties.save();
++			assertThat(properties.isLoaded()).isTrue();
++			assertCapabilities(values.getFormat());
++			triples.startTransaction();
++			values.startTransaction(true);
++			long id = values.storeValue(iri);
++			long predicate = values.storeValue(Values.iri("urn:owner-fixture:predicate"));
++			triples.storeTriple(id, predicate, id, 0, true);
++			values.commit();
++			triples.commit();
++			return id;
++		} finally {
++			values.close();
++		}
++	}
++
++	private static void assertCapabilities(LmdbStoreFormat format) {
++		assertThat(format.getVersion()).isEqualTo(7);
++		assertThat(format.usesCanonicalIriEncoding()).isTrue();
++		assertThat(format.inlinesLiterals()).isFalse();
++		assertThat(format.usesOrderedNumericIds()).isTrue();
++		assertThat(format.usesCoreDatatypeLiteralReferences()).isTrue();
++		assertThat(format.usesCanonicalLanguageTags()).isTrue();
++		assertThat(format.usesZeroFractionDateTimeIds()).isTrue();
++	}
++
++	private static LmdbStoreConfig config() {
++		return new LmdbStoreConfig("spoc,posc,ospc").setInlineLiterals(false).setOrderedNumericIds(true)
++				.setValueDBSize(4L << 20).setTripleDBSize(4L << 20);
++	}
++}
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbSailStoreOverlayStartupTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbSailStoreOverlayStartupTest.java
+index 7a73a07..8964ee8 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbSailStoreOverlayStartupTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbSailStoreOverlayStartupTest.java
+@@ -101,9 +101,9 @@ class LmdbSailStoreOverlayStartupTest {
+ 			}
+ 		};
+ 		LmdbStoreConfig config = config(true);
+-		StoreProperties properties = new StoreProperties(directory);
++		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory, config);
+ 		LmdbSailStore owner = new LmdbSailStore(directory, properties, config, false,
+-				LmdbStoreFormat.fromProperties(properties, config), QueryExecutionPolicy.of(false), scanHook,
++				LmdbStoreFormat.resolve(directory, properties, config), QueryExecutionPolicy.of(false), scanHook,
+ 				values -> {
+ 					assertThat(values.hasRetiredIds()).as("fixture has legitimate pending owner startup writes")
+ 							.isTrue();
+@@ -242,9 +242,9 @@ class LmdbSailStoreOverlayStartupTest {
+ 		CountDownLatch scanStarted = new CountDownLatch(1);
+ 		CountDownLatch releaseScan = new CountDownLatch(1);
+ 		LmdbStoreConfig config = config(true);
+-		StoreProperties properties = new StoreProperties(directory);
++		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory, config);
+ 		LmdbSailStore owner = new LmdbSailStore(directory, properties, config, false,
+-				LmdbStoreFormat.fromProperties(properties, config), QueryExecutionPolicy.of(false), () -> {
++				LmdbStoreFormat.resolve(directory, properties, config), QueryExecutionPolicy.of(false), () -> {
+ 					scanStarted.countDown();
+ 					await(releaseScan);
+ 				});
+@@ -281,6 +281,9 @@ class LmdbSailStoreOverlayStartupTest {
+ 		LmdbStore store = new LmdbStore(directory, config(false));
+ 		store.init();
+ 		try {
++			// Finish the seed owner's startup recovery before creating the retirement this test preserves.
++			// Otherwise its post-ready worker can drain that new intent after the pinned reader releases it.
++			LmdbGcTestMaintenance.awaitPostReady(store);
+ 			try (NotifyingSailConnection writer = store.getConnection()) {
+ 				writer.begin();
+ 				writer.addStatement(KEEPER, PREDICATE, VF.createLiteral("kept"));
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/TxnReplayPolicyTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/TxnReplayPolicyTest.java
+index 34c1d9c..cdf3bd1 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/TxnReplayPolicyTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/TxnReplayPolicyTest.java
+@@ -174,6 +174,7 @@ class TxnReplayPolicyTest {
+ 		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory, config);
+ 		ValueStore values = new ValueStore(new File(directory, "values"), properties, config);
+ 		try (TripleStore triples = new TripleStore(new File(directory, "triples"), properties, config, values)) {
++			LmdbOwningTestStoreMetadata.completeInitialization(directory, properties);
+ 			triples.startTransaction();
+ 			values.startTransaction(true);
+ 			long largeValue = values.storeValue(Values.literal("seed-" + "x".repeat(4 * (int) MIB)));
+@@ -191,6 +192,7 @@ class TxnReplayPolicyTest {
+ 		StoreProperties properties = LmdbOwningTestStoreMetadata.open(directory, config);
+ 		ValueStore values = new ValueStore(new File(directory, "values"), properties, config);
+ 		try (TripleStore triples = new TripleStore(new File(directory, "triples"), properties, config, values)) {
++			LmdbOwningTestStoreMetadata.completeInitialization(directory, properties);
+ 			for (int i = 0; i < TxnReplayPolicy.HISTORY_LENGTH; i++) {
+ 				triples.startTransaction();
+ 				values.startTransaction(true);
