@@ -13,10 +13,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: 4e635dd65211bf38033dc0dc47fe329def152b03
       - name: Preserve the pinned source for inspection
         run: |
           mkdir -p "$RUNNER_TEMP/canonical-ci-source"
-          git archive --format=tar.gz 4e635dd65211bf38033dc0dc47fe329def152b03 > "$RUNNER_TEMP/canonical-ci-source/source.tar.gz"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/canonical-ci-source/source.tar.gz"
       - uses: actions/upload-artifact@v4
         with:
           name: canonical-ci-source
