@@ -5,25 +5,24 @@ on:
     branches: [GH-0000-canonical-wait-cache-ci]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  reproduce:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
+    env:
+      BASE: 5a556230008d29dd586fad73be58f6f976c5fcf1
+      PKG: core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb
+      SIGNAL: core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignal.java
     steps:
       - uses: actions/checkout@v7.0.1
-        with:
-          ref: 5a556230008d29dd586fad73be58f6f976c5fcf1
-      - name: Preserve the pinned sources
+      - name: Isolate the candidate from validation infrastructure
         run: |
-          mkdir -p "$RUNNER_TEMP/wait-cache-source"
-          git archive --format=tar.gz HEAD AGENTS.md pom.xml .mvn core/sail/lmdb/src core/sail/lmdb/pom.xml > "$RUNNER_TEMP/wait-cache-source/source.tar.gz"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wait-cache-source
-          path: ${{ runner.temp }}/wait-cache-source/
-          retention-days: 3
+          cp scripts/ci/wait-cache-repair.patch "$RUNNER_TEMP/candidate.patch"
+          git fetch --depth=1 origin "$BASE"
+          git checkout --detach "$BASE"
+          mkdir -p "$RUNNER_TEMP/wait-cache-validation"
       - uses: actions/setup-java@v6.0.1
         with:
           java-version: 25
@@ -35,37 +34,107 @@ jobs:
           test -e .m2_repo || ln -s "$HOME/.m2/repository" .m2_repo
       - name: Build dependencies without tests
         run: mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -am install -Pquick -DskipTests -DskipITs -DskipFrontend=true
-      - name: Reproduce both reported failures
+      - name: Prove deterministic timing regressions fail against the original logic
         run: |
-          mkdir -p "$RUNNER_TEMP/wait-cache-red"
+          git apply --include="$PKG/AsyncSignalTest.java" "$RUNNER_TEMP/candidate.patch"
+          python3 - <<'PY'
+          import os, pathlib
+          p = pathlib.Path(os.environ['SIGNAL'])
+          s = p.read_text()
+          # Add only the clock seam; leave both original loops and the deadline sentinel unchanged.
+          s = s.replace('System.nanoTime()', 'waiter.nanoTime()')
+          old = '\t\tvoid parkNanos(Object blocker, long nanos);'
+          assert s.count(old) == 1
+          s = s.replace(old, old + '\n\n\t\tdefault long nanoTime() {\n\t\t\treturn System.nanoTime();\n\t\t}')
+          p.write_text(s)
+          PY
           status=0
-          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test '-Dtest=AsyncSignalTest,ValueStoreIdCacheTest#namespaceCreationAcrossGrowthCheckpointWarmsNextWriter' -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/wait-cache-red/maven.log" 2>&1 || status=$?
-          cat "$RUNNER_TEMP/wait-cache-red/maven.log"
+          mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=AsyncSignalTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/wait-cache-validation/red.log" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/wait-cache-validation/red.log"
           test "$status" -ne 0
           python3 - <<'PY'
-          from pathlib import Path
-          import xml.etree.ElementTree as ET
-          cases = {'aSlowYieldSpinParksOnceItsTimeBudgetIsSpent', 'namespaceCreationAcrossGrowthCheckpointWarmsNextWriter(File)'}
-          seen = set()
-          for report in Path('core/sail/lmdb/target/surefire-reports').glob('TEST-*.xml'):
-              root = ET.parse(report).getroot()
-              for case in root.findall('testcase'):
-                  if case.find('failure') is not None:
-                      print('REPRODUCED', root.attrib['name'], case.attrib['name'])
-                      seen.add(case.attrib['name'])
-          assert 'aSlowYieldSpinParksOnceItsTimeBudgetIsSpent' in seen, seen
-          assert any(s.startswith('namespaceCreationAcrossGrowthCheckpointWarmsNextWriter') for s in seen), seen
+          import pathlib, xml.etree.ElementTree as ET
+          report = pathlib.Path('core/sail/lmdb/target/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.AsyncSignalTest.xml')
+          root = ET.parse(report).getroot()
+          failures = {c.attrib['name'] for c in root.findall('testcase') if c.find('failure') is not None}
+          expected = {'aSlowYieldSpinParksOnceItsTimeBudgetIsSpent', 'timedCheapSpinStopsAtItsSampledDeadline', 'timedYieldStopsAtTheDeadlineBeforeItsTierBudget', 'aDeadlineOfZeroDoesNotBecomeAnUntimedPark'}
+          assert expected <= failures, failures
+          assert root.attrib['errors'] == '0', root.attrib
+          print('Confirmed deterministic timing failures:', sorted(failures))
           PY
-      - name: Preserve reproduction evidence
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/wait-cache-validation/red-reports"
+          git show "$BASE:$SIGNAL" > "$SIGNAL"
+      - name: Apply the correction and run the actual formatter
+        run: |
+          git apply --exclude="$PKG/AsyncSignalTest.java" "$RUNNER_TEMP/candidate.patch"
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Pformatting spotless:apply
+          git diff --check
+          mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pformatting spotless:check --fail-at-end > "$RUNNER_TEMP/wait-cache-validation/formatting.log" 2>&1
+          tail -n 12 "$RUNNER_TEMP/wait-cache-validation/formatting.log"
+      - name: Run affected classes and lifecycle regressions
+        run: |
+          set -o pipefail
+          mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=AsyncSignalTest,ValueStoreIdCacheTest,AdaptiveReplayIntegrationTest,TxnReplayPolicyTest,LmdbCanonicalIriFormatPolicyTest,LmdbNativeFormatFenceTest,ValueStoreCanonicalIriTest,LmdbStoreFormatCompatibilityTest,LmdbStoreFlushReproductionTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip 2>&1 | tee "$RUNNER_TEMP/wait-cache-validation/focused.log"
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/wait-cache-validation/focused-reports"
+      - name: Repeat the timing and native-checkpoint regressions
+        run: |
+          cp "$PKG/AsyncSignalTest.java" "$RUNNER_TEMP/signal-test.java"
+          cp "$PKG/ValueStoreIdCacheTest.java" "$RUNNER_TEMP/cache-test.java"
+          python3 - <<'PY'
+          import os, pathlib
+          pkg = pathlib.Path(os.environ['PKG'])
+          for file, methods in [('AsyncSignalTest.java', ['aSlowYieldSpinParksOnceItsTimeBudgetIsSpent', 'timedCheapSpinStopsAtItsSampledDeadline', 'timedYieldStopsAtTheDeadlineBeforeItsTierBudget']), ('ValueStoreIdCacheTest.java', ['namespaceCreationAcrossGrowthCheckpointWarmsNextWriter'])]:
+              p = pkg / file
+              s = p.read_text()
+              for method in methods:
+                  old = '\t@Test\n\tvoid ' + method
+                  assert s.count(old) == 1, method
+                  s = s.replace(old, '\t@org.junit.jupiter.api.RepeatedTest(20)\n\tvoid ' + method)
+              p.write_text(s)
+          PY
+          status=0
+          mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test '-Dtest=AsyncSignalTest#aSlowYieldSpinParksOnceItsTimeBudgetIsSpent+timedCheapSpinStopsAtItsSampledDeadline+timedYieldStopsAtTheDeadlineBeforeItsTierBudget,ValueStoreIdCacheTest#namespaceCreationAcrossGrowthCheckpointWarmsNextWriter' -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/wait-cache-validation/stress.log" 2>&1 || status=$?
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/wait-cache-validation/stress-reports"
+          cp "$RUNNER_TEMP/signal-test.java" "$PKG/AsyncSignalTest.java"
+          cp "$RUNNER_TEMP/cache-test.java" "$PKG/ValueStoreIdCacheTest.java"
+          cat "$RUNNER_TEMP/wait-cache-validation/stress.log"
+          exit "$status"
+      - name: Run the full LMDB unit-test partition
+        run: |
+          set -o pipefail
+          mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip 2>&1 | tee "$RUNNER_TEMP/wait-cache-validation/full-lmdb.log"
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/wait-cache-validation/full-reports"
+      - name: Verify synchronous validation profile
+        run: |
+          set -o pipefail
+          mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=LmdbSyncValidationProfileProbe -DskipITs -PskipSlowTests,lmdb-sync-validation,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip 2>&1 | tee "$RUNNER_TEMP/wait-cache-validation/synchronous.log"
+      - name: Publish only a validated candidate, not the PR branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$SIGNAL" "$PKG/AsyncSignalTest.java" "$PKG/ValueStoreIdCacheTest.java"
+          test "$(git diff --cached --name-only | wc -l)" -eq 3
+          git diff --exit-code
+          git diff --cached --check
+          git commit -m 'GH-0000 Bound async waiting and require an observed namespace checkpoint'
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          git push origin HEAD:refs/heads/GH-0000-canonical-wait-cache-validated
+          git rev-parse HEAD > "$RUNNER_TEMP/wait-cache-validation/commit.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/wait-cache-validation/tree.txt"
+          git diff --binary --full-index "$BASE" HEAD > "$RUNNER_TEMP/wait-cache-validation/fix.patch"
+          git diff --name-only "$BASE" HEAD > "$RUNNER_TEMP/wait-cache-validation/files.txt"
+          git archive --format=zip HEAD $(cat "$RUNNER_TEMP/wait-cache-validation/files.txt") > "$RUNNER_TEMP/wait-cache-validation/changed-files.zip"
+      - name: Preserve all available evidence
         if: always()
         run: |
-          mkdir -p "$RUNNER_TEMP/wait-cache-red"
+          mkdir -p "$RUNNER_TEMP/wait-cache-validation"
           if test -d core/sail/lmdb/target/surefire-reports; then
-            cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/wait-cache-red/reports"
+            cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/wait-cache-validation/latest-reports"
           fi
+          git diff --binary > "$RUNNER_TEMP/wait-cache-validation/working.patch"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: wait-cache-red
-          path: ${{ runner.temp }}/wait-cache-red/
+          name: wait-cache-validation
+          path: ${{ runner.temp }}/wait-cache-validation/
           retention-days: 7

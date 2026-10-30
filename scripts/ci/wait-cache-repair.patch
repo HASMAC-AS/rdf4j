@@ -1,0 +1,359 @@
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignal.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignal.java
+index 3185cbd..1354d9a 100644
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignal.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignal.java
+@@ -37,6 +37,11 @@ final class AsyncSignal {
+ 		void park(Object blocker);
+ 
+ 		void parkNanos(Object blocker, long nanos);
++
++		/** Monotonic elapsed-time source; tests advance it without depending on scheduler timing. */
++		default long nanoTime() {
++			return System.nanoTime();
++		}
+ 	}
+ 
+ 	private static final Waiter SYSTEM_WAITER = new Waiter() {
+@@ -85,9 +90,9 @@ final class AsyncSignal {
+ 	 * - park immediately: 18,170 ops/s - 1,024 spins / 64 yields: 21,770 ops/s - 4,096 / 256: 24,628 ops/s - 4,096 /
+ 	 * 1,024: 24,665 ops/s - 16,384 / 4,096: 24,260 ops/s - 256 / 4,096: 23,077 ops/s
+ 	 *
+-	 * Throughput plateaus at 4,096 / 256, the smallest budget there, so it burns the least CPU before a long wait
+-	 * parks. Larger budgets gain nothing and only spin longer, and a short cheap spin followed by a long yield spin
+-	 * measured lower. On that machine the tiers last about 50 us and 30 us.
++	 * Those measurements used the earlier 4,096-spin limit. The current count limits remain upper bounds, not
++	 * elapsed-time guarantees. Timed waits check their deadline every 64 cheap spins; untimed cheap spins do not read
++	 * the clock. Interruption is also checked at each of these boundaries.
+ 	 *
+ 	 * The yield spin also stops after YIELD_NANOS. On a loaded machine, such as a CI runner running tests in parallel,
+ 	 * each yield can wait a whole scheduler slice of several milliseconds, and 256 of them would keep an idle waiter
+@@ -98,6 +103,8 @@ final class AsyncSignal {
+ 	 */
+ 	static final int SPINS = 64 * 1024;
+ 	static final int YIELDS = 256;
++	static final long YIELD_NANOS = 100_000L;
++	private static final int SPIN_CHECK_MASK = 63;
+ 
+ 	private final Waiter waiter;
+ 	private final boolean spinBeforePark;
+@@ -166,14 +173,17 @@ final class AsyncSignal {
+ 			throw new InterruptedException();
+ 		}
+ 		if (remainingNanos > 0L && sequence.get() == observed) {
+-			long deadline = remainingNanos == Long.MAX_VALUE ? 0L : System.nanoTime() + remainingNanos;
+-			if ((!spinBeforePark || !changedWhileSpinning(observed, deadline)) && sequence.get() == observed) {
+-				if (deadline == 0L) {
++			boolean timed = remainingNanos != Long.MAX_VALUE;
++			long started = timed ? waiter.nanoTime() : 0L;
++			if ((!spinBeforePark || !finishedWhileSpinning(observed, started, remainingNanos))
++					&& sequence.get() == observed && !Thread.currentThread().isInterrupted()) {
++				if (!timed) {
+ 					waiter.park(this);
+ 				} else {
+-					long left = deadline - System.nanoTime();
+-					if (left > 0L) {
+-						waiter.parkNanos(this, left);
++					// Elapsed subtraction remains valid across nanoTime wraparound, including a deadline of zero.
++					long elapsed = waiter.nanoTime() - started;
++					if (elapsed < remainingNanos) {
++						waiter.parkNanos(this, remainingNanos - elapsed);
+ 					}
+ 				}
+ 			}
+@@ -183,21 +193,41 @@ final class AsyncSignal {
+ 		}
+ 	}
+ 
+-	/** The two spin tiers; {@code deadline} is zero for an untimed wait. */
+-	private boolean changedWhileSpinning(long observed, long deadline) {
++	/** Returns true when publication, interruption or expiration finishes the wait before parking. */
++	private boolean finishedWhileSpinning(long observed, long started, long remainingNanos) {
++		boolean timed = remainingNanos != Long.MAX_VALUE;
+ 		for (int i = 0; i < SPINS; i++) {
+ 			if (sequence.get() != observed) {
+ 				return true;
+ 			}
+ 			waiter.spin();
++			if ((i & SPIN_CHECK_MASK) == SPIN_CHECK_MASK
++					&& (Thread.currentThread().isInterrupted()
++							|| timed && waiter.nanoTime() - started >= remainingNanos)) {
++				return true;
++			}
++		}
++		if (sequence.get() != observed || Thread.currentThread().isInterrupted()) {
++			return true;
++		}
++		long yieldStarted = waiter.nanoTime();
++		if (timed && yieldStarted - started >= remainingNanos) {
++			return true;
+ 		}
+ 		for (int i = 0; i < YIELDS; i++) {
+-			if (sequence.get() != observed) {
++			if (sequence.get() != observed || Thread.currentThread().isInterrupted()) {
+ 				return true;
+ 			}
+ 			waiter.yield();
++			long now = waiter.nanoTime();
++			if (timed && now - started >= remainingNanos) {
++				return true;
++			}
++			if (now - yieldStarted >= YIELD_NANOS) {
++				break;
++			}
+ 		}
+-		return sequence.get() != observed;
++		return sequence.get() != observed || Thread.currentThread().isInterrupted();
+ 	}
+ 
+ 	void unregister(boolean primary) {
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignalTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignalTest.java
+index bb438a2..ebadc26 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignalTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/AsyncSignalTest.java
+@@ -31,6 +31,8 @@ import java.util.concurrent.locks.LockSupport;
+ 
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.Timeout;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
+ 
+ @Timeout(value = 10, unit = TimeUnit.SECONDS)
+ class AsyncSignalTest {
+@@ -43,7 +45,15 @@ class AsyncSignalTest {
+ 		int spins;
+ 		int yields;
+ 		int parks;
+-		/** Each yield waits as long as a busy machine's scheduler slice. */
++		int timedParks;
++		int clockReads;
++		long now;
++		long nanosPerSpin;
++		long nanosPerYield;
++		long parkedNanos;
++		int interruptAfterSpins = -1;
++		int interruptAfterYields = -1;
++		/** Each yield advances the clock by a busy machine's scheduler slice. */
+ 		boolean slowYields;
+ 
+ 		RecordingWaiter(String signalAt, int signalAfter) {
+@@ -54,18 +64,19 @@ class AsyncSignalTest {
+ 		@Override
+ 		public void spin() {
+ 			spins++;
++			now += nanosPerSpin;
++			if (spins == interruptAfterSpins) {
++				Thread.currentThread().interrupt();
++			}
+ 			maybeSignal("spin", spins);
+ 		}
+ 
+ 		@Override
+ 		public void yield() {
+ 			yields++;
+-			if (slowYields) {
+-				// Waits on the clock: a park could return early on a permit left by an earlier signal.
+-				long end = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(1);
+-				while (System.nanoTime() - end < 0L) {
+-					Thread.onSpinWait();
+-				}
++			now += slowYields ? TimeUnit.MILLISECONDS.toNanos(1) : nanosPerYield;
++			if (yields == interruptAfterYields) {
++				Thread.currentThread().interrupt();
+ 			}
+ 			maybeSignal("yield", yields);
+ 		}
+@@ -78,9 +89,17 @@ class AsyncSignalTest {
+ 
+ 		@Override
+ 		public void parkNanos(Object blocker, long nanos) {
++			timedParks++;
++			parkedNanos = nanos;
+ 			park(blocker);
+ 		}
+ 
++		@Override
++		public long nanoTime() {
++			clockReads++;
++			return now;
++		}
++
+ 		private void maybeSignal(String step, int count) {
+ 			if (step.equals(signalAt) && count == signalAfter) {
+ 				signal.signal();
+@@ -149,6 +168,119 @@ class AsyncSignalTest {
+ 		assertEquals(1, waiter.parks);
+ 	}
+ 
++	@Test
++	void anUntimedCheapSpinDoesNotReadTheClock() throws InterruptedException {
++		RecordingWaiter waiter = awaitWith(new RecordingWaiter("spin", 10));
++		assertEquals(0, waiter.clockReads, "the common untimed handoff must stay clock-free");
++	}
++
++	@Test
++	void timedCheapSpinStopsAtItsSampledDeadline() throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("none", 0);
++		waiter.nanosPerSpin = 1L;
++		AsyncSignal signal = new AsyncSignal(waiter);
++		signal.await(signal.sequence(), 10L);
++		assertTrue(waiter.spins > 0 && waiter.spins <= 64, "deadline checks are bounded to 64 cheap spins");
++		assertEquals(0, waiter.yields);
++		assertEquals(0, waiter.parks);
++	}
++
++	@Test
++	void timedYieldStopsAtTheDeadlineBeforeItsTierBudget() throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("none", 0);
++		waiter.nanosPerYield = 11L;
++		AsyncSignal signal = new AsyncSignal(waiter);
++		signal.await(signal.sequence(), 10L);
++		assertEquals(AsyncSignal.SPINS, waiter.spins);
++		assertEquals(1, waiter.yields);
++		assertEquals(0, waiter.parks, "an expired finite wait must not park");
++	}
++
++	@ParameterizedTest
++	@ValueSource(longs = { 0L, -1_000_000L, Long.MAX_VALUE - 10L })
++	void timedParkUsesOnlyTheRemainingBudgetAcrossClockWraparound(long start) throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("none", 0);
++		waiter.now = start;
++		waiter.nanosPerSpin = 1L;
++		waiter.nanosPerYield = 1L;
++		AsyncSignal signal = new AsyncSignal(waiter);
++		signal.await(signal.sequence(), AsyncSignal.SPINS + AsyncSignal.YIELDS + 123L);
++		assertEquals(AsyncSignal.SPINS, waiter.spins);
++		assertEquals(AsyncSignal.YIELDS, waiter.yields);
++		assertEquals(1, waiter.timedParks);
++		assertEquals(123L, waiter.parkedNanos);
++		assertTrue(waiter.clockReads < AsyncSignal.SPINS / 16,
++				"the finite deadline must not read the clock on every cheap spin");
++	}
++
++	@Test
++	void aDeadlineOfZeroDoesNotBecomeAnUntimedPark() throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("none", 0);
++		waiter.now = -25L;
++		AsyncSignal signal = new AsyncSignal(waiter, false);
++		signal.await(signal.sequence(), 25L);
++		assertEquals(1, waiter.timedParks);
++		assertEquals(25L, waiter.parkedNanos);
++	}
++
++	@Test
++	void slowYieldBudgetSurvivesClockWraparound() throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("park", 1);
++		waiter.now = Long.MAX_VALUE - 10L;
++		waiter.slowYields = true;
++		awaitWith(waiter);
++		assertEquals(1, waiter.yields);
++		assertEquals(1, waiter.parks);
++	}
++
++	@Test
++	void aSignalAtTheYieldBudgetBoundaryAvoidsParking() throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("yield", 1);
++		waiter.slowYields = true;
++		awaitWith(waiter);
++		assertEquals(1, waiter.yields);
++		assertEquals(0, waiter.parks);
++	}
++
++	@ParameterizedTest
++	@ValueSource(booleans = { false, true })
++	void interruptionStopsSpinningAndReleasesTheRegistration(boolean duringYield) {
++		RecordingWaiter waiter = new RecordingWaiter("none", 0);
++		if (duringYield) {
++			waiter.interruptAfterYields = 1;
++		} else {
++			waiter.interruptAfterSpins = 1;
++		}
++		AsyncSignal signal = new AsyncSignal(waiter);
++		assertThrows(InterruptedException.class, () -> signal.await(signal.sequence(), Long.MAX_VALUE));
++		assertFalse(Thread.currentThread().isInterrupted());
++		assertEquals(0, waiter.parks);
++		if (duringYield) {
++			assertEquals(1, waiter.yields);
++		} else {
++			assertTrue(waiter.spins <= 64);
++			assertEquals(0, waiter.yields);
++		}
++		boolean primary = signal.register();
++		try {
++			assertTrue(primary, "interruption must release the primary registration slot");
++		} finally {
++			signal.unregister(primary);
++		}
++	}
++
++	@ParameterizedTest
++	@ValueSource(longs = { 0L, -1L, Long.MIN_VALUE })
++	void exhaustedBudgetsDoNotSpinYieldParkOrReadTheClock(long remaining) throws InterruptedException {
++		RecordingWaiter waiter = new RecordingWaiter("none", 0);
++		AsyncSignal signal = new AsyncSignal(waiter);
++		signal.await(signal.sequence(), remaining);
++		assertEquals(0, waiter.spins);
++		assertEquals(0, waiter.yields);
++		assertEquals(0, waiter.parks);
++		assertEquals(0, waiter.clockReads);
++	}
++
+ 	@Test
+ 	void signalBeforeRegistrationCannotBeLost() throws InterruptedException {
+ 		AsyncSignal signal = new AsyncSignal();
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreIdCacheTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreIdCacheTest.java
+index 6dc806f..fb8f690 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreIdCacheTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreIdCacheTest.java
+@@ -639,14 +639,25 @@ class ValueStoreIdCacheTest {
+ 
+ 	@Test
+ 	void namespaceCreationAcrossGrowthCheckpointWarmsNextWriter(@TempDir File directory) throws Exception {
+-		String namespace = "urn:checkpoint:" + "x".repeat(256 * 1024) + ":";
++		int namespaceBytes = 256 * 1024;
++		String prefix = "urn:checkpoint:" + "x".repeat(namespaceBytes);
+ 		try (CountingValueStore store = new CountingValueStore(directory,
+ 				config().setAutoGrow(true).setValueDBSize(256L * 1024), LmdbStoreFormat.CANONICAL_IRI_VERSION)) {
+-			long growthBefore = store.getBulkMapGrowthCount();
+ 			store.startTransaction(true);
+-			store.storeValue(VALUES.createIRI(namespace + "first"));
+-			assertTrue(store.getBulkMapGrowthCount() > growthBefore,
+-					"the namespace must force a map growth checkpoint");
++			long mapBefore = store.mapSizeBytes();
++			long growthBefore = store.getBulkMapGrowthCount();
++			// Startup reserves native bootstrap space, so the effective map can exceed the requested size.
++			// Fill that actual map with distinct, cache-eligible namespaces until namespace allocation checkpoints.
++			int limit = Math.toIntExact(mapBefore / namespaceBytes + 2L);
++			String namespace = null;
++			for (int i = 0; i < limit && store.namespaceCheckpoints == 0; i++) {
++				namespace = prefix + i + ":";
++				store.storeValue(VALUES.createIRI(namespace + "first"));
++			}
++			assertTrue(store.namespaceCheckpoints > 0,
++					"namespace allocation itself must commit and replace the native writer across map growth");
++			assertTrue(store.mapSizeBytes() > mapBefore);
++			assertTrue(store.getBulkMapGrowthCount() > growthBefore);
+ 			store.commit();
+ 
+ 			store.resetCounts();
+@@ -1352,6 +1363,7 @@ class ValueStoreIdCacheTest {
+ 
+ 		private int valueProbes;
+ 		private int namespaceProbes;
++		private int namespaceCheckpoints;
+ 		private int readTransactions;
+ 		private int alternativeProbes;
+ 		private int alternativeSeeks;
+@@ -1399,7 +1411,13 @@ class ValueStoreIdCacheTest {
+ 			} else {
+ 				valueProbes++;
+ 			}
++			long mapBefore = nativeMapGeneration();
++			long commitsBefore = nativeCommitGeneration();
+ 			Long result = super.findIdInTransaction(data, create, coreDatatype, stack, txn);
++			if (create && data[0] == ValueStoreRecordCodec.NAMESPACE_VALUE
++					&& nativeMapGeneration() > mapBefore && nativeCommitGeneration() > commitsBefore) {
++				namespaceCheckpoints++;
++			}
+ 			if (data[0] == failAfterProbeType) {
+ 				failAfterProbeType = -1;
+ 				throw new IOException("dictionary probe failed after reading its result");
