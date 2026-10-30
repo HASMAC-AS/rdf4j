@@ -8,49 +8,19 @@ permissions:
   contents: read
 
 jobs:
-  reproduce:
+  source:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           ref: 4e635dd65211bf38033dc0dc47fe329def152b03
-      - name: Preserve the pinned source for inspection
+      - name: Preserve relevant pinned sources without large datasets
         run: |
           mkdir -p "$RUNNER_TEMP/canonical-ci-source"
-          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/canonical-ci-source/source.tar.gz"
+          git archive --format=tar.gz HEAD core/sail/lmdb/src/main/java core/sail/lmdb/src/test/java core/sail/base/src/main/java core/queryalgebra/evaluation/src/main/java core/sail/lmdb/pom.xml pom.xml .mvn AGENTS.md > "$RUNNER_TEMP/canonical-ci-source/source.tar.gz"
       - uses: actions/upload-artifact@v4
         with:
-          name: canonical-ci-source
+          name: canonical-ci-focused-source
           path: ${{ runner.temp }}/canonical-ci-source/source.tar.gz
-          retention-days: 3
-      - uses: actions/setup-java@v6.0.1
-        with:
-          java-version: 25
-          distribution: temurin
-          cache: maven
-      - name: Reuse the Maven cache at the repository-required path
-        run: |
-          mkdir -p "$HOME/.m2/repository"
-          test -e .m2_repo || ln -s "$HOME/.m2/repository" .m2_repo
-      - name: Build the LMDB dependencies without running tests
-        run: mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -am install -Pquick -DskipTests -DskipITs -DskipFrontend=true
-      - name: Reproduce the reported failures
-        continue-on-error: true
-        run: |
-          set -o pipefail
-          mkdir -p "$RUNNER_TEMP/canonical-ci-red"
-          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=AdaptiveReplayIntegrationTest,TxnReplayPolicyTest,LmdbSailStoreOverlayStartupTest,LmdbDirectAdjacencyQueryTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip 2>&1 | tee "$RUNNER_TEMP/canonical-ci-red/maven.log"
-      - name: Preserve baseline reports
-        if: always()
-        run: |
-          mkdir -p "$RUNNER_TEMP/canonical-ci-red"
-          if test -d core/sail/lmdb/target/surefire-reports; then
-            cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/canonical-ci-red/"
-          fi
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: canonical-ci-red
-          path: ${{ runner.temp }}/canonical-ci-red/
           retention-days: 3
