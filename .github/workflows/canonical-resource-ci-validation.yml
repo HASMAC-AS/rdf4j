@@ -5,14 +5,23 @@ on:
     branches: [GH-0000-canonical-resource-ci-validation]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  reproduce:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      BASE: 040d7fb1081f1a79939a542b4941405764f519d8
+      PKG: core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb
     steps:
       - uses: actions/checkout@v7.0.1
+      - name: Isolate the candidate from validation infrastructure
+        run: |
+          cp scripts/ci/canonical-resource-repair.patch "$RUNNER_TEMP/candidate.patch"
+          git fetch --depth=1 origin "$BASE"
+          git checkout --detach "$BASE"
+          mkdir -p "$RUNNER_TEMP/resource-validation"
       - uses: actions/setup-java@v6.0.1
         with:
           java-version: 25
@@ -22,35 +31,96 @@ jobs:
         run: |
           mkdir -p "$HOME/.m2/repository"
           test -e .m2_repo || ln -s "$HOME/.m2/repository" .m2_repo
-          mkdir -p "$RUNNER_TEMP/resource-red"
       - name: Build dependencies without tests
         run: mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -am install -Pquick -DskipTests -DskipITs -DskipFrontend=true
-      - name: Reproduce premature spill completion
+      - name: Reproduce both spill cleanup failures before applying production changes
         run: |
+          git apply --include="$PKG/bulk/BulkSpillCompletionTest.java" "$RUNNER_TEMP/candidate.patch"
           status=0
-          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=BulkSpillCompletionTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/resource-red/red.log" 2>&1 || status=$?
-          cat "$RUNNER_TEMP/resource-red/red.log"
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=BulkSpillCompletionTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/resource-validation/red.log" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/resource-validation/red.log"
           test "$status" -ne 0
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
-          p = pathlib.Path('core/sail/lmdb/target/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.bulk.BulkSpillCompletionTest.xml')
-          root = ET.parse(p).getroot()
-          assert int(root.attrib['tests']) == 2, root.attrib
-          assert int(root.attrib['errors']) == 0, root.attrib
-          assert int(root.attrib['failures']) == 2, root.attrib
+          root = ET.parse(pathlib.Path('core/sail/lmdb/target/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.bulk.BulkSpillCompletionTest.xml')).getroot()
+          assert int(root.attrib['tests']) == 2 and int(root.attrib['errors']) == 0 and int(root.attrib['failures']) == 2, root.attrib
           for case in root.findall('testcase'):
               failure = case.find('failure')
               assert failure is not None and 'synchronous finish cannot return' in failure.attrib.get('message', ''), ET.tostring(case)
-          print('Confirmed both premature-cleanup regressions:', root.attrib)
+          print('Confirmed both intended regressions:', root.attrib)
           PY
-      - name: Preserve reproduction reports
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/resource-validation/red-reports"
+      - name: Apply the candidate and run the actual formatter
+        run: |
+          git apply --exclude="$PKG/bulk/BulkSpillCompletionTest.java" "$RUNNER_TEMP/candidate.patch"
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Pformatting spotless:apply
+          git diff --check
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -Pformatting spotless:check --fail-at-end > "$RUNNER_TEMP/resource-validation/formatting.log" 2>&1
+          tail -n 15 "$RUNNER_TEMP/resource-validation/formatting.log"
+      - name: Run affected classes and lifecycle safety regressions
+        run: |
+          set -o pipefail
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=BulkSpillCompletionTest,BulkTaskSchedulerTest,ExternalLongTupleSorterTest,ExternalByteKeySorterTest,StatementIndexBulkRecordsTest,LmdbStoreFlushReproductionTest,TxnManagerTest,AdaptiveReplayIntegrationTest,TxnReplayPolicyTest,LmdbOwningTestStoreMetadataTest,LmdbCanonicalIriFormatPolicyTest,LmdbNativeFormatFenceTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip 2>&1 | tee "$RUNNER_TEMP/resource-validation/green.log"
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/resource-validation/green-reports"
+      - name: Repeat spill completion, parallel staging, and pinned-reader scenarios
+        run: |
+          cp "$PKG/LmdbStoreFlushReproductionTest.java" "$RUNNER_TEMP/reader.java"
+          cp "$PKG/bulk/BulkSpillCompletionTest.java" "$RUNNER_TEMP/spill.java"
+          cp "$PKG/bulk/StatementIndexBulkRecordsTest.java" "$RUNNER_TEMP/indexes.java"
+          python3 - <<'PY'
+          import os, pathlib
+          p = pathlib.Path(os.environ['PKG'])
+          for path, signature in [(p / 'LmdbStoreFlushReproductionTest.java', 'void pinnedTripleTermIteratorFailsAfterValueMapGrowth'), (p / 'bulk/BulkSpillCompletionTest.java', 'void finishWaitsForSpillCleanupAndLeaseRelease')]:
+              text = path.read_text()
+              pos = text.index(signature)
+              start = text.rfind('@ValueSource(booleans = { false, true })', 0, pos)
+              assert start >= 0
+              old = '@ValueSource(booleans = { false, true })'
+              repeated = '@ValueSource(booleans = { ' + ', '.join(['false', 'true'] * 20) + ' })'
+              path.write_text(text[:start] + text[start:].replace(old, repeated, 1))
+          path = p / 'bulk/StatementIndexBulkRecordsTest.java'
+          text = path.read_text()
+          old = '\t@Test\n\tvoid finishesIndependentConfiguredIndexesConcurrently()'
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, '\t@org.junit.jupiter.api.RepeatedTest(20)\n\tvoid finishesIndependentConfiguredIndexesConcurrently()'))
+          PY
+          status=0
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test '-Dtest=BulkSpillCompletionTest,LmdbStoreFlushReproductionTest#pinnedTripleTermIteratorFailsAfterValueMapGrowth,StatementIndexBulkRecordsTest#finishesIndependentConfiguredIndexesConcurrently' -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/resource-validation/stress.log" 2>&1 || status=$?
+          cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/resource-validation/stress-reports"
+          cp "$RUNNER_TEMP/reader.java" "$PKG/LmdbStoreFlushReproductionTest.java"
+          cp "$RUNNER_TEMP/spill.java" "$PKG/bulk/BulkSpillCompletionTest.java"
+          cp "$RUNNER_TEMP/indexes.java" "$PKG/bulk/StatementIndexBulkRecordsTest.java"
+          cat "$RUNNER_TEMP/resource-validation/stress.log"
+          exit "$status"
+      - name: Publish only a validated candidate, not the PR branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for file in BulkTaskScheduler.java ExternalLongTupleSorter.java ExternalByteKeySorter.java; do
+            git add "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/$file"
+          done
+          git add "$PKG/LmdbStoreFlushReproductionTest.java" "$PKG/bulk/BulkSpillCompletionTest.java"
+          test "$(git diff --cached --name-only | wc -l)" -eq 5
+          git diff --exit-code
+          git diff --cached --check
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -Pformatting spotless:check
+          git commit -m 'GH-0000 Join spill cleanup before returning and observe owned reader leases'
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          git push origin HEAD:refs/heads/GH-0000-canonical-resource-ci-validated
+          git rev-parse HEAD > "$RUNNER_TEMP/resource-validation/commit.txt"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/resource-validation/tree.txt"
+          git diff --binary --full-index "$BASE" HEAD > "$RUNNER_TEMP/resource-validation/fix.patch"
+          git diff --name-only "$BASE" HEAD > "$RUNNER_TEMP/resource-validation/files.txt"
+          git archive --format=zip HEAD $(cat "$RUNNER_TEMP/resource-validation/files.txt") > "$RUNNER_TEMP/resource-validation/changed-files.zip"
+      - name: Preserve current reports even when validation fails
         if: always()
         run: |
-          mkdir -p "$RUNNER_TEMP/resource-red"
-          if test -d core/sail/lmdb/target/surefire-reports; then cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/resource-red/reports"; fi
+          mkdir -p "$RUNNER_TEMP/resource-validation"
+          if test -d core/sail/lmdb/target/surefire-reports; then cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/resource-validation/latest-reports"; fi
+          git diff --binary > "$RUNNER_TEMP/resource-validation/working.patch"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: resource-red
-          path: ${{ runner.temp }}/resource-red/
+          name: canonical-resource-validation
+          path: ${{ runner.temp }}/resource-validation/
           retention-days: 7

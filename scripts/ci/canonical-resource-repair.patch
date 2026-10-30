@@ -1,0 +1,387 @@
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkTaskScheduler.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkTaskScheduler.java
+index 333e71307fbb72ecd522774ef05dc739c93915bf..4270c9e3b2868c969644c2075cd6c350c68ce754 100644
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkTaskScheduler.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkTaskScheduler.java
+@@ -663,6 +663,17 @@ final class BulkTaskScheduler implements AutoCloseable {
+ 		return schedule(lease, operation, true, whenFinished);
+ 	}
+ 
++	/**
++	 * Waits for this task's completion callback and resource-lease release, not just FutureTask's result publication.
++	 * Joining only this task keeps independent sorters free to share the scheduler without a pool-wide idle barrier.
++	 */
++	void awaitTaskCleanup(Future<?> future) throws InterruptedException {
++		if (!(future instanceof BulkTaskScheduler.TrackedTask<?> task) || task.lease.owner != this) {
++			throw new IllegalArgumentException("task belongs to another scheduler");
++		}
++		task.awaitCleanup();
++	}
++
+ 	<T> List<T> runOrdered(List<Work<T>> work) throws IOException {
+ 		if (CURRENT_SCHEDULER.get() == this) {
+ 			throw new IllegalStateException("ordered bulk work must be coordinated outside the scheduler pool");
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalByteKeySorter.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalByteKeySorter.java
+index 0f89e875e0cbb810fa9bfb764b403962acb1aa16..0a4dc61d98e479ffcae0646f60dcaf350cd896b1 100644
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalByteKeySorter.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalByteKeySorter.java
+@@ -34,7 +34,6 @@ import java.util.Objects;
+ import java.util.Set;
+ import java.util.concurrent.CancellationException;
+ import java.util.concurrent.ConcurrentHashMap;
+-import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.Future;
+ 
+@@ -541,7 +540,6 @@ final class ExternalByteKeySorter implements AutoCloseable {
+ 
+ 	private void submitSpill(Path output, SpillSnapshot snapshot, BulkTaskScheduler.ResourceLease lease)
+ 			throws IOException {
+-		CountDownLatch exited = new CountDownLatch(1);
+ 		try {
+ 			Future<Path> future = scheduler.submitOrRunInline(lease, () -> {
+ 				try {
+@@ -557,14 +555,8 @@ final class ExternalByteKeySorter implements AutoCloseable {
+ 					}
+ 					throw failure;
+ 				}
+-			}, () -> {
+-				try {
+-					snapshot.close();
+-				} finally {
+-					exited.countDown();
+-				}
+-			});
+-			pendingSpills.add(new PendingSpill(output, future, exited));
++			}, snapshot::close);
++			pendingSpills.add(new PendingSpill(output, future));
+ 		} catch (RuntimeException | Error failure) {
+ 			lease.close();
+ 			snapshot.close();
+@@ -575,7 +567,9 @@ final class ExternalByteKeySorter implements AutoCloseable {
+ 	private void awaitOldestSpill() throws IOException {
+ 		PendingSpill pending = pendingSpills.removeFirst();
+ 		try {
+-			runs.add(pending.future().get());
++			Path run = pending.future().get();
++			scheduler.awaitTaskCleanup(pending.future());
++			runs.add(run);
+ 		} catch (InterruptedException e) {
+ 			pending.future().cancel(true);
+ 			InterruptedIOException interrupted = new InterruptedIOException(
+@@ -636,7 +630,7 @@ final class ExternalByteKeySorter implements AutoCloseable {
+ 		boolean interrupted = false;
+ 		while (true) {
+ 			try {
+-				pending.exited().await();
++				scheduler.awaitTaskCleanup(pending.future());
+ 				return interrupted;
+ 			} catch (InterruptedException e) {
+ 				interrupted = true;
+@@ -984,7 +978,7 @@ final class ExternalByteKeySorter implements AutoCloseable {
+ 			long spillMemoryBytes) {
+ 	}
+ 
+-	private record PendingSpill(Path output, Future<Path> future, CountDownLatch exited) {
++	private record PendingSpill(Path output, Future<Path> future) {
+ 	}
+ 
+ 	@FunctionalInterface
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalLongTupleSorter.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalLongTupleSorter.java
+index 7ee2dadbce393d96fe9851a3acea1d71f90c7e8c..84a5b06358911ddaec087261ac1a691c57de5d48 100644
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalLongTupleSorter.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/bulk/ExternalLongTupleSorter.java
+@@ -34,7 +34,6 @@ import java.util.Objects;
+ import java.util.Set;
+ import java.util.concurrent.CancellationException;
+ import java.util.concurrent.ConcurrentHashMap;
+-import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.Future;
+ import java.util.concurrent.atomic.AtomicBoolean;
+@@ -557,7 +556,6 @@ final class ExternalLongTupleSorter implements AutoCloseable {
+ 			snapshot.close();
+ 			throw failure;
+ 		}
+-		CountDownLatch exited = new CountDownLatch(1);
+ 		Future<Path> future;
+ 		try {
+ 			future = scheduler.submitOrRunInline(lease, () -> {
+@@ -578,14 +576,8 @@ final class ExternalLongTupleSorter implements AutoCloseable {
+ 					}
+ 					throw failure;
+ 				}
+-			}, () -> {
+-				try {
+-					snapshot.close();
+-				} finally {
+-					exited.countDown();
+-				}
+-			});
+-			pendingSpills.add(new PendingSpill(run, future, exited));
++			}, snapshot::close);
++			pendingSpills.add(new PendingSpill(run, future));
+ 			bufferedRows = 0;
+ 		} catch (RuntimeException | Error failure) {
+ 			lease.close();
+@@ -642,7 +634,9 @@ final class ExternalLongTupleSorter implements AutoCloseable {
+ 	private void awaitOldestSpill() throws IOException {
+ 		PendingSpill pending = pendingSpills.removeFirst();
+ 		try {
+-			runs.add(pending.future().get());
++			Path run = pending.future().get();
++			scheduler.awaitTaskCleanup(pending.future());
++			runs.add(run);
+ 		} catch (InterruptedException e) {
+ 			pending.future().cancel(true);
+ 			InterruptedIOException interrupted = new InterruptedIOException("interrupted while joining tuple spills");
+@@ -717,7 +711,7 @@ final class ExternalLongTupleSorter implements AutoCloseable {
+ 		boolean interrupted = false;
+ 		while (true) {
+ 			try {
+-				pending.exited().await();
++				scheduler.awaitTaskCleanup(pending.future());
+ 				return interrupted;
+ 			} catch (InterruptedException e) {
+ 				interrupted = true;
+@@ -1158,7 +1152,7 @@ final class ExternalLongTupleSorter implements AutoCloseable {
+ 		void delete(Path path) throws IOException;
+ 	}
+ 
+-	private record PendingSpill(Path output, Future<Path> future, CountDownLatch exited) {
++	private record PendingSpill(Path output, Future<Path> future) {
+ 	}
+ 
+ 	private static final class RunSnapshot implements AutoCloseable {
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreFlushReproductionTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreFlushReproductionTest.java
+index 285fe0e6ff37b152e4ba37dd43e9f9ba87490bcc..6943f83ffb8625a79b419c4ec026cbd32524e7e9 100644
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreFlushReproductionTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreFlushReproductionTest.java
+@@ -38,7 +38,6 @@ import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ import java.util.concurrent.Future;
+-import java.util.concurrent.Semaphore;
+ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.TimeoutException;
+ import java.util.concurrent.atomic.AtomicBoolean;
+@@ -1492,8 +1491,10 @@ class LmdbStoreFlushReproductionTest {
+ 		}
+ 	}
+ 
+-	@Test
+-	void pinnedTripleTermIteratorFailsAfterValueMapGrowth(@TempDir Path dataDir) throws Exception {
++	@ParameterizedTest
++	@ValueSource(booleans = { false, true })
++	void pinnedTripleTermIteratorFailsAfterValueMapGrowth(boolean unrelatedValueReader, @TempDir Path dataDir)
++			throws Exception {
+ 		LmdbStoreConfig config = new LmdbStoreConfig("spoc,posc").setForceSync(true)
+ 				.setValueDBSize(1024L * 1024L)
+ 				.setAutoGrow(true);
+@@ -1501,6 +1502,9 @@ class LmdbStoreFlushReproductionTest {
+ 		store.init();
+ 		ValueStore valueStore = valueStoreOf(store);
+ 		TripleStore tripleStore = tripleStoreOf(store);
++		Thread readerThread = Thread.currentThread();
++		List<ObservedReaderLease> tripleAdmissions = new ArrayList<>();
++		List<ObservedReaderLease> valueAdmissions = new ArrayList<>();
+ 		long initialMapSize = mapSize(valueStore);
+ 		SailConnection seed = store.getConnection();
+ 		TripleTerm original = SimpleValueFactory.getInstance()
+@@ -1517,17 +1521,39 @@ class LmdbStoreFlushReproductionTest {
+ 				seed.addStatement(SimpleValueFactory.getInstance().createIRI("urn:issue:6070:quoted:outer"), PREDICATE,
+ 						original);
+ 				seed.commit();
+-				int tripleReaderPermits = availableReaderPermits(tripleStore.getTxnManager());
+-				int valueReaderPermits = availableReaderPermits(valueStore.getTxnManager());
++				// Aggregate permit counts include independent post-ready maintenance readers. Observe only the
++				// foreground admission, retaining the lease identity because pooled Txn handles may be reused.
++				tripleStore.getTxnManager().setAdmissionObserverForTest(txn -> {
++					if (Thread.currentThread() == readerThread) {
++						tripleAdmissions.add(new ObservedReaderLease(txn, txn.lease()));
++					}
++				});
++				valueStore.getTxnManager().setAdmissionObserverForTest(txn -> {
++					if (Thread.currentThread() == readerThread) {
++						valueAdmissions.add(new ObservedReaderLease(txn, txn.lease()));
++					}
++				});
++				List<ObservedReaderLease> tripleLeases;
++				List<ObservedReaderLease> valueLeases;
+ 
+ 				try (SailDataset reader = store.getBackingStore()
+ 						.getExplicitSailSource()
+ 						.dataset(IsolationLevels.SNAPSHOT_READ);
+ 						CloseableIteration<? extends TripleTerm> triples = reader.getTriples(null, null, null)) {
+-					assertEquals(tripleReaderPermits - 1, availableReaderPermits(tripleStore.getTxnManager()),
+-							"the paired read view must retain its TripleStore reader lease");
+-					assertEquals(valueReaderPermits - 1, availableReaderPermits(valueStore.getTxnManager()),
+-							"the paired read view must retain its ValueStore reader lease");
++					tripleStore.getTxnManager().setAdmissionObserverForTest(null);
++					valueStore.getTxnManager().setAdmissionObserverForTest(null);
++					tripleLeases = tripleAdmissions.stream().filter(ObservedReaderLease::isRetained).toList();
++					valueLeases = valueAdmissions.stream().filter(ObservedReaderLease::isRetained).toList();
++					try (TxnManager.Txn unrelated = unrelatedValueReader
++							? valueStore.getTxnManager().createReadTxn() : null) {
++						if (unrelated != null) {
++							assertTrue(unrelated.isNativeActive(), "an independent reader must actually hold a lease");
++						}
++						assertEquals(1, tripleLeases.size(), "the paired view owns exactly one TripleStore reader");
++						assertEquals(1, valueLeases.size(), "the paired view owns exactly one ValueStore reader");
++						assertTrue(tripleLeases.getFirst().isRetained(), "the paired TripleStore lease remains held");
++						assertTrue(valueLeases.getFirst().isRetained(), "the paired ValueStore lease remains held");
++					}
+ 					assertTrue(triples.hasNext(),
+ 							"the initial quoted term is present in the reader's dictionary snapshot");
+ 					TripleTerm escaped = triples.next();
+@@ -1554,17 +1580,19 @@ class LmdbStoreFlushReproductionTest {
+ 						latestTriples.next();
+ 						assertTrue(latestTriples.hasNext(), "the direct sink commit must publish the new quoted term");
+ 					}
+-					assertEquals(tripleReaderPermits, availableReaderPermits(tripleStore.getTxnManager()),
++					assertFalse(tripleLeases.getFirst().isRetained(),
+ 							"typed invalidation must retire the old paired TripleStore pin even while its handle remains open");
+-					assertEquals(valueReaderPermits, availableReaderPermits(valueStore.getTxnManager()),
++					assertFalse(valueLeases.getFirst().isRetained(),
+ 							"typed invalidation must retire the old paired ValueStore pin even while its handle remains open");
+ 				}
+-				assertEquals(tripleReaderPermits, availableReaderPermits(tripleStore.getTxnManager()),
++				assertFalse(tripleLeases.getFirst().isRetained(),
+ 						"closing an invalidated iterator and dataset must release the TripleStore reader lease");
+-				assertEquals(valueReaderPermits, availableReaderPermits(valueStore.getTxnManager()),
++				assertFalse(valueLeases.getFirst().isRetained(),
+ 						"closing an invalidated iterator and dataset must release the ValueStore reader lease");
+ 			}
+ 		} finally {
++			tripleStore.getTxnManager().setAdmissionObserverForTest(null);
++			valueStore.getTxnManager().setAdmissionObserverForTest(null);
+ 			store.shutDown();
+ 		}
+ 	}
+@@ -1993,10 +2021,12 @@ class LmdbStoreFlushReproductionTest {
+ 		return (TripleStore) tripleStoreField.get(store.getBackingStore());
+ 	}
+ 
+-	private static int availableReaderPermits(TxnManager manager) throws ReflectiveOperationException {
+-		Field readerSlotsField = TxnManager.class.getDeclaredField("readerSlots");
+-		readerSlotsField.setAccessible(true);
+-		return ((Semaphore) readerSlotsField.get(manager)).availablePermits();
++	private record ObservedReaderLease(TxnManager.Txn transaction, long lease) {
++		boolean isRetained() {
++			synchronized (transaction) {
++				return transaction.lease() == lease && !transaction.isClosed() && !transaction.isIdle();
++			}
++		}
+ 	}
+ 
+ 	private static long mapSize(ValueStore valueStore) throws ReflectiveOperationException {
+diff --git a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkSpillCompletionTest.java b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkSpillCompletionTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..e39cde430e69d6e24ff06e69a28828b6dd99eabb
+--- /dev/null
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/bulk/BulkSpillCompletionTest.java
+@@ -0,0 +1,105 @@
++/*******************************************************************************
++ * Copyright (c) 2026 Eclipse RDF4J contributors.
++ *
++ * All rights reserved. This program and the accompanying materials
++ * are made available under the terms of the Eclipse Distribution License v1.0
++ * which accompanies this distribution, and is available at
++ * http://www.eclipse.org/org/documents/edl-v10.php.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ *******************************************************************************/
++// Some portions generated by Codex
++package org.eclipse.rdf4j.sail.lmdb.bulk;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.AdditionalAnswers.delegatesTo;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.doAnswer;
++import static org.mockito.Mockito.mock;
++
++import java.nio.file.Path;
++import java.util.concurrent.Callable;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.Future;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.TimeoutException;
++
++import org.junit.jupiter.api.Timeout;
++import org.junit.jupiter.api.io.TempDir;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
++
++@Timeout(30)
++class BulkSpillCompletionTest {
++
++	@TempDir
++	Path directory;
++
++	@ParameterizedTest
++	@ValueSource(booleans = { false, true })
++	void finishWaitsForSpillCleanupAndLeaseRelease(boolean byteKeys) throws Exception {
++		CountDownLatch cleanupStarted = new CountDownLatch(1);
++		CountDownLatch releaseCleanup = new CountDownLatch(1);
++		try (BulkTaskScheduler actual = new BulkTaskScheduler(2, 8L << 20, 8);
++				ExecutorService coordinator = Executors.newSingleThreadExecutor()) {
++			// Delay only the existing completion callback. Admission, spilling, and lease release stay real.
++			BulkTaskScheduler scheduler = mock(BulkTaskScheduler.class, delegatesTo(actual));
++			doAnswer(invocation -> {
++				BulkTaskScheduler.ResourceLease lease = invocation.getArgument(0);
++				Callable<Path> operation = invocation.getArgument(1);
++				Runnable cleanup = invocation.getArgument(2);
++				Future<Path> future = actual.submitOrRunInline(lease, operation, () -> {
++					cleanupStarted.countDown();
++					try {
++						assertThat(releaseCleanup.await(10, TimeUnit.SECONDS)).isTrue();
++					} catch (InterruptedException interrupted) {
++						Thread.currentThread().interrupt();
++						throw new AssertionError(interrupted);
++					} finally {
++						cleanup.run();
++					}
++				});
++				return future;
++			}).when(scheduler).submitOrRunInline(any(BulkTaskScheduler.ResourceLease.class), any(), any(Runnable.class));
++
++			Future<?> finished = coordinator.submit(() -> {
++				Path output = directory.resolve("sorted.bin");
++				if (byteKeys) {
++					try (ExternalByteKeySorter sorter = new ExternalByteKeySorter(directory, "bytes", 1L << 20,
++							8, BulkCodec.NONE, scheduler, () -> {
++							})) {
++						sorter.add(new byte[] { 2 }, new byte[] { 20 });
++						sorter.add(new byte[] { 1 }, new byte[] { 10 });
++						assertThat(sorter.finish(output).records()).isEqualTo(2);
++					}
++				} else {
++					try (ExternalLongTupleSorter sorter = new ExternalLongTupleSorter(directory, "tuples", 1,
++							1L << 20, 8, BulkCodec.NONE, scheduler, () -> {
++							})) {
++						sorter.add1(2);
++						sorter.add1(1);
++						assertThat(sorter.finish(output).rows()).isEqualTo(2);
++					}
++				}
++				assertThat(actual.reservedMemoryBytes()).as("finish must release its spill memory").isZero();
++				assertThat(actual.reservedFileDescriptors()).as("finish must release its spill descriptors").isZero();
++				return null;
++			});
++			try {
++				assertThat(cleanupStarted.await(10, TimeUnit.SECONDS)).isTrue();
++				// FutureTask has published the spill result, but the scheduler still owns its cleanup and lease.
++				assertThat(actual.reservedMemoryBytes()).isPositive();
++				assertThat(actual.reservedFileDescriptors()).isPositive();
++				assertThatThrownBy(() -> finished.get(200, TimeUnit.MILLISECONDS))
++						.as("synchronous finish cannot return while its own spill cleanup is blocked")
++						.isInstanceOf(TimeoutException.class);
++			} finally {
++				releaseCleanup.countDown();
++			}
++			finished.get(10, TimeUnit.SECONDS);
++		}
++	}
++}
