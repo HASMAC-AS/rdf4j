@@ -1,0 +1,56 @@
+name: Canonical resource lifecycle validation
+
+on:
+  push:
+    branches: [GH-0000-canonical-resource-ci-validation]
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
+        with:
+          java-version: 25
+          distribution: temurin
+          cache: maven
+      - name: Use the repository Maven cache path
+        run: |
+          mkdir -p "$HOME/.m2/repository"
+          test -e .m2_repo || ln -s "$HOME/.m2/repository" .m2_repo
+          mkdir -p "$RUNNER_TEMP/resource-red"
+      - name: Build dependencies without tests
+        run: mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb -am install -Pquick -DskipTests -DskipITs -DskipFrontend=true
+      - name: Reproduce premature spill completion
+        run: |
+          status=0
+          mvn -B -ntp -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb test -Dtest=BulkSpillCompletionTest -DskipITs -PskipSlowTests,-formatting -Dmaven.javadoc.skip -Djapicmp.skip -Denforcer.skip -Danimal.sniffer.skip > "$RUNNER_TEMP/resource-red/red.log" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/resource-red/red.log"
+          test "$status" -ne 0
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          p = pathlib.Path('core/sail/lmdb/target/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.bulk.BulkSpillCompletionTest.xml')
+          root = ET.parse(p).getroot()
+          assert int(root.attrib['tests']) == 2, root.attrib
+          assert int(root.attrib['errors']) == 0, root.attrib
+          assert int(root.attrib['failures']) == 2, root.attrib
+          for case in root.findall('testcase'):
+              failure = case.find('failure')
+              assert failure is not None and 'synchronous finish cannot return' in failure.attrib.get('message', ''), ET.tostring(case)
+          print('Confirmed both premature-cleanup regressions:', root.attrib)
+          PY
+      - name: Preserve reproduction reports
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/resource-red"
+          if test -d core/sail/lmdb/target/surefire-reports; then cp -a core/sail/lmdb/target/surefire-reports "$RUNNER_TEMP/resource-red/reports"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resource-red
+          path: ${{ runner.temp }}/resource-red/
+          retention-days: 7
