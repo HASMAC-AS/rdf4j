@@ -30,6 +30,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.eclipse.rdf4j.common.io.FileUtil;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryException;
 import org.eclipse.rdf4j.repository.base.RepositoryWrapper;
@@ -40,6 +41,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
@@ -247,7 +249,8 @@ public class LocalRepositoryManagerTest extends RepositoryManagerTest {
 
 	@Test
 	@Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
-	void otherRepositoriesStayAvailableWhileARestartedRepositoryShutsDown(@TempDir File directory)
+	void otherRepositoriesStayAvailableWhileARestartedRepositoryShutsDown(
+			@TempDir(cleanup = CleanupMode.NEVER) File directory)
 			throws Exception {
 		CountDownLatch shuttingDown = new CountDownLatch(1);
 		CountDownLatch resume = new CountDownLatch(1);
@@ -259,11 +262,10 @@ public class LocalRepositoryManagerTest extends RepositoryManagerTest {
 				Thread.currentThread().interrupt();
 			}
 		});
-		manager.init();
-		ExecutorService threads = Executors.newFixedThreadPool(3);
-		Future<?> update = null;
-		Future<Boolean> removal = null;
-		try {
+		try (ConcurrentFixture cleanup = new ConcurrentFixture(manager, resume, directory)) {
+			manager.init();
+			ExecutorService threads = Executors.newFixedThreadPool(3);
+			cleanup.threads = threads;
 			manager.addRepositoryConfig(sparqlConfig("edited"));
 			manager.addRepositoryConfig(sparqlConfig("other"));
 			manager.addRepositoryConfig(sparqlConfig("removed"));
@@ -271,28 +273,23 @@ public class LocalRepositoryManagerTest extends RepositoryManagerTest {
 			manager.getRepository("other");
 			// A shutdown waits for the edited repository's open connections; meanwhile every other request (such as
 			// the commit that would release one of those connections) must still reach the manager.
-			update = threads.submit(() -> manager.updateRepositoryConfig(sparqlConfig("edited")));
+			Future<?> update = threads.submit(() -> manager.updateRepositoryConfig(sparqlConfig("edited")));
 			assertThat(shuttingDown.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(threads.submit(() -> manager.getRepository("other")).get(10, TimeUnit.SECONDS)).isNotNull();
-			removal = threads.submit(() -> manager.removeRepository("removed"));
+			Future<Boolean> removal = threads.submit(() -> manager.removeRepository("removed"));
 			assertThat(removal.get(10, TimeUnit.SECONDS)).isTrue();
 			resume.countDown();
 
 			// The update then reads the saved configuration again and serves a new instance.
 			update.get(10, TimeUnit.SECONDS);
 			assertThat(manager.getRepository("edited")).isNotNull();
-		} finally {
-			resume.countDown();
-			threads.shutdownNow();
-			if (update != null && update.isDone() && removal != null && removal.isDone()) {
-				manager.shutDown();
-			}
 		}
 	}
 
 	@Test
 	@Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
-	void otherRepositoriesStayAvailableWhileARemovedRepositorysFilesAreDeleted(@TempDir File directory)
+	void otherRepositoriesStayAvailableWhileARemovedRepositorysFilesAreDeleted(
+			@TempDir(cleanup = CleanupMode.NEVER) File directory)
 			throws Exception {
 		CountDownLatch deleting = new CountDownLatch(1);
 		CountDownLatch resume = new CountDownLatch(1);
@@ -308,9 +305,10 @@ public class LocalRepositoryManagerTest extends RepositoryManagerTest {
 				super.deleteRepositoryDirectory(repositoryDirectory);
 			}
 		};
-		manager.init();
-		ExecutorService threads = Executors.newFixedThreadPool(2);
-		try {
+		try (ConcurrentFixture cleanup = new ConcurrentFixture(manager, resume, directory)) {
+			manager.init();
+			ExecutorService threads = Executors.newFixedThreadPool(2);
+			cleanup.threads = threads;
 			manager.addRepositoryConfig(sparqlConfig("other"));
 			manager.addRepositoryConfig(sparqlConfig("removed"));
 			manager.getRepository("other");
@@ -323,10 +321,6 @@ public class LocalRepositoryManagerTest extends RepositoryManagerTest {
 
 			assertThat(removal.get(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(manager.getRepositoryDir("removed")).doesNotExist();
-		} finally {
-			resume.countDown();
-			threads.shutdownNow();
-			manager.shutDown();
 		}
 	}
 
@@ -346,6 +340,66 @@ public class LocalRepositoryManagerTest extends RepositoryManagerTest {
 			assertThat(manager.getRepository("edited")).isNotSameAs(previous);
 		} finally {
 			manager.shutDown();
+		}
+	}
+
+	/** Owns the additional manager and its callers, separately from this class's regular fixture. */
+	static final class ConcurrentFixture implements AutoCloseable {
+		private final LocalRepositoryManager manager;
+		private final CountDownLatch resume;
+		private final File directory;
+		ExecutorService threads;
+
+		ConcurrentFixture(LocalRepositoryManager manager, CountDownLatch resume, File directory) {
+			this.manager = manager;
+			this.resume = resume;
+			this.directory = directory;
+		}
+
+		@Override
+		public void close() throws Exception {
+			resume.countDown();
+			InterruptedException interrupted = null;
+			try {
+				if (threads != null) {
+					threads.shutdownNow();
+					long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+					boolean terminated;
+					while (true) {
+						try {
+							terminated = threads.awaitTermination(Math.max(0, deadline - System.nanoTime()),
+									TimeUnit.NANOSECONDS);
+							break;
+						} catch (InterruptedException failure) {
+							if (interrupted == null) {
+								interrupted = failure;
+							} else {
+								interrupted.addSuppressed(failure);
+							}
+							if (System.nanoTime() >= deadline) {
+								terminated = threads.isTerminated();
+								break;
+							}
+						}
+					}
+					assertThat(terminated).as("manager fixture callers terminated before shutdown").isTrue();
+				}
+				manager.shutDown();
+				// JUnit must not remove files while a failed shutdown still has an owner using them.
+				FileUtil.deleteDir(directory);
+			} catch (Exception | Error failure) {
+				if (interrupted != null && interrupted != failure) {
+					failure.addSuppressed(interrupted);
+				}
+				throw failure;
+			} finally {
+				if (interrupted != null) {
+					Thread.currentThread().interrupt();
+				}
+			}
+			if (interrupted != null) {
+				throw interrupted;
+			}
 		}
 	}
 
