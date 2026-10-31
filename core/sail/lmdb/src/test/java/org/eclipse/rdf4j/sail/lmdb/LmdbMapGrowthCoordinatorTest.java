@@ -56,6 +56,7 @@ import org.eclipse.rdf4j.sail.base.SailSource;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -562,11 +563,10 @@ class LmdbMapGrowthCoordinatorTest {
 
 	@Test
 	@Timeout(value = 10, unit = TimeUnit.SECONDS)
-	void valueStorePinQueryDoesNotWaitForConcurrentTermSnapshotDeclaration(@TempDir Path dataDir) throws Exception {
+	void valueStorePinQueryDoesNotWaitForConcurrentTermSnapshotDeclaration(
+			@TempDir(cleanup = CleanupMode.NEVER) Path dataDir) throws Exception {
 		LmdbStore store = newStore(dataDir, 100);
-		store.init();
-		LmdbSailStore backing = store.getBackingStore();
-		LmdbSailStore.ReadView view = backing.createTransactionReadView();
+		AtomicReference<LmdbSailStore.ReadView> ownedView = new AtomicReference<>();
 		ExecutorService executor = Executors.newFixedThreadPool(2);
 		CountDownLatch termDeclarationEntered = new CountDownLatch(1);
 		CountDownLatch releaseTermDeclaration = new CountDownLatch(1);
@@ -576,7 +576,11 @@ class LmdbMapGrowthCoordinatorTest {
 		boolean pinQueryCompletedWhileGuardHeld = false;
 		boolean pinObservedWhileGuardHeld = false;
 
+		Throwable primary = null;
 		try {
+			store.init();
+			LmdbSailStore.ReadView view = store.getBackingStore().createTransactionReadView();
+			ownedView.set(view);
 			view.requireDictionaryTermSnapshot();
 			assertTrue(view.hasNativePin(LmdbSailStore.MapResizeKind.VALUE_STORE),
 					"the fixture must hold a real ValueStore native pin");
@@ -613,38 +617,15 @@ class LmdbMapGrowthCoordinatorTest {
 			} catch (TimeoutException expectedWhileTheCurrentImplementationWaitsOnTheTxnMonitor) {
 				// Releasing the term-declaration worker below lets this bounded regression finish deterministically.
 			}
+		} catch (Exception | Error failure) {
+			primary = failure;
+			throw failure;
 		} finally {
-			releaseTermDeclaration.countDown();
-			Throwable workerFailure = null;
-			if (termDeclaration != null) {
-				try {
-					termDeclaration.get(2, TimeUnit.SECONDS);
-				} catch (ExecutionException failure) {
-					workerFailure = failure.getCause();
-				}
-			}
-			if (pinQuery != null) {
-				try {
-					pinObservedWhileGuardHeld |= pinQuery.get(2, TimeUnit.SECONDS);
-				} catch (ExecutionException failure) {
-					if (workerFailure == null) {
-						workerFailure = failure.getCause();
-					} else {
-						workerFailure.addSuppressed(failure.getCause());
-					}
-				}
-			}
-			executor.shutdownNow();
-			boolean workersTerminated = executor.awaitTermination(2, TimeUnit.SECONDS);
-			try {
-				view.close();
-			} finally {
-				store.shutDown();
-			}
-			assertTrue(workersTerminated, "both native snapshot workers must finish after the guard is released");
-			if (workerFailure != null) {
-				throw new AssertionError("both bounded native snapshot workers must complete normally", workerFailure);
-			}
+			pinObservedWhileGuardHeld |= finishSnapshotWorkers(releaseTermDeclaration, termDeclaration, pinQuery,
+					executor, ownedView.get(), () -> {
+						store.shutDown();
+						LmdbTestUtil.deleteDir(dataDir.toFile());
+					}, primary);
 		}
 
 		assertTrue(pinQueryCompletedWhileGuardHeld,
@@ -793,6 +774,59 @@ class LmdbMapGrowthCoordinatorTest {
 			if (executor.awaitTermination(3, TimeUnit.SECONDS)) {
 				repository.shutDown();
 			}
+		}
+	}
+
+	/** Finish workers before releasing native owners; a live worker retains its files for diagnosis. */
+	static boolean finishSnapshotWorkers(CountDownLatch releaseTermDeclaration, Future<?> termDeclaration,
+			Future<Boolean> pinQuery, ExecutorService executor, AutoCloseable view, AutoCloseable store,
+			Throwable primary) throws Exception {
+		releaseTermDeclaration.countDown();
+		boolean[] pinObserved = { false };
+		boolean[] terminated = { false };
+		boolean[] interrupted = { Thread.interrupted() };
+		try {
+			LmdbTestUtil.cleanup(primary,
+					() -> awaitSnapshotWorker(termDeclaration, interrupted),
+					() -> {
+						if (pinQuery != null) {
+							pinObserved[0] = Boolean.TRUE.equals(awaitSnapshotWorker(pinQuery, interrupted));
+						}
+					},
+					() -> {
+						try {
+							executor.shutdownNow();
+							LmdbTestUtil.shutdownExecutor(executor, 0, 2, false,
+									"both native snapshot workers must finish after the guard is released");
+						} finally {
+							terminated[0] = executor.isTerminated();
+							interrupted[0] |= Thread.interrupted();
+						}
+					},
+					() -> {
+						if (terminated[0]) {
+							LmdbTestUtil.cleanup(null, view, store);
+						}
+					});
+		} finally {
+			if (interrupted[0]) {
+				Thread.currentThread().interrupt();
+			}
+		}
+		return pinObserved[0];
+	}
+
+	private static Object awaitSnapshotWorker(Future<?> future, boolean[] interrupted) throws Exception {
+		if (future == null) {
+			return null;
+		}
+		try {
+			return future.get(2, TimeUnit.SECONDS);
+		} catch (InterruptedException failure) {
+			interrupted[0] = true;
+			throw failure;
+		} catch (ExecutionException failure) {
+			throw new AssertionError("both bounded native snapshot workers must complete normally", failure.getCause());
 		}
 	}
 
