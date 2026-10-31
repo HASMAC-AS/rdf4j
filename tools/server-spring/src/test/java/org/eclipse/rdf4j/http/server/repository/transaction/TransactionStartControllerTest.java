@@ -125,9 +125,9 @@ class TransactionStartControllerTest {
 	@Test
 	void positiveIsolationEnumsOldPath() {
 		for (IsolationLevel level : IsolationLevels.values()) {
-			request.addParameter("isolation-level", level.toString());
+			request.setParameter("isolation-level", level.toString());
 
-			assertThat(controller.getIsolationLevel(request).size() == 1);
+			assertThat(controller.getIsolationLevel(request)).containsExactly(level);
 		}
 
 	}
