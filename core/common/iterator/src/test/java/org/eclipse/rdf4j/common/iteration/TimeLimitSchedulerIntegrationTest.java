@@ -163,6 +163,7 @@ class TimeLimitSchedulerIntegrationTest {
 		try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
 			Future<Boolean> call = executor.submit(iteration::hasNext);
 			Future<?> close = null;
+			Throwable primaryFailure = null;
 			try {
 				assertTrue(source.callEntered.await(WAIT_SECONDS, TimeUnit.SECONDS));
 				close = executor.submit(iteration::close);
@@ -174,13 +175,20 @@ class TimeLimitSchedulerIntegrationTest {
 						() -> call.get(WAIT_SECONDS, TimeUnit.SECONDS));
 				assertInstanceOf(TimeLimitReached.class, failure.getCause());
 				assertTrue(source.closed.await(WAIT_SECONDS, TimeUnit.SECONDS));
+			} catch (Exception | Error testFailure) {
+				primaryFailure = testFailure;
+				throw testFailure;
 			} finally {
-				source.releaseCall.countDown();
-				source.releaseCancellation.countDown();
-				if (close != null) {
-					close.get(WAIT_SECONDS, TimeUnit.SECONDS);
-				}
-				iteration.close();
+				Future<?> pending = close;
+				IterationTestCleanup.close(primaryFailure,
+						source.releaseCall::countDown,
+						source.releaseCancellation::countDown,
+						() -> {
+							if (pending != null) {
+								pending.get(WAIT_SECONDS, TimeUnit.SECONDS);
+							}
+						},
+						iteration::close);
 			}
 		}
 	}
@@ -192,6 +200,7 @@ class TimeLimitSchedulerIntegrationTest {
 		try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
 			Future<Boolean> call = executor.submit(iteration::hasNext);
 			Future<?> timeout = null;
+			Throwable primaryFailure = null;
 			try {
 				assertTrue(source.callEntered.await(WAIT_SECONDS, TimeUnit.SECONDS));
 				timeout = executor.submit(iteration::interrupt);
@@ -202,13 +211,20 @@ class TimeLimitSchedulerIntegrationTest {
 						() -> call.get(WAIT_SECONDS, TimeUnit.SECONDS));
 				assertInstanceOf(TimeLimitReached.class, failure.getCause());
 				assertTrue(source.closed.await(WAIT_SECONDS, TimeUnit.SECONDS));
+			} catch (Exception | Error testFailure) {
+				primaryFailure = testFailure;
+				throw testFailure;
 			} finally {
-				source.releaseCall.countDown();
-				source.releaseCancellation.countDown();
-				if (timeout != null) {
-					timeout.get(WAIT_SECONDS, TimeUnit.SECONDS);
-				}
-				iteration.close();
+				Future<?> pending = timeout;
+				IterationTestCleanup.close(primaryFailure,
+						source.releaseCall::countDown,
+						source.releaseCancellation::countDown,
+						() -> {
+							if (pending != null) {
+								pending.get(WAIT_SECONDS, TimeUnit.SECONDS);
+							}
+						},
+						iteration::close);
 			}
 		}
 	}

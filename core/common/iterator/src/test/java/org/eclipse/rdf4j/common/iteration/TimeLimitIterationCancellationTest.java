@@ -85,6 +85,7 @@ class TimeLimitIterationCancellationTest {
 			TimedIteration timed = TimedIteration.cooperative(source);
 			Future<Boolean> call = executor.submit(timed::hasNext);
 			Future<?> cancellation = null;
+			Throwable primaryFailure = null;
 			try {
 				assertTrue(source.entered.await(5, TimeUnit.SECONDS));
 				cancellation = executor.submit(timed::interrupt);
@@ -97,14 +98,21 @@ class TimeLimitIterationCancellationTest {
 				ExecutionException failure = assertThrows(ExecutionException.class,
 						() -> call.get(5, TimeUnit.SECONDS));
 				assertSame(timed.timeout, failure.getCause());
+			} catch (Exception | Error testFailure) {
+				primaryFailure = testFailure;
+				throw testFailure;
 			} finally {
-				source.cancellationGate.countDown();
-				source.cancelled.countDown();
-				source.release.countDown();
-				if (cancellation != null) {
-					cancellation.get(5, TimeUnit.SECONDS);
-				}
-				timed.close();
+				Future<?> pending = cancellation;
+				IterationTestCleanup.close(primaryFailure,
+						source.cancellationGate::countDown,
+						source.cancelled::countDown,
+						source.release::countDown,
+						() -> {
+							if (pending != null) {
+								pending.get(5, TimeUnit.SECONDS);
+							}
+						},
+						timed::close);
 			}
 			assertTrue(source.closeFinished.await(5, TimeUnit.SECONDS));
 			assertEquals(1, source.cancellationCalls.get());
@@ -355,6 +363,7 @@ class TimeLimitIterationCancellationTest {
 			}
 			TimedIteration timed = TimedIteration.escalating(delegate);
 			ExecutorService executor = Executors.newSingleThreadExecutor();
+			Throwable primaryFailure = null;
 			try {
 				Future<?> call = executor.submit(() -> operation.invoke(timed));
 				assertTrue(source.entered.await(5, TimeUnit.SECONDS));
@@ -366,11 +375,12 @@ class TimeLimitIterationCancellationTest {
 				assertSame(timed.timeout, failure.getCause());
 				timed.close();
 				assertEquals(1, source.closeCalls.get());
+			} catch (Exception | Error testFailure) {
+				primaryFailure = testFailure;
+				throw testFailure;
 			} finally {
-				source.released.countDown();
-				executor.shutdownNow();
-				assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-				timed.close();
+				IterationTestCleanup.close(primaryFailure, source.released::countDown,
+						() -> IterationTestCleanup.stopExecutor(executor), timed::close);
 			}
 		}
 	}
