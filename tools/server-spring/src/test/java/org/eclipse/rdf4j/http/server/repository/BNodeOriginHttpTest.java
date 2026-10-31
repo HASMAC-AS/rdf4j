@@ -20,10 +20,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.rdf4j.common.io.FileUtil;
 import org.eclipse.rdf4j.http.client.BNodeOriginTransport;
 import org.eclipse.rdf4j.http.protocol.Protocol;
 import org.eclipse.rdf4j.http.server.repository.statements.ExportStatementsView;
@@ -43,6 +46,7 @@ import org.eclipse.rdf4j.rio.binary.BinaryRDFWriterFactory;
 import org.eclipse.rdf4j.sail.lmdb.LmdbStore;
 import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.eclipse.rdf4j.sail.nativerdf.NativeStore;
+import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -54,36 +58,40 @@ import com.sun.net.httpserver.HttpServer;
 
 /** Real loopback HTTP exercises the server views, HTTPRepository parsers, and connection-scoped negotiation. */
 class BNodeOriginHttpTest {
-	@TempDir
+	@TempDir(cleanup = CleanupMode.NEVER)
 	Path temporary;
 
 	@ParameterizedTest
 	@ValueSource(strings = { "memory", "native", "lmdb" })
 	void selectConstructAndStatementGetKeepStoredOriginsAndExcludeGeneratedNodes(String backend) throws Exception {
-		var repository = new SailRepository(switch (backend) {
-		case "native" -> new NativeStore(temporary.toFile());
-		case "lmdb" -> new LmdbStore(temporary.toFile());
-		default -> new MemoryStore();
-		});
-		repository.init();
-		String rawID = "stored space>\\雪";
-		var factory = repository.getValueFactory();
-		try (var connection = repository.getConnection()) {
-			connection.add(factory.createBNode(rawID), factory.createIRI("urn:p"),
-					factory.createTripleTerm(factory.createIRI("urn:outer"), factory.createIRI("urn:q"),
-							factory.createTripleTerm(factory.createIRI("urn:inner"), factory.createIRI("urn:r"),
-									factory.createBNode("nested-only"))));
-		}
-		var capability = new AtomicBoolean(true);
-		var failure = new AtomicReference<Throwable>();
-		var executor = Executors.newCachedThreadPool();
-		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-		server.setExecutor(executor);
-		server.createContext("/", exchange -> handle(exchange, repository, capability.get(), failure));
-		server.start();
-		var remote = new HTTPRepository("http://127.0.0.1:" + server.getAddress().getPort() + "/repositories/test");
-		remote.init();
-		try {
+		try (FixtureCleanup cleanup = new FixtureCleanup()) {
+			var repository = new SailRepository(switch (backend) {
+			case "native" -> new NativeStore(temporary.toFile());
+			case "lmdb" -> new LmdbStore(temporary.toFile());
+			default -> new MemoryStore();
+			});
+			cleanup.repository = repository::shutDown;
+			repository.init();
+			String rawID = "stored space>\\雪";
+			var factory = repository.getValueFactory();
+			try (var connection = repository.getConnection()) {
+				connection.add(factory.createBNode(rawID), factory.createIRI("urn:p"),
+						factory.createTripleTerm(factory.createIRI("urn:outer"), factory.createIRI("urn:q"),
+								factory.createTripleTerm(factory.createIRI("urn:inner"), factory.createIRI("urn:r"),
+										factory.createBNode("nested-only"))));
+			}
+			var capability = new AtomicBoolean(true);
+			var failure = new AtomicReference<Throwable>();
+			var executor = Executors.newCachedThreadPool();
+			cleanup.executor = () -> FixtureCleanup.stopExecutor(executor);
+			var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+			cleanup.server = () -> server.stop(0);
+			server.setExecutor(executor);
+			server.createContext("/", exchange -> handle(exchange, repository, capability.get(), failure));
+			server.start();
+			var remote = new HTTPRepository("http://127.0.0.1:" + server.getAddress().getPort() + "/repositories/test");
+			cleanup.remote = remote::shutDown;
+			remote.init();
 			try (var connection = remote.getConnection()) {
 				HTTPRepository.setBNodeOriginEnabled(connection, true);
 				try (var rows = connection.prepareTupleQuery(
@@ -141,12 +149,53 @@ class BNodeOriginHttpTest {
 				}
 			}
 			assertThat(failure.get()).isNull();
-		} finally {
-			remote.shutDown();
-			server.stop(0);
-			executor.shutdownNow();
-			repository.shutDown();
 		}
+		// A failed shutdown may leave native owners alive: retain their files on any failure.
+		FileUtil.deleteDir(temporary.toFile());
+	}
+
+	/** Owns the resources of the real HTTP fixture, in reverse acquisition order. */
+	static final class FixtureCleanup implements AutoCloseable {
+		AutoCloseable repository;
+		AutoCloseable executor;
+		AutoCloseable server;
+		AutoCloseable remote;
+
+		@Override
+		public void close() throws Exception {
+			try (AutoCloseable repositoryOwner = repository;
+					AutoCloseable executorOwner = executor;
+					AutoCloseable serverOwner = server;
+					AutoCloseable remoteOwner = remote) {
+				// Try-with-resources attempts every close and preserves failures in shutdown order.
+			}
+		}
+
+		static void stopExecutor(ExecutorService executor) {
+			boolean interrupted = Thread.interrupted();
+			try {
+				executor.shutdownNow();
+				long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+				do {
+					try {
+						if (executor.awaitTermination(Math.max(0, deadline - System.nanoTime()),
+								TimeUnit.NANOSECONDS)) {
+							return;
+						}
+						throw new AssertionError(
+								"the BNode HTTP fixture executor must terminate before repository shutdown");
+					} catch (InterruptedException e) {
+						interrupted = true;
+					}
+				} while (System.nanoTime() < deadline);
+				throw new AssertionError("the BNode HTTP fixture executor did not terminate after interruption");
+			} finally {
+				if (interrupted) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+
 	}
 
 	private static void handle(HttpExchange exchange, SailRepository repository, boolean capability,
