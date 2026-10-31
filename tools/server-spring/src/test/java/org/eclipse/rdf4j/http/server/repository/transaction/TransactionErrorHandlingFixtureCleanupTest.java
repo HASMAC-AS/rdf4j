@@ -28,7 +28,7 @@ class TransactionErrorHandlingFixtureCleanupTest {
 	void failedTransactionCloseStillDeregistersAndRestoresConfiguration() {
 		List<String> closed = new ArrayList<>();
 		Exception failure = new Exception("transaction close");
-		var cleanup = new TestTransactionControllerErrorHandling.TransactionCleanup();
+		var cleanup = new TransactionTestCleanup();
 		cleanup.transaction = () -> {
 			throw failure;
 		};
@@ -42,7 +42,7 @@ class TransactionErrorHandlingFixtureCleanupTest {
 	void failedDeregistrationStillRestoresConfiguration() throws Exception {
 		Exception failure = new Exception("deregister");
 		AutoCloseable configuration = mock(AutoCloseable.class);
-		var cleanup = new TestTransactionControllerErrorHandling.TransactionCleanup();
+		var cleanup = new TransactionTestCleanup();
 		cleanup.transaction = () -> {
 		};
 		cleanup.registration = () -> {
@@ -59,7 +59,7 @@ class TransactionErrorHandlingFixtureCleanupTest {
 		Exception close = new Exception("close");
 		Exception restore = new Exception("restore");
 		Exception actual = assertThrows(Exception.class, () -> {
-			try (var cleanup = new TestTransactionControllerErrorHandling.TransactionCleanup()) {
+			try (var cleanup = new TransactionTestCleanup()) {
 				cleanup.transaction = () -> {
 					throw close;
 				};
@@ -79,7 +79,7 @@ class TransactionErrorHandlingFixtureCleanupTest {
 		AutoCloseable configuration = mock(AutoCloseable.class);
 		Exception failure = new Exception("acquisition");
 		assertSame(failure, assertThrows(Exception.class, () -> {
-			try (var cleanup = new TestTransactionControllerErrorHandling.TransactionCleanup()) {
+			try (var cleanup = new TransactionTestCleanup()) {
 				cleanup.configuration = configuration;
 				throw failure;
 			}

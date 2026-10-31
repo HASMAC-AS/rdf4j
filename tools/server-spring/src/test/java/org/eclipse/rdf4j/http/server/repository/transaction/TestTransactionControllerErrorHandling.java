@@ -78,7 +78,7 @@ public class TestTransactionControllerErrorHandling {
 
 	@Test
 	public void shouldThrowMalformedQueryExceptionForQuerySyntaxErrors() throws Exception {
-		try (TransactionCleanup cleanup = new TransactionCleanup()) {
+		try (TransactionTestCleanup cleanup = new TransactionTestCleanup()) {
 			String testQuery = "#PREFIX ex: <http://example.com#>\n" +
 					"select * where { \n" +
 					"\t?s ex:data ?o .\n" +
@@ -120,7 +120,7 @@ public class TestTransactionControllerErrorHandling {
 
 	@Test
 	public void shouldReportMalformedDataForParseErrorsInAddedData() throws Exception {
-		try (TransactionCleanup cleanup = new TransactionCleanup()) {
+		try (TransactionTestCleanup cleanup = new TransactionTestCleanup()) {
 			Transaction txn = new Transaction(repository);
 			cleanup.transaction = txn;
 			ActiveTransactionRegistry.INSTANCE.register(txn);
@@ -149,7 +149,7 @@ public class TestTransactionControllerErrorHandling {
 	@Test
 	public void shouldResolveRelativeUpdateIrisAgainstRawBaseUri() throws Exception {
 		String baseURI = "https://example.org/update/";
-		try (TransactionCleanup cleanup = new TransactionCleanup()) {
+		try (TransactionTestCleanup cleanup = new TransactionTestCleanup()) {
 			Transaction txn = new Transaction(repository);
 			cleanup.transaction = txn;
 			ActiveTransactionRegistry.INSTANCE.register(txn);
@@ -179,7 +179,7 @@ public class TestTransactionControllerErrorHandling {
 
 	@Test
 	public void shouldHandleDeleteWithRepositoriesPrefixInPathInfo() throws Exception {
-		try (TransactionCleanup cleanup = new TransactionCleanup()) {
+		try (TransactionTestCleanup cleanup = new TransactionTestCleanup()) {
 			Transaction txn = new Transaction(repository);
 			cleanup.transaction = txn;
 			ActiveTransactionRegistry.INSTANCE.register(txn);
@@ -208,7 +208,7 @@ public class TestTransactionControllerErrorHandling {
 	public void shouldMapInputDecompressionLimitToPayloadTooLarge() throws Exception {
 		String setting = "org.eclipse.rdf4j.rio.loader.max_nesting_depth";
 		String previous = System.getProperty(setting);
-		try (TransactionCleanup cleanup = new TransactionCleanup()) {
+		try (TransactionTestCleanup cleanup = new TransactionTestCleanup()) {
 			cleanup.configuration = () -> restoreProperty(setting, previous);
 			System.setProperty(setting, "0");
 			Transaction txn = new Transaction(repository);
@@ -227,21 +227,6 @@ public class TestTransactionControllerErrorHandling {
 			ClientHTTPException exception = assertThrows(ClientHTTPException.class,
 					() -> transactionController.handleRequestInternal(request, response));
 			Assertions.assertEquals(413, exception.getStatusCode());
-		}
-	}
-
-	static final class TransactionCleanup implements AutoCloseable {
-		AutoCloseable transaction;
-		AutoCloseable registration;
-		AutoCloseable configuration;
-
-		@Override
-		public void close() throws Exception {
-			try (AutoCloseable configurationOwner = configuration;
-					AutoCloseable registrationOwner = registration;
-					AutoCloseable transactionOwner = transaction) {
-				// Close the transaction, deregister it, and restore configuration even if an earlier action fails.
-			}
 		}
 	}
 
