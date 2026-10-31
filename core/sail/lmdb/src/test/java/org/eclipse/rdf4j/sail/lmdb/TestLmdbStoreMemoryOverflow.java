@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -44,7 +45,7 @@ public class TestLmdbStoreMemoryOverflow {
 	private File dataDir;
 
 	@BeforeEach
-	public void setUp(@TempDir File dataDir) {
+	public void setUp(@TempDir(cleanup = CleanupMode.NEVER) File dataDir) {
 		this.dataDir = dataDir;
 		testRepository = createRepository(dataDir);
 		testRepository.init();
@@ -65,20 +66,22 @@ public class TestLmdbStoreMemoryOverflow {
 	}
 
 	@AfterEach
-	public void tearDown() {
-		try {
-			if (testCon2 != null) {
-				testCon2.close();
-			}
-			if (testCon != null) {
-				testCon.close();
-			}
-			if (testRepository != null) {
-				testRepository.shutDown();
-			}
-		} finally {
-			LmdbTestUtil.deleteDir(dataDir);
-		}
+	public void tearDown() throws Exception {
+		closeFixture(testCon2, testCon, testRepository, dataDir);
+	}
+
+	// This fixture owns deletion: a failed repository shutdown may leave native handles live.
+	static void closeFixture(RepositoryConnection testCon2, RepositoryConnection testCon,
+			Repository testRepository, File dataDir) throws Exception {
+		LmdbTestUtil.cleanup(null,
+				testCon2 == null ? null : testCon2::close,
+				testCon == null ? null : testCon::close,
+				() -> {
+					if (testRepository != null) {
+						testRepository.shutDown();
+					}
+					LmdbTestUtil.deleteDir(dataDir);
+				});
 	}
 
 	@ParameterizedTest
