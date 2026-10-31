@@ -19,12 +19,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.rdf4j.common.io.FileUtil;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class BNodeOriginHttpFixtureCleanupTest {
 	@Test
@@ -119,6 +123,66 @@ class BNodeOriginHttpFixtureCleanupTest {
 		} finally {
 			Thread.interrupted();
 		}
+	}
+
+	@Test
+	void assertionFailureDeletesDirectoryAfterSuccessfulCleanup(@TempDir Path directory) throws Exception {
+		Files.createFile(directory.resolve("fixture-data"));
+		AssertionError failure = new AssertionError("body");
+		assertThat(assertThrows(AssertionError.class, () -> {
+			try (var cleanup = new BNodeOriginHttpTest.FixtureCleanup()) {
+				cleanup.directory = () -> FileUtil.deleteDir(directory.toFile());
+				cleanup.repository = () -> {
+				};
+				throw failure;
+			}
+		})).isSameAs(failure);
+		assertThat(directory).doesNotExist();
+	}
+
+	@Test
+	void failedRepositoryShutdownRetainsDirectory(@TempDir Path directory) throws Exception {
+		Path data = Files.createFile(directory.resolve("fixture-data"));
+		Exception failure = new Exception("repository shutdown");
+		assertThat(assertThrows(Exception.class, () -> {
+			try (var cleanup = new BNodeOriginHttpTest.FixtureCleanup()) {
+				cleanup.directory = () -> FileUtil.deleteDir(directory.toFile());
+				cleanup.repository = () -> {
+					throw failure;
+				};
+			}
+		})).isSameAs(failure);
+		assertThat(data).exists();
+	}
+
+	@Test
+	void remoteShutdownFailureStillDeletesAfterRepositoryCloses(@TempDir Path directory) throws Exception {
+		Files.createFile(directory.resolve("fixture-data"));
+		Exception failure = new Exception("remote shutdown");
+		assertThat(assertThrows(Exception.class, () -> {
+			try (var cleanup = new BNodeOriginHttpTest.FixtureCleanup()) {
+				cleanup.directory = () -> FileUtil.deleteDir(directory.toFile());
+				cleanup.repository = () -> {
+				};
+				cleanup.remote = () -> {
+					throw failure;
+				};
+			}
+		})).isSameAs(failure);
+		assertThat(directory).doesNotExist();
+	}
+
+	@Test
+	void failedConstructionDeletesDirectoryWhenNoRepositoryWasAcquired(@TempDir Path directory) throws Exception {
+		Files.createFile(directory.resolve("fixture-data"));
+		Exception failure = new Exception("repository construction");
+		assertThat(assertThrows(Exception.class, () -> {
+			try (var cleanup = new BNodeOriginHttpTest.FixtureCleanup()) {
+				cleanup.directory = () -> FileUtil.deleteDir(directory.toFile());
+				throw failure;
+			}
+		})).isSameAs(failure);
+		assertThat(directory).doesNotExist();
 	}
 
 }

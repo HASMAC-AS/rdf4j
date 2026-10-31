@@ -65,6 +65,7 @@ class BNodeOriginHttpTest {
 	@ValueSource(strings = { "memory", "native", "lmdb" })
 	void selectConstructAndStatementGetKeepStoredOriginsAndExcludeGeneratedNodes(String backend) throws Exception {
 		try (FixtureCleanup cleanup = new FixtureCleanup()) {
+			cleanup.directory = () -> FileUtil.deleteDir(temporary.toFile());
 			var repository = new SailRepository(switch (backend) {
 			case "native" -> new NativeStore(temporary.toFile());
 			case "lmdb" -> new LmdbStore(temporary.toFile());
@@ -150,12 +151,11 @@ class BNodeOriginHttpTest {
 			}
 			assertThat(failure.get()).isNull();
 		}
-		// A failed shutdown may leave native owners alive: retain their files on any failure.
-		FileUtil.deleteDir(temporary.toFile());
 	}
 
 	/** Owns the resources of the real HTTP fixture, in reverse acquisition order. */
 	static final class FixtureCleanup implements AutoCloseable {
+		AutoCloseable directory;
 		AutoCloseable repository;
 		AutoCloseable executor;
 		AutoCloseable server;
@@ -163,7 +163,15 @@ class BNodeOriginHttpTest {
 
 		@Override
 		public void close() throws Exception {
-			try (AutoCloseable repositoryOwner = repository;
+			try (AutoCloseable repositoryOwner = () -> {
+				if (repository != null) {
+					repository.close();
+				}
+				// Retain native files if local repository shutdown fails; other failures do not skip deletion.
+				if (directory != null) {
+					directory.close();
+				}
+			};
 					AutoCloseable executorOwner = executor;
 					AutoCloseable serverOwner = server;
 					AutoCloseable remoteOwner = remote) {
