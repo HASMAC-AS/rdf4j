@@ -3560,7 +3560,8 @@ namespace workbench {
             }
 
             function send(op: string, data?: any): Promise<any> {
-                if (disposed && op !== 'identity-dispose') {
+                // A terminated worker cannot acknowledge disposal either.
+                if (disposed) {
                     return Promise.reject(new Error('The row identity index has been disposed.'));
                 }
                 var id = ++requestId;
