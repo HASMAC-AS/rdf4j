@@ -25,6 +25,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
+import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.TupleQuery;
@@ -257,6 +258,82 @@ class GqlLmdbIntegrationTest {
 					anchored(TWO_HOPS.replace("RETURN c", "RETURN COUNT(DISTINCT c) AS total")));
 			distinct.setBinding("start", ALICE);
 			assertThat(((Literal) values(distinct, "total").get(0)).longValue()).isEqualTo(1);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void doubleQuotedValuesAndIdentifiersUseTheirSyntacticContexts(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.add(ALICE, iri("name"), VF.createLiteral("Alice"));
+			buildAdjacency(route);
+			TupleQuery query = query(connection, "MATCH (n:\"urn:gql:Person\")-[:\"urn:gql:knows\"]->(friend) "
+					+ "WHERE n = $start LET name = \"bound\" "
+					+ "RETURN friend, n.\"urn:gql:name\" AS \"display name\", \"name\" AS literal ORDER BY friend");
+			query.setBinding("start", ALICE);
+			List<Value> friends = new ArrayList<>();
+			try (var result = query.evaluate()) {
+				while (result.hasNext()) {
+					var row = result.next();
+					friends.add(row.getValue("friend"));
+					assertThat(row.getValue("display name")).isEqualTo(VF.createLiteral("Alice"));
+					assertThat(row.getValue("literal")).isEqualTo(VF.createLiteral("name"));
+				}
+			}
+			assertThat(friends).containsExactly(BOB, CAROL);
+			TupleQuery parameter = query(connection, "RETURN $@\"a\\nb\" AS value");
+			parameter.setBinding("a\\nb", ALICE);
+			assertThat(values(parameter, "value")).containsExactly(ALICE);
+			parameter.setBinding("a\\nb", BOB);
+			assertThat(values(parameter, "value")).containsExactly(BOB);
+			parameter.clearBindings();
+			assertThat(values(parameter, "value")).containsExactly((Value) null);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void groupingAliasesAndAggregateOrderingKeepOriginalInputBindings(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			TupleQuery query = query(connection, "MATCH (a)-[:`urn:gql:knows`]->(b) "
+					+ "RETURN a AS owner, COUNT(*) AS b GROUP BY owner ORDER BY COUNT(b) ASC, owner");
+			List<Value> owners = new ArrayList<>();
+			List<Long> counts = new ArrayList<>();
+			try (var result = query.evaluate()) {
+				while (result.hasNext()) {
+					var row = result.next();
+					owners.add(row.getValue("owner"));
+					counts.add(((Literal) row.getValue("b")).longValue());
+				}
+			}
+			// Ascending count puts Alice last; sorting shadowing output aliases would put her first.
+			assertThat(owners).containsExactly(BOB, CAROL, ALICE);
+			assertThat(counts).containsExactly(1L, 1L, 2L);
+			assertThat(values(query(connection, "MATCH (a)-[:`urn:gql:knows`]->(b) "
+					+ "RETURN a AS owner GROUP BY owner ORDER BY COUNT(b) ASC, owner"), "owner"))
+							.containsExactly(BOB, CAROL, ALICE);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void letStatementsPreserveIncomingScopeAcrossNativePlanning(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			assertThatThrownBy(() -> query(connection, "MATCH (a)-[:`urn:gql:knows`]->(b) "
+					+ "LET first = 1, second = first RETURN second"))
+							.isInstanceOf(MalformedQueryException.class);
+			TupleQuery query = query(connection, "MATCH (a)-[:`urn:gql:knows`]->(b) WHERE a = $start "
+					+ "LET initial = 10 LET first = initial + 1, second = initial + 2 "
+					+ "LET total = first + second RETURN b, total ORDER BY b");
+			query.setBinding("start", ALICE);
+			assertThat(values(query, "total")).extracting(value -> ((Literal) value).intValue())
+					.containsExactly(23, 23);
 		}
 	}
 

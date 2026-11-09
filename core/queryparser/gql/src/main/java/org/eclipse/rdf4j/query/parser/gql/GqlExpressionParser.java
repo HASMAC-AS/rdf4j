@@ -90,6 +90,10 @@ final class GqlExpressionParser {
 		this.context = context;
 	}
 
+	boolean isParsingAggregateArgument() {
+		return aggregateDepth > 0;
+	}
+
 	ValueExpr parse() {
 		if (nesting == 0) {
 			complexity = 0;
@@ -290,7 +294,7 @@ final class GqlExpressionParser {
 		if (token.kind() == Kind.NUMBER) {
 			return number(token);
 		}
-		if (token.kind() == Kind.STRING) {
+		if (token.kind() == Kind.STRING || token.kind() == Kind.DOUBLE_QUOTED) {
 			return new ValueConstant(VF.createLiteral(token.text()));
 		}
 		if (token.kind() == Kind.PARAMETER) {
@@ -305,13 +309,14 @@ final class GqlExpressionParser {
 		if (token.is("CASE")) {
 			return caseExpression();
 		}
-		if (token.kind() == Kind.IDENTIFIER || token.kind() == Kind.QUOTED_IDENTIFIER) {
+		if (token.kind() == Kind.IDENTIFIER) {
 			if (context.accept("(")) {
 				return function(token);
 			}
 			if (context.accept(".")) {
 				Token key = context.take();
-				if (key.kind() != Kind.IDENTIFIER && key.kind() != Kind.QUOTED_IDENTIFIER) {
+				if (key.kind() != Kind.IDENTIFIER && key.kind() != Kind.QUOTED_IDENTIFIER
+						&& key.kind() != Kind.DOUBLE_QUOTED) {
 					throw context.error("Expected a property name after '.'");
 				}
 				return context.property(token, key);

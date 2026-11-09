@@ -27,7 +27,7 @@ class GqlLexerTest {
 
 	@Test
 	void preservesOffsetsAndQuotedIdentifierCase() {
-		List<Token> tokens = GqlLexer.tokenize("mAtCh (Ålice)-[:`urn:knows`]->(b) RETURN \"RETURN\"");
+		List<Token> tokens = GqlLexer.tokenize("mAtCh (Ålice)-[:`urn:knows`]->(b) RETURN `RETURN`");
 		assertTrue(tokens.get(0).is("MATCH"));
 		assertEquals("Ålice", tokens.get(2).text());
 		assertEquals(7, tokens.get(2).offset());
@@ -62,6 +62,17 @@ class GqlLexerTest {
 		assertEquals(List.of("name", "1", "has space", "other", "αβ", "á", "𐐀", ""), texts(tokens));
 		for (int i = 0; i < 4; i++) {
 			assertEquals(Kind.PARAMETER, tokens.get(i).kind());
+		}
+	}
+
+	@Test
+	void rawDelimitedParameterNamesPreserveBackslashes() {
+		List<Token> tokens = GqlLexer.tokenize("$@\"a\\nb\" $@`c\\td`");
+		assertEquals(List.of("a\\nb", "c\\td", ""), texts(tokens));
+		assertEquals(Kind.PARAMETER, tokens.get(0).kind());
+		assertEquals(Kind.PARAMETER, tokens.get(1).kind());
+		for (String invalid : List.of("$@", "$@name", "$@'name'")) {
+			assertThrows(MalformedQueryException.class, () -> GqlLexer.tokenize(invalid), invalid);
 		}
 	}
 

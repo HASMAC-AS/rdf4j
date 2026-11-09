@@ -42,7 +42,7 @@ class GqlParserSyntaxTest {
 
 	@Test
 	void quotedKeywordsRemainIdentifiers() {
-		ParsedQuery parsed = parser.parseQuery("MATCH (\"MATCH\":`urn:Person`) RETURN \"MATCH\" AS \"RETURN\"", null);
+		ParsedQuery parsed = parser.parseQuery("MATCH (node:\"urn:Person\") RETURN node AS \"RETURN\"", null);
 		assertEquals(Set.of("RETURN"), parsed.getTupleExpr().getBindingNames());
 	}
 
@@ -62,6 +62,16 @@ class GqlParserSyntaxTest {
 			MalformedQueryException exception = assertThrows(MalformedQueryException.class,
 					() -> parser.parseQuery(query, null), query);
 			assertTrue(exception.getMessage().contains("line"), exception.getMessage());
+		}
+	}
+
+	@Test
+	void rejectsQuotedComparisonOperators() {
+		for (String operator : List.of("=", "<>", "!=", "<", "<=", ">", ">=")) {
+			for (String quote : List.of("'", "\"", "`")) {
+				String query = "RETURN 1 " + quote + operator + quote + " 1 AS value";
+				assertThrows(MalformedQueryException.class, () -> parser.parseQuery(query, null), query);
+			}
 		}
 	}
 

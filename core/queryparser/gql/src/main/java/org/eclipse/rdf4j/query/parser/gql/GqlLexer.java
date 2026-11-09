@@ -30,6 +30,7 @@ final class GqlLexer {
 	enum Kind {
 		IDENTIFIER,
 		QUOTED_IDENTIFIER,
+		DOUBLE_QUOTED,
 		STRING,
 		NUMBER,
 		PARAMETER,
@@ -97,14 +98,26 @@ final class GqlLexer {
 						throw error(source, start, "Expected a quoted value after '@'");
 					}
 				}
-				add(c == '\'' ? Kind.STRING : Kind.QUOTED_IDENTIFIER, quoted(raw, start), start);
+				Kind kind = switch (c) {
+				case '\'' -> Kind.STRING;
+				case '"' -> Kind.DOUBLE_QUOTED;
+				default -> Kind.QUOTED_IDENTIFIER;
+				};
+				add(kind, quoted(raw, start), start);
 				continue;
 			}
 			if (c == '$') {
 				offset++;
+				boolean raw = offset < source.length() && source.charAt(offset) == '@';
+				if (raw) {
+					offset++;
+				}
 				if (offset < source.length() && (source.charAt(offset) == '`' || source.charAt(offset) == '"')) {
-					add(Kind.PARAMETER, quoted(false, start), start);
+					add(Kind.PARAMETER, quoted(raw, start), start);
 				} else {
+					if (raw) {
+						throw error(source, start, "Expected a delimited parameter name after '$@'");
+					}
 					int nameStart = offset;
 					while (offset < source.length() && identifierPart(source.codePointAt(offset))) {
 						offset += Character.charCount(source.codePointAt(offset));

@@ -47,6 +47,62 @@ class GqlExpressionEvaluationTest {
 	}
 
 	@Test
+	void doubleQuotedSequencesAreStringValues() {
+		assertEquals("hello", value("\"hello\"").stringValue());
+		assertEquals("a\"b", value("\"a\"\"b\"").stringValue());
+		assertEquals("a\nb", value("\"a\\nb\"").stringValue());
+		assertEquals("a\\nb", value("@\"a\\nb\"").stringValue());
+	}
+
+	@Test
+	void doubleQuotedStringDoesNotResolveAnExistingVariable() {
+		try (TupleQueryResult result = connection.prepareTupleQuery(QueryLanguage.GQL,
+				"LET hello = 'bound' RETURN \"hello\" AS value").evaluate()) {
+			assertTrue(result.hasNext());
+			assertEquals("hello", result.next().getValue("value").stringValue());
+			assertFalse(result.hasNext());
+		}
+	}
+
+	@Test
+	void rawDelimitedParametersUseTheExactSuppliedBindingName() {
+		for (String delimiter : new String[] { "\"", "`" }) {
+			var query = connection.prepareTupleQuery(QueryLanguage.GQL,
+					"RETURN $@" + delimiter + "a\\nb" + delimiter + " AS value");
+			query.setBinding("a\\nb", connection.getValueFactory().createLiteral("bound"));
+			try (TupleQueryResult result = query.evaluate()) {
+				assertTrue(result.hasNext());
+				assertEquals("bound", result.next().getValue("value").stringValue());
+				assertFalse(result.hasNext());
+			}
+		}
+	}
+
+	@Test
+	void projectedParametersObserveRepeatedBindingsAndClearing() {
+		var query = connection.prepareTupleQuery(QueryLanguage.GQL, "RETURN $input AS value, $input AS copy");
+		for (String text : new String[] { "first", "second" }) {
+			var expected = connection.getValueFactory().createLiteral(text);
+			query.setBinding("input", expected);
+			try (TupleQueryResult result = query.evaluate()) {
+				assertTrue(result.hasNext());
+				var row = result.next();
+				assertEquals(expected, row.getValue("value"));
+				assertEquals(expected, row.getValue("copy"));
+				assertFalse(result.hasNext());
+			}
+		}
+		query.clearBindings();
+		try (TupleQueryResult result = query.evaluate()) {
+			assertTrue(result.hasNext());
+			var row = result.next();
+			assertNull(row.getValue("value"));
+			assertNull(row.getValue("copy"));
+			assertFalse(result.hasNext());
+		}
+	}
+
+	@Test
 	void preservesArithmeticPrecedenceAndSigns() {
 		assertEquals(14, ((Literal) value("2 + 3 * 4")).intValue());
 		assertEquals(20, ((Literal) value("(2 + 3) * 4")).intValue());

@@ -4,6 +4,8 @@ This module adds `QueryLanguage.GQL` to RDF4J. It parses a documented GQL query 
 
 This is **query support, not complete ISO/IEC 39075 conformance**. GQL also defines graph updates, schemas, catalogs, sessions, extensive types, and other facilities. Unsupported constructs are rejected during query preparation. The supported syntax and RDF mapping below are the contract of this module.
 
+Work toward the complete published standard, including the 2026 corrigendum, is tracked in [the conformance inventory](conformance/README.md) and the repository-root `gql-conformance-exec-plan.md`. The inventory explicitly records unverified requirements and the missing full normative base text. Corrections to individual rules do not establish complete conformance.
+
 ## Using the parser
 
 The `rdf4j-client` aggregate includes the parser. Applications using individual modules can add:
@@ -95,7 +97,9 @@ RETURN a.`urn:name` AS name, b
 
 Bare label/property identifiers are appended to the absolute base URI passed to `prepareTupleQuery`. In the Java example, `Person` maps to `https://example.org/Person` and `name` to `https://example.org/name`. This is an RDF namespace mapping, not local-name matching or inferred prefix resolution. Without a base URI, use absolute IRIs. Repository namespace declarations are not consulted.
 
-Backticks and double quotes delimit identifiers; single quotes delimit string literals in this profile. Keywords are case insensitive and names are case sensitive. Quoted names are never interpreted as keywords. The profile permits contextual keywords as unquoted identifiers in otherwise unambiguous name positions; it does not enforce ISO's complete reserved/pre-reserved word list. Use quoted identifiers when portability matters. `--`, `//`, and `/* ... */` comments are supported. `--` is a comment, so use `(a)-(b)` or `(a)-[]-(b)` for any-direction matching.
+Single and double quotes delimit string literals in value expressions. Double quotes also delimit identifiers in name positions, including labels, properties, parameters, and result aliases; backticks delimit identifiers. Binding variables, including node/edge variables and LET targets, use regular identifiers. A double-quoted value is always a string literal, even when a variable has the same text. Keywords are case insensitive and names are case sensitive. Delimited names are never interpreted as keywords. The profile permits contextual keywords as unquoted identifiers in otherwise unambiguous name positions; it does not enforce ISO's complete reserved/pre-reserved word list. `--`, `//`, and `/* ... */` comments are supported. `--` is a comment, so use `(a)-(b)` or `(a)-[]-(b)` for any-direction matching.
+
+The `@` prefix disables backslash escapes in a quoted sequence. It also applies to delimited parameter names, for example `$@"path\\name"`; bind the exact resulting name through `setBinding`.
 
 ## Supported query forms
 
@@ -111,6 +115,8 @@ RETURN a, b, company.name AS company
 ```
 
 The optional predicate belongs to its optional match. A later `FILTER company.name IS NOT NULL` instead removes the null-extended rows. A nullable variable is never rebound as a fresh unconstrained variable by a subsequent match.
+
+Right-hand sides within one LET statement see the incoming bindings, not sibling definitions. `LET a = 1, b = a` is rejected when `a` was not already available. Use separate statements, `LET a = 1 LET b = a`, to make the first definition available to the second.
 
 ### Paths and matching modes
 
@@ -153,7 +159,7 @@ ORDER BY degree DESC
 LIMIT 10
 ```
 
-Without explicit grouping, the non-aggregate RETURN expressions supply grouping keys. Variable references outside aggregate calls in grouped RETURN/ORDER BY expressions must be covered by grouping; aggregate arguments such as `COUNT(n)` and `SUM(n.age)` read the input rows normally. `ORDER BY` can use RETURN aliases. Explicit `NULLS FIRST` and `NULLS LAST` are supported; this profile places nulls last ascending and first descending by default.
+Without explicit grouping, the non-aggregate RETURN expressions supply grouping keys. GROUP BY can refer to the aliases of non-aggregate RETURN expressions; an aggregate result cannot be a grouping key. Variable references outside aggregate calls in grouped RETURN/ORDER BY expressions must be covered by grouping; aggregate arguments such as `COUNT(n)` and `SUM(n.age)` read the input rows normally. `ORDER BY` can use RETURN aliases and aggregate expressions when RETURN contains an aggregate or explicit grouping is present. Aggregate arguments use input bindings even when a RETURN alias has the same name. Explicit `NULLS FIRST` and `NULLS LAST` are supported; this profile places nulls last ascending and first descending by default.
 
 ## LMDB execution and performance
 

@@ -100,6 +100,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	private final String namespace;
 	private final List<Token> tokens;
 	private final Set<String> reserved = new HashSet<>();
+	private final Set<String> parameters = new HashSet<>();
 	private final GqlExpressionParser expressions;
 	private final Map<String, Binding> variables = new LinkedHashMap<>();
 	private final Map<String, Edge> edges = new HashMap<>();
@@ -133,6 +134,9 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		this.tokens = GqlLexer.tokenize(source);
 		for (Token token : tokens) {
 			reserved.add(token.text());
+			if (token.kind() == Kind.PARAMETER) {
+				parameters.add(token.text());
+			}
 		}
 		this.expressions = new GqlExpressionParser(this);
 	}
@@ -485,6 +489,9 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	}
 
 	private String patternBinding(Token token, Element kind) {
+		if (token.kind() != Kind.IDENTIFIER) {
+			throw GqlLexer.error(source, token.offset(), "A binding variable requires a regular identifier");
+		}
 		String userName = token.text();
 		Binding binding = variables.get(userName);
 		if (binding == null) {
@@ -579,17 +586,22 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	}
 
 	private void let() {
+		Map<String, Binding> definitions = new LinkedHashMap<>();
+		List<ExtensionElem> values = new ArrayList<>();
 		do {
-			Token name = identifier();
-			if (variables.containsKey(name.text())) {
+			Token name = bindingIdentifier();
+			if (variables.containsKey(name.text()) || definitions.containsKey(name.text())) {
 				throw error("LET cannot redeclare variable " + name.text());
 			}
 			expect("=");
 			ValueExpr expression = expressions.parse();
 			String internal = fresh();
-			pipeline = new Extension(flush(pipeline), new ExtensionElem(expression, internal));
-			variables.put(name.text(), new Binding(internal, Element.VALUE, true));
+			values.add(new ExtensionElem(expression, internal));
+			definitions.put(name.text(), new Binding(internal, Element.VALUE, true));
 		} while (accept(","));
+		// All definitions see the incoming scope; only a later LET can refer to this statement's outputs.
+		pipeline = new Extension(flush(pipeline), values);
+		variables.putAll(definitions);
 	}
 
 	private TupleExpr result() {
@@ -621,24 +633,65 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		if (items.isEmpty()) {
 			throw error("RETURN * needs at least one declared variable");
 		}
-		List<ValueExpr> keys = new ArrayList<>();
+		Map<String, ReturnItem> returnItems = new HashMap<>();
+		for (ReturnItem item : items) {
+			returnItems.put(item.name(), item);
+		}
+		Set<ValueExpr> keys = new LinkedHashSet<>();
 		boolean explicitGroup = accept("GROUP");
 		if (explicitGroup) {
 			expect("BY");
 			do {
-				keys.add(expressions.parse());
+				Token name = bindingIdentifier();
+				ReturnItem item = returnItems.get(name.text());
+				ValueExpr key = item == null ? variable(name) : item.expression();
+				if (containsAggregate(key)) {
+					throw error("GROUP BY cannot contain an aggregate result alias: " + name.text());
+				}
+				keys.add(key);
 			} while (accept(","));
 		} else if (!aggregates.isEmpty()) {
 			for (ReturnItem item : items) {
 				if (!containsAggregate(item.expression())) {
-					keys.add(item.expression().clone());
+					keys.add(item.expression());
 				}
 			}
+		}
+		boolean grouped = explicitGroup || !aggregates.isEmpty();
+		for (ReturnItem item : items) {
+			// A parameter must remain an expression in the algebra so API binding assignment can materialize
+			// it even when the input is SingletonSet. A projection source name alone has no Var to assign.
+			String internal = item.expression() instanceof Var var && !parameters.contains(var.getName())
+					? var.getName()
+					: fresh();
+			orderAliases.put(item.name(), internal);
+		}
+		List<SortKey> sortKeys = new ArrayList<>();
+		if (accept("ORDER")) {
+			expect("BY");
+			// Collect these aggregates before constructing Group, while their operands still see input rows.
+			allowAggregates = grouped;
+			do {
+				ValueExpr key = expressions.parse();
+				boolean ascending = !accept("DESC") && !accept("DESCENDING");
+				if (ascending && !accept("ASC")) {
+					accept("ASCENDING");
+				}
+				boolean nullsFirst = !ascending;
+				if (accept("NULLS")) {
+					nullsFirst = accept("FIRST");
+					if (!nullsFirst) {
+						expect("LAST");
+					}
+				}
+				sortKeys.add(new SortKey(key, ascending, nullsFirst));
+			} while (accept(","));
+			allowAggregates = false;
 		}
 		pipeline = flush(pipeline);
 		Map<ValueExpr, String> groupedExpressions = new HashMap<>();
 		Set<String> groupNames = new LinkedHashSet<>();
-		if (explicitGroup || !aggregates.isEmpty()) {
+		if (grouped) {
 			for (ValueExpr key : keys) {
 				String name;
 				if (key instanceof Var var) {
@@ -650,6 +703,37 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 				groupNames.add(name);
 				groupedExpressions.put(key, name);
 			}
+		}
+		List<OrderElem> order = new ArrayList<>();
+		Map<String, String> propertyOwners = new HashMap<>();
+		properties.forEach((key, value) -> propertyOwners.put(value.result(), key.owner()));
+		Set<String> outputBindings = new HashSet<>(orderAliases.values());
+		for (SortKey sort : sortKeys) {
+			ValueExpr key = sort.expression();
+			String groupedExpression = groupedExpressions.get(key);
+			if (groupedExpression != null) {
+				key = new Var(groupedExpression);
+			}
+			if (grouped) {
+				for (String reference : references(key)) {
+					String owner = propertyOwners.get(reference);
+					if (owner != null && groupNames.contains(owner)) {
+						// Scalar properties are functionally determined by their grouped node. Carrying one
+						// through Group cannot split a group and avoids resolving it against unrelated nodes.
+						groupNames.add(reference);
+					}
+					if (!groupNames.contains(reference) && !aggregateNames.contains(reference)
+							&& !outputBindings.contains(reference) && isGraphBinding(reference)) {
+						throw error("ORDER BY expression references a variable outside its grouping keys");
+					}
+				}
+			}
+			ValueExpr present = new Coalesce(List.of(new SameTerm(key.clone(), key.clone()),
+					new ValueConstant(VF.createLiteral(false))));
+			order.add(new OrderElem(present, sort.nullsFirst()));
+			order.add(new OrderElem(key, sort.ascending()));
+		}
+		if (grouped) {
 			pipeline = new Group(pipeline, groupNames, aggregates);
 			afterGrouping = true;
 			groupedBindings.addAll(groupNames);
@@ -658,10 +742,10 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		ProjectionElemList projection = new ProjectionElemList();
 		for (ReturnItem item : items) {
 			ValueExpr expression = item.expression();
-			String grouped = groupedExpressions.get(expression);
-			if (grouped != null) {
-				expression = new Var(grouped);
-			} else if (explicitGroup || !aggregates.isEmpty()) {
+			String groupedExpression = groupedExpressions.get(expression);
+			if (groupedExpression != null) {
+				expression = new Var(groupedExpression);
+			} else if (grouped) {
 				for (String reference : references(expression)) {
 					if (!groupNames.contains(reference) && !aggregateNames.contains(reference)
 							&& isGraphBinding(reference)) {
@@ -670,58 +754,15 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 					}
 				}
 			}
-			String internal;
-			if (expression instanceof Var var) {
-				internal = var.getName();
-			} else {
-				internal = fresh();
+			String internal = orderAliases.get(item.name());
+			if (!(expression instanceof Var var) || !var.getName().equals(internal)) {
 				pipeline = new Extension(pipeline, new ExtensionElem(expression, internal));
 			}
 			projection.addElement(new ProjectionElem(internal, item.name()));
-			orderAliases.put(item.name(), internal);
 			if (afterGrouping) {
 				groupedBindings.add(internal);
 			}
 		}
-		if (afterGrouping) {
-			// Aggregate arguments were evaluated before grouping. Only property values that are grouping keys
-			// survive it; a later ORDER BY property of a grouped node must attach a fresh scalar relation.
-			properties.entrySet().removeIf(entry -> !groupedBindings.contains(entry.getValue().result()));
-			attachedProperties.retainAll(properties.keySet());
-		}
-		List<OrderElem> order = new ArrayList<>();
-		if (accept("ORDER")) {
-			expect("BY");
-			do {
-				ValueExpr key = expressions.parse();
-				if (afterGrouping) {
-					for (String reference : references(key)) {
-						if (isGraphBinding(reference) && !groupedBindings.contains(reference)) {
-							throw error("ORDER BY expression references a variable outside its grouping keys");
-						}
-					}
-				}
-				boolean ascending = !accept("DESC") && !accept("DESCENDING");
-				if (ascending) {
-					if (!accept("ASC")) {
-						accept("ASCENDING");
-					}
-				}
-				// Explicit NULLS ordering is independent of RDF4J's term ordering.
-				boolean nullsFirst = !ascending;
-				if (accept("NULLS")) {
-					nullsFirst = accept("FIRST");
-					if (!nullsFirst) {
-						expect("LAST");
-					}
-				}
-				ValueExpr present = new Coalesce(List.of(new SameTerm(key.clone(), key.clone()),
-						new ValueConstant(VF.createLiteral(false))));
-				order.add(new OrderElem(present, nullsFirst));
-				order.add(new OrderElem(key, ascending));
-			} while (accept(","));
-		}
-		pipeline = flush(pipeline);
 		if (!order.isEmpty()) {
 			pipeline = new Order(pipeline, order);
 		}
@@ -753,7 +794,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 
 	@Override
 	public ValueExpr variable(Token token) {
-		String ordered = orderAliases.get(token.text());
+		String ordered = expressions.isParsingAggregateArgument() ? null : orderAliases.get(token.text());
 		if (ordered != null) {
 			return new Var(ordered);
 		}
@@ -845,7 +886,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	@Override
 	public ValueExpr aggregate(Token name, boolean distinct, ValueExpr arg) {
 		if (!allowAggregates) {
-			throw error("Aggregate functions are only allowed in RETURN");
+			throw error("Aggregate functions are not allowed in this expression context");
 		}
 		AggregateOperator operator = switch (name.text().toUpperCase(Locale.ROOT)) {
 		case "COUNT" -> new Count(arg, distinct);
@@ -1003,7 +1044,8 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	}
 
 	private static Projection project(TupleExpr input, String name) {
-		return new Projection(input, new ProjectionElemList(new ProjectionElem(name)));
+		// Column pruning stays in the enclosing scope so binding constraints reach the underlying scan.
+		return new Projection(input, new ProjectionElemList(new ProjectionElem(name)), false);
 	}
 
 	private static TupleExpr join(TupleExpr left, TupleExpr right) {
@@ -1106,8 +1148,17 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		return token;
 	}
 
+	private Token bindingIdentifier() {
+		Token token = take();
+		if (token.kind() != Kind.IDENTIFIER) {
+			throw GqlLexer.error(source, token.offset(), "A binding variable requires a regular identifier");
+		}
+		return token;
+	}
+
 	private static boolean isIdentifier(Token token) {
-		return token.kind() == Kind.IDENTIFIER || token.kind() == Kind.QUOTED_IDENTIFIER;
+		return token.kind() == Kind.IDENTIFIER || token.kind() == Kind.QUOTED_IDENTIFIER
+				|| token.kind() == Kind.DOUBLE_QUOTED;
 	}
 
 	private int integer(String what, int maximum) {
@@ -1196,6 +1247,9 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	}
 
 	private record ReturnItem(ValueExpr expression, String name) {
+	}
+
+	private record SortKey(ValueExpr expression, boolean ascending, boolean nullsFirst) {
 	}
 
 	private record NodeDepth(QueryModelNode node, int depth) {

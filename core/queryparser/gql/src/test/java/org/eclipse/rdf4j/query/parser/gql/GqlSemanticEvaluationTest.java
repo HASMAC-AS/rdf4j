@@ -114,6 +114,34 @@ class GqlSemanticEvaluationTest {
 	}
 
 	@Test
+	void labeledTraversalKeepsTheBoundStartAcrossInternalProjections() {
+		person(ALICE, BOB, CAROL, DAVE);
+		connection.add(ALICE, KNOWS, BOB);
+		connection.add(ALICE, KNOWS, CAROL);
+		connection.add(BOB, KNOWS, DAVE);
+		connection.add(CAROL, KNOWS, DAVE);
+
+		TupleQuery query = query("MATCH (n:Person)-[:knows]->(friend) WHERE n = $start "
+				+ "RETURN friend ORDER BY friend");
+		query.setBinding("start", ALICE);
+		assertThat(column(rows(query), "friend")).containsExactly(BOB, CAROL);
+		assertThat(column(rows("MATCH (n:Person)-[:knows]->(friend) WHERE n = IRI('" + ALICE
+				+ "') RETURN friend ORDER BY friend"), "friend")).containsExactly(BOB, CAROL);
+	}
+
+	@Test
+	void boundTraversalStartMustHaveTheRequiredLabel() {
+		person(ALICE, BOB, CAROL);
+		connection.add(DAVE, KNOWS, BOB);
+
+		TupleQuery query = query("MATCH (n:Person)-[:knows]->(friend) WHERE n = $start RETURN friend");
+		query.setBinding("start", DAVE);
+		assertThat(rows(query)).isEmpty();
+		assertThat(rows("MATCH (n:Person)-[:knows]->(friend) WHERE n = IRI('" + DAVE
+				+ "') RETURN friend")).isEmpty();
+	}
+
+	@Test
 	void wildcardLabelRequiresAtLeastOneLabelAndItsNegationFindsUnlabeledNodes() {
 		person(ALICE);
 		connection.add(ALICE, RDF.TYPE, iri("Employee"));
@@ -631,6 +659,117 @@ class GqlSemanticEvaluationTest {
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).getValue("n")).isEqualTo(CAROL);
 		assertThat(((Literal) result.get(0).getValue("nextAge")).intValue()).isEqualTo(21);
+	}
+
+	@Test
+	void letDefinitionsCannotReferenceSiblingsFromTheSameStatement() {
+		// ISO/IEC 39075:2024/Cor.1:2026, 14.7: every right-hand side sees the incoming scope.
+		assertThatThrownBy(() -> query("LET first = 1, second = first RETURN second"))
+				.isInstanceOf(MalformedQueryException.class);
+		assertThatThrownBy(() -> query("LET second = first, first = 1 RETURN second"))
+				.isInstanceOf(MalformedQueryException.class);
+		assertThatThrownBy(() -> query("LET first = 1, second = 2, third = first + second RETURN third"))
+				.isInstanceOf(MalformedQueryException.class);
+	}
+
+	@Test
+	void letDefinitionsShareIncomingBindingsAndLaterStatementsSeeAllOutputs() {
+		List<BindingSet> result = rows("LET initial = 10 LET first = initial + 1, second = initial + 2 "
+				+ "LET total = first + second RETURN first, second, total");
+		assertThat(result).singleElement().satisfies(row -> {
+			assertThat(((Literal) row.getValue("first")).intValue()).isEqualTo(11);
+			assertThat(((Literal) row.getValue("second")).intValue()).isEqualTo(12);
+			assertThat(((Literal) row.getValue("total")).intValue()).isEqualTo(23);
+		});
+	}
+
+	@Test
+	void aggregateSortKeysUseTheInputRowsOfTheSameGroup() {
+		connection.add(ALICE, KNOWS, BOB);
+		connection.add(ALICE, KNOWS, CAROL);
+		connection.add(BOB, KNOWS, CAROL);
+		connection.add(BOB, AGE, VF.createLiteral(10));
+		connection.add(CAROL, AGE, VF.createLiteral(20));
+		assertThat(column(rows("MATCH (a)-[:knows]->(b) RETURN a, COUNT(*) AS total "
+				+ "ORDER BY COUNT(*) DESC, a"), "a")).containsExactly(ALICE, BOB);
+		assertThat(column(rows("MATCH (a)-[:knows]->(b) RETURN a, COUNT(*) AS total "
+				+ "ORDER BY SUM(b.age) DESC, a"), "a")).containsExactly(ALICE, BOB);
+	}
+
+	@Test
+	void aggregateSortArgumentsUseInputBindingsWhenReturnAliasesShadowThem() {
+		connection.add(ALICE, KNOWS, CAROL);
+		connection.add(BOB, KNOWS, CAROL);
+		connection.add(BOB, KNOWS, DAVE);
+		assertThat(column(rows("MATCH (a)-[:knows]->(b) RETURN a AS owner, COUNT(*) AS b "
+				+ "GROUP BY owner ORDER BY COUNT(b) DESC, owner"), "owner")).containsExactly(BOB, ALICE);
+	}
+
+	@Test
+	void explicitGroupingPermitsAggregateSortKeysWithoutAnAggregatingReturnItem() {
+		connection.add(ALICE, KNOWS, BOB);
+		connection.add(ALICE, KNOWS, CAROL);
+		connection.add(BOB, KNOWS, CAROL);
+		assertThat(column(rows("MATCH (a)-[:knows]->(b) RETURN a GROUP BY a "
+				+ "ORDER BY COUNT(*) DESC, a"), "a")).containsExactly(ALICE, BOB);
+	}
+
+	@Test
+	void aggregateSortKeysRequireGroupingOrAnAggregatingReturnItem() {
+		// ISO/IEC 39075:2024/Cor.1:2026, 14.10: ORDER BY cannot introduce aggregation by itself.
+		assertThatThrownBy(() -> query("MATCH (a)-[:knows]->(b) RETURN a ORDER BY COUNT(*)"))
+				.isInstanceOf(MalformedQueryException.class);
+	}
+
+	@Test
+	void groupingResolvesReturnAliasesAndRejectsAggregateAliases() {
+		connection.add(ALICE, KNOWS, BOB);
+		connection.add(ALICE, KNOWS, CAROL);
+		connection.add(BOB, KNOWS, CAROL);
+		List<BindingSet> result = rows("MATCH (a)-[:knows]->(b) RETURN a AS person, COUNT(*) AS total "
+				+ "GROUP BY person ORDER BY total DESC");
+		assertThat(column(result, "person")).containsExactly(ALICE, BOB);
+		assertThat(((Literal) result.getFirst().getValue("total")).intValue()).isEqualTo(2);
+		assertThat(((Literal) result.getLast().getValue("total")).intValue()).isEqualTo(1);
+		assertThatThrownBy(() -> query("MATCH (a)-[:knows]->(b) RETURN COUNT(*) AS total GROUP BY total"))
+				.isInstanceOf(MalformedQueryException.class);
+	}
+
+	@Test
+	void groupingCanResolveAnAliasForAComputedReturnExpression() {
+		person(ALICE, BOB, CAROL);
+		connection.add(ALICE, AGE, VF.createLiteral(20));
+		connection.add(BOB, AGE, VF.createLiteral(20));
+		connection.add(CAROL, AGE, VF.createLiteral(30));
+		List<BindingSet> result = rows("MATCH (n:Person) RETURN n.age + 1 AS nextAge, COUNT(*) AS total "
+				+ "GROUP BY nextAge ORDER BY nextAge");
+		assertThat(result).hasSize(2);
+		assertThat(((Literal) result.getFirst().getValue("nextAge")).intValue()).isEqualTo(21);
+		assertThat(((Literal) result.getFirst().getValue("total")).intValue()).isEqualTo(2);
+		assertThat(((Literal) result.getLast().getValue("nextAge")).intValue()).isEqualTo(31);
+		assertThat(((Literal) result.getLast().getValue("total")).intValue()).isEqualTo(1);
+		assertThatThrownBy(() -> query("MATCH (n:Person) RETURN n.age AS age, COUNT(*) AS total GROUP BY n.age"))
+				.isInstanceOf(MalformedQueryException.class);
+		assertThatThrownBy(() -> query("MATCH (n:Person) RETURN 1 + 1 AS key, COUNT(*) AS total GROUP BY 1 + 1"))
+				.isInstanceOf(MalformedQueryException.class);
+	}
+
+	@Test
+	void bindingVariableDeclarationsRequireRegularIdentifiers() {
+		// ISO/IEC 39075:2024, 21.1: element and binding variables use regular identifiers.
+		for (String query : List.of("MATCH (`n`) RETURN 1 AS value", "MATCH (\"n\") RETURN 1 AS value",
+				"MATCH (a)-[`e`]->(b) RETURN 1 AS value", "MATCH (a)-[\"e\"]->(b) RETURN 1 AS value",
+				"LET `n` = 1 RETURN 1 AS value", "LET \"n\" = 1 RETURN 1 AS value")) {
+			assertThatThrownBy(() -> query(query)).as(query).isInstanceOf(MalformedQueryException.class);
+		}
+	}
+
+	@Test
+	void doubleQuotedLabelsPropertiesAndReturnAliasesRemainDelimitedIdentifiers() {
+		person(ALICE);
+		connection.add(ALICE, NAME, VF.createLiteral("Alice"));
+		assertThat(column(rows("MATCH (n:\"Person\") RETURN n.\"name\" AS \"display name\""), "display name"))
+				.containsExactly(VF.createLiteral("Alice"));
 	}
 
 	@Test
