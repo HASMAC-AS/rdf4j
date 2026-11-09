@@ -914,6 +914,30 @@ public class LmdbStore extends AbstractNotifyingSail implements FederatedService
 	}
 
 	/**
+	 * Builds or resumes compact lowercase literal summaries in a closed repository. The repository directory lock
+	 * excludes concurrent store access. Bounded batches are committed independently: interruption leaves all queries
+	 * correct, and another invocation can resume. Missing or incompatible summaries always use ordinary evaluation. Run
+	 * this once for a pre-existing dictionary, and after changing the Java runtime or the default casing locale.
+	 *
+	 * @param directory closed repository directory
+	 * @param config    the repository's normal LMDB configuration
+	 * @return number of literal summaries written by this invocation
+	 * @throws IOException if native storage cannot be read or written
+	 */
+	public static long rebuildLiteralTextIndexOffline(File directory, LmdbStoreConfig config) throws IOException {
+		Objects.requireNonNull(directory, "directory");
+		Objects.requireNonNull(config, "config");
+		LmdbStore maintenance = new LmdbStore(directory, config);
+		maintenance.offlineMaintenance = true;
+		try {
+			maintenance.init();
+			return maintenance.backingStore.valueStore().rebuildLiteralTextIndex();
+		} finally {
+			maintenance.shutDown();
+		}
+	}
+
+	/**
 	 * Waits for the configured direct-adjacency maintenance work to publish an exact view of the current LMDB data
 	 * revision. Returns {@code false} when direct adjacency is disabled, refused, failed, has no scheduled build, or
 	 * the timeout expires.

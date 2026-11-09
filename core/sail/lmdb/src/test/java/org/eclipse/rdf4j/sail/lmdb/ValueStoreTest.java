@@ -3415,7 +3415,9 @@ public class ValueStoreTest {
 				.setInlineLiterals(false);
 		valueStore = createValueStore(config);
 
-		int cohortSize = 4_096;
+		// The pressure gap must fit the bounded metadata footer reserved before native writer admission, while
+		// remaining smaller than the value/cohort reservation that checkpoints an already-open writer below.
+		int cohortSize = 16_384;
 		String[] labels = new String[cohortSize];
 		for (int i = 0; i < labels.length; i++) {
 			labels[i] = "pre-free-checkpoint-" + i;
@@ -3454,17 +3456,38 @@ public class ValueStoreTest {
 		int committedBatches = 1;
 		// Native prepared-value reservations include page bookkeeping. Fill an independent native database to
 		// the measured policy watermark instead of mistaking a larger reservation for this cohort's demand.
-		int capacityDbi = valueStore.writeTransaction(
-				(stack, txn) -> openDatabaseWithTxn(txn, "reclamation_capacity", MDB_CREATE));
+		int[] capacityDatabase = valueStore.writeTransaction((stack, txn) -> {
+			int database = openDatabaseWithTxn(txn, "reclamation_capacity", MDB_CREATE);
+			MDBStat stat = MDBStat.calloc(stack);
+			E(mdb_stat(txn, database, stat));
+			return new int[] { database, stat.ms_psize() };
+		});
+		int capacityDbi = capacityDatabase[0];
+		int nativePageSize = capacityDatabase[1];
+		Method footerEstimate = ValueStore.class.getDeclaredMethod("literalTextAuthorityCapacity");
+		footerEstimate.setAccessible(true);
 		long watermark = initialMapSize - LmdbUtil.MIN_FREE_SPACE;
 		MapGrowthPolicy pressurePolicy = new MapGrowthPolicy(config.getMapGrowthThreshold());
 		long maximumEntries = initialMapSize / candidateGrowthBytes + 2L;
 		for (int entry = 0; !pressurePolicy.hardCapacityRequired(initialMapSize, valueStore.occupiedBytes(),
 				candidateGrowthBytes); entry++) {
-			assertTrue("native pressure must reach the exact cohort watermark within bounded capacity",
-					entry < maximumEntries);
+			long occupied = valueStore.occupiedBytes();
+			long footerBytes = (long) footerEstimate.invoke(valueStore);
+			// A one-byte tail can pack into already allocated pages indefinitely relative to this cohort bound.
+			// A page-sized value requires overflow allocation while keeping overshoot below the metadata gap.
 			int payload = Math.toIntExact(Math.min(1024 * 1024L,
-					Math.max(1L, watermark - valueStore.occupiedBytes() - candidateGrowthBytes)));
+					Math.max(nativePageSize, watermark - occupied - candidateGrowthBytes)));
+			String nativePressure = "entry=" + entry + "/" + maximumEntries + ", payload=" + payload
+					+ ", page=" + nativePageSize + ", occupied=" + occupied + ", map=" + initialMapSize + "->"
+					+ valueStore.mapSizeBytes() + ", mapGeneration=" + initialMapGeneration + "->"
+					+ valueStore.nativeMapGeneration() + ", candidateBytes=" + candidateGrowthBytes
+					+ ", footerBytes=" + footerBytes;
+			assertTrue("native pressure must reach the exact cohort watermark within bounded capacity: "
+					+ nativePressure, entry < maximumEntries);
+			assertTrue("the pressure gap must accommodate metadata admission and bounded page overshoot: "
+					+ nativePressure, candidateGrowthBytes > footerBytes + 8L * nativePageSize);
+			assertEquals("pressure setup must not resize before the active-writer fault: " + nativePressure,
+					initialMapSize, valueStore.mapSizeBytes());
 			int keyId = entry;
 			valueStore.writeTransaction((stack, txn) -> {
 				MDBVal key = MDBVal.calloc(stack);
@@ -3474,6 +3497,8 @@ public class ValueStoreTest {
 				E(mdb_put(txn, capacityDbi, key, data, 0));
 				return null;
 			});
+			assertEquals("pressure setup must not advance the map generation: " + nativePressure,
+					initialMapGeneration, valueStore.nativeMapGeneration());
 		}
 		AtomicInteger preResizeCallbacks = new AtomicInteger();
 		IllegalStateException stopBeforeResize = new IllegalStateException("stop before native map resize");
@@ -3484,6 +3509,11 @@ public class ValueStoreTest {
 		long nativeGenerationBeforeFailedBatch = valueStore.nativeCommitGeneration();
 		valueStore.startTransaction(true);
 		try {
+			assertEquals("metadata admission must fit without consuming the active-writer checkpoint under test",
+					initialMapSize, valueStore.mapSizeBytes());
+			assertEquals(
+					"metadata admission must not advance the map generation before the fault-triggering value write",
+					initialMapGeneration, valueStore.nativeMapGeneration());
 			assertSame(stopBeforeResize, assertThrows(IllegalStateException.class,
 					() -> valueStore.storeValue(Values.literal("marked-pressure:" + "x".repeat(fillerValueLength)))));
 		} finally {

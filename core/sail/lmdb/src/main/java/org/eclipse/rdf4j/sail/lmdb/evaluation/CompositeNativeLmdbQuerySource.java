@@ -111,6 +111,11 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 	}
 
 	@Override
+	public boolean mayMatchLiteralText(long id, org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary.Query query) {
+		return sources.get(0).mayMatchLiteralText(id, query);
+	}
+
+	@Override
 	public int literalDatatypeIds(long[] ids, int offset, int length, long[] target, int targetOffset) {
 		return sources.get(0).literalDatatypeIds(ids, offset, length, target, targetOffset);
 	}
@@ -1186,6 +1191,11 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 		@Override
 		public long literalDatatypeId(long id) {
 			return delegate.literalDatatypeId(id);
+		}
+
+		@Override
+		public boolean mayMatchLiteralText(long id, org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary.Query query) {
+			return delegate.mayMatchLiteralText(id, query);
 		}
 
 		@Override

@@ -61,6 +61,8 @@ import org.eclipse.rdf4j.query.algebra.ValueConstant;
 import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.query.algebra.ValueExprTripleRef;
 import org.eclipse.rdf4j.query.algebra.Var;
+import org.eclipse.rdf4j.query.algebra.evaluation.function.string.Contains;
+import org.eclipse.rdf4j.query.algebra.evaluation.function.string.StrStarts;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.QueryEvaluationUtility;
 import org.eclipse.rdf4j.sail.lmdb.ValueIds;
@@ -117,7 +119,7 @@ public final class LmdbNativeExpressionCompiler {
 		if (!enabled()) {
 			return null;
 		}
-		ValueExpr ownedExpression = expr.clone();
+		ValueExpr ownedExpression = QueryEvaluationUtility.pinFunctions(expr.clone());
 		NativeScalarPlan scalarPlan = NativeScalarPlan.create(ownedExpression, slots,
 				NativeScalarPlan.ResultKind.BOOLEAN,
 				strictCompare, assuredMask, false, false);
@@ -132,7 +134,8 @@ public final class LmdbNativeExpressionCompiler {
 			return null;
 		}
 		recordCompiledFilter();
-		return new LmdbNativeCompiledBoolean(compiled.requiredMask, compiled.evaluator, scalarPlan);
+		return new LmdbNativeCompiledBoolean(compiled.requiredMask,
+				LmdbLiteralTextFilter.guardNative(ownedExpression, source, slots, compiled.evaluator), scalarPlan);
 	}
 
 	static LmdbNativeCompiledInlineId compileInlineId(ValueExpr expr, NativeLmdbQuerySource source,
@@ -209,8 +212,13 @@ public final class LmdbNativeExpressionCompiler {
 		if (compiler == null) {
 			return null;
 		}
-		LmdbNativeCompiledTruth compiled = compiler.compileTruth(plan.expression());
-		return compiled == null ? null : new LmdbNativeCompiledBoolean(compiled.requiredMask, compiled.evaluator, plan);
+		ValueExpr expression = plan.expression();
+		LmdbNativeCompiledTruth compiled = compiler.compileTruth(expression);
+		return compiled == null ? null
+				: new LmdbNativeCompiledBoolean(compiled.requiredMask,
+						LmdbLiteralTextFilter.guardNative(expression, context.source(), plan.frozenSlotResolver(),
+								compiled.evaluator),
+						plan);
 	}
 
 	static LmdbNativeCompiledInlineId bindInlineId(NativeScalarPlan plan, NativeScalarPlan.WorkerContext context) {
@@ -582,6 +590,11 @@ public final class LmdbNativeExpressionCompiler {
 
 	private LmdbNativeCompiledTruth compileFunctionTruth(FunctionCall call) {
 		String uri = call.getURI();
+		if (FN.CONTAINS.stringValue().equals(uri) && !LmdbLiteralTextFilter.builtin(call, Contains.class)
+				|| FN.STARTS_WITH.stringValue().equals(uri) && !LmdbLiteralTextFilter.builtin(call, StrStarts.class)) {
+			// Registry replacements must reach the ordinary evaluator, including the residual of a text filter.
+			return null;
+		}
 		List<ValueExpr> args = call.getArgs();
 		if (FN.CONTAINS.stringValue().equals(uri) || FN.STARTS_WITH.stringValue().equals(uri)
 				|| FN.ENDS_WITH.stringValue().equals(uri)) {
