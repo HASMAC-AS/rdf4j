@@ -20,7 +20,9 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.query.QueryLanguage;
+import org.eclipse.rdf4j.query.explanation.Explanation;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.repository.sail.SailTupleQuery;
@@ -43,11 +45,22 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Equivalent prepared GQL/SPARQL two-hop path counts, with LMDB cursor and adjacency execution. The graph contains a
- * root, {@code fanout} middle nodes, and {@code fanout} shared leaves, hence exactly {@code fanout * fanout} walks.
- * NAMED selects one RDF context explicitly; MERGED also measures GQL's per-edge deduplication for an RDF graph union.
- * Setup, loading, adjacency construction and parsing are outside timing; each invocation evaluates and closes a real
- * query result. Result caching is disabled. Use {@code scripts/run-single-benchmark.sh} to run {@link #countPaths()}.
+ * Equivalent GQL/SPARQL counts for topology, labels, scalar properties, and query composition. Each root has
+ * {@code fanout} private middle nodes leading to {@code fanout} shared leaves. The query always binds the first root,
+ * so increasing {@code rootCount} increases unrelated data without changing the answer. The TOPOLOGY/rootCount=1 case
+ * retains the original two-hop fixture and queries. NAMED selects one RDF context explicitly in every stage; MERGED
+ * also measures GQL's per-edge deduplication. The fixture contains no repeated triples across contexts.
+ *
+ * Loading and adjacency construction are outside timing. {@link #countPaths()} reuses a prepared query;
+ * {@link #prepareAndCountPaths()} also includes parsing/preparation and binding setup. Both include ordinary runtime
+ * planning/evaluation and close the result. Result caching is disabled, and every result is checked against an
+ * independently calculated count. Property fixtures have exactly one integer value per middle node; correctness on
+ * absent or multi-valued properties belongs in the integration tests, not an implicit production assumption.
+ *
+ * Pin parameters when using {@code scripts/run-single-benchmark.sh}; the complete parameter product is intentionally
+ * broad. Set {@code -Drdf4j.gql.benchmark.printPlans=true} to dump optimized and executed plans during setup, outside
+ * timing. The diagnostic {@link #main(String[])} reads parameters from {@code rdf4j.gql.benchmark.<parameter>} system
+ * properties, with GQL/PREFER/NAMED, fanout=32, rootCount=1, TOPOLOGY and nativeEvaluation=true as defaults.
  */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.AverageTime)
@@ -61,6 +74,17 @@ public class GqlAdjacencyQueryBenchmark {
 	private static final IRI ROOT = SimpleValueFactory.getInstance().createIRI(NS + "root");
 	private static final IRI EDGE = SimpleValueFactory.getInstance().createIRI(NS + "edge");
 	private static final IRI GRAPH = SimpleValueFactory.getInstance().createIRI(NS + "graph");
+	private static final IRI NODE = SimpleValueFactory.getInstance().createIRI(NS + "Node");
+	private static final IRI SCORE = SimpleValueFactory.getInstance().createIRI(NS + "score");
+	private static final String PROPERTY_PREFIX = "rdf4j.gql.benchmark.";
+
+	private enum Workload {
+		TOPOLOGY,
+		LABEL,
+		PROPERTY_FILTER,
+		NEXT,
+		NEXT_UNION
+	}
 
 	@Param({ "GQL", "SPARQL" })
 	public String language;
@@ -74,20 +98,51 @@ public class GqlAdjacencyQueryBenchmark {
 	@Param({ "4", "32", "128" })
 	public int fanout;
 
+	@Param({ "1", "64", "256" })
+	public int rootCount;
+
+	@Param({ "TOPOLOGY", "LABEL", "PROPERTY_FILTER", "NEXT", "NEXT_UNION" })
+	public String workload;
+
+	@Param({ "true", "false" })
+	public boolean nativeEvaluation;
+
 	private Path directory;
 	private LmdbStore store;
 	private SailRepository repository;
 	private SailRepositoryConnection connection;
 	private SailTupleQuery query;
+	private QueryLanguage queryLanguage;
+	private String queryText;
+	private Workload selectedWorkload;
+	private long expectedCount;
+	private long evaluationCount;
 	private long lookupBaseline;
 	private long kernelBaseline;
+	private long plannerStatsBaseline;
 
 	@Setup(Level.Trial)
 	public void setup() throws IOException {
+		if (fanout <= 0 || rootCount <= 0) {
+			throw new IllegalArgumentException("fanout and rootCount must be positive");
+		}
+		if (!"GQL".equals(language) && !"SPARQL".equals(language)) {
+			throw new IllegalArgumentException("Unsupported benchmark language: " + language);
+		}
+		if (!"NAMED".equals(graph) && !"MERGED".equals(graph)) {
+			throw new IllegalArgumentException("Unsupported graph selection: " + graph);
+		}
+		selectedWorkload = Workload.valueOf(workload);
+		queryLanguage = new QueryLanguage(language);
+		expectedCount = switch (selectedWorkload) {
+		case PROPERTY_FILTER -> (long) fanout * (fanout - fanout / 2);
+		case NEXT_UNION -> Math.multiplyExact(2L, (long) fanout * fanout);
+		default -> (long) fanout * fanout;
+		};
 		directory = Files.createTempDirectory("rdf4j-gql-adjacency-");
 		DirectAdjacencyMode mode = DirectAdjacencyMode.valueOf(adjacency);
 		store = new LmdbStore(directory.toFile(), new LmdbStoreConfig("spoc,posc")
-				.setNativeEvaluationEnabled(true)
+				.setNativeEvaluationEnabled(nativeEvaluation)
 				.setDirectAdjacencyEnabled(mode != DirectAdjacencyMode.DISABLED)
 				.setDirectAdjacencyMode(mode)
 				.setDirectAdjacencyBuildOnStart(false)
@@ -98,36 +153,43 @@ public class GqlAdjacencyQueryBenchmark {
 			connection = repository.getConnection();
 			connection.begin();
 			var values = connection.getValueFactory();
-			for (int i = 0; i < fanout; i++) {
-				IRI middle = values.createIRI(NS + "middle" + i);
-				connection.add(ROOT, EDGE, middle, GRAPH);
-				for (int j = 0; j < fanout; j++) {
-					connection.add(middle, EDGE, values.createIRI(NS + "leaf" + j), GRAPH);
+			for (int root = 0; root < rootCount; root++) {
+				IRI rootNode = root == 0 ? ROOT : values.createIRI(NS + "root" + root);
+				if (selectedWorkload == Workload.LABEL) {
+					connection.add(rootNode, RDF.TYPE, NODE, GRAPH);
+				}
+				for (int i = 0; i < fanout; i++) {
+					IRI middle = values.createIRI(NS + (root == 0 ? "middle" + i : "middle" + root + "_" + i));
+					connection.add(rootNode, EDGE, middle, GRAPH);
+					if (selectedWorkload == Workload.LABEL) {
+						connection.add(middle, RDF.TYPE, NODE, GRAPH);
+					} else if (selectedWorkload == Workload.PROPERTY_FILTER) {
+						connection.add(middle, SCORE, values.createLiteral(i), GRAPH);
+					}
+					for (int j = 0; j < fanout; j++) {
+						connection.add(middle, EDGE, values.createIRI(NS + "leaf" + j), GRAPH);
+					}
+				}
+			}
+			if (selectedWorkload == Workload.LABEL) {
+				for (int i = 0; i < fanout; i++) {
+					connection.add(values.createIRI(NS + "leaf" + i), RDF.TYPE, NODE, GRAPH);
 				}
 			}
 			connection.commit();
 			if (mode != DirectAdjacencyMode.DISABLED && !AdjacencyEngagementTestAccess.buildNow(store)) {
 				throw new IllegalStateException("Adjacency did not become ready for benchmark fixture");
 			}
-			String pattern = "?a <" + EDGE + "> ?middle . ?middle <" + EDGE + "> ?leaf";
-			String sparql = "SELECT (COUNT(*) AS ?total) WHERE { "
-					+ ("NAMED".equals(graph) ? "GRAPH <" + GRAPH + "> { " + pattern + " }" : pattern)
-					+ " FILTER (?a = ?start) }";
-			String gql = ("NAMED".equals(graph) ? "USE GRAPH `" + GRAPH + "` " : "")
-					+ "MATCH (a)-[:`" + EDGE + "`]->(middle)-[:`" + EDGE
-					+ "`]->(leaf) WHERE a = $start RETURN COUNT(*) AS total";
-			query = connection.prepareTupleQuery(new QueryLanguage(language), "GQL".equals(language) ? gql : sparql,
-					null);
-			query.setBinding("start", ROOT);
-			query.setIncludeInferred(false);
-			query.setLmdbResultCacheRequested(false);
-			long count = countPaths();
-			long expected = (long) fanout * fanout;
-			if (count != expected) {
-				throw new IllegalStateException("Expected " + expected + " two-hop paths but got " + count);
+			queryText = "GQL".equals(language) ? gql() : sparql();
+			query = prepare();
+			countPaths();
+			if (Boolean.getBoolean(PROPERTY_PREFIX + "printPlans")) {
+				printPlans();
 			}
 			lookupBaseline = AdjacencyEngagementTestAccess.lookupHits(store);
 			kernelBaseline = AdjacencyEngagementTestAccess.kernelViewsServed();
+			plannerStatsBaseline = AdjacencyEngagementTestAccess.plannerStatsHits(store);
+			evaluationCount = 0;
 		} catch (RuntimeException | Error failure) {
 			try {
 				tearDown();
@@ -138,14 +200,109 @@ public class GqlAdjacencyQueryBenchmark {
 		}
 	}
 
+	private String gql() {
+		String use = "NAMED".equals(graph) ? "USE GRAPH `" + GRAPH + "` " : "";
+		String first = "MATCH (a)-[:`" + EDGE + "`]->(middle) WHERE a = $start RETURN middle ";
+		String second = "MATCH (middle)-[:`" + EDGE + "`]->(leaf) ";
+		return switch (selectedWorkload) {
+		case TOPOLOGY -> use + "MATCH (a)-[:`" + EDGE + "`]->(middle)-[:`" + EDGE
+				+ "`]->(leaf) WHERE a = $start RETURN COUNT(*) AS total";
+		case LABEL -> use + "MATCH (a:`" + NODE + "`)-[:`" + EDGE + "`]->(middle:`" + NODE
+				+ "`)-[:`" + EDGE + "`]->(leaf:`" + NODE + "`) WHERE a = $start RETURN COUNT(*) AS total";
+		case PROPERTY_FILTER -> use + "MATCH (a)-[:`" + EDGE + "`]->(middle)-[:`" + EDGE
+				+ "`]->(leaf) WHERE a = $start AND middle.`" + SCORE
+				+ "` >= $minimum RETURN COUNT(*) AS total";
+		case NEXT -> use + first + "NEXT " + use + second + "RETURN COUNT(*) AS total";
+		case NEXT_UNION -> use + first + "NEXT " + use + second + "RETURN leaf UNION ALL " + use + second
+				+ "RETURN leaf NEXT RETURN COUNT(*) AS total";
+		};
+	}
+
+	private String sparql() {
+		String first = "?a <" + EDGE + "> ?middle";
+		String second = "?middle <" + EDGE + "> ?leaf";
+		String incoming = "{ SELECT ?middle WHERE { " + graphScope(first) + " FILTER (?a = ?start) } } ";
+		String pattern = switch (selectedWorkload) {
+		case TOPOLOGY -> graphScope(first + " . " + second) + " FILTER (?a = ?start)";
+		case LABEL -> graphScope(first + " . " + second + " . ?a a <" + NODE + "> . ?middle a <" + NODE
+				+ "> . ?leaf a <" + NODE + ">") + " FILTER (?a = ?start)";
+		case PROPERTY_FILTER -> graphScope(first + " . " + second + " . ?middle <" + SCORE + "> ?score")
+				+ " FILTER (?a = ?start && ?score >= ?minimum)";
+		case NEXT -> incoming + graphScope(second);
+		case NEXT_UNION -> "{ SELECT ?leaf WHERE { " + incoming + "{ { " + graphScope(second)
+				+ " } UNION { " + graphScope(second) + " } } } }";
+		};
+		return "SELECT (COUNT(*) AS ?total) WHERE { " + pattern + " }";
+	}
+
+	private String graphScope(String pattern) {
+		return "NAMED".equals(graph) ? "GRAPH <" + GRAPH + "> { " + pattern + " }" : pattern;
+	}
+
+	private SailTupleQuery prepare() {
+		SailTupleQuery prepared = connection.prepareTupleQuery(queryLanguage, queryText, null);
+		prepared.setBinding("start", ROOT);
+		if (selectedWorkload == Workload.PROPERTY_FILTER) {
+			prepared.setBinding("minimum", connection.getValueFactory().createLiteral(fanout / 2));
+		}
+		prepared.setIncludeInferred(false);
+		prepared.setLmdbResultCacheRequested(false);
+		return prepared;
+	}
+
+	private void printPlans() {
+		System.out.printf(
+				"GQL_FIXTURE language=%s mode=%s graph=%s workload=%s native=%s roots=%d fanout=%d expected=%d%n",
+				language, adjacency, graph, workload, nativeEvaluation, rootCount, fanout, expectedCount);
+		System.out.println("GQL_QUERY " + queryText);
+		System.out.println("GQL_OPTIMIZED_PLAN " + query.explain(Explanation.Level.Optimized).toJson());
+		System.out.println("GQL_EXECUTED_PLAN " + query.explain(Explanation.Level.Executed).toJson());
+	}
+
 	@Benchmark
 	public long countPaths() {
-		try (var result = query.evaluate()) {
+		return consumeCount(query);
+	}
+
+	@Benchmark
+	public long prepareAndCountPaths() {
+		return consumeCount(prepare());
+	}
+
+	private long consumeCount(SailTupleQuery prepared) {
+		try (var result = prepared.evaluate()) {
 			long count = ((Literal) result.next().getValue("total")).longValue();
 			if (result.hasNext()) {
 				throw new IllegalStateException("An ungrouped count must return exactly one row");
 			}
+			if (count != expectedCount) {
+				throw new IllegalStateException(
+						"Expected " + expectedCount + " " + workload + " paths but got " + count);
+			}
+			evaluationCount++;
 			return count;
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+		if (args.length != 0) {
+			throw new IllegalArgumentException("Use rdf4j.gql.benchmark.<parameter> system properties");
+		}
+		GqlAdjacencyQueryBenchmark benchmark = new GqlAdjacencyQueryBenchmark();
+		benchmark.language = System.getProperty(PROPERTY_PREFIX + "language", "GQL");
+		benchmark.adjacency = System.getProperty(PROPERTY_PREFIX + "adjacency", "PREFER");
+		benchmark.graph = System.getProperty(PROPERTY_PREFIX + "graph", "NAMED");
+		benchmark.workload = System.getProperty(PROPERTY_PREFIX + "workload", "TOPOLOGY");
+		benchmark.fanout = Integer.parseInt(System.getProperty(PROPERTY_PREFIX + "fanout", "32"));
+		benchmark.rootCount = Integer.parseInt(System.getProperty(PROPERTY_PREFIX + "rootCount", "1"));
+		benchmark.nativeEvaluation = Boolean
+				.parseBoolean(System.getProperty(PROPERTY_PREFIX + "nativeEvaluation", "true"));
+		try {
+			benchmark.setup();
+			System.out.printf("GQL_VERIFIED workload=%s roots=%d fanout=%d count=%d%n", benchmark.workload,
+					benchmark.rootCount, benchmark.fanout, benchmark.countPaths());
+		} finally {
+			benchmark.tearDown();
 		}
 	}
 
@@ -153,10 +310,12 @@ public class GqlAdjacencyQueryBenchmark {
 	public void tearDown() throws IOException {
 		try {
 			if (store != null) {
-				System.out.printf("GQL_ADJACENCY language=%s mode=%s graph=%s fanout=%d lookupHits=%d kernelViews=%d%n",
-						language, adjacency, graph, fanout,
+				System.out.printf("GQL_ADJACENCY language=%s mode=%s graph=%s workload=%s native=%s roots=%d "
+						+ "fanout=%d evaluations=%d lookupHits=%d kernelViews=%d plannerStatsHits=%d%n",
+						language, adjacency, graph, workload, nativeEvaluation, rootCount, fanout, evaluationCount,
 						AdjacencyEngagementTestAccess.lookupHits(store) - lookupBaseline,
-						AdjacencyEngagementTestAccess.kernelViewsServed() - kernelBaseline);
+						AdjacencyEngagementTestAccess.kernelViewsServed() - kernelBaseline,
+						AdjacencyEngagementTestAccess.plannerStatsHits(store) - plannerStatsBaseline);
 			}
 		} finally {
 			try {

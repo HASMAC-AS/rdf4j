@@ -1,0 +1,822 @@
+[
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "TOPOLOGY",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=TOPOLOGY",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=TOPOLOGY roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=MERGED workload=TOPOLOGY native=true roots=64 fanout=32 evaluations=1 lookupHits=36 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "TOPOLOGY",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=TOPOLOGY",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=TOPOLOGY roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=MERGED workload=TOPOLOGY native=true roots=64 fanout=32 evaluations=1 lookupHits=18 kernelViews=4 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "LABEL",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=LABEL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=LABEL roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=MERGED workload=LABEL native=true roots=64 fanout=32 evaluations=1 lookupHits=107 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "LABEL",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=LABEL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=LABEL roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=MERGED workload=LABEL native=true roots=64 fanout=32 evaluations=1 lookupHits=66 kernelViews=8 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "PROPERTY_FILTER",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=PROPERTY_FILTER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=PROPERTY_FILTER roots=64 fanout=32 count=512",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=MERGED workload=PROPERTY_FILTER native=true roots=64 fanout=32 evaluations=1 lookupHits=46 kernelViews=9 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "PROPERTY_FILTER",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=PROPERTY_FILTER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=PROPERTY_FILTER roots=64 fanout=32 count=512",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=MERGED workload=PROPERTY_FILTER native=true roots=64 fanout=32 evaluations=1 lookupHits=8 kernelViews=4 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "NEXT",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=MERGED workload=NEXT native=true roots=64 fanout=32 evaluations=1 lookupHits=36 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "NEXT",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=MERGED workload=NEXT native=true roots=64 fanout=32 evaluations=1 lookupHits=36 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "NEXT_UNION",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT_UNION",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT_UNION roots=64 fanout=32 count=2048",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=MERGED workload=NEXT_UNION native=true roots=64 fanout=32 evaluations=1 lookupHits=72 kernelViews=0 plannerStatsHits=0"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "MERGED",
+      "workload": "NEXT_UNION",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=MERGED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT_UNION",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT_UNION roots=64 fanout=32 count=2048",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=MERGED workload=NEXT_UNION native=true roots=64 fanout=32 evaluations=1 lookupHits=69 kernelViews=0 plannerStatsHits=0"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "TOPOLOGY",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=TOPOLOGY",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=TOPOLOGY roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=NAMED workload=TOPOLOGY native=true roots=64 fanout=32 evaluations=1 lookupHits=18 kernelViews=4 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "TOPOLOGY",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=TOPOLOGY",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=TOPOLOGY roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=NAMED workload=TOPOLOGY native=true roots=64 fanout=32 evaluations=1 lookupHits=8 kernelViews=4 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "LABEL",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=LABEL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=LABEL roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=NAMED workload=LABEL native=true roots=64 fanout=32 evaluations=1 lookupHits=107 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "LABEL",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=LABEL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=LABEL roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=NAMED workload=LABEL native=true roots=64 fanout=32 evaluations=1 lookupHits=141 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "PROPERTY_FILTER",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=PROPERTY_FILTER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=PROPERTY_FILTER roots=64 fanout=32 count=512",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=NAMED workload=PROPERTY_FILTER native=true roots=64 fanout=32 evaluations=1 lookupHits=17 kernelViews=11 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "PROPERTY_FILTER",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=PROPERTY_FILTER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=PROPERTY_FILTER roots=64 fanout=32 count=512",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=NAMED workload=PROPERTY_FILTER native=true roots=64 fanout=32 evaluations=1 lookupHits=9 kernelViews=4 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "NEXT",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=NAMED workload=NEXT native=true roots=64 fanout=32 evaluations=1 lookupHits=36 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "NEXT",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT roots=64 fanout=32 count=1024",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=NAMED workload=NEXT native=true roots=64 fanout=32 evaluations=1 lookupHits=36 kernelViews=0 plannerStatsHits=1"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "GQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "NEXT_UNION",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=GQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT_UNION",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT_UNION roots=64 fanout=32 count=2048",
+      "GQL_ADJACENCY language=GQL mode=PREFER graph=NAMED workload=NEXT_UNION native=true roots=64 fanout=32 evaluations=1 lookupHits=72 kernelViews=0 plannerStatsHits=0"
+    ]
+  },
+  {
+    "parameters": {
+      "language": "SPARQL",
+      "adjacency": "PREFER",
+      "graph": "NAMED",
+      "workload": "NEXT_UNION",
+      "fanout": "32",
+      "rootCount": "64",
+      "nativeEvaluation": "true",
+      "printPlans": "true"
+    },
+    "exit_code": 0,
+    "command": [
+      "scripts/run-single-benchmark.sh",
+      "--no-build",
+      "--module",
+      "core/sail/lmdb",
+      "--main-class",
+      "org.eclipse.rdf4j.sail.lmdb.benchmark.GqlAdjacencyQueryBenchmark",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.language=SPARQL",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.adjacency=PREFER",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.graph=NAMED",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.workload=NEXT_UNION",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.fanout=32",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.rootCount=64",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.nativeEvaluation=true",
+      "--jvm-arg",
+      "-Drdf4j.gql.benchmark.printPlans=true"
+    ],
+    "evidence": [
+      "GQL_VERIFIED workload=NEXT_UNION roots=64 fanout=32 count=2048",
+      "GQL_ADJACENCY language=SPARQL mode=PREFER graph=NAMED workload=NEXT_UNION native=true roots=64 fanout=32 evaluations=1 lookupHits=69 kernelViews=0 plannerStatsHits=0"
+    ]
+  }
+]

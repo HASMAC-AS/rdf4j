@@ -3365,6 +3365,30 @@ class TripleStore implements Closeable {
 	}
 
 	/**
+	 * Exact, constant-work context bound for a pinned reader. The catalog counts live statements in both planes and
+	 * includes context zero, so at most one catalog key proves that each individual statement plane has unique SPOs.
+	 */
+	boolean hasAtMostOneContext(Txn txnRef) throws IOException {
+		long readStamp;
+		try {
+			readStamp = txnRef.lockManager().readLock();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IOException(e);
+		}
+		try (MemoryStack stack = stackPush()) {
+			synchronized (txnRef) {
+				txnRef.ensureSnapshotValid();
+				MDBStat stat = MDBStat.malloc(stack);
+				E(mdb_stat(txnRef.get(), contextsDbi, stat));
+				return stat.ms_entries() <= 1L;
+			}
+		} finally {
+			txnRef.lockManager().unlockRead(readStamp);
+		}
+	}
+
+	/**
 	 * If an index exists by context - use it, otherwise return null.
 	 *
 	 * @return All triples sorted by context or null if no context index exists

@@ -575,6 +575,11 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 	}
 
 	@Override
+	public boolean hasUniqueStatementTriples() {
+		return delegate.hasUniqueStatementTriples();
+	}
+
+	@Override
 	public String indexName(long subj, long pred, long obj, long context) {
 		return anySynthetic(subj, pred, obj, context) ? "" : delegate.indexName(subj, pred, obj, context);
 	}

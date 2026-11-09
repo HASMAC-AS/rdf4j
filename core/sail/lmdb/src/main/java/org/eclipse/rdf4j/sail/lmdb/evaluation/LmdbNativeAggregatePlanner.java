@@ -2720,7 +2720,17 @@ final class LmdbNativeAggregatePlanner extends LmdbNativeAggregateFilterCompiler
 			return null;
 		}
 		SlotPlan arg = compileTuple(distinct.getArg(), false);
-		return arg == null || arg instanceof GenericEvalPlan ? null
+		if (arg == null || arg instanceof GenericEvalPlan) {
+			return null;
+		}
+		// This plan belongs to the source's pinned read view. Keep the algebra unchanged: later evaluations and
+		// replay attempts compile against their own source and must obtain their own uniqueness proof.
+		// Synthetic carriers add computed values, but a statement pattern can produce only backing-store terms.
+		NativeLmdbQuerySource statementSource = source;
+		while (statementSource instanceof SyntheticValueSource synthetic) {
+			statementSource = synthetic.delegate;
+		}
+		return statementSource.hasCanonicalIds() && source.hasUniqueStatementTriples() ? arg
 				: new RowDistinctPlan(arg, slotsOf(arg.producedMask()));
 	}
 

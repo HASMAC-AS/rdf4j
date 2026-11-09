@@ -48,6 +48,7 @@ import org.eclipse.rdf4j.query.algebra.Extension;
 import org.eclipse.rdf4j.query.algebra.ExtensionElem;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.FunctionCall;
+import org.eclipse.rdf4j.query.algebra.GqlScalarProperty;
 import org.eclipse.rdf4j.query.algebra.Graph;
 import org.eclipse.rdf4j.query.algebra.Join;
 import org.eclipse.rdf4j.query.algebra.Lateral;
@@ -720,11 +721,11 @@ public class QueryEvaluationUtility {
 
 		private NodeSafetySummary summarize(QueryModelNode node, List<QueryModelNode> children) {
 			boolean repeatable = !(node instanceof BNodeGenerator || node instanceof AggregateFunctionCall
-					|| node instanceof Sample || node instanceof Service);
-			boolean fatal = node instanceof Service service && !service.isSilent();
+					|| node instanceof Sample || node instanceof Service || node instanceof GqlScalarProperty);
+			boolean fatal = node instanceof GqlScalarProperty || node instanceof Service service && !service.isSilent();
 			boolean mappingParameterized = node instanceof ZeroLengthPath || node instanceof ArbitraryLengthPath
 					|| node instanceof Service || node instanceof Lateral || node instanceof TripleRef
-					|| node instanceof Graph
+					|| node instanceof Graph || node instanceof GqlScalarProperty
 					|| unknownNodes.contains(node);
 			boolean containsLateral = node instanceof Lateral;
 			boolean containsExtension = node instanceof Extension;

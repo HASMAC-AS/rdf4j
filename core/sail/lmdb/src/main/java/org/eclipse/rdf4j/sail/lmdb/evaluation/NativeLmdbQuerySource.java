@@ -147,6 +147,16 @@ public interface NativeLmdbQuerySource {
 	}
 
 	/**
+	 * True only when every visible RDF subject/predicate/object triple occurs at most once across all contexts for this
+	 * source's entire snapshot lifetime. This is a semantic proof, not a cardinality estimate: native compilation may
+	 * omit a statement-pattern DISTINCT when it holds. Sources whose read view can advance must decline, as must
+	 * composites without a proof covering every active member. The default supplies no proof.
+	 */
+	default boolean hasUniqueStatementTriples() {
+		return false;
+	}
+
+	/**
 	 * Identity under which learned cost-model corrections are accumulated. Unlike {@link #idSpace()} — which must
 	 * distinguish evaluation-scoped id spaces so ephemeral ids never cross evaluations raw — cost corrections describe
 	 * the persistent store and should be shared by every plan and evaluation over it, so wrappers delegate this to

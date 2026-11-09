@@ -53,6 +53,7 @@ import org.eclipse.rdf4j.query.algebra.Extension;
 import org.eclipse.rdf4j.query.algebra.ExtensionElem;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.FunctionCall;
+import org.eclipse.rdf4j.query.algebra.GqlScalarProperty;
 import org.eclipse.rdf4j.query.algebra.Group;
 import org.eclipse.rdf4j.query.algebra.GroupElem;
 import org.eclipse.rdf4j.query.algebra.Intersection;
@@ -703,7 +704,7 @@ public class QueryJoinOptimizer implements QueryOptimizer {
 
 			@Override
 			public void meetOther(QueryModelNode node) {
-				if (node instanceof TupleExpr) {
+				if (node instanceof TupleExpr || node instanceof GqlScalarProperty) {
 					unsafe = true;
 				}
 				super.meetOther(node);

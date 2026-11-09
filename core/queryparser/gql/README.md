@@ -201,13 +201,17 @@ Without explicit grouping, the non-aggregate RETURN expressions supply grouping 
 
 Predicate labels compile to constants in ordinary StatementPattern nodes. Graph joins stay visible to the optimizer. LMDB can select outgoing/incoming adjacency and its existing native execution plans. Named edge identities are constructed only when needed, avoiding an RDF triple allocation for anonymous topology-only traversals.
 
-Merged graph edge deduplication uses a narrow native DISTINCT path over statement patterns and their filters. It reuses `RowDistinctPlan` and its ID-based distinct tracker rather than requiring a generic value-level island. Normal fallback remains available when a plan or transaction cannot use adjacency safely.
+Merged graph edge deduplication uses a narrow native DISTINCT path over statement patterns and their filters. A canonical, pinned LMDB source with at most one live context proves that each statement plane already has unique subject/predicate/object triples. For that source, the planner removes the redundant physical DISTINCT barrier so adjacent patterns can enter one native join. The original algebra keeps DISTINCT, and each new evaluation obtains its own snapshot proof. Multiple contexts, multiple active statement planes, and sources without a proof retain `RowDistinctPlan` and its ID-based distinct tracker. Normal fallback remains available when a plan or transaction cannot use adjacency safely.
 
-Scalar properties use grouped count/sample relations before attaching one value to each input row. This preserves correctness for arbitrary RDF data, but grouping can cost more than an unchecked single-value lookup. Unlabelled node enumeration and complex expressions may also use generic algebra operators. Enabling adjacency is not a promise that every operator executes as a native kernel; inspect the explanation and counters for the workload in question.
+Scalar properties use an owner-bound lookup in an eager value operator. An absent or non-resource owner opens no property scan. The lookup reads the selected owner's statements through the existing dataset, graph-selection, index and snapshot machinery, skips nonliteral objects, and retains only the first literal. Duplicate copies of that exact RDF term across contexts remain one scalar value; a second distinct literal immediately raises the cardinality error and closes the cursor. Validation occurs before CASE or COALESCE can skip a property reference, and long scans observe interruption and replay cancellation. Repeated references in one compiler stage share the attached scalar value.
+
+Unlabelled node enumeration, label-set operations and complex expressions may still use generic algebra operators. Enabling adjacency is not a promise that every operator executes as a native kernel; inspect the explanation and counters for the workload in question.
 
 This branch's LMDB direct adjacency structures are in-memory indexes derived from persistent LMDB data, with the existing commit-delta/snapshot handling. GQL does not add a new persistent adjacency disk format.
 
-A controlled initial comparison, including raw results and adjacency engagement, is in [the benchmark report](benchmarks/2026-11-09/README.md). The measured GQL means were higher than the corresponding SPARQL means; broad overlapping intervals do not establish an adjacency speedup.
+The [paired performance report](benchmarks/2026-11-09-performance/README.md) compares the previous GQL checkpoint with the owner-bound property and snapshot-proof changes using identical benchmark instructions. Named-graph property filtering improves from 157.47 ms to 8.58 ms at 64 roots and from 833.61 ms to 6.79 ms at 256 roots, with a fixed 512-path answer. The report includes all controls, confidence intervals, allocation tradeoffs, raw JMH results, adjacency engagement and 698 passing selected regressions. These workload-specific gains do not establish a speedup for every query or parity with SPARQL.
+
+The [initial GQL/SPARQL comparison](benchmarks/2026-11-09/README.md) remains as historical evidence. In that earlier run, measured GQL means were higher than the corresponding SPARQL means, and broad overlapping intervals did not establish an adjacency speedup.
 
 ## Limits and unsupported features
 
@@ -226,7 +230,7 @@ mvn -o -Dmaven.repo.local=.m2_repo -pl core/sail/lmdb \
   -Dtest='GqlLmdb*Test,LmdbNativeDistinctStatementTest,LmdbNativeRowPlanPollPointTest' test
 ```
 
-The LMDB matrix checks cursor, generic-adjacency and native-adjacency configurations; actual adjacency counter increases; path/edge multiplicities; parameter changes; read-your-writes, deletion and rollback; retained snapshots; committed deltas and reopen; dataset isolation; result closure and interruption. `GqlAdjacencyQueryBenchmark` supplies corresponding GQL/SPARQL two-hop count queries with fanout, graph selection and adjacency parameters. Benchmark results are workload-specific; preserve their complete JMH settings when comparing runs.
+The LMDB matrix checks cursor, generic-adjacency and native-adjacency configurations; actual adjacency counter increases; path/edge multiplicities; parameter changes; read-your-writes, deletion and rollback; retained snapshots; committed deltas and reopen; dataset isolation; result closure and interruption. `GqlAdjacencyQueryBenchmark` supplies corresponding GQL/SPARQL topology, label, scalar-property, NEXT and NEXT/UNION workloads. Its parameters include fanout, root count, graph selection, adjacency and native evaluation; the selected root's answer stays fixed as other roots are added. `countPaths` reuses a prepared query, while `prepareAndCountPaths` also includes preparation and binding setup. Result caching is disabled and every evaluation checks its expected count. Benchmark results are workload-specific; pin every parameter and preserve the complete JMH settings when comparing runs.
 
 ## Design references
 

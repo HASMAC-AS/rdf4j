@@ -1,0 +1,1040 @@
+GQL_FIXTURE language=GQL mode=PREFER graph=MERGED workload=PROPERTY_FILTER native=true roots=64 fanout=32 expected=512
+GQL_QUERY MATCH (a)-[:`urn:gql:benchmark:edge`]->(middle)-[:`urn:gql:benchmark:edge`]->(leaf) WHERE a = $start AND middle.`urn:gql:benchmark:score` >= $minimum RETURN COUNT(*) AS total
+GQL_OPTIMIZED_PLAN {
+  "executionSummaryEnabled" : false,
+  "physicalPlanPrelude" : "LMDB native physical plan (planned)\n  kind: hybridRoot\n  plan:\n    NativeProjection(arg=NativeGroup(arg=Filter(mask=0x20 [?-gql-5#5], arg=Extension(copies=1, arg=LexicalReplayLeftJoin(left=Join(left=RowDistinctPlan, right=RowDistinctPlan), right=GenericEvalPlan(node=Group, outSlots=[?-gql-1#1, ?-gql-7#6, ?-gql-8#7])))), groupSlots=[], aggregates=1, distinctChannelCount=0, distinctChannels=[], groupOrderPrefix=0, aggregateResultDemands=[-gql-10:FULL_VALUE]))",
+  "plans" : [ {
+    "executionSummaryEnabled" : false,
+    "plans" : [ {
+      "executionSummaryEnabled" : false,
+      "runtimeTelemetryEnabled" : false,
+      "type" : "ProjectionElem \"-gql-10\" AS \"total\""
+    } ],
+    "runtimeTelemetryEnabled" : false,
+    "type" : "ProjectionElemList"
+  }, {
+    "executionSummaryEnabled" : false,
+    "plans" : [ {
+      "doubleMetricsPlanned" : {
+        "plannedFilterPassRatioLower" : 0.0,
+        "plannedFilterPassRatioUpper" : 1.0,
+        "plannedFilterConfidence" : 0.0
+      },
+      "executionSummaryEnabled" : false,
+      "plans" : [ {
+        "executionSummaryEnabled" : false,
+        "plans" : [ {
+          "executionSummaryEnabled" : false,
+          "runtimeTelemetryEnabled" : false,
+          "stringMetricsActual" : {
+            "bindingState" : "possibly bound"
+          },
+          "type" : "Var (name=-gql-5)"
+        }, {
+          "executionSummaryEnabled" : false,
+          "runtimeTelemetryEnabled" : false,
+          "type" : "ValueConstant (value=\"16\"^^<http://www.w3.org/2001/XMLSchema#int>)"
+        } ],
+        "runtimeTelemetryEnabled" : false,
+        "type" : "Compare (>=)"
+      }, {
+        "executionSummaryEnabled" : false,
+        "plans" : [ {
+          "executionSummaryEnabled" : false,
+          "plans" : [ {
+            "executionSummaryEnabled" : false,
+            "plans" : [ {
+              "executionSummaryEnabled" : false,
+              "plans" : [ {
+                "costEstimate" : 18.5,
+                "doubleMetricsPlanned" : {
+                  "plannedFilterPassRatioLower" : 0.0,
+                  "plannedFilterPassRatio" : 1.0,
+                  "plannedFilterPassRatioUpper" : 1.0,
+                  "plannedFilterConfidence" : 0.5
+                },
+                "executionSummaryEnabled" : false,
+                "plans" : [ {
+                  "executionSummaryEnabled" : false,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : false,
+                    "plans" : [ {
+                      "executionSummaryEnabled" : false,
+                      "plans" : [ {
+                        "executionSummaryEnabled" : false,
+                        "plans" : [ {
+                          "executionSummaryEnabled" : false,
+                          "plans" : [ {
+                            "executionSummaryEnabled" : false,
+                            "runtimeTelemetryEnabled" : false,
+                            "stringMetricsActual" : {
+                              "bindingState" : "bound"
+                            },
+                            "type" : "Var (name=-gql-1)"
+                          } ],
+                          "runtimeTelemetryEnabled" : false,
+                          "type" : "IsResource"
+                        } ],
+                        "runtimeTelemetryEnabled" : false,
+                        "type" : "Not"
+                      } ],
+                      "runtimeTelemetryEnabled" : false,
+                      "type" : "Not"
+                    } ],
+                    "runtimeTelemetryEnabled" : false,
+                    "type" : "Not"
+                  } ],
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "Not"
+                }, {
+                  "executionSummaryEnabled" : false,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : false,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-0, value=urn:gql:benchmark:root)"
+                  }, {
+                    "executionSummaryEnabled" : false,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-2, value=urn:gql:benchmark:edge)"
+                  }, {
+                    "executionSummaryEnabled" : false,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "unbound"
+                    },
+                    "type" : "Var (name=-gql-1)"
+                  } ],
+                  "resultSizeEstimate" : 32.0,
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "StatementPattern"
+                } ],
+                "resultSizeEstimate" : 32.0,
+                "runtimeTelemetryEnabled" : false,
+                "stringMetricsPlanned" : {
+                  "plannedEstimateSource" : "cardinality",
+                  "filterSelectivitySource" : "cardinality"
+                },
+                "type" : "Filter"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "Distinct"
+            }, {
+              "executionSummaryEnabled" : false,
+              "plans" : [ {
+                "costEstimate" : 259.97884529322766,
+                "doubleMetricsPlanned" : {
+                  "plannedFilterPassRatioLower" : 0.0,
+                  "plannedFilterPassRatio" : 1.0,
+                  "plannedFilterPassRatioUpper" : 1.0,
+                  "plannedFilterConfidence" : 0.5
+                },
+                "executionSummaryEnabled" : false,
+                "plans" : [ {
+                  "executionSummaryEnabled" : false,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : false,
+                    "plans" : [ {
+                      "executionSummaryEnabled" : false,
+                      "plans" : [ {
+                        "executionSummaryEnabled" : false,
+                        "plans" : [ {
+                          "executionSummaryEnabled" : false,
+                          "runtimeTelemetryEnabled" : false,
+                          "stringMetricsActual" : {
+                            "bindingState" : "bound"
+                          },
+                          "type" : "Var (name=-gql-1)"
+                        } ],
+                        "runtimeTelemetryEnabled" : false,
+                        "type" : "IsResource"
+                      }, {
+                        "executionSummaryEnabled" : false,
+                        "plans" : [ {
+                          "executionSummaryEnabled" : false,
+                          "runtimeTelemetryEnabled" : false,
+                          "stringMetricsActual" : {
+                            "bindingState" : "bound"
+                          },
+                          "type" : "Var (name=-gql-3)"
+                        } ],
+                        "runtimeTelemetryEnabled" : false,
+                        "type" : "IsResource"
+                      } ],
+                      "runtimeTelemetryEnabled" : false,
+                      "type" : "And"
+                    } ],
+                    "runtimeTelemetryEnabled" : false,
+                    "type" : "Not"
+                  } ],
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "Not"
+                }, {
+                  "executionSummaryEnabled" : false,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : false,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-1)"
+                  }, {
+                    "executionSummaryEnabled" : false,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-4, value=urn:gql:benchmark:edge)"
+                  }, {
+                    "executionSummaryEnabled" : false,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "unbound"
+                    },
+                    "type" : "Var (name=-gql-3)"
+                  } ],
+                  "resultSizeEstimate" : 67584.0,
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "StatementPattern"
+                } ],
+                "resultSizeEstimate" : 67584.0,
+                "runtimeTelemetryEnabled" : false,
+                "stringMetricsPlanned" : {
+                  "plannedEstimateSource" : "cardinality",
+                  "filterSelectivitySource" : "cardinality"
+                },
+                "type" : "Filter"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "Distinct"
+            } ],
+            "runtimeTelemetryEnabled" : false,
+            "type" : "Join"
+          }, {
+            "executionSummaryEnabled" : false,
+            "plans" : [ {
+              "doubleMetricsPlanned" : {
+                "plannedFilterPassRatioLower" : 0.0,
+                "plannedFilterPassRatio" : 1.0,
+                "plannedFilterPassRatioUpper" : 1.0,
+                "plannedFilterConfidence" : 0.5
+              },
+              "executionSummaryEnabled" : false,
+              "plans" : [ {
+                "executionSummaryEnabled" : false,
+                "plans" : [ {
+                  "executionSummaryEnabled" : false,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "runtimeTelemetryEnabled" : false,
+                "type" : "IsLiteral"
+              }, {
+                "executionSummaryEnabled" : false,
+                "plans" : [ {
+                  "executionSummaryEnabled" : false,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-1)"
+                }, {
+                  "executionSummaryEnabled" : false,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-9, value=urn:gql:benchmark:score)"
+                }, {
+                  "executionSummaryEnabled" : false,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "unbound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "resultSizeEstimate" : 2048.0,
+                "runtimeTelemetryEnabled" : false,
+                "type" : "StatementPattern"
+              } ],
+              "resultSizeEstimate" : 2048.0,
+              "runtimeTelemetryEnabled" : false,
+              "stringMetricsPlanned" : {
+                "plannedEstimateSource" : "cardinality",
+                "filterSelectivitySource" : "cardinality"
+              },
+              "type" : "Filter"
+            }, {
+              "executionSummaryEnabled" : false,
+              "plans" : [ {
+                "executionSummaryEnabled" : false,
+                "plans" : [ {
+                  "executionSummaryEnabled" : false,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "runtimeTelemetryEnabled" : false,
+                "type" : "Count (Distinct)"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "GroupElem (-gql-7)"
+            }, {
+              "executionSummaryEnabled" : false,
+              "plans" : [ {
+                "executionSummaryEnabled" : false,
+                "plans" : [ {
+                  "executionSummaryEnabled" : false,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "runtimeTelemetryEnabled" : false,
+                "type" : "Sample"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "GroupElem (-gql-8)"
+            } ],
+            "runtimeTelemetryEnabled" : false,
+            "type" : "Group (-gql-1)"
+          } ],
+          "runtimeTelemetryEnabled" : false,
+          "type" : "LeftJoin"
+        }, {
+          "executionSummaryEnabled" : false,
+          "plans" : [ {
+            "executionSummaryEnabled" : false,
+            "plans" : [ {
+              "executionSummaryEnabled" : false,
+              "runtimeTelemetryEnabled" : false,
+              "stringMetricsActual" : {
+                "bindingState" : "possibly bound"
+              },
+              "type" : "Var (name=-gql-7)"
+            }, {
+              "executionSummaryEnabled" : false,
+              "runtimeTelemetryEnabled" : false,
+              "stringMetricsActual" : {
+                "bindingState" : "possibly bound"
+              },
+              "type" : "Var (name=-gql-8)"
+            } ],
+            "runtimeTelemetryEnabled" : false,
+            "type" : "PinnedFunctionCall (urn:rdf4j:gql:single-value)"
+          } ],
+          "runtimeTelemetryEnabled" : false,
+          "type" : "ExtensionElem (-gql-5)"
+        } ],
+        "runtimeTelemetryEnabled" : false,
+        "type" : "Extension"
+      } ],
+      "runtimeTelemetryEnabled" : false,
+      "type" : "Filter"
+    }, {
+      "executionSummaryEnabled" : false,
+      "plans" : [ {
+        "executionSummaryEnabled" : false,
+        "runtimeTelemetryEnabled" : false,
+        "type" : "Count"
+      } ],
+      "runtimeTelemetryEnabled" : false,
+      "type" : "GroupElem (-gql-10)"
+    } ],
+    "runtimeTelemetryEnabled" : false,
+    "type" : "Group ()"
+  } ],
+  "runtimeTelemetryEnabled" : false,
+  "strategyDecisions" : [ {
+    "decisionPoint" : "Decision 1: GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)",
+    "capturedAtMillis" : 1794264916650,
+    "mode" : "normal",
+    "wouldSelect" : "irAggregate",
+    "reason" : "latent intervals overlap; retained stable strategy preference",
+    "candidates" : [ {
+      "strategy" : "irAggregate",
+      "priority" : 1,
+      "canAttempt" : true,
+      "decision" : "Would select now",
+      "condition" : "Execution-time binding and admission must still succeed"
+    }, {
+      "strategy" : "irAggregateInterpreted",
+      "priority" : 2,
+      "canAttempt" : true,
+      "decision" : "Eligible",
+      "condition" : "latent intervals overlap; retained stable strategy preference"
+    }, {
+      "strategy" : "packedFtreeAggregate",
+      "priority" : 3,
+      "canAttempt" : true,
+      "decision" : "Eligible",
+      "condition" : "latent intervals overlap; retained stable strategy preference"
+    }, {
+      "strategy" : "nestedLoop",
+      "priority" : 4,
+      "canAttempt" : true,
+      "decision" : "Eligible",
+      "condition" : "latent intervals overlap; retained stable strategy preference"
+    }, {
+      "strategy" : "adjacencyCensus",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "runCountHistogram",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "datatypeHistogram",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "predicatePlaneGroups",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "irAggregateTypeMatrixParallel",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a recognized type-matrix aggregate terminal"
+    }, {
+      "strategy" : "irAggregateTypeMatrixParallelInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a recognized type-matrix aggregate terminal"
+    }, {
+      "strategy" : "irAggregateTypeMatrix",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a recognized type-matrix aggregate terminal"
+    }, {
+      "strategy" : "irAggregateTypeMatrixInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a recognized type-matrix aggregate terminal"
+    }, {
+      "strategy" : "irAggregateParallel",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This aggregate dispatch uses a specialized terminal or an algorithmic specialist"
+    }, {
+      "strategy" : "irAggregateParallelInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This aggregate dispatch uses a specialized terminal or an algorithmic specialist"
+    }, {
+      "strategy" : "irAggregateNodeDomainIntersection",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a recognized node-domain intersection aggregate"
+    }, {
+      "strategy" : "irAggregateNodeDomainIntersectionInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a recognized node-domain intersection aggregate"
+    }, {
+      "strategy" : "irAggregateWildcard",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a supported wildcard-predicate terminal"
+    }, {
+      "strategy" : "irAggregateWildcardInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a supported wildcard-predicate terminal"
+    }, {
+      "strategy" : "irKernelDistinctParallel",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a DISTINCT terminal with projected slots and a fusible input"
+    }, {
+      "strategy" : "irKernelDistinctParallelInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a DISTINCT terminal with projected slots and a fusible input"
+    }, {
+      "strategy" : "irKernelDistinct",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a DISTINCT terminal with projected slots and a fusible input"
+    }, {
+      "strategy" : "irKernelDistinctInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a DISTINCT terminal with projected slots and a fusible input"
+    }, {
+      "strategy" : "irKernelParallel",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled row terminal uses a specialized wildcard route"
+    }, {
+      "strategy" : "irKernelParallelInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled row terminal uses a specialized wildcard route"
+    }, {
+      "strategy" : "irKernelWildcard",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a supported wildcard-predicate terminal"
+    }, {
+      "strategy" : "irKernelWildcardInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a supported wildcard-predicate terminal"
+    }, {
+      "strategy" : "irKernel",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled row terminal uses a specialized wildcard route"
+    }, {
+      "strategy" : "irKernelInterpreted",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled row terminal uses a specialized wildcard route"
+    }, {
+      "strategy" : "existsIntersection",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No aggregate over a recognized EXISTS intersection"
+    }, {
+      "strategy" : "typeMatrix",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No type-matrix aggregate recognized, or incoming bindings prevent type-matrix execution"
+    }, {
+      "strategy" : "typeMatrix(pageMorsels)",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires the internal type-matrix morsel dispatch with prepared page statistics"
+    }, {
+      "strategy" : "typeMatrix(sidewaysTypeMorsels)",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires the internal type-matrix morsel dispatch with prepared page statistics"
+    }, {
+      "strategy" : "indexedCount",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "janinoAggregate",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled input is not a multi-pattern join supported by this strategy"
+    }, {
+      "strategy" : "adjacencyAggregate",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No adjacency aggregate matching the group keys, aggregates and incoming bindings"
+    }, {
+      "strategy" : "prefixRunGroups",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No aggregate prefix-run plan over an unbound leading pattern"
+    }, {
+      "strategy" : "prefixRun",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No prefix-run plan over an unbound leading pattern"
+    }, {
+      "strategy" : "wildcardPredicateReduced",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No supported wildcard-predicate batch shape"
+    }, {
+      "strategy" : "wildcardPredicateBatch",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No supported wildcard-predicate batch shape"
+    }, {
+      "strategy" : "wcoj",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No compatible cyclic join with all existential patterns in its cyclic core"
+    }, {
+      "strategy" : "orderedDistinctGroups",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No replay-safe aggregate with an ordered DISTINCT input"
+    }, {
+      "strategy" : "orderedDistinct",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No unsorted DISTINCT input with an ordered deduplication plan"
+    }, {
+      "strategy" : "orderedSinglePatternGroups",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No replay-safe, ordered aggregate over a single pattern"
+    }, {
+      "strategy" : "orderedFactorizedTopK",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires an ORDER BY decision point"
+    }, {
+      "strategy" : "orderedFactorizedSort",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires an ORDER BY decision point"
+    }, {
+      "strategy" : "factorizedTail",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "No separable aggregate tail retaining the group and aggregate variables"
+    }, {
+      "strategy" : "factorizedRows",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled input is not a multi-pattern join supported by this strategy"
+    }, {
+      "strategy" : "batch",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "parallelAggregation",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled input is not a multi-pattern join supported by this strategy"
+    }, {
+      "strategy" : "parallelPipelines",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "packedFtree",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The compiled input is not a multi-pattern join supported by this strategy"
+    }, {
+      "strategy" : "adaptiveFilterPlacement",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    }, {
+      "strategy" : "bareDirect",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a basic graph pattern entered with runtime bindings"
+    }, {
+      "strategy" : "bareExists",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a direct boolean existence probe"
+    }, {
+      "strategy" : "genericFallback",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "The native compiler owns this decision; generic hosting is not required"
+    }, {
+      "strategy" : "orderedFullSort",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires an ORDER BY decision point"
+    }, {
+      "strategy" : "orderedTopK",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires an ORDER BY decision point"
+    }, {
+      "strategy" : "rowTermDomainHash",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "Requires a reusable scalar carrier at the native row-root decision"
+    }, {
+      "strategy" : "termDomain",
+      "canAttempt" : false,
+      "decision" : "Declined",
+      "declineReason" : "This strategy is not offered at GROUP BY dispatch (Computed values, full-row DISTINCT or encounter order require one serial value authority)"
+    } ]
+  } ],
+  "stringMetricsPlanned" : {
+    "nativePhysicalPlan" : "NativeProjection(arg=NativeGroup(arg=Filter(mask=0x20 [?-gql-5#5], arg=Extension(copies=1, arg=LexicalReplayLeftJoin(left=Join(left=RowDistinctPlan, right=RowDistinctPlan), right=GenericEvalPlan(node=Group, outSlots=[?-gql-1#1, ?-gql-7#6, ?-gql-8#7])))), groupSlots=[], aggregates=1, distinctChannelCount=0, distinctChannels=[], groupOrderPrefix=0, aggregateResultDemands=[-gql-10:FULL_VALUE]))",
+    "plannedExecutionKind" : "hybridRoot",
+    "plannedExecutionEngine" : "lmdb-native"
+  },
+  "type" : "Projection"
+}
+GQL_EXECUTED_PLAN {
+  "executionSummaryEnabled" : true,
+  "physicalPlanPrelude" : "LMDB native physical plan (planned)\n  kind: hybridRoot\n  plan:\n    NativeProjection(arg=NativeGroup(arg=Filter(mask=0x20 [?-gql-5#5], arg=Extension(copies=1, arg=LexicalReplayLeftJoin(left=Join(left=RowDistinctPlan, right=RowDistinctPlan), right=GenericEvalPlan(node=Group, outSlots=[?-gql-1#1, ?-gql-7#6, ?-gql-8#7])))), groupSlots=[], aggregates=1, distinctChannelCount=0, distinctChannels=[], groupOrderPrefix=0, aggregateResultDemands=[-gql-10:FULL_VALUE]))",
+  "plans" : [ {
+    "executionSummaryEnabled" : true,
+    "plans" : [ {
+      "executionSummaryEnabled" : true,
+      "runtimeTelemetryEnabled" : false,
+      "type" : "ProjectionElem \"-gql-10\" AS \"total\""
+    } ],
+    "runtimeTelemetryEnabled" : false,
+    "type" : "ProjectionElemList"
+  }, {
+    "executionSummaryEnabled" : true,
+    "plans" : [ {
+      "doubleMetricsPlanned" : {
+        "plannedFilterPassRatioLower" : 0.0,
+        "plannedFilterPassRatioUpper" : 1.0,
+        "plannedFilterConfidence" : 0.0
+      },
+      "executionSummaryEnabled" : true,
+      "plans" : [ {
+        "executionSummaryEnabled" : true,
+        "plans" : [ {
+          "executionSummaryEnabled" : true,
+          "runtimeTelemetryEnabled" : false,
+          "stringMetricsActual" : {
+            "bindingState" : "possibly bound"
+          },
+          "type" : "Var (name=-gql-5)"
+        }, {
+          "executionSummaryEnabled" : true,
+          "runtimeTelemetryEnabled" : false,
+          "type" : "ValueConstant (value=\"16\"^^<http://www.w3.org/2001/XMLSchema#int>)"
+        } ],
+        "runtimeTelemetryEnabled" : false,
+        "type" : "Compare (>=)"
+      }, {
+        "executionSummaryEnabled" : true,
+        "plans" : [ {
+          "executionSummaryEnabled" : true,
+          "plans" : [ {
+            "executionSummaryEnabled" : true,
+            "plans" : [ {
+              "executionSummaryEnabled" : true,
+              "plans" : [ {
+                "costEstimate" : 18.5,
+                "doubleMetricsPlanned" : {
+                  "plannedFilterPassRatioLower" : 0.0,
+                  "plannedFilterPassRatio" : 1.0,
+                  "plannedFilterPassRatioUpper" : 1.0,
+                  "plannedFilterConfidence" : 0.5
+                },
+                "executionSummaryEnabled" : true,
+                "plans" : [ {
+                  "executionSummaryEnabled" : true,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : true,
+                    "plans" : [ {
+                      "executionSummaryEnabled" : true,
+                      "plans" : [ {
+                        "executionSummaryEnabled" : true,
+                        "plans" : [ {
+                          "executionSummaryEnabled" : true,
+                          "plans" : [ {
+                            "executionSummaryEnabled" : true,
+                            "runtimeTelemetryEnabled" : false,
+                            "stringMetricsActual" : {
+                              "bindingState" : "bound"
+                            },
+                            "type" : "Var (name=-gql-1)"
+                          } ],
+                          "runtimeTelemetryEnabled" : false,
+                          "type" : "IsResource"
+                        } ],
+                        "runtimeTelemetryEnabled" : false,
+                        "type" : "Not"
+                      } ],
+                      "runtimeTelemetryEnabled" : false,
+                      "type" : "Not"
+                    } ],
+                    "runtimeTelemetryEnabled" : false,
+                    "type" : "Not"
+                  } ],
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "Not"
+                }, {
+                  "executionSummaryEnabled" : true,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : true,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-0, value=urn:gql:benchmark:root)"
+                  }, {
+                    "executionSummaryEnabled" : true,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-2, value=urn:gql:benchmark:edge)"
+                  }, {
+                    "executionSummaryEnabled" : true,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "unbound"
+                    },
+                    "type" : "Var (name=-gql-1)"
+                  } ],
+                  "resultSizeEstimate" : 32.0,
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "StatementPattern"
+                } ],
+                "resultSizeEstimate" : 32.0,
+                "runtimeTelemetryEnabled" : false,
+                "stringMetricsPlanned" : {
+                  "plannedEstimateSource" : "cardinality",
+                  "filterSelectivitySource" : "cardinality"
+                },
+                "type" : "Filter"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "Distinct"
+            }, {
+              "executionSummaryEnabled" : true,
+              "plans" : [ {
+                "costEstimate" : 259.97884529322766,
+                "doubleMetricsPlanned" : {
+                  "plannedFilterPassRatioLower" : 0.0,
+                  "plannedFilterPassRatio" : 1.0,
+                  "plannedFilterPassRatioUpper" : 1.0,
+                  "plannedFilterConfidence" : 0.5
+                },
+                "executionSummaryEnabled" : true,
+                "plans" : [ {
+                  "executionSummaryEnabled" : true,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : true,
+                    "plans" : [ {
+                      "executionSummaryEnabled" : true,
+                      "plans" : [ {
+                        "executionSummaryEnabled" : true,
+                        "plans" : [ {
+                          "executionSummaryEnabled" : true,
+                          "runtimeTelemetryEnabled" : false,
+                          "stringMetricsActual" : {
+                            "bindingState" : "bound"
+                          },
+                          "type" : "Var (name=-gql-1)"
+                        } ],
+                        "runtimeTelemetryEnabled" : false,
+                        "type" : "IsResource"
+                      }, {
+                        "executionSummaryEnabled" : true,
+                        "plans" : [ {
+                          "executionSummaryEnabled" : true,
+                          "runtimeTelemetryEnabled" : false,
+                          "stringMetricsActual" : {
+                            "bindingState" : "bound"
+                          },
+                          "type" : "Var (name=-gql-3)"
+                        } ],
+                        "runtimeTelemetryEnabled" : false,
+                        "type" : "IsResource"
+                      } ],
+                      "runtimeTelemetryEnabled" : false,
+                      "type" : "And"
+                    } ],
+                    "runtimeTelemetryEnabled" : false,
+                    "type" : "Not"
+                  } ],
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "Not"
+                }, {
+                  "executionSummaryEnabled" : true,
+                  "plans" : [ {
+                    "executionSummaryEnabled" : true,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-1)"
+                  }, {
+                    "executionSummaryEnabled" : true,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "bound"
+                    },
+                    "type" : "Var (name=-gql-4, value=urn:gql:benchmark:edge)"
+                  }, {
+                    "executionSummaryEnabled" : true,
+                    "runtimeTelemetryEnabled" : false,
+                    "stringMetricsActual" : {
+                      "bindingState" : "unbound"
+                    },
+                    "type" : "Var (name=-gql-3)"
+                  } ],
+                  "resultSizeEstimate" : 67584.0,
+                  "runtimeTelemetryEnabled" : false,
+                  "type" : "StatementPattern"
+                } ],
+                "resultSizeEstimate" : 67584.0,
+                "runtimeTelemetryEnabled" : false,
+                "stringMetricsPlanned" : {
+                  "plannedEstimateSource" : "cardinality",
+                  "filterSelectivitySource" : "cardinality"
+                },
+                "type" : "Filter"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "Distinct"
+            } ],
+            "runtimeTelemetryEnabled" : false,
+            "type" : "Join"
+          }, {
+            "executionSummaryEnabled" : true,
+            "plans" : [ {
+              "doubleMetricsPlanned" : {
+                "plannedFilterPassRatioLower" : 0.0,
+                "plannedFilterPassRatio" : 1.0,
+                "plannedFilterPassRatioUpper" : 1.0,
+                "plannedFilterConfidence" : 0.5
+              },
+              "executionSummaryEnabled" : true,
+              "plans" : [ {
+                "executionSummaryEnabled" : true,
+                "plans" : [ {
+                  "executionSummaryEnabled" : true,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "runtimeTelemetryEnabled" : false,
+                "type" : "IsLiteral"
+              }, {
+                "executionSummaryEnabled" : true,
+                "plans" : [ {
+                  "executionSummaryEnabled" : true,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-1)"
+                }, {
+                  "executionSummaryEnabled" : true,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-9, value=urn:gql:benchmark:score)"
+                }, {
+                  "executionSummaryEnabled" : true,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "unbound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "resultSizeEstimate" : 2048.0,
+                "runtimeTelemetryEnabled" : false,
+                "type" : "StatementPattern"
+              } ],
+              "resultSizeEstimate" : 2048.0,
+              "runtimeTelemetryEnabled" : false,
+              "stringMetricsPlanned" : {
+                "plannedEstimateSource" : "cardinality",
+                "filterSelectivitySource" : "cardinality"
+              },
+              "type" : "Filter"
+            }, {
+              "executionSummaryEnabled" : true,
+              "plans" : [ {
+                "executionSummaryEnabled" : true,
+                "plans" : [ {
+                  "executionSummaryEnabled" : true,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "runtimeTelemetryEnabled" : false,
+                "type" : "Count (Distinct)"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "GroupElem (-gql-7)"
+            }, {
+              "executionSummaryEnabled" : true,
+              "plans" : [ {
+                "executionSummaryEnabled" : true,
+                "plans" : [ {
+                  "executionSummaryEnabled" : true,
+                  "runtimeTelemetryEnabled" : false,
+                  "stringMetricsActual" : {
+                    "bindingState" : "bound"
+                  },
+                  "type" : "Var (name=-gql-6)"
+                } ],
+                "runtimeTelemetryEnabled" : false,
+                "type" : "Sample"
+              } ],
+              "runtimeTelemetryEnabled" : false,
+              "type" : "GroupElem (-gql-8)"
+            } ],
+            "runtimeTelemetryEnabled" : false,
+            "type" : "Group (-gql-1)"
+          } ],
+          "runtimeTelemetryEnabled" : false,
+          "type" : "LeftJoin"
+        }, {
+          "executionSummaryEnabled" : true,
+          "plans" : [ {
+            "executionSummaryEnabled" : true,
+            "plans" : [ {
+              "executionSummaryEnabled" : true,
+              "runtimeTelemetryEnabled" : false,
+              "stringMetricsActual" : {
+                "bindingState" : "possibly bound"
+              },
+              "type" : "Var (name=-gql-7)"
+            }, {
+              "executionSummaryEnabled" : true,
+              "runtimeTelemetryEnabled" : false,
+              "stringMetricsActual" : {
+                "bindingState" : "possibly bound"
+              },
+              "type" : "Var (name=-gql-8)"
+            } ],
+            "runtimeTelemetryEnabled" : false,
+            "type" : "PinnedFunctionCall (urn:rdf4j:gql:single-value)"
+          } ],
+          "runtimeTelemetryEnabled" : false,
+          "type" : "ExtensionElem (-gql-5)"
+        } ],
+        "runtimeTelemetryEnabled" : false,
+        "type" : "Extension"
+      } ],
+      "runtimeTelemetryEnabled" : false,
+      "type" : "Filter"
+    }, {
+      "executionSummaryEnabled" : true,
+      "plans" : [ {
+        "executionSummaryEnabled" : true,
+        "runtimeTelemetryEnabled" : false,
+        "type" : "Count"
+      } ],
+      "runtimeTelemetryEnabled" : false,
+      "type" : "GroupElem (-gql-10)"
+    } ],
+    "runtimeTelemetryEnabled" : false,
+    "stringMetricsActual" : {
+      "nativeExecutionPath" : "irAggregate"
+    },
+    "type" : "Group ()"
+  } ],
+  "runtimeTelemetryEnabled" : false,
+  "stringMetricsPlanned" : {
+    "nativePhysicalPlan" : "NativeProjection(arg=NativeGroup(arg=Filter(mask=0x20 [?-gql-5#5], arg=Extension(copies=1, arg=LexicalReplayLeftJoin(left=Join(left=RowDistinctPlan, right=RowDistinctPlan), right=GenericEvalPlan(node=Group, outSlots=[?-gql-1#1, ?-gql-7#6, ?-gql-8#7])))), groupSlots=[], aggregates=1, distinctChannelCount=0, distinctChannels=[], groupOrderPrefix=0, aggregateResultDemands=[-gql-10:FULL_VALUE]))",
+    "plannedExecutionKind" : "hybridRoot",
+    "plannedExecutionEngine" : "lmdb-native"
+  },
+  "type" : "Projection"
+}
+GQL_VERIFIED workload=PROPERTY_FILTER roots=64 fanout=32 count=512
+GQL_ADJACENCY language=GQL mode=PREFER graph=MERGED workload=PROPERTY_FILTER native=true roots=64 fanout=32 evaluations=1 lookupHits=46 kernelViews=9 plannerStatsHits=1

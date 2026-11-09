@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.Distinct;
 import org.eclipse.rdf4j.query.algebra.Exists;
+import org.eclipse.rdf4j.query.algebra.GqlScalarProperty;
 import org.eclipse.rdf4j.query.algebra.GroupElem;
 import org.eclipse.rdf4j.query.algebra.Join;
 import org.eclipse.rdf4j.query.algebra.QueryModelNode;
@@ -529,6 +530,14 @@ public final class LmdbNativeEvaluationStrategy extends StrictEvaluationStrategy
 			}
 		}
 		return super.prepare(node, context);
+	}
+
+	@Override
+	protected QueryValueEvaluationStep prepare(GqlScalarProperty node, QueryEvaluationContext context) {
+		// A scalar property runs once per input row. Its indexed statement lookup must not open a full native query
+		// for every owner. Suppress claims throughout the lookup, including a graph-selection filter's child, while
+		// retaining the same source, dataset, value-position analysis and structural context.
+		return nativeEnabled ? genericOnlyView().prepare(node, context) : super.prepare(node, context);
 	}
 
 	private QueryEvaluationStep preparePartitioned(TupleExpr tupleExpr,

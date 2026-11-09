@@ -1,0 +1,54 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest
+-------------------------------------------------------------------------------
+Tests run: 8, Failures: 6, Errors: 0, Skipped: 0, Time elapsed: 1.833 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.retainedSnapshotKeepsItsProofAcrossANewContextCommit -- Time elapsed: 1.231 s <<< FAILURE!
+java.lang.AssertionError:
+
+Expecting actual:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.RowDistinctPlan@71cb3139
+to be an instance of:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.PatternPlan
+but was instance of:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.RowDistinctPlan
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.retainedSnapshotKeepsItsProofAcrossANewContextCommit(LmdbNativeDistinctStatementSnapshotTest.java:158)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.zeroOrOneContextKeepsFilteredStatementsFlattenable(SourceContents)[1] -- Time elapsed: 0.044 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[an exact source with at most one context needs no per-edge deduplication barrier]
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.zeroOrOneContextKeepsFilteredStatementsFlattenable(LmdbNativeDistinctStatementSnapshotTest.java:102)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.zeroOrOneContextKeepsFilteredStatementsFlattenable(SourceContents)[2] -- Time elapsed: 0.046 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[an exact source with at most one context needs no per-edge deduplication barrier]
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.zeroOrOneContextKeepsFilteredStatementsFlattenable(LmdbNativeDistinctStatementSnapshotTest.java:102)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.zeroOrOneContextKeepsFilteredStatementsFlattenable(SourceContents)[3] -- Time elapsed: 0.037 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[an exact source with at most one context needs no per-edge deduplication barrier]
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.zeroOrOneContextKeepsFilteredStatementsFlattenable(LmdbNativeDistinctStatementSnapshotTest.java:102)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.oneContextDiamondFlattensAndRetainsTwoDifferentWalks -- Time elapsed: 0.031 s <<< FAILURE!
+java.lang.AssertionError:
+
+Expecting actual:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.JoinPlan@67064bdc
+to be an instance of:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.MultiJoinPlan
+but was instance of:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.JoinPlan
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.oneContextDiamondFlattensAndRetainsTwoDifferentWalks(LmdbNativeDistinctStatementSnapshotTest.java:120)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.oneActiveCompositeAndSyntheticWrapperKeepTheSnapshotProof -- Time elapsed: 0.037 s <<< FAILURE!
+java.lang.AssertionError:
+
+Expecting actual:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.RowDistinctPlan@71c17a57
+to be an instance of:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.PatternPlan
+but was instance of:
+  org.eclipse.rdf4j.sail.lmdb.evaluation.RowDistinctPlan
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeDistinctStatementSnapshotTest.oneActiveCompositeAndSyntheticWrapperKeepTheSnapshotProof(LmdbNativeDistinctStatementSnapshotTest.java:196)

@@ -13954,6 +13954,20 @@ class LmdbSailStore implements SailStore {
 		}
 
 		@Override
+		public boolean hasUniqueStatementTriples() {
+			checkOpen();
+			txn.ensureSnapshotValid();
+			if (txn.snapshotRevision() < 0L || txn.version() != pinnedTxnVersion || !hasCanonicalIds()) {
+				return false;
+			}
+			try {
+				return tripleStore.hasAtMostOneContext(txn);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
+			}
+		}
+
+		@Override
 		public String indexName(long subj, long pred, long obj, long context) {
 			checkOpen();
 			String lmdb = tripleStore.getIndexName(txn, subj, pred, obj, context);
@@ -15501,6 +15515,23 @@ class LmdbSailStore implements SailStore {
 				}
 				// Only the physical index count and source count are needed by the bounded sweep.
 				return tripleStore.indexAccessProfile(txn, explicit, false, -1L, -1L, -1L);
+			} finally {
+				nativeSourceLock.unlockRead(readStamp);
+			}
+		}
+
+		@Override
+		public boolean hasUniqueStatementTriples() {
+			long readStamp = acquireNativeSourceReadLockUnchecked();
+			try {
+				assertNativeSourceOpen();
+				txn.ensureSnapshotValid();
+				if (snapshotRevision < 0L || txn.version() != pinnedTxnVersion || !hasCanonicalIds()) {
+					return false;
+				}
+				return tripleStore.hasAtMostOneContext(txn);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
 			} finally {
 				nativeSourceLock.unlockRead(readStamp);
 			}

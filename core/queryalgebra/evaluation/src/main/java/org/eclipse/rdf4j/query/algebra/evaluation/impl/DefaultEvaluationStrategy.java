@@ -84,6 +84,7 @@ import org.eclipse.rdf4j.query.algebra.Exists;
 import org.eclipse.rdf4j.query.algebra.Extension;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.FunctionCall;
+import org.eclipse.rdf4j.query.algebra.GqlScalarProperty;
 import org.eclipse.rdf4j.query.algebra.Graph;
 import org.eclipse.rdf4j.query.algebra.Group;
 import org.eclipse.rdf4j.query.algebra.HasLang;
@@ -181,6 +182,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.An
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.CompareAllQueryValueEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.CompareAnyValueEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.ExistsQueryValueEvaluationStep;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.GqlScalarPropertyQueryValueEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.IfValueEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.InValueEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.values.ListMemberValueOperationStep;
@@ -1611,6 +1613,8 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 				prepared = prepare((CompareAll) expr, context);
 			} else if (expr instanceof Exists) {
 				prepared = prepare((Exists) expr, context);
+			} else if (expr instanceof GqlScalarProperty) {
+				prepared = prepare((GqlScalarProperty) expr, context);
 			} else if (expr instanceof If) {
 				prepared = prepare((If) expr, context);
 			} else if (expr instanceof ListMemberOperator) {
@@ -2281,6 +2285,12 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 		QueryValueEvaluationStep arg = precompile(node.getArg(), context);
 		QueryEvaluationStep subquery = precompile(node.getSubQuery(), context);
 		return new CompareAllQueryValueEvaluationStep(arg, node, subquery, context);
+	}
+
+	protected QueryValueEvaluationStep prepare(GqlScalarProperty node, QueryEvaluationContext context) {
+		return new GqlScalarPropertyQueryValueEvaluationStep(precompile(node.getOwner(), context),
+				precompile(node.getSubQuery(), context), node.getSubjectBindingName(), node.getValueBindingName(),
+				context);
 	}
 
 	protected QueryValueEvaluationStep prepare(Exists node, QueryEvaluationContext context)

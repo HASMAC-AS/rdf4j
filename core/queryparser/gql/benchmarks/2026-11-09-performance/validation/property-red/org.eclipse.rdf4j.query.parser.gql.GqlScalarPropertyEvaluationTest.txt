@@ -1,0 +1,62 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest
+-------------------------------------------------------------------------------
+Tests run: 20, Failures: 7, Errors: 0, Skipped: 0, Time elapsed: 1.158 s <<< FAILURE! -- in org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.anUnboundParameterOwnerNeverOpensAPropertyScan -- Time elapsed: 0.670 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[property lookups for an absent owner]
+expected: 0
+ but was: 1
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.assertAbsentOwnerDoesNotReadProperties(GqlScalarPropertyEvaluationTest.java:91)
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.anUnboundParameterOwnerNeverOpensAPropertyScan(GqlScalarPropertyEvaluationTest.java:81)
+
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.interruptedNonliteralScansStopPromptlyAndPreserveTheInterrupt -- Time elapsed: 0.023 s <<< FAILURE!
+java.lang.AssertionError:
+
+Expecting code to raise a throwable.
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.assertInterruptedScanStops(GqlScalarPropertyEvaluationTest.java:327)
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.interruptedNonliteralScansStopPromptlyAndPreserveTheInterrupt(GqlScalarPropertyEvaluationTest.java:315)
+
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.interruptedDuplicateLiteralScansStopPromptlyAndPreserveTheInterrupt -- Time elapsed: 0.013 s <<< FAILURE!
+java.lang.AssertionError:
+
+Expecting code to raise a throwable.
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.assertInterruptedScanStops(GqlScalarPropertyEvaluationTest.java:327)
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.interruptedDuplicateLiteralScansStopPromptlyAndPreserveTheInterrupt(GqlScalarPropertyEvaluationTest.java:310)
+
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.aNullableBoundOwnerDoesNotReadUnrelatedOwners -- Time elapsed: 0.032 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+
+Expecting actual:
+  [null]
+to contain exactly (and in same order):
+  ["Alice"]
+but some elements were not found:
+  ["Alice"]
+and others were not expected:
+  [null]
+
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.aNullableBoundOwnerDoesNotReadUnrelatedOwners(GqlScalarPropertyEvaluationTest.java:103)
+
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.anExplicitNullOwnerNeverOpensAPropertyScan -- Time elapsed: 0.034 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[property lookups for an absent owner]
+expected: 0
+ but was: 1
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.assertAbsentOwnerDoesNotReadProperties(GqlScalarPropertyEvaluationTest.java:91)
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.anExplicitNullOwnerNeverOpensAPropertyScan(GqlScalarPropertyEvaluationTest.java:76)
+
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.theSecondDistinctLiteralEndsTheScanAndClosesItsCursor -- Time elapsed: 0.012 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[read only through the second distinct RDF term]
+expected: 3
+ but was: 259
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.theSecondDistinctLiteralEndsTheScanAndClosesItsCursor(GqlScalarPropertyEvaluationTest.java:126)
+
+org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.anAbsentOptionalOwnerNeverOpensAPropertyScan -- Time elapsed: 0.040 s <<< FAILURE!
+org.opentest4j.AssertionFailedError:
+[property lookups for an absent owner]
+expected: 0
+ but was: 1
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.assertAbsentOwnerDoesNotReadProperties(GqlScalarPropertyEvaluationTest.java:91)
+	at org.eclipse.rdf4j.query.parser.gql.GqlScalarPropertyEvaluationTest.anAbsentOptionalOwnerNeverOpensAPropertyScan(GqlScalarPropertyEvaluationTest.java:71)

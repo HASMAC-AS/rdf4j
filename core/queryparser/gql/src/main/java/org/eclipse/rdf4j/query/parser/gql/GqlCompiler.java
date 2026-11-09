@@ -46,6 +46,7 @@ import org.eclipse.rdf4j.query.algebra.Extension;
 import org.eclipse.rdf4j.query.algebra.ExtensionElem;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.FunctionCall;
+import org.eclipse.rdf4j.query.algebra.GqlScalarProperty;
 import org.eclipse.rdf4j.query.algebra.Group;
 import org.eclipse.rdf4j.query.algebra.GroupElem;
 import org.eclipse.rdf4j.query.algebra.IRIFunction;
@@ -89,7 +90,6 @@ import org.eclipse.rdf4j.query.parser.gql.GqlLexer.Token;
 final class GqlCompiler implements GqlExpressionParser.Context {
 
 	private static final SimpleValueFactory VF = SimpleValueFactory.getInstance();
-	private static final String SINGLE_VALUE = "urn:rdf4j:gql:single-value";
 	private static final String BOOLEAN = "urn:rdf4j:gql:boolean";
 	private static final int MAX_HOPS = 32;
 	private static final int MAX_PATTERNS = 4096;
@@ -491,7 +491,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 					IRI property = iri(identifier());
 					expect(":");
 					conditions.add(
-							new Compare(property(name, property, false), expressions.parse(), Compare.CompareOp.EQ));
+							new Compare(property(name, property), expressions.parse(), Compare.CompareOp.EQ));
 				} while (accept(","));
 				expect("}");
 			}
@@ -942,17 +942,17 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		if (inMatch && !patternVariables.contains(name)) {
 			throw error("A property owner in a MATCH predicate must occur in that MATCH pattern");
 		}
-		return property(name, iri(key), binding.nullable() && !inMatch);
+		return property(name, iri(key));
 	}
 
-	private ValueExpr property(String owner, IRI predicate, boolean nullable) {
+	private ValueExpr property(String owner, IRI predicate) {
 		PropertyKey key = new PropertyKey(owner, predicate);
 		Property known = properties.get(key);
 		if (afterGrouping && !groupedBindings.contains(owner)
 				&& (known == null || !groupedBindings.contains(known.result()))) {
 			throw error("Property owner is outside the grouping keys");
 		}
-		Property property = properties.computeIfAbsent(key, ignored -> new Property(fresh(), nullable));
+		Property property = properties.computeIfAbsent(key, ignored -> new Property(fresh()));
 		if (afterGrouping) {
 			groupedBindings.add(property.result());
 		}
@@ -970,21 +970,13 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 				continue;
 			}
 			Property property = entry.getValue();
-			String owner = property.nullable() ? fresh() : key.owner();
+			String owner = fresh();
 			String value = fresh();
-			String count = fresh();
-			String sample = fresh();
-			TupleExpr rows = new Filter(statement(new Var(owner), constant(key.predicate()), new Var(value)),
-					new IsLiteral(new Var(value)));
-			Group scalar = new Group(rows, List.of(owner), List.of(
-					new GroupElem(count, new Count(new Var(value), true)),
-					new GroupElem(sample, new Sample(new Var(value)))));
-			input = property.nullable()
-					? new LeftJoin(input, scalar, new SameTerm(new Var(key.owner()), new Var(owner)))
-					: new LeftJoin(input, scalar);
-			// Check only owners that survived the input pattern, and before COALESCE can hide a property error.
+			TupleExpr rows = statement(new Var(owner), constant(key.predicate()), new Var(value));
+			// Keep cardinality validation eager, before COALESCE/CASE can skip a reference to the scalar value.
+			// The evaluator binds this private subject slot only after confirming that the owner exists.
 			input = new Extension(input, new ExtensionElem(
-					new FunctionCall(SINGLE_VALUE, new Var(count), new Var(sample)), property.result()));
+					new GqlScalarProperty(new Var(key.owner()), owner, value, rows), property.result()));
 		}
 		return input;
 	}
@@ -1388,7 +1380,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	private record PropertyKey(String owner, IRI predicate) {
 	}
 
-	private record Property(String result, boolean nullable) {
+	private record Property(String result) {
 	}
 
 	private record ReturnItem(ValueExpr expression, String name) {

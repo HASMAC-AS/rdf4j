@@ -289,6 +289,13 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 		return indexAccessProfile(true);
 	}
 
+	@Override
+	public boolean hasUniqueStatementTriples() {
+		// Independent member proofs cannot exclude a triple present in more than one statement plane.
+		NativeLmdbQuerySource active = onlyActiveSource();
+		return active != null && active.hasUniqueStatementTriples();
+	}
+
 	private IndexAccessProfile indexAccessProfile(boolean pinnedSweep) {
 		if (activeSources.isEmpty()) {
 			return null;
@@ -1314,6 +1321,11 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 		@Override
 		public IndexAccessProfile pinnedLmdbSweepProfile() {
 			return delegate.pinnedLmdbSweepProfile();
+		}
+
+		@Override
+		public boolean hasUniqueStatementTriples() {
+			return delegate.hasUniqueStatementTriples();
 		}
 
 		@Override

@@ -77,6 +77,100 @@ class GqlLmdbIntegrationTest {
 	private LmdbStore store;
 	private SailRepository repository;
 
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void scalarPropertiesFollowNullableOwnersAndPreparedGraphBindings(Route route) {
+		open(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.begin();
+			connection.add(ALICE, RDF.TYPE, PERSON, GRAPH_ONE, GRAPH_TWO);
+			connection.add(ALICE, KNOWS, BOB, GRAPH_ONE);
+			connection.add(BOB, iri("name"), VF.createLiteral("Bob"), GRAPH_ONE);
+			connection.add(CAROL, iri("name"), VF.createLiteral("unrelated"), GRAPH_ONE, GRAPH_TWO);
+			connection.add(CAROL, iri("name"), VF.createLiteral("also unrelated"), GRAPH_ONE, GRAPH_TWO);
+			connection.commit();
+			buildAdjacency(route);
+
+			TupleQuery selected = query(connection, "USE GRAPH $graph MATCH (a:`urn:gql:Person`) "
+					+ "WHERE a = $start OPTIONAL MATCH (a)-[:`urn:gql:knows`]->(friend) "
+					+ "RETURN friend.`urn:gql:name` AS name");
+			selected.setBinding("start", ALICE);
+			selected.setBinding("graph", GRAPH_ONE);
+			assertThat(values(selected, "name")).containsExactly(VF.createLiteral("Bob"));
+			selected.setBinding("graph", GRAPH_TWO);
+			assertThat(values(selected, "name")).containsExactly((Value) null);
+			selected.removeBinding("graph");
+			assertThat(values(selected, "name")).isEmpty();
+			selected.setBinding("graph", GRAPH_ONE);
+			assertThat(values(selected, "name")).containsExactly(VF.createLiteral("Bob"));
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void scalarPropertiesRetainSnapshotAndReadOwnWrites(Route route) {
+		open(route);
+		try (RepositoryConnection reader = repository.getConnection();
+				RepositoryConnection writer = repository.getConnection()) {
+			writer.begin();
+			writer.add(ALICE, RDF.TYPE, PERSON);
+			writer.add(ALICE, iri("name"), VF.createLiteral("old"));
+			writer.commit();
+			buildAdjacency(route);
+			TupleQuery retained = query(reader,
+					"MATCH (n:`urn:gql:Person`) RETURN n.`urn:gql:name` AS name");
+			reader.begin(IsolationLevels.SNAPSHOT);
+			assertThat(values(retained, "name")).containsExactly(VF.createLiteral("old"));
+
+			writer.begin();
+			writer.remove(ALICE, iri("name"), null);
+			writer.add(ALICE, iri("name"), VF.createLiteral("new"));
+			writer.commit();
+			assertThat(values(retained, "name")).containsExactly(VF.createLiteral("old"));
+			reader.rollback();
+			assertThat(values(retained, "name")).containsExactly(VF.createLiteral("new"));
+
+			reader.begin();
+			reader.remove(ALICE, iri("name"), null);
+			reader.add(ALICE, iri("name"), VF.createLiteral("pending"));
+			assertThat(values(retained, "name")).containsExactly(VF.createLiteral("pending"));
+			reader.add(ALICE, iri("name"), VF.createLiteral("second"));
+			assertThatThrownBy(() -> values(retained, "name"))
+					.isInstanceOf(QueryEvaluationException.class)
+					.hasMessageContaining("multiple");
+			reader.rollback();
+			assertThat(values(retained, "name")).containsExactly(VF.createLiteral("new"));
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void mergedScalarPropertiesDeduplicateTermsAndKeepErrorsEager(Route route) {
+		open(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.begin();
+			connection.add(ALICE, RDF.TYPE, PERSON, GRAPH_ONE, GRAPH_TWO);
+			connection.add(ALICE, iri("name"), VF.createLiteral("Alice"), GRAPH_ONE, GRAPH_TWO);
+			connection.add(ALICE, iri("name"), BOB, GRAPH_ONE);
+			connection.add(ALICE, KNOWS, BOB, GRAPH_ONE, GRAPH_TWO);
+			connection.add(ALICE, KNOWS, CAROL, GRAPH_ONE, GRAPH_TWO);
+			connection.commit();
+			buildAdjacency(route);
+			String match = "MATCH (n:`urn:gql:Person`)-[:`urn:gql:knows`]->(friend) ";
+			TupleQuery names = query(connection, match + "RETURN n.`urn:gql:name` AS name");
+			assertThat(values(names, "name"))
+					.containsExactly(VF.createLiteral("Alice"), VF.createLiteral("Alice"));
+			connection.add(ALICE, iri("name"), VF.createLiteral("Alicia"), GRAPH_TWO);
+			for (String expression : List.of("COALESCE('fallback', n.`urn:gql:name`)",
+					"CASE WHEN TRUE THEN 'fallback' ELSE n.`urn:gql:name` END")) {
+				TupleQuery hidden = query(connection, match + "RETURN " + expression + " AS name");
+				assertThatThrownBy(() -> values(hidden, "name"))
+						.isInstanceOf(QueryEvaluationException.class)
+						.hasMessageContaining("multiple");
+			}
+		}
+	}
+
 	@AfterEach
 	void closeRepository() {
 		if (repository != null) {
@@ -332,6 +426,64 @@ class GqlLmdbIntegrationTest {
 			assertThat(values(query(connection, "MATCH (a)-[edge]->(b) RETURN edge"), "edge"))
 					.containsExactlyInAnyOrder(VF.createTripleTerm(ALICE, KNOWS, BOB),
 							VF.createTripleTerm(ALICE, LIKES, BOB));
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void mergedWalksKeepTheirBagWhenASecondContextAppears(Route route) {
+		open(route);
+		seedDiamond(route);
+		IRI extra = iri("extra");
+		try (RepositoryConnection reader = repository.getConnection();
+				RepositoryConnection writer = repository.getConnection()) {
+			reader.begin(IsolationLevels.SNAPSHOT);
+			TupleQuery old = query(reader, anchored(TWO_HOPS));
+			old.setBinding("start", ALICE);
+			assertThat(values(old, "c")).containsExactly(DORA, DORA);
+
+			writer.begin();
+			writer.add(ALICE, KNOWS, BOB, GRAPH_ONE);
+			writer.add(ALICE, KNOWS, CAROL, GRAPH_ONE);
+			writer.add(BOB, KNOWS, DORA, GRAPH_ONE);
+			writer.add(CAROL, KNOWS, DORA, GRAPH_ONE);
+			writer.add(ALICE, KNOWS, extra, GRAPH_ONE);
+			writer.add(extra, KNOWS, DORA, GRAPH_ONE);
+			writer.commit();
+
+			assertThat(values(old, "c")).containsExactly(DORA, DORA);
+			TupleQuery current = query(writer, anchored(TWO_HOPS));
+			current.setBinding("start", ALICE);
+			assertThat(values(current, "c")).containsExactly(DORA, DORA, DORA);
+			reader.rollback();
+			assertThat(values(old, "c")).containsExactly(DORA, DORA, DORA);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void uncommittedContextsCannotReuseTheCommittedSourceUniquenessProof(Route route) {
+		open(route);
+		seedDiamond(route);
+		IRI extra = iri("extra");
+		try (RepositoryConnection connection = repository.getConnection();
+				RepositoryConnection outside = repository.getConnection()) {
+			TupleQuery query = query(connection, anchored(TWO_HOPS));
+			query.setBinding("start", ALICE);
+			assertThat(values(query, "c")).containsExactly(DORA, DORA);
+			connection.begin(IsolationLevels.SNAPSHOT);
+			connection.add(ALICE, KNOWS, BOB, GRAPH_ONE);
+			connection.add(ALICE, KNOWS, CAROL, GRAPH_ONE);
+			connection.add(BOB, KNOWS, DORA, GRAPH_ONE);
+			connection.add(CAROL, KNOWS, DORA, GRAPH_ONE);
+			connection.add(ALICE, KNOWS, extra, GRAPH_ONE);
+			connection.add(extra, KNOWS, DORA, GRAPH_ONE);
+			assertThat(values(query, "c")).containsExactly(DORA, DORA, DORA);
+			TupleQuery committed = query(outside, anchored(TWO_HOPS));
+			committed.setBinding("start", ALICE);
+			assertThat(values(committed, "c")).containsExactly(DORA, DORA);
+			connection.rollback();
+			assertThat(values(query, "c")).containsExactly(DORA, DORA);
 		}
 	}
 
