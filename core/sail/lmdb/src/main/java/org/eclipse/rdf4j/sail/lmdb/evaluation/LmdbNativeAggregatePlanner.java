@@ -2182,6 +2182,10 @@ final class LmdbNativeAggregatePlanner extends LmdbNativeAggregateFilterCompiler
 			return nativeScope != null ? nativeScope : island(expr);
 		}
 		if (expr instanceof Distinct) {
+			SlotPlan statement = compileDistinctStatement((Distinct) expr);
+			if (statement != null) {
+				return statement;
+			}
 			SlotPlan zeroOrOne = compileZeroOrOnePathShape((Distinct) expr, duplicateInsensitive);
 			return zeroOrOne != null ? zeroOrOne : island(expr);
 		}
@@ -2699,6 +2703,25 @@ final class LmdbNativeAggregatePlanner extends LmdbNativeAggregateFilterCompiler
 			return path.getMinLength() == 0L || pathStepMayBeNullable(path.getPathExpression());
 		}
 		return true;
+	}
+
+	/**
+	 * A statement relation over a merged RDF graph can contain the same SPO in multiple contexts. Keep its DISTINCT
+	 * inside native execution by comparing the produced value-id slots, including a context slot when one is visible.
+	 * Filters are admitted because the optimizer pushes resource guards through DISTINCT; their evaluation remains
+	 * before deduplication. No projection, join or variable-scope boundary is bypassed here.
+	 */
+	private SlotPlan compileDistinctStatement(Distinct distinct) {
+		TupleExpr input = distinct.getArg();
+		while (input instanceof Filter filter) {
+			input = filter.getArg();
+		}
+		if (!(input instanceof StatementPattern)) {
+			return null;
+		}
+		SlotPlan arg = compileTuple(distinct.getArg(), false);
+		return arg == null || arg instanceof GenericEvalPlan ? null
+				: new RowDistinctPlan(arg, slotsOf(arg.producedMask()));
 	}
 
 	/**

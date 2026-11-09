@@ -1944,8 +1944,14 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 				}
 				QueryExecutionContext.checkpointReplaySafepoint();
 				return new QueryValueEvaluationStep.ConstantQueryValueEvaluationStep(res);
-			} catch (QueryEvaluationException ex) {
+			} catch (ValueExprEvaluationException ex) {
 				return new QueryValueEvaluationStep.Fail("Constant failure: " + ex.getMessage());
+			} catch (QueryEvaluationException ex) {
+				// Only expression errors mean "unknown". Preserve query-fatal failures and defer them until
+				// evaluation reaches an input row, just as for a function with nonconstant arguments.
+				return bindings -> {
+					throw ex;
+				};
 			}
 		} else {
 			ExternalValueSourceMemo functionSource = new ExternalValueSourceMemo(tripleSource);

@@ -561,8 +561,8 @@ final class ExtensionCursor implements FactorizedRowCursor {
 }
 
 /**
- * Interior DISTINCT over a fixed slot projection (M-F1): serves the parser's zero-or-one path wrapper
- * {@code Distinct(Projection(Union(ZeroLengthPath, step)))}. Deduplicates on the projected slots' ids through
+ * Interior DISTINCT over a fixed slot projection: serves merged-graph statement relations and the parser's zero-or-one
+ * path wrapper {@code Distinct(Projection(Union(ZeroLengthPath, step)))}. Deduplicates on the slots' ids through
  * {@link NativeDistinctTracker}, matching the engine's root DISTINCT semantics.
  */
 @Experimental
