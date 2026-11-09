@@ -32,7 +32,7 @@ The full milestone sequence and acceptance gates are in the repository-root `gql
 
 The [correction validation report](VALIDATION.md) records the implementation changes, test-first evidence, reproduction commands, and limits of the current verification. The [architecture analysis](ARCHITECTURE.md) traces the storage and API implications in more detail.
 
-The audit also reproduced an [existing generic-evaluator subquery issue](KNOWN_EVALUATION_ISSUE.md). The compiler correction fixes its own accidental scope boundary; the separate real-subquery case remains unresolved and is tracked as a backend dependency for future language composition.
+The audit also reproduced an [existing generic-evaluator subquery issue](KNOWN_EVALUATION_ISSUE.md). The first compiler correction fixed its own accidental scope boundary. The supplied-reference batch repairs the statement-evaluator contract and verifies a permanent real-subquery regression across all three LMDB routes. [Its validation report](REFERENCE_VALIDATION.md) records 397 selected passing tests and the remaining evidence limits.
 
 ## Known profile differences
 
@@ -41,6 +41,10 @@ The first correction batch intentionally changes three earlier profile behaviors
 The existing profile still delegates numeric, comparison, null/error, and ordering behavior to RDF4J in several places; only reviewed rules can establish whether those behaviors match GQL. It lacks the full type system, graph mutations, catalogs, schemas, sessions, procedure/program composition, unbounded and shortest paths, and rich result values. Its namespace mapping and contextual-keyword policy are implementation choices that have not been established as conforming extensions. No claim is made that correcting the first lexical and grouping defects resolves those areas.
 
 No public official ISO GQL conformance suite was located during the source audit. This is a search result, not a claim that no private suite exists. Grammar samples, openCypher tests, other engines, and research semantics are useful supplementary tests. They do not replace clause-level review of the published standard.
+
+## Supplied implementation references
+
+The user supplied froGQL, gql-compat, gql-grammar, MGQL, and DuckGQL archives to continue implementation without the full base publication. Engineering now proceeds from reviewed fixtures, formal models, algorithms, and official grammar/corrigendum material. [The reference audit](references/README.md) records exact archive hashes, licenses, scope, disagreements, and adoption decisions. Missing normative text remains a limitation on final conformance verification, not a request for the user to obtain it before work can continue.
 
 ## Research implementations
 

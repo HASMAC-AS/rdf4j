@@ -16,7 +16,12 @@ The current branch, `GH-0000-gql-lmdb-adjacency`, starts this phase at commit `9
 - [x] Identify representation and transaction architecture gaps.
 - [x] Reproduce directly specified semantic discrepancies.
 - [x] Correct and validate those observed discrepancies.
-- [in_progress] Obtain and review full normative requirements (full 2024 base text required).
+- [x] Audit supplied implementation and compatibility archives.
+- [x] Implement reviewed query and expression families.
+- [x] Repair and verify shared binding contracts.
+- [x] Validate composed queries across LMDB routes.
+- [in_progress] Complete remaining language and storage semantics.
+- [ ] Complete normative requirements and conformance review.
 - [ ] Implement typed graph storage and transactions.
 - [ ] Implement typed values and session execution.
 - [ ] Complete query, mutation, and catalog semantics.
@@ -40,15 +45,21 @@ The target is the published 2024 edition plus its 2026 correction, not the futur
 
 The existing RDF projection remains a compatibility view. Complete graph semantics require explicit graph-element records, stable edge identity, typed values, and session state. Existing paged adjacency, native cursors, retained snapshots, and cancellation mechanisms are reusable after their contracts are made edge-identity aware.
 
-The normative base text must settle defaults, type rules, error conditions, feature dependencies, and implementation-defined choices. Other implementations, permissive grammars, and research interpreters can supply comparison cases but are not the final oracle. Pending access, implement only requirements directly established by the official material already obtained. No conformance percentage or successful certification is claimed.
+The normative base text must settle defaults, type rules, error conditions, feature dependencies, and implementation-defined choices. Other implementations, permissive grammars, and research interpreters can supply comparison cases but are not the final oracle. Reviewed official material takes precedence over implementation references when they disagree. The supplied-archive decision below permits engineering to continue while the complete normative review remains outstanding. No conformance percentage or successful certification is claimed.
+
+On 2026-11-09 the user supplied froGQL, gql-compat, gql-grammar, MGQL, and DuckGQL archives as the available reference material and asked that they be used instead. Continue implementation using their reviewed fixtures, formal models, and algorithms together with the official grammar and already reviewed corrigendum. Absence of the base publication no longer pauses engineering work. Keep normative review incomplete, retain provenance, and record disagreements explicitly; an implementation's successful test is not automatically an ISO requirement.
 
 ## Outcomes & Retrospective
 
 The first correction batch is complete and verified on the formatted source. All 166 selected tests passed with zero failures, errors, or skips: 108 GQL parser/lexer/MemoryStore tests, 48 GQL LMDB repository/integration cases, six native DISTINCT tests, and four existing native cancellation tests. The LMDB tests cover cursor, generic adjacency, and native adjacency execution. The final parser artifact was rebuilt and installed before downstream LMDB tests. Repository formatting, copyright/SPDX verification, and `git diff --check` passed.
 
-The corrections cover contextual quoting, regular binding variables, raw delimited parameter names, direct parameter projection, LET incoming scope, grouping aliases, aggregate sort scope, and the internal-projection multiplicity error. RED evidence was preserved before each production correction. `core/queryparser/gql/conformance/VALIDATION.md` records reproduction and evidence limits. No generic evaluator production change was made; the separate real-SPARQL-subquery issue remains documented and unresolved.
+The corrections cover contextual quoting, regular binding variables, raw delimited parameter names, direct parameter projection, LET incoming scope, grouping aliases, aggregate sort scope, and the internal-projection multiplicity error. RED evidence was preserved before each production correction. `core/queryparser/gql/conformance/VALIDATION.md` records reproduction and evidence limits. That first batch made no generic evaluator production change and left the separate real-SPARQL-subquery issue unresolved. The later supplied-reference batch below now corrects it.
 
-The complete implementation remains unfinished. The next requirement is the full 2024 normative base text; targeted searches of available user files did not locate it. The official inserts and complete 2026 corrigendum already obtained are insufficient to finish the clause-level semantic and conformance oracle. The architecture and inventory establish the remaining scope without treating planned storage, types, sessions, mutations, catalogs, or path operators as implemented. Full repository CI and a new benchmark run were not performed.
+At the end of that first correction batch, the complete implementation remained unfinished and work awaited the full 2024 normative base text; targeted searches of available user files did not locate it. The supplied-archive milestone below resumes engineering without requiring the user to obtain that publication. The official inserts and complete 2026 corrigendum already obtained are insufficient to finish the clause-level semantic and conformance oracle. The architecture and inventory establish the remaining scope without treating planned storage, types, sessions, mutations, catalogs, or path operators as implemented. Full repository CI and a new benchmark run were not performed.
+
+The supplied-reference implementation checkpoint is complete. It adds NEXT/YIELD read-query composition, LET VALUE/FILTER WHERE spellings, extended simple CASE scalar operands, numeric radix/separator/suffix forms, and matching unsigned spellings in pagination and finite path bounds. It repairs specialized-binding compatibility and the explicit-null subject/predicate pair. All 397 selected tests pass: 159 GQL tests, 159 evaluator regression tests, and 79 LMDB tests. Actual adjacency use, composed named-graph identity, retained snapshots, read-own-writes, partial closure, rollback, and prepared-query reuse are exercised. Installed class files match the final compiled classes. Formatting, copyright/SPDX checks, and diff checks passed.
+
+This checkpoint does not implement the native graph storage, complete typed values, catalog/schema operations, GQL mutations, session/program interface, runtime unbounded/shortest paths, or full conformance oracle. The reference archives remain partial implementations with recorded conflicts. The next architectural work is the authoritative LMDB graph-storage vertical slice described below; parser acceptance alone cannot represent independent parallel edges or graph ownership. `core/queryparser/gql/conformance/REFERENCE_VALIDATION.md` and the sanitized `references/validation-summary.json` preserve the current acceptance evidence. Full repository CI and performance benchmarking remain unperformed for this checkpoint.
 
 ## Context and Orientation
 
@@ -60,7 +71,17 @@ The reference material is retained outside the repository under `../gql-conforma
 
 First add tests demonstrating the directly specified lexical and semantic discrepancies. Run those tests against the unchanged production implementation and retain the Surefire reports. Then distinguish ambiguous double-quoted tokens until syntactic context determines their role; enforce regular identifiers for binding variables; evaluate LET right-hand sides in the incoming scope; and compile grouping and aggregate ordering from the same input relation. Preserve positive tests for delimited labels, properties, output names, and parameter names.
 
-Next obtain the complete normative base text and extract each requirement into an original traceability record. Record its clause, mandatory or optional status, dependencies, implementation choices, expected diagnostics, positive and negative tests, and execution routes. Mark a requirement verified only after its semantics, not just its syntax, are exercised.
+Complete normative review remains an independent obligation: when the complete base text becomes available, extract each requirement into an original traceability record. Record its clause, mandatory or optional status, dependencies, implementation choices, expected diagnostics, positive and negative tests, and execution routes. Mark a requirement verified only after its semantics, not just its syntax, are exercised.
+
+The supplied-archive milestone continues from commit `b68fe28508de9c44bce869c779b7666a27001cfd`. Inspect licenses and pin archive hashes and embedded revisions before adapting ideas. The compatibility corpus has 581 cases; the draft ANTLR grammar targets 2023, while its bundled official grammar describes the 2024 base. Quarantine conflicting LET visibility, aggregate ordering, grouping syntax, self-loop, and transaction expectations instead of overwriting already reviewed behavior.
+
+Add independently specified tests for numeric literals, extended simple CASE operands, and NEXT/YIELD query pipelines. Observe and retain the smallest failures before editing `GqlLexer`, `GqlExpressionParser`, or `GqlCompiler`. Pipeline stages must preserve result bags, nulls, graph-element identity, alias scope, parameter namespaces, and grouping boundaries. Exercise the resulting algebra on MemoryStore and all three LMDB routes, with actual adjacency usage checked where traversal should use it.
+
+Before relying on additional scope boundaries, reproduce and fix the documented generic-evaluator incompatibility between an optimizer-specialized named variable and an incoming conflicting binding. Test subject, predicate, object, and context positions, equal and absent bindings, ordinary constant terms, repeated variables, and every statement-step entry point. Keep the ordinary no-specialization path free of extra per-row comparisons by compiling compatibility checks only for the affected variables.
+
+The retained baseline reports now reproduce all four conflicting statement positions (16 unit invocations, four failures) and the real SPARQL subquery on cursor/generic-adjacency routes (three route invocations, two failures). The native route returns the correct two rows. These reports authorize a narrowly compiled compatibility guard, with no unconditional comparison overhead for ordinary statement patterns.
+
+New evidence belongs under `validation-gql-references/`. Use the existing Java 25 toolchain and a private workspace Maven cache. Root owns Maven execution while delegated implementations edit separate methods/files. Preserve downloaded archives as research inputs; publish original analysis, tests, and required attribution rather than bundling external build trees or ISO publications.
 
 Implement the graph storage vertical slice before expanding syntax broadly. In the same authoritative LMDB transaction, persist catalog graph existence, isolated nodes, independent parallel edges, edge orientation, labels, and typed properties. Adjacency must retain stable edge IDs. Rollback, retained snapshots, crash recovery, reopen, backup/restore, map growth, and dictionary lifetime must cover these records. An independently committed sidecar environment is not an atomic substitute.
 
@@ -68,7 +89,7 @@ If GQL records use existing dictionary IDs, those references must be roots for d
 
 Add a typed GQL value model and session/program interface. Resolve names, scopes, graph ownership, and types into a GQL semantic representation before lowering compatible operations to existing RDF4J algebra. Add dedicated physical operators where RDF values or SPARQL error semantics do not preserve GQL behavior. Extend remote result transport and user tools to preserve these types and session outcomes.
 
-Semantic lowering must distinguish internal column pruning from genuine language scope boundaries. The corrected GQL internal projection is not a general workaround for subqueries. A separate existing generic-evaluator conflict between fixed and incoming bindings still affects a real SPARQL subquery; `core/queryparser/gql/conformance/KNOWN_EVALUATION_ISSUE.md` contains its complete reproducer. Resolve the applicable backend contract before relying on real subqueries for full GQL semantics.
+Semantic lowering must distinguish internal column pruning from genuine language scope boundaries. The corrected GQL internal projection is not a general workaround for subqueries. The supplied-reference batch corrects the generic-evaluator conflict between fixed and incoming bindings, retaining genuine subquery boundaries. `core/queryparser/gql/conformance/KNOWN_EVALUATION_ISSUE.md` contains the complete reproducer, before/after behavior, and permanent tests. Continue testing backend scope contracts before adding richer language composition.
 
 Define session ownership explicitly: an owned repository connection closes with its session, while a borrowed connection remains under its caller's lifecycle contract. Commands must participate in the correct active transaction and retain the existing handling of uncertain commit outcomes. Publish neither an automatic rollback nor success when the underlying commit outcome is unresolved.
 
@@ -112,3 +133,7 @@ The proposed additions are a `GqlGraphStore` storage contract, a typed `GqlValue
 Revision 2026-11-09: expanded the task from an RDF read-query profile to complete standard semantics; recorded the corrigendum, missing normative input, representation gaps, and a test-first correction batch.
 
 Revision 2026-11-09 after validation: completed the first correction batch with 166 selected passing tests; added direct-parameter and internal-projection regressions, preserved the separate SPARQL subquery finding, and moved the active step to obtaining and reviewing the complete normative base.
+
+Revision 2026-11-09 after supplied archives: resumed implementation from reviewed independent reference material at the user's direction. Added a source-provenance audit, explicit conflict handling, numeric/CASE/pipeline acceptance, and the generic binding-compatibility prerequisite. Full normative review remains incomplete without blocking supported engineering work.
+
+Revision 2026-11-09 after reference validation: completed the reviewed language checkpoint with 397 passing tests, corrected both generic evaluator defects after RED evidence, and recorded remaining native-storage/value work without treating absent normative text as an engineering stop.

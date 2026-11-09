@@ -4,7 +4,7 @@ This module adds `QueryLanguage.GQL` to RDF4J. It parses a documented GQL query 
 
 This is **query support, not complete ISO/IEC 39075 conformance**. GQL also defines graph updates, schemas, catalogs, sessions, extensive types, and other facilities. Unsupported constructs are rejected during query preparation. The supported syntax and RDF mapping below are the contract of this module.
 
-Work toward the complete published standard, including the 2026 corrigendum, is tracked in [the conformance inventory](conformance/README.md) and the repository-root `gql-conformance-exec-plan.md`. The inventory explicitly records unverified requirements and the missing full normative base text. Corrections to individual rules do not establish complete conformance.
+Work toward the complete published standard, including the 2026 corrigendum, is tracked in [the conformance inventory](conformance/README.md) and the repository-root `gql-conformance-exec-plan.md`. The inventory explicitly records unverified requirements and the missing full normative base text. Engineering continues using the [reviewed supplied reference archives](conformance/references/README.md); their tests and implementations do not establish complete conformance.
 
 ## Using the parser
 
@@ -103,7 +103,7 @@ The `@` prefix disables backslash escapes in a quoted sequence. It also applies 
 
 ## Supported query forms
 
-The parser supports `MATCH`, `OPTIONAL MATCH`, clause-local `WHERE`, pipeline `FILTER`, `LET`, `RETURN`, `RETURN ALL`, `RETURN DISTINCT`, `GROUP BY`, `ORDER BY`, `OFFSET`/`SKIP`, `LIMIT`, and `UNION`/`UNION ALL`/`UNION DISTINCT`. A query ends with `RETURN`; a final semicolon is optional. UNION branches must expose the same column names in the same order.
+The parser supports `MATCH`, `OPTIONAL MATCH`, clause-local `WHERE`, pipeline `FILTER`/`FILTER WHERE`, `LET`/`LET VALUE`, `RETURN`, `RETURN ALL`, `RETURN DISTINCT`, `GROUP BY`, `ORDER BY`, `OFFSET`/`SKIP`, `LIMIT`, `UNION`/`UNION ALL`/`UNION DISTINCT`, and `NEXT` with optional `YIELD`. Each stage ends with `RETURN`; a final semicolon is optional. UNION branches must expose the same column names in the same order.
 
 Patterns support anonymous/named nodes and edges, labels, node property maps, node-local predicates, directed outgoing/incoming/any-direction edges, comma-separated patterns, repeated variables, self-loops and finite anonymous edge quantifiers. Label alternatives (`|`), conjunctions (`&`), negation (`!`) and wildcard (`%`) are supported; parenthesized label expressions are not implemented. A node wildcard requires at least one IRI label; `!%` selects unlabelled nodes.
 
@@ -117,6 +117,26 @@ RETURN a, b, company.name AS company
 The optional predicate belongs to its optional match. A later `FILTER company.name IS NOT NULL` instead removes the null-extended rows. A nullable variable is never rebound as a fresh unconstrained variable by a subsequent match.
 
 Right-hand sides within one LET statement see the incoming bindings, not sibling definitions. `LET a = 1, b = a` is rejected when `a` was not already available. Use separate statements, `LET a = 1 LET b = a`, to make the first definition available to the second.
+
+### Query composition
+
+`NEXT` passes the preceding result rows into a new read-query stage. Only returned columns are visible in that stage. `YIELD` can select columns and rename them into regular binding variables:
+
+```gql
+MATCH (person:Person)-[:knows]->(friend)
+WHERE person = $start
+RETURN friend AS candidate
+NEXT YIELD candidate AS person
+MATCH (person)-[:knows]->(other)
+RETURN other, COUNT(*) AS routes
+GROUP BY other
+```
+
+The boundary preserves duplicate rows, null values, and the RDF node/edge identities. A carried edge constrains the next match to that same triple identity; a carried null cannot become a fresh unconstrained edge. Stage variables remain separate from API parameters even when their names match. Grouping and local aliases do not leak across the boundary.
+
+YIELD selection happens after the preceding DISTINCT, ordering, and pagination. Later predicates cannot change which rows an earlier LIMIT selected. UNION branches complete before a following NEXT, and every UNION branch in the new stage receives the same incoming relation and visible column names. The current lowering evaluates the incoming deterministic read algebra separately in each UNION branch; it does not promise once-only execution for future volatile expressions, procedures, or mutations.
+
+A `USE GRAPH` selection is local to its query stage; a later stage can select its own graph. This composition does not add session graph commands or general subqueries. Typed LET initializers and parameterized pagination remain unsupported.
 
 ### Paths and matching modes
 
@@ -144,6 +164,22 @@ Quantified edges require anonymous edge variables and repeatable WALK semantics 
 ### Values and aggregation
 
 Expressions include strings, integers, decimals, floating-point numbers, booleans, null, parameters, property access, arithmetic, concatenation, comparisons, `AND`/`OR`/`XOR`/`NOT`, `IN`, `BETWEEN`, `IS NULL`/`IS TRUE`/`IS FALSE`/`IS UNKNOWN`, and CASE expressions. GQL conditions require boolean values; RDF4J's SPARQL truth-value coercion of arbitrary numbers and strings is not used.
+
+Numeric tokens support separators between digits, binary/octal/hexadecimal integers (`0b1010`, `0o12`, `0xA`), and an optional separator directly after a radix prefix (`0x_FF`). Radix prefixes are lowercase. Unsuffixed integers use arbitrary-precision RDF integers; decimal-point forms and `M`/`m` suffixes use exact RDF decimals. `F`/`f` selects an RDF float, `D`/`d` an RDF double, and an exponent without a suffix selects a double. Examples include `1_000`, `.5F`, `1.25e2M`, and `6.02e23D`. Non-finite literal overflow is rejected. Exact exponent expansion and source-token length are bounded before allocating a large decimal lexical form.
+
+LIMIT, OFFSET/SKIP, and finite path bounds accept unsigned decimal/radix integer spellings and separators. They reject signs, decimal points, exponent forms, and numeric suffixes, retain signed-long range checks, and retain the existing 32-hop path limit.
+
+Simple CASE supports multiple WHEN operands and comparison or null/truth predicate tails:
+
+```gql
+RETURN CASE 12
+  WHEN 0, 1 THEN 'small'
+  WHEN >= 10 THEN 'large'
+  ELSE 'other'
+END AS size
+```
+
+Operands are tested in order with three-valued conditions, and only the selected THEN/ELSE value is evaluated. The existing profile's IN and BETWEEN predicates also work as CASE tails; this is not a claim that those extensions are ISO productions. Graph/type predicate tails and the full type system remain unsupported.
 
 RDF literals retain their RDF4J numeric and comparison semantics. For example, division of integer literals produces an RDF decimal; ordinary RDF expression errors become null/unbound where RDF4J permits that. This is an explicit part of the RDF value projection, not a claim to implement every ISO numeric type and error condition. `MOD(a, b)` and `%` compute the remainder with the dividend's sign, preserving integer/decimal types and using normal numeric promotion. Use `AS` to assign stable output names to computed expressions.
 
@@ -175,7 +211,7 @@ A controlled initial comparison, including raw results and adjacency engagement,
 
 ## Limits and unsupported features
 
-This module does not implement graph/schema/catalog DDL, GQL graph mutations, session or transaction commands, procedure calls, NEXT pipelines, general subqueries, all GQL value types/functions, graph-valued results, path-valued results, undirected stored edges, or full ISO conformance. A MATCH predicate that accesses a property requires that owner to occur in that MATCH's pattern. Use a separate pipeline FILTER for a previously bound owner's property.
+This module does not implement graph/schema/catalog DDL, GQL graph mutations, session or transaction commands, procedure calls, general subqueries, all GQL value types/functions, graph-valued results, path-valued results, undirected stored edges, or full ISO conformance. A MATCH predicate that accesses a property requires that owner to occur in that MATCH's pattern. Use a separate pipeline FILTER for a previously bound owner's property.
 
 The tokenizer limits source length to one million characters and token count to 100,000. Expressions limit nesting and construction complexity; finite paths cap their upper bound at 32. The compiler caps expanded statement patterns at 4,096, label terms at 256, uniqueness comparisons at 4,096, and final algebra depth/size at 256/16,384 nodes. It validates the algebra iteratively before exposing it to recursive RDF4J visitors. These limits report `MalformedQueryException` with a source location. They prevent an accidentally enormous generated query from exhausting parser resources.
 

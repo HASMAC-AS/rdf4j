@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.sail.lmdb;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +81,126 @@ class GqlLmdbIntegrationTest {
 	void closeRepository() {
 		if (repository != null) {
 			repository.shutDown();
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void nextStagesPreserveTraversalBagsAndPreparedParameters(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			TupleQuery traversal = query(connection,
+					"MATCH (a:`urn:gql:Person`)-[:`urn:gql:knows`]->(b) WHERE a = $start "
+							+ "RETURN b AS nextNode NEXT MATCH (nextNode)-[:`urn:gql:knows`]->(c) RETURN c");
+			traversal.setBinding("start", ALICE);
+			long before = AdjacencyEngagementTestAccess.lookupHits(store);
+			assertThat(values(traversal, "c")).containsExactly(DORA, DORA);
+			if (route.adjacency) {
+				assertThat(AdjacencyEngagementTestAccess.lookupHits(store))
+						.as("a NEXT traversal must consume adjacency while preserving duplicate paths")
+						.isGreaterThan(before);
+			}
+			traversal.setBinding("start", BOB);
+			assertThat(values(traversal, "c")).isEmpty();
+			traversal.setBinding("start", iri("missing"));
+			assertThat(values(traversal, "c")).isEmpty();
+			traversal.setBinding("start", ALICE);
+			assertThat(values(traversal, "c")).containsExactly(DORA, DORA);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void nextStagesKeepEdgeIdentityAndNullBindings(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			TupleQuery edge = query(connection,
+					"MATCH (a)-[e:`urn:gql:knows`]->(b) WHERE a = $start RETURN e AS chosen "
+							+ "NEXT MATCH (x)-[chosen]->(y) RETURN y ORDER BY y");
+			edge.setBinding("start", ALICE);
+			assertThat(values(edge, "y")).containsExactly(BOB, CAROL);
+			edge.setBinding("start", BOB);
+			assertThat(values(edge, "y")).containsExactly(DORA);
+
+			TupleQuery optional = query(connection,
+					"MATCH (a:`urn:gql:Person`) WHERE a = $start "
+							+ "OPTIONAL MATCH (a)-[:`urn:gql:absent`]->(missing) RETURN missing "
+							+ "NEXT RETURN missing");
+			optional.setBinding("start", ALICE);
+			assertThat(values(optional, "missing")).containsExactly((Value) null);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void nextUnionYieldKeepsGraphParametersAndEdgeIdentity(Route route) {
+		open(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			connection.begin();
+			connection.add(ALICE, KNOWS, BOB, GRAPH_ONE);
+			connection.add(BOB, KNOWS, DORA, GRAPH_ONE);
+			connection.add(ALICE, KNOWS, CAROL, GRAPH_TWO);
+			connection.add(CAROL, KNOWS, DORA, GRAPH_TWO);
+			connection.add(ALICE, KNOWS, DORA);
+			connection.commit();
+			buildAdjacency(route);
+
+			String pipeline = "USE GRAPH $graph MATCH (a)-[e:`urn:gql:knows`]->(b) WHERE a = $start "
+					+ "RETURN e AS selected NEXT YIELD selected AS e RETURN e AS chosen "
+					+ "UNION ALL RETURN e AS chosen NEXT YIELD chosen AS edge USE GRAPH $graph ";
+			TupleQuery query = query(connection, pipeline + "MATCH (x)-[edge]->(y) RETURN y, edge");
+			query.setBinding("start", ALICE);
+			for (IRI graph : List.of(GRAPH_ONE, GRAPH_TWO)) {
+				query.setBinding("graph", graph);
+				IRI destination = graph.equals(GRAPH_ONE) ? BOB : CAROL;
+				assertThat(values(query, "y")).containsExactly(destination, destination);
+				Value identity = VF.createTripleTerm(ALICE, KNOWS, destination);
+				assertThat(values(query, "edge")).containsExactly(identity, identity);
+			}
+			query.removeBinding("graph");
+			assertThat(values(query, "y")).isEmpty();
+			query.setBinding("graph", GRAPH_ONE);
+			query.setBinding("start", BOB);
+			assertThat(values(query, "y")).containsExactly(DORA, DORA);
+
+			assertThatThrownBy(() -> query(connection, pipeline + "MATCH (edge) RETURN edge"))
+					.isInstanceOf(MalformedQueryException.class)
+					.hasMessageContaining("cannot denote both a node and an edge");
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void referenceLiteralAndCaseFormsExecuteInsideTraversal(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			TupleQuery query = query(connection,
+					"MATCH (a)-[:`urn:gql:knows`]->(b) WHERE a = $start "
+							+ "LET VALUE amount = 0x10 RETURN CASE amount WHEN 0, 16 THEN 1_000M "
+							+ "ELSE 0M END AS amount ORDER BY amount");
+			query.setBinding("start", ALICE);
+			assertThat(values(query, "amount")).extracting(value -> ((Literal) value).decimalValue())
+					.containsExactly(new BigDecimal("1000"), new BigDecimal("1000"));
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void specializedBindingsRemainCompatibleAcrossRealSubqueries(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			TupleQuery query = connection.prepareTupleQuery(QueryLanguage.SPARQL,
+					"SELECT ?friend WHERE { { SELECT DISTINCT ?n WHERE { ?n a <urn:gql:Person> } } "
+							+ "?n <urn:gql:knows> ?friend FILTER (?n = ?start) } ORDER BY ?friend");
+			query.setIncludeInferred(false);
+			query.setBinding("start", ALICE);
+			assertThat(values(query, "friend")).containsExactly(BOB, CAROL);
+			query.setBinding("start", BOB);
+			assertThat(values(query, "friend")).containsExactly(DORA);
 		}
 	}
 
@@ -369,6 +490,78 @@ class GqlLmdbIntegrationTest {
 				Thread.interrupted();
 			}
 			assertThat(values(query, "b")).containsExactlyInAnyOrder(BOB, CAROL, DORA, DORA);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void nextUnionKeepsRetainedSnapshotAcrossCommittedDeltas(Route route) {
+		open(route);
+		seedDiamond(route);
+		String composed = "MATCH (a)-[:`urn:gql:knows`]->(b) WHERE a = $start RETURN b AS middle "
+				+ "NEXT MATCH (middle)-[:`urn:gql:knows`]->(c) RETURN c "
+				+ "UNION ALL MATCH (middle)-[:`urn:gql:knows`]->(c) RETURN c";
+		try (RepositoryConnection reader = repository.getConnection();
+				RepositoryConnection writer = repository.getConnection()) {
+			reader.begin(IsolationLevels.SNAPSHOT);
+			TupleQuery retained = query(reader, composed);
+			retained.setBinding("start", ALICE);
+			List<Value> retainedRows = new ArrayList<>();
+			try (var result = retained.evaluate()) {
+				assertThat(result.hasNext()).isTrue();
+				retainedRows.add(result.next().getValue("c"));
+
+				writer.begin();
+				writer.remove(ALICE, KNOWS, BOB);
+				writer.remove(CAROL, KNOWS, DORA);
+				writer.add(CAROL, KNOWS, ALICE);
+				writer.commit();
+
+				while (result.hasNext()) {
+					retainedRows.add(result.next().getValue("c"));
+				}
+			}
+			assertThat(retainedRows).containsExactly(DORA, DORA, DORA, DORA);
+			assertThat(values(retained, "c")).containsExactly(DORA, DORA, DORA, DORA);
+			TupleQuery current = query(writer, composed);
+			current.setBinding("start", ALICE);
+			assertThat(values(current, "c")).containsExactly(ALICE, ALICE);
+
+			reader.rollback();
+			assertThat(values(retained, "c")).containsExactly(ALICE, ALICE);
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(Route.class)
+	void nextUnionClosesBothBranchesBeforeRollbackAndReuse(Route route) {
+		open(route);
+		seedDiamond(route);
+		try (RepositoryConnection connection = repository.getConnection()) {
+			TupleQuery composed = query(connection,
+					"MATCH (a)-[:`urn:gql:knows`]->(b) WHERE a = $start RETURN b AS middle "
+							+ "NEXT MATCH (middle)-[:`urn:gql:knows`]->(c) RETURN c "
+							+ "UNION ALL MATCH (middle)-[:`urn:gql:knows`]->(c) RETURN c");
+			composed.setBinding("start", ALICE);
+			connection.begin(IsolationLevels.SNAPSHOT);
+			connection.remove(ALICE, KNOWS, BOB);
+			connection.remove(CAROL, KNOWS, DORA);
+			connection.add(CAROL, KNOWS, ALICE);
+			assertThat(values(composed, "c")).containsExactly(ALICE, ALICE);
+			try (var result = composed.evaluate()) {
+				assertThat(result.hasNext()).isTrue();
+				assertThat(result.next().getValue("c")).isEqualTo(ALICE);
+				result.close();
+				assertThat(result.hasNext()).isFalse();
+			}
+
+			connection.rollback();
+			assertThat(values(composed, "c")).containsExactly(DORA, DORA, DORA, DORA);
+			connection.begin();
+			connection.add(DORA, KNOWS, ALICE);
+			connection.commit();
+			composed.setBinding("start", BOB);
+			assertThat(values(composed, "c")).containsExactly(ALICE, ALICE);
 		}
 	}
 

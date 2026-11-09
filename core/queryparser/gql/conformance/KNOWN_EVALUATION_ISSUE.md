@@ -1,10 +1,12 @@
-# Uncorrected generic-evaluator subquery join issue
+# Generic-evaluator subquery join regression
 
 ## Status and scope
 
-**Uncorrected.** Investigation of the GQL correction tests exposed a separate SPARQL result-multiplicity issue in the generic evaluator. This report preserves the reproducer; the GQL correction does not modify the generic evaluator or claim to repair this SPARQL case.
+**Corrected in the supplied-reference implementation batch after `b68fe28508de9c44bce869c779b7666a27001cfd`.** The original finding was independent of the first GQL compiler correction. This report preserves its complete reproducer and records the separate backend fix.
 
-The relevant SPARQL parser, `SameTermFilterOptimizer`, `JoinQueryEvaluationStep`, and `StatementPatternQueryEvaluationStep` sources are unchanged from this phase's starting commit, `9e51d79726312dddc9649eb9a1040a7b7e2e9e44`. The issue is therefore pre-existing relative to this correction batch. Its earlier introduction point has not been established.
+Before production changes, the automated `GqlLmdbIntegrationTest#specializedBindingsRemainCompatibleAcrossRealSubqueries` reproduced two failures across three routes: cursor and generic adjacency each returned eight rows; native adjacency returned the expected two. After the fix, all three routes return Bob and Carol exactly once, and rebinding the same prepared query to Bob returns Dora once. The complete final selection of 397 tests passes without failures, errors, or skips; see [the reference validation report](REFERENCE_VALIDATION.md).
+
+The SPARQL parser and optimizer are unchanged by this batch. The correction belongs in `StatementPatternQueryEvaluationStep`: an optimizer-specialized named variable must still agree with a same-named incoming binding. An ordinary constant term has no such join constraint.
 
 ## Complete fixture
 
@@ -51,7 +53,7 @@ The expected ordered result contains exactly these two bindings:
 
 The subquery produces one row for each person. The outer join shares `n`; only compatible mappings join. Filtering `n` to Alice leaves her two outgoing edges. SPARQL's join definition is available in the [W3C SPARQL 1.1 Query specification](https://www.w3.org/TR/sparql11-query/#defn_algJoin).
 
-## Observed execution routes
+## Observed execution routes before the fix
 
 All routes used `LmdbStoreConfig("spoc,posc")`. Adjacency routes selected `DirectAdjacencyMode.PREFER`, disabled automatic construction during initialization, and built adjacency after committing the fixture, using the same test helper as `GqlLmdbIntegrationTest`.
 
@@ -76,10 +78,12 @@ The optimized generic plan has these relevant properties:
 
 Consequently, each of the four left rows produces Alice's two outgoing edges. The observed native route retains the required compatibility behavior and produces two rows.
 
-This diagnosis points to the interaction between scope-aware specialization and generic compatible-binding enforcement. It is not evidence that subqueries should become correlated or that ordinary query constants should be constrained by unrelated same-named bindings. A future fix needs focused generic-evaluator tests and SPARQL scope regressions before changing these shared components.
+This diagnosis points to the interaction between scope-aware specialization and generic compatible-binding enforcement. It is not evidence that subqueries should become correlated or that ordinary query constants should be constrained by unrelated same-named bindings. The permanent tests cover all four statement positions, matching and absent bindings, caller ownership, cached matches, repeated variables removed during normalization, and exact RDF-term equality. Checks are compiled only for specialized named variables and run before iteration, existence/count lookup, or cached-result reuse.
 
 ## Relationship to the GQL correction
 
 The GQL compiler used `Projection` for internal column pruning while leaving its default `subquery=true`. Those internal projections do not introduce a new language scope. Marking them as ordinary projections is the appropriate GQL lowering correction; it allows specialization to see the same generated variable consistently and prevents the duplicate rows in the GQL matrix.
 
-That correction does not remove real SPARQL subquery boundaries and does not repair the independent SPARQL reproducer documented here. Keep both facts distinct when reporting test results or conformance progress.
+That first compiler correction did not remove real SPARQL subquery boundaries or repair this independent reproducer. The supplied-reference batch now repairs the backend compatibility contract directly; NEXT/YIELD retains genuine stage boundaries.
+
+The same review also found `UnboundTest.sp` joining its two explicit-null checks with AND rather than OR. Two additional failing automated cases established the subject/predicate pair defect before the one-operator correction. All 34 cases in `StatementPatternBindingCompatibilityTest` now pass, within a 159-test evaluator regression selection.

@@ -57,6 +57,8 @@ final class GqlExpressionParser {
 	interface Context {
 		Token peek();
 
+		Token peek(int distance);
+
 		Token take();
 
 		boolean accept(String token);
@@ -95,6 +97,10 @@ final class GqlExpressionParser {
 	}
 
 	ValueExpr parse() {
+		return parse(null);
+	}
+
+	private ValueExpr parse(ValueExpr caseOperand) {
 		if (nesting == 0) {
 			complexity = 0;
 		}
@@ -102,7 +108,7 @@ final class GqlExpressionParser {
 			throw context.error("Expression nesting exceeds " + MAX_NESTING);
 		}
 		try {
-			return or();
+			return caseOperand == null ? or() : whenOperand(caseOperand);
 		} finally {
 			nesting--;
 		}
@@ -153,9 +159,14 @@ final class GqlExpressionParser {
 	}
 
 	private ValueExpr comparison() {
-		ValueExpr result = concatenation();
-		Token operator = context.peek();
-		CompareOp comparison = switch (operator.text()) {
+		return comparisonTail(concatenation());
+	}
+
+	private static CompareOp comparisonOperator(Token token) {
+		if (token.kind() != Kind.SYMBOL) {
+			return null;
+		}
+		return switch (token.text()) {
 		case "=" -> CompareOp.EQ;
 		case "<>", "!=" -> CompareOp.NE;
 		case "<" -> CompareOp.LT;
@@ -164,7 +175,11 @@ final class GqlExpressionParser {
 		case ">=" -> CompareOp.GE;
 		default -> null;
 		};
-		if (operator.kind() == Kind.SYMBOL && comparison != null) {
+	}
+
+	private ValueExpr comparisonTail(ValueExpr result) {
+		CompareOp comparison = comparisonOperator(context.peek());
+		if (comparison != null) {
 			context.take();
 			operation();
 			result = new Compare(result, concatenation(), comparison);
@@ -378,9 +393,17 @@ final class GqlExpressionParser {
 		List<ValueExpr> results = new ArrayList<>();
 		while (context.accept("WHEN")) {
 			operation();
-			ValueExpr condition = parse();
-			conditions.add(operand == null ? booleanValue(condition)
-					: new Compare(copy(operand), condition, CompareOp.EQ));
+			ValueExpr condition;
+			if (operand == null) {
+				condition = booleanValue(parse());
+			} else {
+				condition = parse(operand);
+				while (context.accept(",")) {
+					operation();
+					condition = new Or(condition, parse(operand));
+				}
+			}
+			conditions.add(condition);
 			context.expect("THEN");
 			results.add(parse());
 		}
@@ -396,22 +419,68 @@ final class GqlExpressionParser {
 		return result;
 	}
 
+	private ValueExpr whenOperand(ValueExpr operand) {
+		Token token = context.peek();
+		boolean predicate = comparisonOperator(token) != null || token.is("IS") || token.is("IN")
+				|| token.is("BETWEEN");
+		if (token.is("NOT")) {
+			Token next = context.peek(1);
+			predicate = next.is("IN") || next.is("BETWEEN");
+		}
+		// Reuse the existing scalar predicate profile; unsupported type and graph predicates still fail explicitly.
+		return predicate ? comparisonTail(copy(operand)) : new Compare(copy(operand), or(), CompareOp.EQ);
+	}
+
 	private ValueExpr number(Token token) {
 		if (token.text().length() > MAX_NUMBER_LENGTH) {
 			throw context.error("Numeric literal exceeds " + MAX_NUMBER_LENGTH + " characters");
 		}
 		try {
-			if (token.text().indexOf('e') >= 0 || token.text().indexOf('E') >= 0) {
-				double value = Double.parseDouble(token.text());
+			String text = token.text().replace("_", "");
+			// Resolve radix integers before treating their hexadecimal D/E/F digits as suffixes or exponents.
+			if (text.length() > 2 && text.charAt(0) == '0') {
+				int radix = switch (text.charAt(1)) {
+				case 'x' -> 16;
+				case 'o' -> 8;
+				case 'b' -> 2;
+				default -> 0;
+				};
+				if (radix != 0) {
+					return new ValueConstant(VF.createLiteral(new BigInteger(text.substring(2), radix)));
+				}
+			}
+			char suffix = text.charAt(text.length() - 1);
+			boolean exact = suffix == 'M' || suffix == 'm';
+			boolean singlePrecision = suffix == 'F' || suffix == 'f';
+			boolean doublePrecision = suffix == 'D' || suffix == 'd';
+			if (exact || singlePrecision || doublePrecision) {
+				text = text.substring(0, text.length() - 1);
+			}
+			if (singlePrecision) {
+				float value = Float.parseFloat(text);
+				if (!Float.isFinite(value)) {
+					throw context.error("Approximate numeric literal is out of range");
+				}
+				return new ValueConstant(VF.createLiteral(value));
+			}
+			if (doublePrecision || !exact && (text.indexOf('e') >= 0 || text.indexOf('E') >= 0)) {
+				double value = Double.parseDouble(text);
 				if (!Double.isFinite(value)) {
 					throw context.error("Approximate numeric literal is out of range");
 				}
 				return new ValueConstant(VF.createLiteral(value));
 			}
-			if (token.text().indexOf('.') >= 0) {
-				return new ValueConstant(VF.createLiteral(new BigDecimal(token.text())));
+			if (exact || text.indexOf('.') >= 0) {
+				BigDecimal value = new BigDecimal(text);
+				// RDF decimal literals materialize a plain string: bound exponent expansion before allocation.
+				long scale = value.scale();
+				long integerDigits = value.signum() == 0 ? 1 : Math.max(1L, (long) value.precision() - scale);
+				if (integerDigits + (scale > 0 ? 1 + scale : 0) > MAX_NUMBER_LENGTH) {
+					throw context.error("Exact numeric literal expands beyond " + MAX_NUMBER_LENGTH + " characters");
+				}
+				return new ValueConstant(VF.createLiteral(value));
 			}
-			return new ValueConstant(VF.createLiteral(new BigInteger(token.text())));
+			return new ValueConstant(VF.createLiteral(new BigInteger(text)));
 		} catch (NumberFormatException e) {
 			throw context.error("Invalid numeric literal");
 		}

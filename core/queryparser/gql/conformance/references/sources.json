@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "inspection_date": "2026-11-09",
+  "purpose": "Original provenance and review metadata for supplied implementation references; not an ISO conformance declaration",
+  "sources": [
+    {
+      "name": "gql-compat",
+      "upstream_url": "https://github.com/tamnd/gql-compat",
+      "archive_name": "gql-compat-main.zip",
+      "archive_sha256": "b9e5e49a005b195bfe79ff8296ac04d5275b2a62124875e835f5dd09b051acc9",
+      "archive_commit_comment": "9de19917d1891e7b40fde274207fbff4cd16bbbf",
+      "archive_commit_verified_against_upstream": false,
+      "source_license": "Apache-2.0",
+      "iso_artifacts_separately_sourced": true,
+      "full_normative_text_present": false,
+      "corrigendum_overlay_found": false,
+      "downloaded_code_executed": false,
+      "case_counts": {
+        "total": 581,
+        "mandatory": 107,
+        "optional": 360,
+        "condition": 69,
+        "grammar": 18,
+        "performance": 27
+      },
+      "expectation_counts": {
+        "rows": 434,
+        "empty": 3,
+        "accept": 68,
+        "error": 65,
+        "reject": 11
+      },
+      "fixture_count": 28,
+      "citation_counts": {
+        "features": 224,
+        "subclauses": 252,
+        "productions": 800
+      },
+      "known_conflicts": [
+        {
+          "case_id": "optional/gq15/group-by",
+          "source_path": "corpus/suite/20-optional-query.yaml",
+          "issue": "GROUP BY p.city conflicts with the included official grammar's binding-variable-reference grouping element",
+          "disposition": "Do not import as a normative positive; use an original alias-based case"
+        },
+        {
+          "case_id": "mandatory/value/case-when-operand-list",
+          "issue": "Only the first WHEN operand matches, so the example does not detect an implementation ignoring subsequent operands",
+          "disposition": "Strengthen with later-operand, no-match, and null cases"
+        },
+        {
+          "case_id": "mandatory/value/normalize",
+          "issue": "Already-normalized ASCII does not distinguish normalization from an identity function",
+          "disposition": "Strengthen with decomposed/composed Unicode and all supported normalization forms"
+        }
+      ],
+      "import_notes": [
+        "The embedded official feature list has 228 entries; retain RDF4J's existing 2026 correction overlay and 234-entry target",
+        "Use YAML 1.2-compatible scalar resolution; stock PyYAML maps unquoted yes/no expected strings to booleans",
+        "Preserve exact numeric datatypes and graph identities in independent assertions",
+        "Keep generated syntax leads, reviewed semantic cases, vendor observations, and implementation-choice probes distinct",
+        "Keep absolute result and skip counts; conditional pass rates exclude skips and can rise if failures are skipped"
+      ]
+    },
+    {
+      "name": "gql-grammar",
+      "upstream_url": "https://github.com/TuGraph-family/gql-grammar",
+      "archive_name": "gql-grammar-main.zip",
+      "archive_sha256": "9da95690cf7696a7f70cdb5b769fb2a74f66d10f7bb776cab45917185c20279c",
+      "archive_commit_comment": "bfe41725cb3bab7ed15802814928105386210729",
+      "archive_commit_verified_against_upstream": false,
+      "source_license": "Apache-2.0",
+      "copyright_holder_in_grammar_headers": "AntGroup CO., Ltd.",
+      "stated_language_version": "March 2023 draft",
+      "full_normative_text_present": false,
+      "downloaded_code_executed": false,
+      "known_conflicts": [
+        {
+          "source_path": "GQLParser.g4",
+          "production": "groupingElementList",
+          "issue": "An optional single comma allows at most two grouping elements instead of arbitrary repetition",
+          "disposition": "Do not replace the current grammar wholesale"
+        },
+        {
+          "source_path": "GQLLexer.g4",
+          "issue": "Global case folding also affects radix prefixes; the newer OpenGQL grammar supplied in duckdb-gql explicitly makes 0x/0o/0b case-sensitive",
+          "disposition": "Use lower-case radix prefix spelling from the official BNF and newer grammar"
+        }
+      ]
+    },
+    {
+      "name": "frogql",
+      "upstream_url": "https://github.com/pleiad/frogql",
+      "archive_name": "frogql-main.zip",
+      "archive_sha256": "9b6b95f1361ae86128fa7976c8f8bc32817c6db7d76469db5d82d791dc2d2ae5",
+      "archive_commit_comment": "58089e09774ccce3cd907654eca1d59fc96334b1",
+      "archive_commit_verified_against_upstream": false,
+      "source_license": "MIT",
+      "scope": "Research prototype; independent edge identity and scope/shortest-path references; documented deviations",
+      "downloaded_code_executed": false
+    },
+    {
+      "name": "mgql",
+      "upstream_url": "https://github.com/EngineeringSoftware/mgql",
+      "archive_name": "mgql-main.zip",
+      "archive_sha256": "063d186d9cc0fc653eb2ec7b6f6845213d5501004be655fe1d8b791b1a908018",
+      "archive_commit_comment": "4ce4878ab928834b014fb117c1fc041805620505",
+      "archive_commit_verified_against_upstream": false,
+      "source_license": "MIT",
+      "scope": "Limited formal read-query calculus; proofs apply to that calculus; no full GQL conformance claim",
+      "downloaded_code_executed": false
+    },
+    {
+      "name": "duckdb-gql",
+      "upstream_url": "https://github.com/rahul-iyer/duckdb-gql",
+      "archive_name": "duckdb-gql-main.zip",
+      "archive_sha256": "696d91fb5f4dc566108e2283842b5ea0b1c036b7ed2b6f97611b9559b2914745",
+      "archive_commit_comment": "e1be52d4ce7981e7197afeaa38f45ce637c0ec67",
+      "archive_commit_verified_against_upstream": false,
+      "source_license": "MIT with separately attributed Apache-2.0 grammar and derived corpus",
+      "scope": "36 project-defined clause-family rows: 24 partial, 12 planned; generated compatibility corpus is not a normative suite",
+      "downloaded_code_executed": false
+    }
+  ]
+}

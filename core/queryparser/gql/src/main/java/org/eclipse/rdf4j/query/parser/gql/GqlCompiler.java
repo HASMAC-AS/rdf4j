@@ -103,6 +103,8 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	private final Set<String> parameters = new HashSet<>();
 	private final GqlExpressionParser expressions;
 	private final Map<String, Binding> variables = new LinkedHashMap<>();
+	private final Map<String, Binding> outputColumns = new LinkedHashMap<>();
+	private final Set<String> materializedBindings = new HashSet<>();
 	private final Map<String, Edge> edges = new HashMap<>();
 	private final Map<String, ValueExpr> pendingEdges = new LinkedHashMap<>();
 	private final Map<PropertyKey, Property> properties = new LinkedHashMap<>();
@@ -142,24 +144,10 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 	}
 
 	ParsedTupleQuery compile() {
-		TupleExpr result = query();
-		validateAlgebra(result);
-		List<String> columns = new ArrayList<>(result.getBindingNames());
-		while (accept("UNION")) {
-			boolean all = accept("ALL");
-			if (!all) {
-				accept("DISTINCT");
-			}
-			resetBranch();
-			TupleExpr right = query();
-			validateAlgebra(right);
-			if (!columns.equals(new ArrayList<>(right.getBindingNames()))) {
-				throw error("UNION branches must return the same column names in the same order");
-			}
-			result = new Union(result, right);
-			if (!all) {
-				result = new Distinct(result);
-			}
+		TupleExpr result = compositeQuery();
+		while (accept("NEXT")) {
+			next(result);
+			result = compositeQuery();
 		}
 		accept(";");
 		if (peek().kind() != Kind.EOF) {
@@ -167,6 +155,105 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		}
 		validateAlgebra(result);
 		return new ParsedTupleQuery(source, new QueryRoot(result));
+	}
+
+	private TupleExpr compositeQuery() {
+		TupleExpr input = pipeline;
+		Map<String, Binding> inputVariables = new LinkedHashMap<>(variables);
+		Set<String> inputMaterialized = new HashSet<>(materializedBindings);
+		TupleExpr result = query();
+		validateAlgebra(result);
+		Map<String, Binding> columns = new LinkedHashMap<>(outputColumns);
+		while (accept("UNION")) {
+			boolean all = accept("ALL");
+			if (!all) {
+				accept("DISTINCT");
+			}
+			resetBranch();
+			// Each branch operates on the same incoming working table. Check the input before recursive cloning.
+			validateAlgebra(input);
+			pipeline = input.clone();
+			variables.putAll(inputVariables);
+			materializedBindings.addAll(inputMaterialized);
+			TupleExpr right = query();
+			validateAlgebra(right);
+			if (!new ArrayList<>(columns.keySet()).equals(new ArrayList<>(outputColumns.keySet()))) {
+				throw error("UNION branches must return the same column names in the same order");
+			}
+			columns.replaceAll((name, left) -> {
+				Binding rightColumn = outputColumns.get(name);
+				Element kind = left.kind() == rightColumn.kind() ? left.kind() : Element.VALUE;
+				return new Binding(name, kind, left.nullable() || rightColumn.nullable());
+			});
+			result = new Union(result, right);
+			if (!all) {
+				result = new Distinct(result);
+			}
+			validateAlgebra(result);
+		}
+		outputColumns.clear();
+		outputColumns.putAll(columns);
+		return result;
+	}
+
+	private void next(TupleExpr input) {
+		Map<String, Binding> incoming = new LinkedHashMap<>();
+		for (Map.Entry<String, Binding> column : outputColumns.entrySet()) {
+			Binding binding = column.getValue();
+			incoming.put(column.getKey(), new Binding(fresh(), binding.kind(), binding.nullable()));
+		}
+		// Rename the completed result, including every UNION branch, before introducing its bindings into a new
+		// statement. Public field names must never become algebra variables that can collide with API parameters.
+		renameOutputColumns(input, incoming);
+		if (accept("YIELD")) {
+			Map<String, Binding> yielded = new LinkedHashMap<>();
+			ProjectionElemList projection = new ProjectionElemList();
+			do {
+				Token field = identifier();
+				Binding binding = incoming.get(field.text());
+				if (binding == null) {
+					throw error("Unknown YIELD field: " + field.text());
+				}
+				String name = accept("AS") ? bindingIdentifier().text() : field.text();
+				if (yielded.containsKey(name)) {
+					throw error("Duplicate YIELD binding: " + name);
+				}
+				String internal = fresh();
+				yielded.put(name, new Binding(internal, binding.kind(), binding.nullable()));
+				projection.addElement(new ProjectionElem(binding.name(), internal));
+			} while (accept(","));
+			// Selection follows DISTINCT, ordering, and slicing of the preceding statement.
+			input = new Projection(input, projection);
+			incoming = yielded;
+		}
+		validateAlgebra(input);
+		resetBranch();
+		pipeline = input;
+		variables.putAll(incoming);
+		incoming.values().forEach(binding -> materializedBindings.add(binding.name()));
+	}
+
+	private void renameOutputColumns(TupleExpr input, Map<String, Binding> columns) {
+		Deque<TupleExpr> pending = new ArrayDeque<>();
+		pending.add(input);
+		while (!pending.isEmpty()) {
+			TupleExpr expression = pending.removeLast();
+			if (expression instanceof Projection projection) {
+				for (ProjectionElem element : projection.getProjectionElemList().getElements()) {
+					String name = element.getProjectionAlias().orElse(element.getName());
+					element.setProjectionAlias(columns.get(name).name());
+				}
+			} else if (expression instanceof Union union) {
+				pending.add(union.getLeftArg());
+				pending.add(union.getRightArg());
+			} else if (expression instanceof Distinct distinct) {
+				pending.add(distinct.getArg());
+			} else if (expression instanceof Slice slice) {
+				pending.add(slice.getArg());
+			} else {
+				throw new IllegalStateException("Unexpected GQL result operator: " + expression.getClass());
+			}
+		}
 	}
 
 	/** Validate iteratively before calling RDF4J visitors or recursive binding-name calculations. */
@@ -198,6 +285,8 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 
 	private void resetBranch() {
 		variables.clear();
+		outputColumns.clear();
+		materializedBindings.clear();
 		edges.clear();
 		pendingEdges.clear();
 		properties.clear();
@@ -207,7 +296,14 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		aliases.clear();
 		orderAliases.clear();
 		groupedBindings.clear();
+		patternVariables.clear();
+		inMatch = false;
+		allowAggregates = false;
+		optional = false;
+		differentEdges = false;
 		afterGrouping = false;
+		matchConditions = null;
+		matchEdges = null;
 		graph = null;
 		pipeline = new SingletonSet();
 	}
@@ -231,6 +327,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 				expect("MATCH");
 				match(true);
 			} else if (accept("FILTER")) {
+				accept("WHERE");
 				ValueExpr predicate = expressions.parse();
 				pipeline = new Filter(flush(pipeline), bool(predicate));
 			} else if (accept("LET")) {
@@ -466,6 +563,11 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 			if (previous != null) {
 				matchConditions.add(sameEdge(previous, descriptor));
 			}
+			if (materializedBindings.contains(declared.name())) {
+				// A preceding statement exported the RDF triple identity, not its hidden subject/predicate/object
+				// variables. Constrain the candidate explicitly; a null incoming edge must not become a new edge.
+				matchConditions.add(new SameTerm(new Var(declared.name()), triple(descriptor)));
+			}
 		}
 		if (pathEdges != null) {
 			pathEdges.add(descriptor);
@@ -589,6 +691,9 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		Map<String, Binding> definitions = new LinkedHashMap<>();
 		List<ExtensionElem> values = new ArrayList<>();
 		do {
+			if (peek().is("VALUE") && !peek(1).is("=")) {
+				take();
+			}
 			Token name = bindingIdentifier();
 			if (variables.containsKey(name.text()) || definitions.containsKey(name.text())) {
 				throw error("LET cannot redeclare variable " + name.text());
@@ -634,6 +739,8 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 			throw error("RETURN * needs at least one declared variable");
 		}
 		Map<String, ReturnItem> returnItems = new HashMap<>();
+		Map<String, Binding> inputBindings = new HashMap<>();
+		variables.values().forEach(binding -> inputBindings.put(binding.name(), binding));
 		for (ReturnItem item : items) {
 			returnItems.put(item.name(), item);
 		}
@@ -742,6 +849,10 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 		ProjectionElemList projection = new ProjectionElemList();
 		for (ReturnItem item : items) {
 			ValueExpr expression = item.expression();
+			Binding binding = expression instanceof Var var ? inputBindings.get(var.getName()) : null;
+			outputColumns.put(item.name(), binding == null
+					? new Binding(item.name(), Element.VALUE, !(expression instanceof ValueConstant))
+					: new Binding(item.name(), binding.kind(), binding.nullable()));
 			String groupedExpression = groupedExpressions.get(expression);
 			if (groupedExpression != null) {
 				expression = new Var(groupedExpression);
@@ -803,7 +914,7 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 			throw error("Undeclared variable: " + token.text());
 		}
 		String name = aliases.getOrDefault(token.text(), binding.name());
-		if (binding.kind() == Element.EDGE) {
+		if (binding.kind() == Element.EDGE && !materializedBindings.contains(name)) {
 			if (afterGrouping) {
 				if (!groupedBindings.contains(name)) {
 					throw error("Edge is outside the grouping keys");
@@ -1171,19 +1282,53 @@ final class GqlCompiler implements GqlExpressionParser.Context {
 
 	private long nonnegativeLong(String what) {
 		Token token = take();
-		if (token.kind() != Kind.NUMBER || !token.text().chars().allMatch(Character::isDigit)) {
+		if (token.kind() != Kind.NUMBER) {
 			throw error("Expected a nonnegative integer " + what);
 		}
-		try {
-			return Long.parseLong(token.text());
-		} catch (NumberFormatException exception) {
-			throw error(what + " is too large");
+		String text = token.text();
+		int start = 0;
+		int radix = 10;
+		if (text.length() > 2 && text.charAt(0) == '0') {
+			int base = switch (text.charAt(1)) {
+			case 'x' -> 16;
+			case 'o' -> 8;
+			case 'b' -> 2;
+			default -> 0;
+			};
+			if (base != 0) {
+				start = 2;
+				radix = base;
+			}
 		}
+		long value = 0;
+		long maximum = Long.MAX_VALUE / radix;
+		int lastDigit = (int) (Long.MAX_VALUE % radix);
+		for (int i = start; i < text.length(); i++) {
+			char character = text.charAt(i);
+			if (character == '_') {
+				// Separator positions have already been checked by the lexer.
+				continue;
+			}
+			int digit = Character.digit(character, radix);
+			if (digit < 0) {
+				throw error("Expected a nonnegative integer " + what);
+			}
+			if (value > maximum || value == maximum && digit > lastDigit) {
+				throw error(what + " is too large");
+			}
+			value = value * radix + digit;
+		}
+		return value;
 	}
 
 	@Override
 	public Token peek() {
-		return tokens.get(position);
+		return peek(0);
+	}
+
+	@Override
+	public Token peek(int distance) {
+		return tokens.get(Math.min(position + distance, tokens.size() - 1));
 	}
 
 	@Override

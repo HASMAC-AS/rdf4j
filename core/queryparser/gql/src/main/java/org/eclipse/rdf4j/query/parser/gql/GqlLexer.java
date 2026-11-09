@@ -168,32 +168,71 @@ final class GqlLexer {
 	}
 
 	private void number(int start) {
-		while (offset < source.length() && digit(source.charAt(offset))) {
-			offset++;
-		}
-		if (offset < source.length() && source.charAt(offset) == '.') {
-			offset++;
-			while (offset < source.length() && digit(source.charAt(offset))) {
+		int radix = source.charAt(offset) == '0' && offset + 1 < source.length()
+				? switch (source.charAt(offset + 1)) {
+				case 'x' -> 16;
+				case 'o' -> 8;
+				case 'b' -> 2;
+				default -> 0;
+				}
+				: 0;
+		if (radix != 0) {
+			offset += 2;
+			// Radix integers also allow a separator immediately after their prefix.
+			if (offset < source.length() && source.charAt(offset) == '_') {
 				offset++;
 			}
-		}
-		if (offset < source.length() && (source.charAt(offset) == 'e' || source.charAt(offset) == 'E')) {
-			offset++;
-			if (offset < source.length() && (source.charAt(offset) == '+' || source.charAt(offset) == '-')) {
-				offset++;
+			numberDigits(radix);
+		} else {
+			if (source.charAt(offset) != '.') {
+				numberDigits(10);
 			}
-			int exponentStart = offset;
-			while (offset < source.length() && digit(source.charAt(offset))) {
+			if (offset < source.length() && source.charAt(offset) == '.') {
 				offset++;
+				if (offset < source.length() && digit(source.charAt(offset))) {
+					numberDigits(10);
+				}
 			}
-			if (offset == exponentStart) {
-				throw error(source, start, "Expected digits in numeric exponent");
+			if (offset < source.length() && (source.charAt(offset) == 'e' || source.charAt(offset) == 'E')) {
+				offset++;
+				if (offset < source.length() && (source.charAt(offset) == '+' || source.charAt(offset) == '-')) {
+					offset++;
+				}
+				numberDigits(10);
+			}
+			if (offset < source.length()) {
+				char suffix = source.charAt(offset);
+				if (suffix == 'm' || suffix == 'M' || suffix == 'f' || suffix == 'F' || suffix == 'd'
+						|| suffix == 'D') {
+					offset++;
+				}
 			}
 		}
 		if (offset < source.length() && identifierPart(source.codePointAt(offset))) {
 			throw error(source, offset, "Expected a separator after numeric literal");
 		}
 		add(Kind.NUMBER, source.substring(start, offset), start);
+	}
+
+	private void numberDigits(int radix) {
+		int start = offset;
+		while (offset < source.length()) {
+			int value = asciiHexDigit(source.charAt(offset));
+			if (value < 0 || value >= radix) {
+				break;
+			}
+			offset++;
+			if (offset < source.length() && source.charAt(offset) == '_') {
+				int separator = offset++;
+				int next = offset < source.length() ? asciiHexDigit(source.charAt(offset)) : -1;
+				if (next < 0 || next >= radix) {
+					throw error(source, separator, "Expected a digit after numeric separator");
+				}
+			}
+		}
+		if (offset == start) {
+			throw error(source, start, "Expected a base-" + radix + " digit in numeric literal");
+		}
 	}
 
 	private String quoted(boolean raw, int start) {

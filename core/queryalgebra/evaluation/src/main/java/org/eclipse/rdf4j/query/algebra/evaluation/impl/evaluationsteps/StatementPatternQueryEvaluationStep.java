@@ -81,7 +81,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 	private final Function<Value, Value> valuePreparer;
 	private final PreparedBindingAccess[] preparedBindingAccess;
 
-	private final Predicate<BindingSet> unboundTest;
+	private final Predicate<BindingSet> rejectedBindings;
 
 	private final Function<BindingSet, Value> getContextVar;
 	private final Function<BindingSet, Value> getSubjectVar;
@@ -203,8 +203,15 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 		normalizedObjectVar = objVar;
 		normalizedContextVar = conVar;
 
-		unboundTest = getUnboundTest(context, normalizedSubjectVar, normalizedPredicateVar, normalizedObjectVar,
-				normalizedContextVar);
+		Predicate<BindingSet> rejection = getUnboundTest(context, normalizedSubjectVar, normalizedPredicateVar,
+				normalizedObjectVar, normalizedContextVar);
+		// A specialized named variable is still a join variable, unlike an ordinary constant query term.
+		// Compile checks only for those variables, before lookup or cached-count reuse. Keep all four original
+		// positions: normalization may remove a repeated occurrence that carries the specialized value.
+		rejection = rejectIncompatibleBinding(rejection, context, this.statementPattern.getSubjectVar());
+		rejection = rejectIncompatibleBinding(rejection, context, this.statementPattern.getPredicateVar());
+		rejection = rejectIncompatibleBinding(rejection, context, this.statementPattern.getObjectVar());
+		rejectedBindings = rejectIncompatibleBinding(rejection, context, this.statementPattern.getContextVar());
 		if (valuePreparer == null) {
 			preparedBindingAccess = null;
 		} else {
@@ -280,7 +287,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 
 	/** Returns an owned copy only when a statement input requires a store-native replacement. */
 	BindingSet prepareBindings(BindingSet bindings) {
-		if (preparedBindingAccess == null || bindings.isEmpty() || unboundTest.test(bindings)) {
+		if (preparedBindingAccess == null || bindings.isEmpty() || rejectedBindings.test(bindings)) {
 			return bindings;
 		}
 		MutableBindingSet prepared = null;
@@ -365,6 +372,19 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 		}
 	}
 
+	private static Predicate<BindingSet> rejectIncompatibleBinding(Predicate<BindingSet> rejection,
+			QueryEvaluationContext context, Var variable) {
+		if (variable == null || !variable.hasValue() || variable.isConstant()) {
+			return rejection;
+		}
+		Function<BindingSet, Value> incoming = context.getValue(variable.getName());
+		Value expected = variable.getValue();
+		return rejection.or(bindings -> {
+			Value actual = incoming.apply(bindings);
+			return actual != null && !expected.equals(actual);
+		});
+	}
+
 	@Override
 	public CloseableIteration<BindingSet> evaluate(BindingSet bindings) {
 		if (emptyGraph) {
@@ -376,7 +396,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 			}
 			return iteration;
 
-		} else if (unboundTest.test(bindings)) {
+		} else if (rejectedBindings.test(bindings)) {
 			// the variable must remain unbound for this solution see
 			// https://www.w3.org/TR/sparql11-query/#assignment
 			return QueryEvaluationStep.EMPTY_ITERATION;
@@ -511,7 +531,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 		if (emptyGraph) {
 			return false;
 		}
-		if (unboundTest.test(bindings)) {
+		if (rejectedBindings.test(bindings)) {
 			// the variable must remain unbound for this solution see
 			// https://www.w3.org/TR/sparql11-query/#assignment
 			return false;
@@ -578,7 +598,7 @@ public class StatementPatternQueryEvaluationStep implements QueryEvaluationStep 
 		if (bindings.isEmpty()) {
 			return -1;
 		}
-		if (unboundTest.test(bindings)) {
+		if (rejectedBindings.test(bindings)) {
 			// the variable must remain unbound for this solution see
 			// https://www.w3.org/TR/sparql11-query/#assignment
 			return 0;
