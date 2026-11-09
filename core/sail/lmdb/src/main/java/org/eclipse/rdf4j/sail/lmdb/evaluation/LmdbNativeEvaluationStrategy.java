@@ -34,6 +34,7 @@ import org.eclipse.rdf4j.query.algebra.QueryModelNode;
 import org.eclipse.rdf4j.query.algebra.QueryRoot;
 import org.eclipse.rdf4j.query.algebra.Reduced;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryOptimizerPipeline;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryValueEvaluationStep;
@@ -59,6 +60,7 @@ public final class LmdbNativeEvaluationStrategy extends StrictEvaluationStrategy
 		implements org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.BatchCorrelatedJoinProvider.Host {
 
 	private final NativeLmdbQuerySource nativeSource;
+	private final NativeLmdbQuerySource literalTextSource;
 	private final boolean nativeEnabled;
 	private final boolean forceRootGeneric;
 	private final String forcedExecutionStrategy;
@@ -173,6 +175,7 @@ public final class LmdbNativeEvaluationStrategy extends StrictEvaluationStrategy
 		super(tripleSource, dataset, serviceResolver, iterationCacheSyncTreshold, evaluationStatistics,
 				trackResultSize);
 		NativeLmdbQuerySource extracted = extractNativeSource(tripleSource);
+		this.literalTextSource = extracted;
 		// legacy stores without canonical language tags can hold two ids for one RDF term, so every id-keyed
 		// native path could diverge from the generic engine there — decline them entirely
 		this.nativeSource = extracted != null && extracted.hasCanonicalIds() ? extracted : null;
@@ -581,6 +584,13 @@ public final class LmdbNativeEvaluationStrategy extends StrictEvaluationStrategy
 
 	EvaluationStatistics evaluationStatistics() {
 		return evaluationStatistics;
+	}
+
+	@Override
+	public QueryValueEvaluationStep precompile(ValueExpr expression, QueryEvaluationContext context) {
+		expression = LmdbLiteralTextFilter.pinFilterCondition(expression);
+		QueryValueEvaluationStep residual = super.precompile(expression, context);
+		return LmdbLiteralTextFilter.guardGeneric(expression, literalTextSource, context, residual);
 	}
 
 	private static NativeLmdbQuerySource extractNativeSource(TripleSource tripleSource) {

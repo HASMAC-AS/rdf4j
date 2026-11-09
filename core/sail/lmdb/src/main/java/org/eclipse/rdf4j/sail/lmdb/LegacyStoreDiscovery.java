@@ -208,6 +208,7 @@ final class LegacyStoreDiscovery {
 		for (String name : MODERN_VALUE_METADATA_DBS) {
 			openKnownDatabase(stack, valuesTxn, name, valueDatabases, true);
 		}
+		openKnownDatabase(stack, valuesTxn, ValueStore.LITERAL_TEXT_DATABASE, valueDatabases, false);
 		openKnownDatabase(stack, valuesTxn, ValueStore.TERM_INDEX_MANIFEST_DATABASE, valueDatabases, true);
 		openKnownDatabase(stack, triplesTxn, "contexts", tripleDatabases, true);
 		openKnownDatabase(stack, triplesTxn, TripleStore.NAMESPACE_DATABASE_NAME, tripleDatabases, true);
@@ -602,6 +603,9 @@ final class LegacyStoreDiscovery {
 		}
 		if (valueDatabases.containsKey(ValueStore.TERM_INDEX_MANIFEST_DATABASE)) {
 			expectedValues.add(ValueStore.TERM_INDEX_MANIFEST_DATABASE);
+		}
+		if (valueDatabases.containsKey(ValueStore.LITERAL_TEXT_DATABASE)) {
+			expectedValues.add(ValueStore.LITERAL_TEXT_DATABASE);
 		}
 		for (String spec : termIndexes) {
 			expectedValues.add(TripleIndex.nativeDatabaseName("term-" + spec, true));

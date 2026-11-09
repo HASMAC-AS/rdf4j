@@ -64,6 +64,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
@@ -150,6 +151,7 @@ import org.eclipse.rdf4j.sail.lmdb.model.LmdbResource;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbTripleTerm;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 import org.eclipse.rdf4j.sail.lmdb.model.RdfTermKey;
+import org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary;
 import org.eclipse.rdf4j.sail.lmdb.valueoverlay.CompressedValueOverlay;
 import org.eclipse.rdf4j.sail.lmdb.valueoverlay.OverlayCapacityException;
 import org.eclipse.rdf4j.sail.lmdb.valueoverlay.OverlayMemoryBudget;
@@ -717,6 +719,14 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		private long retiredByIdEntryBytes;
 		private long retiredSequencePuts;
 		private long retiredSequenceEntryBytes;
+		private long literalTextPuts;
+		private long literalTextEntryBytes;
+
+		private void addLiteralTextRecord() {
+			literalTextPuts = add(literalTextPuts, 1L);
+			literalTextEntryBytes = add(literalTextEntryBytes,
+					leafEntryBytes(MAX_ID_KEY_BYTES, LiteralTextSummary.BYTES));
+		}
 
 		private void addStoredRecord(long dataLength, int pageSize) {
 			if (dataLength <= MAX_KEY_SIZE) {
@@ -995,6 +1005,18 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 	private int freeDbi;
 	// database with internal reference counts for IRIs and namespaces
 	private int refCountsDbi;
+	// Derived, fixed-size lexical summaries. Missing rows always remain unknown to query pruning.
+	private int literalTextDbi = -1;
+	private volatile LiteralTextPolicy literalTextPolicy;
+	static final String LITERAL_TEXT_DATABASE = "literal_text";
+	private static final byte[] LITERAL_TEXT_POLICY_KEY = { 0 };
+	private static final byte[] LITERAL_TEXT_PROGRESS_KEY = { 1 };
+	private static final byte[] LITERAL_TEXT_AUTHORITY_KEY = { 2 };
+	private static final int LITERAL_TEXT_REBUILD_BATCH_RECORDS = 1024;
+	private static final long LITERAL_TEXT_REBUILD_BATCH_BYTES = 8L << 20;
+	private static final String LITERAL_TEXT_RUNTIME = "java-string-lowercase-v1\n"
+			+ System.getProperty("java.vendor", "") + "\n" + System.getProperty("java.runtime.version", "")
+			+ "\n" + System.getProperty("java.vm.name", "");
 	// durable retirement queue for IDs kept resolvable for pinned TripleStore snapshots
 	private final RetiredValueIdStore retiredIdStore = new RetiredValueIdStore();
 	/** Marker observation captured before any startup database creation or writer transaction. */
@@ -1511,6 +1533,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 				initializeUnusedRevisionBoundary(stack, writeTxn);
 				freeDbi = openDatabaseWithTxn(writeTxn, "free_ids", MDB_CREATE);
 				refCountsDbi = openDatabaseWithTxn(writeTxn, "ref_counts", MDB_CREATE);
+				openLiteralTextIndex(stack, writeTxn);
 				retiredIdStore.openWithTransaction(env, writeTxn, false);
 
 				MDBStat stat = MDBStat.malloc(stack);
@@ -1613,9 +1636,10 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			long newDatabaseRootPages = 0L;
 			int refCountsHandle = -1;
 			int metadataHandle = -1;
+			int literalTextHandle = -1;
 			List<String> databaseNames = List.of("unused_ids", "free_ids", "ref_counts", "retired_ids",
 					"retired_ids_seq",
-					"gc_meta");
+					"gc_meta", LITERAL_TEXT_DATABASE);
 			for (String name : databaseNames) {
 				IntBuffer handle = stack.mallocInt(1);
 				int rc = mdb_dbi_open(txn, name, 0, handle);
@@ -1629,6 +1653,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						refCountsHandle = handle.get(0);
 					} else if (name.equals("gc_meta")) {
 						metadataHandle = handle.get(0);
+					} else if (name.equals(LITERAL_TEXT_DATABASE)) {
+						literalTextHandle = handle.get(0);
 					}
 				}
 			}
@@ -1654,6 +1680,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			if (metadataHandle >= 0) {
 				catalogFootprint.addNamedDatabase("gc_meta");
 			}
+			if (literalTextHandle >= 0) {
+				catalogFootprint.addNamedDatabase(LITERAL_TEXT_DATABASE);
+			}
 
 			MDBStat stat = MDBStat.malloc(stack);
 			long pages = 0L;
@@ -1674,6 +1703,14 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						leafEntryBytes(1L, MAX_UNSIGNED_ID_BYTES), 0L);
 				pages = add(pages, metadata.pages());
 				replaceablePages = add(replaceablePages, metadata.replaceablePages());
+			}
+			if (literalTextHandle >= 0) {
+				PreparedDatabaseReservation text = preparedDatabaseReservation(txn, literalTextHandle, stat, 2L,
+						add(leafEntryBytes(1L, LiteralTextPolicy.current().encode().length),
+								leafEntryBytes(1L, Long.BYTES)),
+						0L);
+				pages = add(pages, text.pages());
+				replaceablePages = add(replaceablePages, text.replaceablePages());
 			}
 
 			// A newly-created named DB has no stat record yet. Its first root/leaf page is a concrete LMDB allocation;
@@ -1780,6 +1817,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		future.mainPuts = multiply(one.mainPuts, admittedScalars);
 		future.mainEntryBytes = multiply(one.mainEntryBytes, admittedScalars);
 		future.mainOverflowPages = multiply(one.mainOverflowPages, admittedScalars);
+		future.literalTextPuts = admittedScalars;
+		future.literalTextEntryBytes = multiply(admittedScalars,
+				leafEntryBytes(MAX_ID_KEY_BYTES, LiteralTextSummary.BYTES));
 		future.tripleRecords = additionalValues;
 		future.tripleEntryBytes = multiply(additionalValues, leafEntryBytes(TripleIndex.MAX_KEY_LENGTH, 0L));
 		// Only newly stored owners add pending dependencies: one namespace/datatype for a scalar, three components
@@ -2221,6 +2261,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		footprint.freeEntryBytes = multiply(entries, leafEntryBytes(MAX_ID_KEY_BYTES, 0L));
 		footprint.mainPuts = entries;
 		footprint.mainEntryBytes = multiply(entries, leafEntryBytes(MAX_ID_KEY_BYTES, MAX_UNSIGNED_ID_BYTES));
+		footprint.literalTextPuts = entries;
+		footprint.literalTextEntryBytes = multiply(entries,
+				leafEntryBytes(MAX_ID_KEY_BYTES, LiteralTextSummary.BYTES));
 		footprint.tripleRecords = entries;
 		footprint.tripleEntryBytes = multiply(entries, leafEntryBytes(TripleIndex.MAX_KEY_LENGTH, 0L));
 		addNextIdFootprint(footprint);
@@ -2764,6 +2807,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 	private long runRefCountRecoveryWriter(long previousTransactionId, RefCountRecoveryMutation mutation)
 			throws IOException {
+		reserveLiteralTextAuthorityCapacity();
 		long txn = 0L;
 		try (MemoryStack stack = stackPush()) {
 			PointerBuffer pp = stack.mallocPointer(1);
@@ -2775,6 +2819,13 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			int mutationResult;
 			try {
 				mutationResult = mutation.execute(stack, txn);
+				if (mutationResult == MDB_SUCCESS) {
+					try {
+						writeLiteralTextAuthority(stack, txn);
+					} catch (LmdbUtil.MapFullException full) {
+						mutationResult = MDB_MAP_FULL;
+					}
+				}
 			} catch (IOException | RuntimeException | Error failure) {
 				mdb_txn_abort(txn);
 				txn = 0L;
@@ -2985,6 +3036,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 	private void open(boolean deferAuxiliaryDatabases, boolean replacingNativeGeneration) throws IOException {
 		valueStoreInitializationComplete = false;
+		literalTextDbi = -1;
+		literalTextPolicy = null;
 		refCountIntegrityEstablished = false;
 		refCountRecoveryInProgress = false;
 		legacyStructuredRefCountMarker = false;
@@ -3032,9 +3085,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			env = pp.get(0);
 		}
 
-		// 9 basic dbs (including the durable retirement queue), the term-index manifest, and both active and staged
+		// 10 basic dbs (including durable retirement and literal summaries), the term-index manifest, and active/staged
 		// generations of the maximum term-index set.
-		E(mdb_env_set_maxdbs(env, 9 + 1 + (2 * MAX_TERM_INDEXES)));
+		E(mdb_env_set_maxdbs(env, 10 + 1 + (2 * MAX_TERM_INDEXES)));
 		E(mdb_env_set_maxreaders(env, 256));
 
 		// Open environment
@@ -3184,6 +3237,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 				unusedDbi = openDatabaseWithTxn(txn, "unused_ids", MDB_CREATE);
 				freeDbi = openDatabaseWithTxn(txn, "free_ids", MDB_CREATE);
 				refCountsDbi = openDatabaseWithTxn(txn, "ref_counts", MDB_CREATE);
+				openLiteralTextIndex(stack, txn);
 				retiredIdStore.openWithTransaction(env, txn, true);
 				return null;
 			});
@@ -3199,6 +3253,10 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		freeDbi = openDatabase(env, "free_ids", MDB_CREATE);
 		// open ref_counts database
 		refCountsDbi = openDatabase(env, "ref_counts", MDB_CREATE);
+		writeTransaction((stack, txn) -> {
+			openLiteralTextIndex(stack, txn);
+			return null;
+		});
 		// open the retirement queue databases and advance the persisted boot epoch
 		if (freshBulkLoad) {
 			retiredIdStore.openFresh(env);
@@ -3230,13 +3288,361 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		refreshCommittedHighWater();
 	}
 
+	/** The generic and native LCASE evaluators use String.toLowerCase() and therefore the JVM default locale. */
+	private record LiteralTextPolicy(Locale locale, String runtime) {
+		private static LiteralTextPolicy current() {
+			return new LiteralTextPolicy(Locale.getDefault(), LITERAL_TEXT_RUNTIME);
+		}
+
+		private boolean runtimeCompatible() {
+			return runtime.equals(LITERAL_TEXT_RUNTIME);
+		}
+
+		private boolean canQuery(LiteralTextSummary.Query query) {
+			return runtimeCompatible() && locale.equals(query.locale()) && locale.equals(Locale.getDefault());
+		}
+
+		private byte[] encode() {
+			byte[] language = locale.toLanguageTag().getBytes(StandardCharsets.UTF_8);
+			byte[] fingerprint = runtime.getBytes(StandardCharsets.UTF_8);
+			return ByteBuffer.allocate(12 + language.length + fingerprint.length)
+					.putInt(LiteralTextSummary.VERSION)
+					.putInt(language.length)
+					.put(language)
+					.putInt(fingerprint.length)
+					.put(fingerprint)
+					.array();
+		}
+
+		private static LiteralTextPolicy decode(ByteBuffer bytes) {
+			ByteBuffer input = bytes.duplicate().order(java.nio.ByteOrder.BIG_ENDIAN);
+			if (input.remaining() < 12 || input.getInt() != LiteralTextSummary.VERSION) {
+				return null;
+			}
+			int languageLength = input.getInt();
+			if (languageLength < 1 || languageLength > input.remaining() - Integer.BYTES) {
+				return null;
+			}
+			byte[] language = new byte[languageLength];
+			input.get(language);
+			int runtimeLength = input.getInt();
+			if (runtimeLength != input.remaining()) {
+				return null;
+			}
+			byte[] fingerprint = new byte[runtimeLength];
+			input.get(fingerprint);
+			String tag = new String(language, StandardCharsets.UTF_8);
+			Locale locale = Locale.forLanguageTag(tag);
+			if (!locale.toLanguageTag().equals(tag)) {
+				return null;
+			}
+			return new LiteralTextPolicy(locale, new String(fingerprint, StandardCharsets.UTF_8));
+		}
+	}
+
+	private void openLiteralTextIndex(MemoryStack stack, long txn) throws IOException {
+		literalTextDbi = openDatabaseWithTxn(txn, LITERAL_TEXT_DATABASE, MDB_CREATE);
+		MDBVal key = MDBVal.calloc(stack).mv_data(stack.bytes(LITERAL_TEXT_POLICY_KEY));
+		MDBVal value = MDBVal.calloc(stack);
+		int rc = mdb_get(txn, literalTextDbi, key, value);
+		if (rc == MDB_SUCCESS) {
+			literalTextPolicy = LiteralTextPolicy.decode(value.mv_data());
+			if (literalTextPolicy != null) {
+				key.mv_data(stack.bytes(LITERAL_TEXT_AUTHORITY_KEY));
+				int authority = mdb_get(txn, literalTextDbi, key, value);
+				E(authority);
+				if (authority != MDB_SUCCESS || value.mv_size() != Long.BYTES
+						|| value.mv_data().duplicate().order(java.nio.ByteOrder.BIG_ENDIAN).getLong() != mdb_txn_id(txn)
+								- 1L) {
+					// Older binaries/native tools can reuse an ID without maintaining summaries. Revocation must be
+					// durable before our own startup transaction can certify its later native transaction identity.
+					literalTextPolicy = null;
+					key.mv_data(stack.bytes(LITERAL_TEXT_POLICY_KEY));
+					E(mdb_del(txn, literalTextDbi, key, null));
+				}
+			}
+			return;
+		}
+		E(rc);
+		MDBStat stat = MDBStat.malloc(stack);
+		E(mdb_stat(txn, literalTextDbi, stat));
+		if (stat.ms_entries() == 0L) {
+			LiteralTextPolicy policy = LiteralTextPolicy.current();
+			value.mv_data(stack.bytes(policy.encode()));
+			E(mdb_put(txn, literalTextDbi, key, value, 0));
+			literalTextPolicy = policy;
+		} else {
+			// A missing/corrupt policy cannot authorize any existing row. Offline rebuilding resumes bounded clearing.
+			literalTextPolicy = null;
+		}
+	}
+
+	private void writeLiteralTextAuthority(MemoryStack stack, long txn) throws IOException {
+		if (literalTextPolicy != null && literalTextDbi >= 0) {
+			writeLiteralTextAuthorityRecord(stack, txn);
+		}
+	}
+
+	private void writeLiteralTextAuthorityRecord(MemoryStack stack, long txn) throws IOException {
+		MDBVal key = MDBVal.calloc(stack).mv_data(stack.bytes(LITERAL_TEXT_AUTHORITY_KEY));
+		MDBVal value = MDBVal.calloc(stack)
+				.mv_data(stack.malloc(Long.BYTES)
+						.order(java.nio.ByteOrder.BIG_ENDIAN)
+						.putLong(mdb_txn_id(txn))
+						.flip());
+		E(mdb_put(txn, literalTextDbi, key, value, 0));
+	}
+
+	private byte[] literalTextSummary(byte[] record, LiteralTextPolicy policy) {
+		if (record.length < 3 || record[0] != LITERAL_VALUE) {
+			return null;
+		}
+		int labelOffset;
+		try {
+			ByteBuffer input = ByteBuffer.wrap(record);
+			input.get();
+			Varint.readUnsigned(input);
+			int header = input.get() & 0xff;
+			long languageLength;
+			if ((header & 0xc0) == 0xc0) {
+				if ((header & 0x3f) > 2) {
+					return null;
+				}
+				languageLength = Varint.readUnsigned(input);
+			} else {
+				languageLength = header & 0x3f;
+			}
+			if (languageLength < 0 || languageLength > input.remaining()) {
+				return null;
+			}
+			labelOffset = input.position() + (int) languageLength;
+		} catch (BufferUnderflowException | IndexOutOfBoundsException malformed) {
+			return null;
+		}
+		// Decode the actual persisted UTF-8, including its replacement behavior, before applying context-sensitive
+		// case.
+		return LiteralTextSummary.create(record, labelOffset, record.length - labelOffset, policy.locale());
+	}
+
+	/** Called after copying the complete ID payload and before committing its writer, including reused IDs. */
+	private void storeLiteralTextSummary(MemoryStack stack, long txn, long id, byte[] record) throws IOException {
+		LiteralTextPolicy policy = literalTextPolicy;
+		if (literalTextDbi < 0 || record.length == 0 || record[0] != LITERAL_VALUE || policy == null
+				|| !policy.runtimeCompatible()) {
+			return;
+		}
+		byte[] summary = literalTextSummary(record, policy);
+		MDBVal key = MDBVal.calloc(stack).mv_data(id2data(idBuffer(stack), id).flip());
+		if (summary == null) {
+			// Unsupported bytes never inherit a previous occupant's negative proof.
+			E(mdb_del(txn, literalTextDbi, key, null));
+		} else {
+			MDBVal value = MDBVal.calloc(stack).mv_data(stack.bytes(summary));
+			E(mdb_put(txn, literalTextDbi, key, value, 0));
+		}
+		if (txn == writeTxn) {
+			nativeMutation = true;
+		}
+	}
+
+	/**
+	 * Explicit maintenance only: the caller holds the directory lock and has quiesced readers and writers. Each batch
+	 * commits its coverage and scan cursor together. Cancellation/restart leaves existing coverage safe, and opening an
+	 * old store never initiates this dictionary scan.
+	 *
+	 * @return the number of literal summaries written by this invocation
+	 */
+	synchronized long rebuildLiteralTextIndex() throws IOException {
+		if (!valueStoreInitializationComplete || writeTxn != 0L || writerPublication != null
+				|| !readSnapshots.isEmpty() || termIndexMaintenanceReady) {
+			throw new IOException("Literal-text rebuilding requires a quiescent directory-locked store");
+		}
+		checkLiteralTextRebuildInterrupted();
+		LiteralTextPolicy desired = LiteralTextPolicy.current();
+		if (!desired.equals(literalTextPolicy)) {
+			// Revoke the normalization proof before deleting a single old row. Every intermediate state is UNKNOWN.
+			literalTextPolicy = null;
+			reserveLiteralTextCapacity(2);
+			writeTransaction((stack, txn) -> {
+				MDBVal key = MDBVal.calloc(stack).mv_data(stack.bytes(LITERAL_TEXT_POLICY_KEY));
+				E(mdb_del(txn, literalTextDbi, key, null));
+				key.mv_data(stack.bytes(LITERAL_TEXT_PROGRESS_KEY));
+				E(mdb_del(txn, literalTextDbi, key, null));
+				return null;
+			});
+			clearLiteralTextIndexBatches();
+			reserveLiteralTextCapacity(2);
+			writeTransaction((stack, txn) -> {
+				MDBVal key = MDBVal.calloc(stack).mv_data(stack.bytes(LITERAL_TEXT_POLICY_KEY));
+				MDBVal value = MDBVal.calloc(stack).mv_data(stack.bytes(desired.encode()));
+				E(mdb_put(txn, literalTextDbi, key, value, 0));
+				writeLiteralTextAuthorityRecord(stack, txn);
+				return null;
+			});
+			literalTextPolicy = desired;
+		}
+		byte[] after = readTransaction(env, (stack, txn) -> {
+			MDBVal key = MDBVal.calloc(stack).mv_data(stack.bytes(LITERAL_TEXT_PROGRESS_KEY));
+			MDBVal value = MDBVal.calloc(stack);
+			int rc = mdb_get(txn, literalTextDbi, key, value);
+			if (rc == MDB_NOTFOUND) {
+				return null;
+			}
+			E(rc);
+			ByteBuffer progress = value.mv_data();
+			return progress.remaining() > 1 && progress.remaining() <= MAX_ID_KEY_BYTES
+					&& progress.get(progress.position()) == ID_KEY ? copyValue(value) : null;
+		});
+		long written = 0L;
+		while (true) {
+			checkLiteralTextRebuildInterrupted();
+			LiteralTextBatch batch = readLiteralTextBatch(after, desired);
+			reserveLiteralTextCapacity(batch.rows().size() + 1);
+			writeTransaction((stack, txn) -> {
+				MDBVal key = MDBVal.calloc(stack);
+				MDBVal value = MDBVal.calloc(stack);
+				for (BulkRecord row : batch.rows()) {
+					stack.push();
+					try {
+						key.mv_data(stack.bytes(row.key()));
+						value.mv_data(stack.bytes(row.value()));
+						E(mdb_put(txn, literalTextDbi, key, value, 0));
+					} finally {
+						stack.pop();
+					}
+				}
+				key.mv_data(stack.bytes(LITERAL_TEXT_PROGRESS_KEY));
+				if (batch.complete()) {
+					E(mdb_del(txn, literalTextDbi, key, null));
+				} else {
+					value.mv_data(stack.bytes(batch.afterKey()));
+					E(mdb_put(txn, literalTextDbi, key, value, 0));
+				}
+				return null;
+			});
+			written = add(written, batch.rows().size());
+			observeLiteralTextRebuildForTest(written);
+			if (batch.complete()) {
+				return written;
+			}
+			after = batch.afterKey();
+		}
+	}
+
+	/** Inert seam for cancellation/crash-boundary tests after a durable backfill batch. */
+	void observeLiteralTextRebuildForTest(long written) {
+	}
+
+	private static void checkLiteralTextRebuildInterrupted() throws IOException {
+		if (Thread.currentThread().isInterrupted()) {
+			throw new java.io.InterruptedIOException("Literal-text rebuilding was interrupted between batches");
+		}
+	}
+
+	private void reserveLiteralTextCapacity(int entries) throws IOException {
+		PreparedValueFootprint footprint = new PreparedValueFootprint();
+		footprint.literalTextPuts = entries;
+		footprint.literalTextEntryBytes = multiply(entries,
+				leafEntryBytes(MAX_ID_KEY_BYTES,
+						Math.max(LiteralTextSummary.BYTES, LiteralTextPolicy.current().encode().length)));
+		footprint.addReference(1L, REFCOUNT_MARKER_BYTES);
+		addNextIdFootprint(footprint);
+		completePreparedValueFootprint(footprint);
+		long bytes = readTransaction(env, (stack, txn) -> preparedValueReservation(stack, txn, footprint));
+		reserveWriteCapacity(bytes);
+	}
+
+	private void clearLiteralTextIndexBatches() throws IOException {
+		while (true) {
+			checkLiteralTextRebuildInterrupted();
+			List<byte[]> keys = readTransaction(env, (stack, txn) -> {
+				List<byte[]> result = new ArrayList<>(LITERAL_TEXT_REBUILD_BATCH_RECORDS);
+				PointerBuffer handle = stack.mallocPointer(1);
+				E(mdb_cursor_open(txn, literalTextDbi, handle));
+				long cursor = handle.get(0);
+				try {
+					MDBVal key = MDBVal.calloc(stack);
+					MDBVal value = MDBVal.calloc(stack);
+					int rc = mdb_cursor_get(cursor, key, value, MDB_FIRST);
+					while (rc == MDB_SUCCESS && result.size() < LITERAL_TEXT_REBUILD_BATCH_RECORDS) {
+						result.add(copyValue(key));
+						rc = mdb_cursor_get(cursor, key, value, MDB_NEXT);
+					}
+					E(rc);
+					return result;
+				} finally {
+					mdb_cursor_close(cursor);
+				}
+			});
+			if (keys.isEmpty()) {
+				return;
+			}
+			reserveLiteralTextCapacity(keys.size());
+			writeTransaction((stack, txn) -> {
+				MDBVal key = MDBVal.calloc(stack);
+				for (byte[] bytes : keys) {
+					stack.push();
+					try {
+						key.mv_data(stack.bytes(bytes));
+						E(mdb_del(txn, literalTextDbi, key, null));
+					} finally {
+						stack.pop();
+					}
+				}
+				return null;
+			});
+		}
+	}
+
+	private record LiteralTextBatch(List<BulkRecord> rows, byte[] afterKey, boolean complete) {
+	}
+
+	private LiteralTextBatch readLiteralTextBatch(byte[] after, LiteralTextPolicy policy) throws IOException {
+		return readTransaction(env, (stack, txn) -> {
+			List<BulkRecord> rows = new ArrayList<>(LITERAL_TEXT_REBUILD_BATCH_RECORDS);
+			PointerBuffer handle = stack.mallocPointer(1);
+			E(mdb_cursor_open(txn, dbi, handle));
+			long cursor = handle.get(0);
+			try {
+				MDBVal key = MDBVal.calloc(stack).mv_data(stack.bytes(after == null ? new byte[] { ID_KEY } : after));
+				MDBVal value = MDBVal.calloc(stack);
+				int rc = mdb_cursor_get(cursor, key, value, MDB_SET_RANGE);
+				if (rc == MDB_SUCCESS && after != null && bufferEquals(key.mv_data(), after)) {
+					rc = mdb_cursor_get(cursor, key, value, MDB_NEXT);
+				}
+				byte[] last = after;
+				int visited = 0;
+				long bytes = 0L;
+				while (rc == MDB_SUCCESS && key.mv_data().get(0) == ID_KEY
+						&& visited < LITERAL_TEXT_REBUILD_BATCH_RECORDS && bytes < LITERAL_TEXT_REBUILD_BATCH_BYTES) {
+					checkLiteralTextRebuildInterrupted();
+					last = copyValue(key);
+					bytes = add(bytes, value.mv_size());
+					if (value.mv_size() > 0 && value.mv_data().get(0) == LITERAL_VALUE) {
+						byte[] summary = literalTextSummary(copyValue(value), policy);
+						if (summary != null) {
+							rows.add(new BulkRecord(last, summary));
+						}
+					}
+					visited++;
+					rc = mdb_cursor_get(cursor, key, value, MDB_NEXT);
+				}
+				E(rc);
+				boolean complete = rc == MDB_NOTFOUND || key.mv_data().get(0) != ID_KEY;
+				return new LiteralTextBatch(rows, last, complete);
+			} finally {
+				mdb_cursor_close(cursor);
+			}
+		});
+	}
+
 	private void freeUnusedIdsOnStartup() throws IOException {
 		readTransaction(env, (stack, txn) -> {
 			MDBStat stat = MDBStat.malloc(stack);
 			E(mdb_stat(txn, unusedDbi, stat));
 			if (stat.ms_entries() > 0) {
 				// free unused IDs
-				resizeMap(txn, stat.ms_entries() * (2L + Long.BYTES));
+				resizeMap(txn, reservePersistedUnusedCapacity(stack, txn, stat.ms_entries()));
 
 				writeTransaction((stack2, txn2) -> {
 					freeUnusedIdsAndValues(stack2, txn2, null);
@@ -3964,6 +4370,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						(long) TERM_INDEX_REBUILD_BATCH_SIZE * TERM_INDEX_REBUILD_BYTES_PER_RECORD
 								* Math.max(1, desired == null ? 1 : desired.size()));
 				try {
+					reservation = add(reservation, literalTextAuthorityCapacity());
 					if (requiresResizeForEstimatedWrite(reservation)) {
 						growMap = true;
 					} else {
@@ -6448,6 +6855,58 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 	}
 
 	/**
+	 * Tests a necessary lexical condition against a compact persisted summary without resolving the literal. A true
+	 * result includes missing coverage, inline values, incompatible normalization and possible signature collisions.
+	 * Callers must still evaluate RDF datatype/language compatibility and the exact SPARQL expression for candidates.
+	 */
+	@InternalUseOnly
+	public boolean mayMatchLiteralText(long id, LiteralTextSummary.Query query) throws IOException {
+		Objects.requireNonNull(query);
+		LiteralTextPolicy policy = literalTextPolicy;
+		if (literalTextDbi < 0 || policy == null || !policy.canQuery(query) || !ValueIds.isLiteralReference(id)) {
+			return true;
+		}
+		return readTransaction(env, (stack, txn) -> {
+			MDBVal key = MDBVal.calloc(stack).mv_data(id2data(idBuffer(stack), id).flip());
+			MDBVal value = MDBVal.calloc(stack);
+			int rc = mdb_get(txn, literalTextDbi, key, value);
+			if (rc == MDB_NOTFOUND) {
+				return true;
+			}
+			E(rc);
+			if (value.mv_size() != LiteralTextSummary.BYTES) {
+				return true;
+			}
+			ByteBuffer bytes = value.mv_data();
+			return query.mayMatch(bytes, bytes.position());
+		});
+	}
+
+	boolean mayMatchLiteralText(ReadSnapshot snapshot, long id, LiteralTextSummary.Query query) throws IOException {
+		if (snapshot.valueStore() != this) {
+			throw new IllegalArgumentException("Read snapshot belongs to a different ValueStore");
+		}
+		long stamp = txnManager.acquireReadBarrier();
+		try {
+			synchronized (snapshot.txnRef()) {
+				snapshot.ensureValid();
+				if (!snapshot.dictionaryDetached()) {
+					return withBorrowedReadContext(snapshot.txnRef().get(), snapshot.hasStableIds()
+							? (ValueStoreRevision.Lazy) snapshot.revision()
+							: null, true,
+							(stack, txn) -> mayMatchLiteralText(id, query));
+				}
+			}
+		} finally {
+			txnManager.lockManager().unlockRead(stamp);
+		}
+		return readTransaction(env, (stack, txn) -> {
+			snapshot.ensureValid();
+			return mayMatchLiteralText(id, query);
+		});
+	}
+
+	/**
 	 * Reads only the datatype value id of a referenced (non-inlined) literal, without materializing its label or
 	 * touching the value cache: the record's leading bytes hold the type marker and the datatype id varint. Returns the
 	 * datatype value id (0 when the record stores no datatype, i.e. a plain xsd:string literal), or -1 when the id does
@@ -7855,6 +8314,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 				footprint.addReference();
 			}
 			footprint.addStoredRecordUpperBound(literalDataLengthUpperBound(literal), pageSize);
+			footprint.addLiteralTextRecord();
 			break;
 		default:
 			throw new IllegalArgumentException("Unsupported fresh value type " + value.getType());
@@ -7889,16 +8349,33 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 	private long preparedValueReservation(MemoryStack stack, long txn, PreparedValueFootprint footprint)
 			throws IOException {
+		boolean authorityWrite = literalTextPolicy != null && literalTextDbi >= 0;
 		if (footprint.mainPuts == 0L && footprint.referencePuts == 0L && footprint.tripleRecords == 0L
 				&& footprint.unusedPuts == 0L && footprint.freePuts == 0L && footprint.retiredByIdPuts == 0L
-				&& footprint.retiredSequencePuts == 0L) {
+				&& footprint.retiredSequencePuts == 0L && footprint.literalTextPuts == 0L && !authorityWrite) {
 			return 0L;
 		}
 		MDBStat stat = MDBStat.malloc(stack);
-		PreparedDatabaseReservation main = preparedDatabaseReservation(txn, dbi, stat, footprint.mainPuts,
-				footprint.mainEntryBytes, footprint.mainOverflowPages);
+		boolean textWrites = footprint.literalTextPuts > 0L && literalTextDbi >= 0;
+		PreparedDatabaseReservation main = preparedDatabaseReservation(txn, dbi, stat,
+				add(footprint.mainPuts, textWrites ? 1L : 0L),
+				add(footprint.mainEntryBytes, textWrites
+						? leafEntryBytes(LITERAL_TEXT_DATABASE.length(), LMDB_DATABASE_DESCRIPTOR_BYTES)
+						: 0L),
+				footprint.mainOverflowPages);
 		long pages = main.pages();
 		long replaceablePages = main.replaceablePages();
+		if (textWrites) {
+			PreparedDatabaseReservation text = preparedDatabaseReservation(txn, literalTextDbi, stat,
+					add(footprint.literalTextPuts, authorityWrite ? 1L : 0L),
+					add(footprint.literalTextEntryBytes, authorityWrite ? leafEntryBytes(1L, Long.BYTES) : 0L), 0L);
+			pages = add(pages, text.pages());
+			replaceablePages = add(replaceablePages, text.replaceablePages());
+		} else if (authorityWrite) {
+			PreparedDatabaseReservation authority = preparedLiteralTextAuthorityReservation(txn, stat);
+			pages = add(pages, authority.pages());
+			replaceablePages = add(replaceablePages, authority.replaceablePages());
+		}
 		if (footprint.referencePuts > 0L) {
 			PreparedDatabaseReservation references = preparedDatabaseReservation(txn, refCountsDbi, stat,
 					footprint.referencePuts, footprint.referenceEntryBytes, 0L);
@@ -7957,8 +8434,44 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			pages = add(pages, references.pages());
 			replaceablePages = add(replaceablePages, references.replaceablePages());
 		}
+		PreparedDatabaseReservation authority = preparedLiteralTextAuthorityReservation(txn, stat);
+		pages = add(pages, authority.pages());
+		replaceablePages = add(replaceablePages, authority.replaceablePages());
 		long freeDatabasePages = preparedFreeDatabasePages(txn, stat, replaceablePages);
 		return multiply(add(pages, freeDatabasePages), pageSize);
+	}
+
+	/** A single bounded metadata path in the summary tree and its main-DB catalog descriptor. */
+	private PreparedDatabaseReservation preparedLiteralTextAuthorityReservation(long txn, MDBStat stat)
+			throws IOException {
+		if (literalTextPolicy == null || literalTextDbi < 0) {
+			return new PreparedDatabaseReservation(0L, 0L);
+		}
+		E(mdb_stat(txn, literalTextDbi, stat));
+		long textDepth = stat.ms_depth();
+		E(mdb_stat(txn, dbi, stat));
+		long mainDepth = stat.ms_depth();
+		// Both keys and values have fixed size. Two pages per level plus roots also cover the first insertion and
+		// a split up the complete path, without reserving the whole signature table on every metadata-only commit.
+		long paths = add(add(textDepth, mainDepth), 2L);
+		return new PreparedDatabaseReservation(add(multiply(paths, 2L), 2L), paths);
+	}
+
+	private void reserveLiteralTextAuthorityCapacity() throws IOException {
+		// The final clean-close marker runs after public reader admission may have ended. Its marker and authority
+		// remain one abortable native transaction; failure preserves the last committed authority unchanged.
+		if (!autoGrow || shuttingDown || literalTextPolicy == null || literalTextDbi < 0) {
+			return;
+		}
+		reserveWriteCapacity(literalTextAuthorityCapacity());
+	}
+
+	private long literalTextAuthorityCapacity() throws IOException {
+		if (literalTextPolicy == null || literalTextDbi < 0) {
+			return 0L;
+		}
+		return readTransaction(env,
+				(stack, txn) -> preparedValueReservation(stack, txn, new PreparedValueFootprint()));
 	}
 
 	private PreparedDatabaseReservation preparedDatabaseReservation(long txn, int database, MDBStat stat, long puts,
@@ -8021,6 +8534,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		}
 		PreparedValueFootprint footprint = new PreparedValueFootprint();
 		footprint.addStoredRecord(data.length, pageSize);
+		if (data.length > 0 && data[0] == LITERAL_VALUE) {
+			footprint.addLiteralTextRecord();
+		}
 		if (data.length > 0 && (data[0] == LITERAL_VALUE || data[0] == URI_VALUE)) {
 			footprint.addReference();
 		}
@@ -8759,6 +9275,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 				E(mdb_put(writeTxn, dbi, dataVal, idVal, 0));
 				E(mdb_put(writeTxn, dbi, idVal, dataVal, 0));
+				storeLiteralTextSummary(stack2, writeTxn, newId, data);
 				recordCompressedValueChange(newId);
 
 				// update ref count if necessary
@@ -8810,6 +9327,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 					// store mapping of ID -> data
 					E(mdb_put(writeTxn, dbi, idVal, dataVal, MDB_RESERVE));
 					dataVal.mv_data().put(data);
+					storeLiteralTextSummary(stack2, writeTxn, newId, data);
 					recordCompressedValueChange(newId);
 
 					// update ref count if necessary
@@ -8887,6 +9405,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 				// store mapping of ID -> data
 				E(mdb_put(writeTxn, dbi, idVal, dataVal, MDB_RESERVE));
 				dataVal.mv_data().put(data);
+				storeLiteralTextSummary(stack2, writeTxn, newId, data);
 				recordCompressedValueChange(newId);
 
 				// update ref count if necessary
@@ -9489,6 +10008,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		for (int i = 0; i < count; i++) {
 			byte[] value = data[i];
 			footprint.addStoredRecord(value.length, pageSize);
+			if (value.length > 0 && value[0] == LITERAL_VALUE) {
+				footprint.addLiteralTextRecord();
+			}
 			if (value.length > 0 && (value[0] == LITERAL_VALUE || value[0] == URI_VALUE)) {
 				footprint.addReference();
 			}
@@ -9618,6 +10140,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			long activeWriteTxn = currentWriteTxn(txn);
 			E(mdb_put(activeWriteTxn, dbi, dataVal, idVal, 0));
 			E(mdb_put(activeWriteTxn, dbi, idVal, dataVal, 0));
+			storeLiteralTextSummary(stack, activeWriteTxn, newId, data);
 			recordCompressedValueChange(newId);
 			incrementRefCount(stack, activeWriteTxn, data);
 			return newId;
@@ -9691,6 +10214,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			}
 			E(mdb_put(activeWriteTxn, dbi, idVal, dataVal, MDB_RESERVE));
 			dataVal.mv_data().put(data);
+			storeLiteralTextSummary(stack, activeWriteTxn, newId, data);
 			recordCompressedValueChange(newId);
 			incrementRefCount(stack, activeWriteTxn, data);
 			return newId;
@@ -9721,6 +10245,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			dataVal.mv_size(data.length);
 			E(mdb_put(activeWriteTxn, dbi, idVal, dataVal, MDB_RESERVE));
 			dataVal.mv_data().put(data);
+			storeLiteralTextSummary(stack, activeWriteTxn, newId, data);
 			recordCompressedValueChange(newId);
 			incrementRefCount(stack, activeWriteTxn, data);
 			return newId;
@@ -9788,7 +10313,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						ids[indexes[index]] = findId(encoded, true);
 						continue;
 					}
-					resizeForAllocation(txn, 2L * encoded.length + 2L * (2L + Long.BYTES));
+					reserveStoredValueCapacity(stack, txn, encoded);
 					long id = nextId(encoded[0]);
 					writeTransaction((writeStack, activeTxn) -> {
 						idBytes.clear();
@@ -9801,6 +10326,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						} else {
 							E(mdb_put(activeTxn, dbi, idVal, keyVal, 0));
 						}
+						storeLiteralTextSummary(writeStack, activeTxn, id, encoded);
 						incrementRefCount(writeStack, activeTxn, encoded);
 						return null;
 					});
@@ -11593,6 +12119,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			addLmdbStats(stats, "unused_ids", txn, unusedDbi, stat);
 			addLmdbStats(stats, "free_ids", txn, freeDbi, stat);
 			addLmdbStats(stats, "ref_counts", txn, refCountsDbi, stat);
+			if (literalTextDbi >= 0) {
+				addLmdbStats(stats, LITERAL_TEXT_DATABASE, txn, literalTextDbi, stat);
+			}
 			for (TripleIndex index : tripleTermIndexes) {
 				addLmdbStats(stats, index.getName(true), txn, index.getDB(true), stat);
 			}
@@ -11649,6 +12178,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 					throw mapFull;
 				}
 			} else {
+				reserveLiteralTextAuthorityCapacity();
 				beginValueLookupMutation();
 				ValueOverlayRegistry.Prepared[] publication = new ValueOverlayRegistry.Prepared[1];
 				long[] nativeTransactionId = new long[1];
@@ -11666,6 +12196,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						persistNextId(stack, txn);
 						updateRefCounts(stack, txn);
 						writeReferenceCountProof(stack, txn);
+						writeLiteralTextAuthority(stack, txn);
 						publication[0] = prepareCompressedValueMutation(txn);
 						nativeTransactionId[0] = mdb_txn_id(txn);
 						priorNativeTransactionId[0] = lastTransactionId();
@@ -12979,6 +13510,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 							E(mdb_cursor_put(cursor, idVal, dataVal, MDB_RESERVE));
 							dataVal.mv_data().put(record.data);
 						}
+						storeLiteralTextSummary(stack, writeTxn, record.id, record.data);
 					} finally {
 						stack.pop();
 					}
@@ -13864,6 +14396,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 							} else {
 								// delete id -> value association
 								E(trackedDelete(txn, dbi, idVal, null));
+								if (literalTextDbi >= 0) {
+									E(trackedDelete(txn, literalTextDbi, idVal, null));
+								}
 								recordCompressedValueChange(id);
 							}
 
@@ -13959,6 +14494,10 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 			// Native begin can block on an external writer. The in-flight scope keeps the environment alive without
 			// holding an admission monitor or native barrier through begin, reclamation, or map-growth restart.
+			if (resize) {
+				// Even an owned commit with no value mutations persists the index-maintenance authority footer.
+				reserveLiteralTextAuthorityCapacity();
+			}
 			E(mdb_txn_begin(env, NULL, 0, pp));
 			synchronized (writerAdmission) {
 				writeTxn = pp.get(0);
@@ -13993,7 +14532,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 					MDBStat stat = MDBStat.malloc(stack);
 					mdb_stat(writeTxn, unusedDbi, stat);
 					if (resize) {
-						resizeMap(writeTxn, stat.ms_entries() * (2L + Long.BYTES));
+						resizeMap(writeTxn, reservePersistedUnusedCapacity(stack, writeTxn, stat.ms_entries()));
 					}
 					freeUnusedIdsAndValues(stack, writeTxn, candidates);
 				}
@@ -14130,6 +14669,7 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 					persistNextId(stack, writeTxn);
 					updateRefCounts(stack, writeTxn);
 					writeReferenceCountProof(stack, writeTxn);
+					writeLiteralTextAuthority(stack, writeTxn);
 				}
 				refCountsTxCache.clear();
 				if (invalidateRevisionOnCommit) {
@@ -14497,7 +15037,27 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 	@InternalUseOnly
 	public void appendBulkRecords(BulkRecordSource source, int maxTransactionRecords, long maxTransactionBytes)
 			throws IOException {
+		ensureLiteralTextIndexForBulk();
 		appendBulkRecords(source, dbi, maxTransactionRecords, maxTransactionBytes);
+	}
+
+	private void ensureLiteralTextIndexForBulk() throws IOException {
+		if (literalTextDbi >= 0) {
+			return;
+		}
+		// A fresh bulk loader defers the other auxiliary DBs. Summaries must be present before its first ID payload.
+		reserveWriteCapacity(Math.multiplyExact((long) pageSize, BULK_AUXILIARY_DATABASE_RESERVATION_PAGES));
+		try {
+			writeTransaction((stack, txn) -> {
+				openLiteralTextIndex(stack, txn);
+				return null;
+			});
+			txnManager.reset();
+		} catch (IOException | RuntimeException | Error failure) {
+			literalTextDbi = -1;
+			literalTextPolicy = null;
+			throw failure;
+		}
 	}
 
 	/**
@@ -14570,6 +15130,17 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 	private void appendBulkBatch(int targetDbi, List<BulkRecord> batch, long batchBytes) throws IOException {
 		long reservation = Math.max(64 * 1024L, Math.multiplyExact(batchBytes, 2L));
+		PreparedValueFootprint footprint = new PreparedValueFootprint();
+		if (targetDbi == dbi) {
+			for (BulkRecord record : batch) {
+				if (record.key().length > 1 && record.key()[0] == ID_KEY
+						&& record.value().length > 0 && record.value()[0] == LITERAL_VALUE) {
+					footprint.addLiteralTextRecord();
+				}
+			}
+		}
+		reservation = add(reservation,
+				readTransaction(env, (stack, txn) -> preparedValueReservation(stack, txn, footprint)));
 		for (int attempt = 0; attempt < 8; attempt++) {
 			reserveWriteCapacity(reservation);
 			startTransaction(false);
@@ -14619,6 +15190,11 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 								break;
 							}
 							E(result);
+							if (result == MDB_SUCCESS && targetDbi == dbi && record.key().length > 1
+									&& record.key()[0] == ID_KEY) {
+								storeLiteralTextSummary(stack, writeTxn,
+										data2id(ByteBuffer.wrap(record.key())), valueBytes);
+							}
 						} finally {
 							stack.pop();
 						}
@@ -14630,6 +15206,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 					commit();
 					return;
 				}
+			} catch (LmdbUtil.MapFullException capacity) {
+				mapFull = true;
 			} catch (Throwable failure) {
 				rollback();
 				throw failure;
