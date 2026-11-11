@@ -15,8 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: 8837a67272a0e98c943642696e9efcaf261564f0
-          fetch-depth: 0
+          ref: 41a427e48fd8760c40d9d7ab0a434b908c6c0ee3
+          fetch-depth: 8
       - uses: actions/setup-java@v6.0.1
         with:
           java-version: 25
@@ -29,9 +29,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 8837a67272a0e98c943642696e9efcaf261564f0
+          test "$(git rev-parse HEAD)" = 41a427e48fd8760c40d9d7ab0a434b908c6c0ee3
           test "$(git hash-object core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeLeftJoinMemo.java)" = aa992d021f64661259898e9c4342e32db0c6b067
-          test "$(git hash-object core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeOptionalSweepLookupTest.java)" = 2c8baea1ed4198c0a203937ce4ef79a12e8c4da0
+          test "$(git hash-object core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeOptionalSweepLookupTest.java)" = 8ea07d62947b0df8bf1e2f91e9c0ae249bacf0ef
           git show -s --format=fuller HEAD
           grep -m 1 '<version>' pom.xml
           java -version
