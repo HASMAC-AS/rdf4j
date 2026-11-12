@@ -75,6 +75,45 @@ public class RDF4JProtocolSessionTest extends SPARQLProtocolSessionTest {
 		return session;
 	}
 
+	private String manageBackupsForTest(String action, String backup, String target) throws Exception {
+		try {
+			return (String) RDF4JProtocolSession.class
+					.getMethod("manageBackups", String.class, String.class, String.class)
+					.invoke(getRDF4JSession(), action, backup, target);
+		} catch (java.lang.reflect.InvocationTargetException e) {
+			if (e.getCause() instanceof Exception cause) {
+				throw cause;
+			}
+			throw e;
+		}
+	}
+
+	@ParameterizedTest(name = "[{0}]")
+	@MethodSource("httpClientFactories")
+	public void backupManagementUsesAuthenticatedRepositoryEndpoint(String factoryName, MockServerClient client)
+			throws Exception {
+		this.factoryName = factoryName;
+		this.sparqlSession = createProtocolSession();
+		String path = "/rdf4j-server/repositories/test/backups";
+		client.when(request().withMethod("GET").withPath(path))
+				.respond(response().withStatusCode(200)
+						.withContentType(MediaType.APPLICATION_JSON)
+						.withBody("{\"supported\":true}"));
+		assertThat(manageBackupsForTest(null, null, null)).contains("supported");
+		client.when(request().withMethod("POST").withPath(path))
+				.respond(response().withStatusCode(202)
+						.withContentType(MediaType.APPLICATION_JSON)
+						.withBody("{\"state\":\"RUNNING\"}"));
+		assertThat(manageBackupsForTest("restore", "snapshot+1", "new-copy")).contains("RUNNING");
+		client.verify(request().withMethod("GET").withPath(path).withHeader(testHeader, testValue));
+		client.verify(request().withMethod("POST")
+				.withPath(path)
+				.withHeader(testHeader, testValue)
+				.withBody("action=restore&backupId=snapshot%2B1&targetRepositoryId=new-copy"));
+		assertThatThrownBy(() -> manageBackupsForTest("delete", null, null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
 	@ParameterizedTest(name = "[{0}]")
 	@MethodSource("httpClientFactories")
 	public void strategiesUseSelectedRepositoryEndpoint(String factoryName, MockServerClient client) throws Exception {

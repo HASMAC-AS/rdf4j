@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.eclipse.rdf4j.workbench.commands.AddServlet;
+import org.eclipse.rdf4j.workbench.commands.BackupsServlet;
 import org.eclipse.rdf4j.workbench.commands.ClearServlet;
 import org.eclipse.rdf4j.workbench.commands.ConfigServlet;
 import org.eclipse.rdf4j.workbench.commands.ContextsServlet;
@@ -61,6 +62,7 @@ public final class WorkbenchViewRegistry {
 			Map.entry(GraphServlet.class, new View("graph", true)),
 			Map.entry(QueryServlet.class, new View("query", true)),
 			Map.entry(SavedQueriesServlet.class, new View("saved-queries", true)),
+			Map.entry(BackupsServlet.class, new View("backups", true)),
 			Map.entry(ExportServlet.class, new View("export", true)),
 			Map.entry(AddServlet.class, new View("add", true)),
 			Map.entry(RemoveServlet.class, new View("remove", true)),

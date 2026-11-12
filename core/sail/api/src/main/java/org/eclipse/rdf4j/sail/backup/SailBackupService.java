@@ -33,6 +33,11 @@ public interface SailBackupService extends AutoCloseable {
 
 	boolean verify(BackupResult backupResult) throws SailException;
 
+	/**
+	 * Returns a non-blocking status snapshot. Implementations may expose the currently executing backup or restore,
+	 * including scheduled and direct calls, through {@link BackupServiceStatus#getActiveOperation()}.
+	 * Queued operations and standalone checksum verification need not be included.
+	 */
 	BackupServiceStatus getStatus();
 
 	Optional<BackupScheduleStatus> getScheduleStatus(UUID scheduleId);

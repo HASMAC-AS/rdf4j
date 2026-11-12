@@ -543,7 +543,7 @@ namespace workbench {
             create: 'Create repository', delete: 'Delete repository', config: 'Configuration', namespaces: 'Namespaces',
             contexts: 'Named Graphs',
             types: 'Types', explore: 'Explore', graph: 'Graph', query: 'Query', 'saved-queries': 'Saved queries',
-            export: 'Export',
+            export: 'Export', backups: 'Backups',
             add: 'Add RDF', remove: 'Remove', clear: 'Clear', update: 'SPARQL Update', server: 'Connection'
         };
 
@@ -571,7 +571,7 @@ namespace workbench {
             graph: 'Graph Explorer',
             query: 'Query Repository',
             'saved-queries': 'Saved Queries',
-            export: 'Export Repository',
+            export: 'Export Repository', backups: 'Manage Backups',
             add: 'Add RDF',
             remove: 'Remove Statements',
             clear: 'Clear Repository',
@@ -595,6 +595,7 @@ namespace workbench {
             query: 'Run SPARQL queries against this repository.',
             'saved-queries': 'Run the queries saved for this repository again.',
             export: 'Download all the data in this repository as an RDF file.',
+            backups: 'Create snapshots, monitor storage backup activity and restore to a new repository.',
             add: 'Load RDF data into this repository.',
             remove: 'Remove the statements that match a subject, predicate, object or graph.',
             clear: 'Remove all statements from this repository, or from one of its graphs.',
@@ -5009,6 +5010,7 @@ namespace workbench {
                 case 'query': return runtime.html`<div id="query-page-content">${queryPage(runtime, model, context)}</div>`;
                 case 'saved-queries': return savedQueriesPage(runtime, model, context);
                 case 'export': return exportPage(runtime, model, context);
+                case 'backups': return runtime.html`<section id="backups-content" aria-label="Backup management"></section>`;
                 case 'add': return addPage(runtime, model, context);
                 case 'remove': return removePage(runtime, model, context);
                 case 'clear': return clearPage(runtime, model, context);

@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.eclipse.rdf4j.workbench.commands.AddServlet;
+import org.eclipse.rdf4j.workbench.commands.BackupsServlet;
 import org.eclipse.rdf4j.workbench.commands.ClearServlet;
 import org.eclipse.rdf4j.workbench.commands.ConfigServlet;
 import org.eclipse.rdf4j.workbench.commands.ContextsServlet;
@@ -601,6 +602,7 @@ public final class WorkbenchPolicy {
 		addPage(pages, "contexts", "explore", "contexts", "contexts", "Named Graphs", "contexts");
 		addPage(pages, "types", "explore", "types", "types", "Types", "types");
 		addPage(pages, "add", "modify", "add", "add", "Add RDF", "add");
+		addPage(pages, "backups", "modify", "backups", "backups", "Backups", "export");
 		addPage(pages, "export", "modify", "export", "export", "Export", "export");
 		addPage(pages, "update", "modify", "update", "update", "SPARQL Update", "update");
 		addPage(pages, "remove", "modify", "remove", "remove", "Remove", "remove");
@@ -639,6 +641,7 @@ public final class WorkbenchPolicy {
 		servlets.put(GraphServlet.class, "graph");
 		servlets.put(QueryServlet.class, "query");
 		servlets.put(SavedQueriesServlet.class, "saved-queries");
+		servlets.put(BackupsServlet.class, "backups");
 		servlets.put(ExportServlet.class, "export");
 		servlets.put(UpdateServlet.class, "update");
 		servlets.put(AddServlet.class, "add");

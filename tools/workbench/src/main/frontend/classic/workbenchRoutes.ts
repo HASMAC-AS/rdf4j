@@ -280,6 +280,7 @@ namespace workbench {
         register(staticRoute('explore', ['paging.js', 'explore.js'], routeMount(scriptMount('explore'))));
         // The graph explorer is an ES module bundle (Vite); workbenchApp loads *.mjs names with type="module".
         register(staticRoute('graph', ['graph-explorer/graph-explorer.mjs'], routeMount(scriptMount('graphExplorer'))));
+        register(staticRoute('backups', ['backups.js'], routeMount(scriptMount('backups'))));
         register(staticRoute('export', ['paging.js', 'export.js'], routeMount(scriptMount('exportPage'))));
         register(staticRoute('add', ['add.js'], routeMount(scriptMount('add'))));
         register(staticRoute('config', ['vendor/codemirror-5.65.21/codemirror.js', 'yasqeHelper.js', 'configuration.js'],

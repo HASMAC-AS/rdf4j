@@ -241,6 +241,19 @@ public class HTTPRepository extends AbstractRepository implements HttpClientDepe
 		return new HTTPRepositoryConnection(this, createHTTPClient());
 	}
 
+	/** Uses this repository's authenticated session to list snapshots or start a backup/restore job. */
+	@Experimental
+	public String manageBackups(String action, String backupId, String targetRepositoryId) {
+		if (!isInitialized()) {
+			init();
+		}
+		try (RDF4JProtocolSession client = createHTTPClient()) {
+			return client.manageBackups(action, backupId, targetRepositoryId);
+		} catch (IOException e) {
+			throw new RepositoryException("Could not access server backup management", e);
+		}
+	}
+
 	/** Lists the strategies available for native execution in this repository. */
 	@Experimental
 	public List<LmdbForceableStrategy> getLmdbForceableStrategies() throws RepositoryException {

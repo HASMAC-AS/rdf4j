@@ -48,6 +48,7 @@ public final class WorkbenchHtmlShell {
 			Map.entry("contexts", "Named Graphs"), Map.entry("types", "Types"), Map.entry("explore", "Explore"),
 			Map.entry("graph", "Graph"),
 			Map.entry("query", "Query"), Map.entry("saved-queries", "Saved queries"), Map.entry("export", "Export"),
+			Map.entry("backups", "Backups"),
 			Map.entry("add", "Add RDF"), Map.entry("remove", "Remove"), Map.entry("clear", "Clear"),
 			Map.entry("update", "SPARQL Update"), Map.entry("server", "Connection"));
 

@@ -288,6 +288,50 @@ public class RDF4JProtocolSession extends SPARQLProtocolSession {
 		}
 	}
 
+	/** Lists server snapshots or starts a backup/restore job; no filesystem paths are accepted. */
+	@Experimental
+	public String manageBackups(String action, String backupId, String targetRepositoryId) throws IOException {
+		checkRepositoryURL();
+		String location = getRepositoryURL() + "/backups";
+		HttpRequest method;
+		if (action == null) {
+			method = applyAdditionalHeaders(HttpRequests.get(location)).header("Accept", "application/json").build();
+		} else {
+			if (!"backup".equals(action) && !"restore".equals(action)) {
+				throw new IllegalArgumentException("Unsupported backup operation");
+			}
+			String body = "action=" + action;
+			if ("restore".equals(action)) {
+				if (backupId == null || targetRepositoryId == null) {
+					throw new IllegalArgumentException("Restore requires a backup and a new repository ID");
+				}
+				body += "&backupId=" + java.net.URLEncoder.encode(backupId, java.nio.charset.StandardCharsets.UTF_8)
+						+ "&targetRepositoryId="
+						+ java.net.URLEncoder.encode(targetRepositoryId, java.nio.charset.StandardCharsets.UTF_8);
+			}
+			method = applyAdditionalHeaders(HttpRequests.post(location)
+					.body(HttpRequestBody.ofBytes(body.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+							"application/x-www-form-urlencoded")))
+									.header("Accept", "application/json")
+									.build();
+		}
+		try (HttpResponse response = execute(method)) {
+			if (response.getStatusCode() == 404 && action == null) {
+				return "{\"supported\":false}";
+			}
+			if (response.getStatusCode() != (action == null ? 200 : 202)) {
+				throw new RepositoryException("Unexpected backup response: " + response.getStatusCode());
+			}
+			byte[] bytes = response.getBodyAsStream().readNBytes(4 * 1024 * 1024 + 1);
+			if (bytes.length > 4 * 1024 * 1024) {
+				throw new IOException("Backup management response exceeds 4 MiB");
+			}
+			return STRATEGY_MAPPER.readTree(bytes).toString();
+		} catch (RDF4JException e) {
+			throw new RepositoryException(e);
+		}
+	}
+
 	/** Lists the strategies available for native execution in the selected repository. */
 	@Experimental
 	public List<LmdbForceableStrategy> getLmdbForceableStrategies()

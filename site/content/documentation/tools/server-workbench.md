@@ -878,3 +878,21 @@ A federation can be configured from the RDF4J Workbench UI by picking the federa
 ![Create Federation](../images/createFederation.png)
 
 See [Federation with FedX](/documentation/programming/federation/) for more information.
+
+### Managing LMDB backups
+
+The Workbench **Backups** page supports repositories configured directly with an LMDB store on a local RDF4J Server. Wrapped stores and remote SPARQL repositories are not supported by this page. It creates full snapshots with checksums without requiring incremental backup journaling to be enabled. It does not enable journaling or configure scheduled backups.
+
+Backups are stored on the server under `<server-data-directory>/backups/<repository-id>`. The browser supplies repository and backup identifiers, never filesystem paths. These backups use space on the server: administrators should monitor free space and arrange independent off-server copies and retention. This page does not delete backups automatically.
+
+**Restore** always creates a **new repository** with an unused identifier and directory. It does not replace, clear or shut down the source repository. The selected backup is verified before restoration. Incremental journaling is disabled in the restored configuration. If restoration succeeds but repository registration fails, the recovered directory is retained for administrator recovery rather than deleted.
+
+The page reports the currently executing backup or restore for this repository, including scheduled and direct API calls using its backup service. It shows the operation ID, start time and actual phase (for example copying, checksumming, verifying a restore, or replaying transactions). The storage API does not expose byte-level progress, so no percentage is estimated. Waiting callers are not reported as executing. Separately, the page keeps the latest Workbench-managed job result in the current server process. Completed backup artifacts in the managed directory remain discoverable after restart. Standalone verification calls are not shown as backup jobs.
+
+The verification flag in backup metadata is displayed as recorded by the underlying service. Full backup creation currently records a checksum and the requested verification flag, not a separate reread comparison. Restore performs checksum verification before using the snapshot.
+
+When servlet authentication is configured, backup management requires the `rdf4j-admin` role, including listing backups. Map this role in the servlet container's security configuration. An otherwise unauthenticated RDF4J Server remains unauthenticated; do not expose it to untrusted networks. Protect the server and Workbench endpoints with deployment authentication and authorization. The existing request-integrity filters protect browser mutations against cross-origin form submissions.
+
+The HTTP endpoint is `GET /repositories/<id>/backups` for listing and status, or `POST /repositories/<id>/backups` with form parameter `action=backup`. Restoring additionally uses `action=restore`, `backupId`, and `targetRepositoryId`. Mutations return HTTP 202 with a job record; poll the GET endpoint until `job.state` is `SUCCEEDED` or `FAILED`. The separate `activeOperation` object reports the currently executing service operation, including jobs not initiated through this HTTP endpoint, or is null when idle. Conflicting managed operations return HTTP 409. Transaction identifiers are serialized as decimal strings to preserve their full 64-bit precision.
+
+Restore uses the configuration captured with the snapshot, not the current source repository settings. Snapshots without a valid captured direct LMDB repository configuration are rejected before publication. The restored store is opened and checked before its new repository configuration is registered.

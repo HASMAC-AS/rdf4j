@@ -55,6 +55,7 @@ import org.eclipse.rdf4j.model.impl.LinkedHashModel;
 import org.eclipse.rdf4j.sail.SailConnection;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.backup.BackupCompression;
+import org.eclipse.rdf4j.sail.backup.BackupOperationStatus;
 import org.eclipse.rdf4j.sail.backup.BackupRequest;
 import org.eclipse.rdf4j.sail.backup.BackupResult;
 import org.eclipse.rdf4j.sail.backup.BackupSchedule;
@@ -104,6 +105,9 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 	};
 	private volatile long lastPublishedTxnId;
 	private volatile boolean closed;
+	private volatile BackupOperationStatus activeOperation;
+	private volatile java.util.function.Consumer<BackupOperationStatus> operationPhaseListener = status -> {
+	};
 	private Long failedPublicationTxnId;
 
 	LmdbBackupServiceImpl(LmdbStore store, LmdbSailStore backingStore, LmdbStoreConfig config,
@@ -146,11 +150,29 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 		afterFullBackupTransactionIdCaptured = callback;
 	}
 
+	void setOperationPhaseListener(java.util.function.Consumer<BackupOperationStatus> listener) {
+		operationPhaseListener = java.util.Objects.requireNonNull(listener);
+	}
+
+	private void beginOperation(String operation, BackupType type) {
+		activeOperation = new BackupOperationStatus(UUID.randomUUID().toString(), operation,
+				java.util.Optional.ofNullable(type), Instant.now(), "PREPARING");
+		operationPhaseListener.accept(activeOperation);
+	}
+
+	private void operationPhase(String phase) {
+		BackupOperationStatus current = activeOperation;
+		activeOperation = new BackupOperationStatus(current.getOperationId(), current.getOperation(),
+				current.getBackupType(), current.getStartedAt(), phase);
+		operationPhaseListener.accept(activeOperation);
+	}
+
 	@Override
 	public BackupResult createBackup(BackupRequest request) throws SailException {
 		backupOperationLock.lock();
 		try {
 			ensureOpen();
+			beginOperation("BACKUP", request.getType());
 			if (request.getType() == BackupType.INCREMENTAL) {
 				ensureIncrementalBaseline(request);
 			}
@@ -181,6 +203,7 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 			recordFailure("create-backup", null, e);
 			throw new SailException(e);
 		} finally {
+			activeOperation = null;
 			backupOperationLock.unlock();
 		}
 	}
@@ -192,6 +215,7 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 		Path staging = null;
 		try {
 			ensureOpen();
+			beginOperation("RESTORE", null);
 			Path backupDirectory = canonicalPath(request.getBackupDirectory());
 			Path restoreDir = validateRestoreDestination(request.getRestoreDirectory(), backupDirectory);
 			BackupResult base = listByType(backupDirectory, BackupType.FULL).stream()
@@ -201,6 +225,9 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 					.orElseThrow(() -> new SailException("No full backup found for requested transaction id"));
 			if (pathsOverlap(restoreDir, canonicalPath(base.getArtifactPath()))) {
 				throw new SailException("Restore destination overlaps the source snapshot");
+			}
+			if (request.isVerifyBeforeRestore()) {
+				operationPhase("VERIFYING");
 			}
 			if (request.isVerifyBeforeRestore() && !verify(base)) {
 				throw new SailException("Base backup checksum verification failed");
@@ -215,12 +242,15 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 					temporaryLogDirs);
 			Files.createDirectories(restoreDir.getParent());
 			staging = Files.createTempDirectory(restoreDir.getParent(), ".tmp-lmdb-restore-");
+			operationPhase("RESTORING");
 			restoreSnapshot(base.getArtifactPath(), staging);
 			LmdbBackupJournalState.disableRestoredStore(staging);
 			writeBackupDirectory(staging, staging.resolve("backup"));
+			operationPhase("REPLAYING");
 			applyDeltaLogs(logs, staging, base.getEndTransactionId(), request.getTargetTransactionId(),
 					request.isVerifyBeforeRestore(), continuity.generation() != null || !continuity.journaled());
 			writeBackupDirectory(staging, restoreDir.resolve("backup"));
+			operationPhase("PUBLISHING");
 			forceBackupArtifact(staging);
 			validateRestoreDestination(restoreDir, backupDirectory);
 			// Both directories are siblings. No non-atomic fallback may expose a partially restored store.
@@ -241,6 +271,7 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 			} catch (IOException cleanupFailure) {
 				logger.warn("Unable to remove temporary LMDB restore files", cleanupFailure);
 			} finally {
+				activeOperation = null;
 				backupOperationLock.unlock();
 			}
 		}
@@ -387,7 +418,8 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 				java.util.Optional.ofNullable(lastSuccessfulBackupAt), java.util.Optional.ofNullable(lastFailureAt),
 				java.util.Optional.ofNullable(lastFailureStage),
 				lastFailureTransactionId == null ? OptionalLong.empty() : OptionalLong.of(lastFailureTransactionId),
-				java.util.Optional.ofNullable(lastFailureMessage), listScheduleStatuses());
+				java.util.Optional.ofNullable(lastFailureMessage), listScheduleStatuses(),
+				java.util.Optional.ofNullable(activeOperation));
 	}
 
 	@Override
@@ -414,16 +446,20 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 		Files.createDirectories(snapshotDir);
 		boolean promoted = false;
 		try {
+			operationPhase("COPYING");
 			long txnId = backingStore.createOnlineSnapshot(snapshotDir, true, afterFullBackupTransactionIdCaptured);
 			String backupId = "full-" + txnId + "-" + System.currentTimeMillis() + "-" + UUID.randomUUID();
 			Path container = parent.resolve(backupId);
 			Path artifactPath = snapshotDir;
 			if (request.getCompression() == BackupCompression.ZIP) {
+				operationPhase("COMPRESSING");
 				artifactPath = tempContainer.resolve("snapshot.zip");
 				zipDirectory(snapshotDir, artifactPath);
 				deleteRecursively(snapshotDir);
 			}
+			operationPhase("CHECKSUMMING");
 			String sha = checksum(artifactPath);
+			operationPhase("PUBLISHING");
 			forceBackupArtifact(artifactPath);
 			promoteBackupContainer(tempContainer, container);
 			promoted = true;
@@ -503,16 +539,20 @@ final class LmdbBackupServiceImpl implements SailBackupService {
 		try {
 			List<Path> logs = listTransactionLogs(backupDirectory, since.getAsLong(), currentTxn);
 			validateLogCoverage(logs, since.getAsLong(), currentTxn, journalState.generation());
+			operationPhase("COPYING");
 			for (Path log : logs) {
 				Files.copy(log, deltaDir.resolve(log.getFileName()), StandardCopyOption.REPLACE_EXISTING);
 			}
 			Path artifactPath = deltaDir;
 			if (request.getCompression() == BackupCompression.ZIP) {
+				operationPhase("COMPRESSING");
 				artifactPath = tempContainer.resolve("delta.zip");
 				zipDirectory(deltaDir, artifactPath);
 				deleteRecursively(deltaDir);
 			}
+			operationPhase("CHECKSUMMING");
 			String sha = checksum(artifactPath);
+			operationPhase("PUBLISHING");
 			forceBackupArtifact(artifactPath);
 			promoteBackupContainer(tempContainer, container);
 			promoted = true;

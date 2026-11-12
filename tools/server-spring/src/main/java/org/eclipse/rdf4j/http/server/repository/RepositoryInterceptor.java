@@ -20,6 +20,7 @@ import org.eclipse.rdf4j.http.server.ClientHTTPException;
 import org.eclipse.rdf4j.http.server.ProtocolUtil;
 import org.eclipse.rdf4j.http.server.ServerHTTPException;
 import org.eclipse.rdf4j.http.server.ServerInterceptor;
+import org.eclipse.rdf4j.http.server.repository.transaction.ActiveTransactionRegistry;
 import org.eclipse.rdf4j.query.QueryParseOptions;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
@@ -56,6 +57,8 @@ public class RepositoryInterceptor extends ServerInterceptor {
 	 *-----------*/
 
 	private volatile RepositoryManager repositoryManager;
+
+	private RepositoryMaintenance.Lease maintenanceLease;
 
 	private volatile String repositoryID;
 	private volatile QueryParseOptions queryParseOptions = QueryParseOptions.DEFAULT;
@@ -106,7 +109,44 @@ public class RepositoryInterceptor extends ServerInterceptor {
 
 		ProtocolUtil.logRequestParameters(request);
 
-		return super.preHandle(request, respons, handler);
+		boolean lifecycleChange = repositoryID != null
+				&& ((RepositoryConfigRepository.ID.equals(repositoryID)
+						&& !"GET".equals(request.getMethod()) && !"HEAD".equals(request.getMethod()))
+						|| ("/" + repositoryID + "/rename").equals(resolvePath(request))
+						|| ("/" + repositoryID).equals(resolvePath(request))
+								&& ("DELETE".equals(request.getMethod()) || "PUT".equals(request.getMethod()))
+						|| ("/" + repositoryID + "/" + Protocol.CONFIG).equals(resolvePath(request))
+								&& !"GET".equals(request.getMethod()) && !"HEAD".equals(request.getMethod()));
+		try {
+			maintenanceLease = lifecycleChange
+					? RepositoryMaintenance.tryExclusive(repositoryManager, repositoryID)
+					: RepositoryMaintenance.acquire(repositoryManager, repositoryID);
+		} catch (IllegalStateException busy) {
+			throw new ClientHTTPException(409, busy.getMessage());
+		}
+		try {
+			if (lifecycleChange && ActiveTransactionRegistry.INSTANCE
+					.hasActiveTransactions(repositoryManager.getInitializedRepositories())) {
+				throw new ClientHTTPException(409, "Repository manager has active transactions");
+			}
+			return super.preHandle(request, respons, handler);
+		} catch (Exception | Error failure) {
+			maintenanceLease.close();
+			maintenanceLease = null;
+			throw failure;
+		}
+	}
+
+	@Override
+	protected void cleanUpResources() throws ServerHTTPException {
+		try {
+			super.cleanUpResources();
+		} finally {
+			if (maintenanceLease != null) {
+				maintenanceLease.close();
+				maintenanceLease = null;
+			}
+		}
 	}
 
 	@Override
@@ -133,7 +173,8 @@ public class RepositoryInterceptor extends ServerInterceptor {
 				// For requests to delete a repository, we must not attempt to initialize the repository. Otherwise a
 				// corrupt/invalid configuration can block deletion.
 				String requestPath = resolvePath(request);
-				if (("/" + nextRepositoryID + "/" + Protocol.CONFIG).equals(requestPath)) {
+				if (("/" + nextRepositoryID + "/" + Protocol.CONFIG).equals(requestPath)
+						|| ("/" + nextRepositoryID + "/rename").equals(requestPath)) {
 					if (!repositoryManager.hasRepositoryConfig(nextRepositoryID)) {
 						throw new ClientHTTPException(SC_NOT_FOUND, "Unknown repository: " + nextRepositoryID);
 					}

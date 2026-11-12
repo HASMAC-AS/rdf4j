@@ -28,11 +28,21 @@ public final class BackupServiceStatus {
 	private final OptionalLong lastFailureTransactionId;
 	private final Optional<String> lastFailureMessage;
 	private final List<BackupScheduleStatus> scheduledBackups;
+	private final Optional<BackupOperationStatus> activeOperation;
 
 	public BackupServiceStatus(Optional<BackupResult> lastSuccessfulBackup, Optional<Instant> lastSuccessfulBackupAt,
 			Optional<Instant> lastFailureAt, Optional<String> lastFailureStage,
 			OptionalLong lastFailureTransactionId, Optional<String> lastFailureMessage,
 			List<BackupScheduleStatus> scheduledBackups) {
+		this(lastSuccessfulBackup, lastSuccessfulBackupAt, lastFailureAt, lastFailureStage,
+				lastFailureTransactionId, lastFailureMessage, scheduledBackups, Optional.empty());
+	}
+
+	public BackupServiceStatus(Optional<BackupResult> lastSuccessfulBackup, Optional<Instant> lastSuccessfulBackupAt,
+			Optional<Instant> lastFailureAt, Optional<String> lastFailureStage,
+			OptionalLong lastFailureTransactionId, Optional<String> lastFailureMessage,
+			List<BackupScheduleStatus> scheduledBackups, Optional<BackupOperationStatus> activeOperation) {
+		this.activeOperation = Objects.requireNonNull(activeOperation, "activeOperation");
 		this.lastSuccessfulBackup = Objects.requireNonNull(lastSuccessfulBackup, "lastSuccessfulBackup");
 		this.lastSuccessfulBackupAt = Objects.requireNonNull(lastSuccessfulBackupAt, "lastSuccessfulBackupAt");
 		this.lastFailureAt = Objects.requireNonNull(lastFailureAt, "lastFailureAt");
@@ -69,4 +79,10 @@ public final class BackupServiceStatus {
 	public List<BackupScheduleStatus> getScheduledBackups() {
 		return scheduledBackups;
 	}
+
+	/** The operation currently executing, excluding calls queued behind another operation. */
+	public Optional<BackupOperationStatus> getActiveOperation() {
+		return activeOperation;
+	}
+
 }

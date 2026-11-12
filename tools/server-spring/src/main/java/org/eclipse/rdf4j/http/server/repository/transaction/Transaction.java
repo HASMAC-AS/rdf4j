@@ -137,6 +137,10 @@ class Transaction implements AutoCloseable {
 	 *
 	 * @return a {@link UUID} that identifies this Transaction.
 	 */
+	boolean usesRepository(Repository repository) {
+		return rep == repository;
+	}
+
 	UUID getID() {
 		return id;
 	}
