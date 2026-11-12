@@ -29,6 +29,8 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryLanguage;
+import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.parser.ParsedQuery;
 import org.eclipse.rdf4j.query.parser.QueryParserFactory;
@@ -95,7 +97,11 @@ public class SparqlConstraintSelect implements PlanNode {
 				.get();
 
 		try {
-			this.parsedQuery = queryParserFactory.getParser().parseQuery(query, null);
+			QueryParseOptions options = QueryParseOptions.DEFAULT.resolveGraphAlgebraMode(
+					connection.supportsGraphAlgebra() && queryParserFactory.supportsGraphAlgebra()
+							? GraphAlgebraMode.GRAPH
+							: GraphAlgebraMode.LEGACY);
+			this.parsedQuery = queryParserFactory.getParser().parseQuery(query, null, options);
 		} catch (MalformedQueryException e) {
 			logger.error("Malformed query: \n{}", query);
 			throw e;

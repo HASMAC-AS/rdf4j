@@ -85,6 +85,12 @@ public class SchemaCachingRDFSInferencerConnection extends InferencerConnectionW
 
 	}
 
+	@Override
+	public boolean supportsGraphAlgebra() {
+		return getClass() == SchemaCachingRDFSInferencerConnection.class
+				&& getWrappedConnection().supportsGraphAlgebra();
+	}
+
 	void processForSchemaCache(Statement statement) {
 		acquireSchemaWriteLock();
 

@@ -48,6 +48,8 @@ import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.WINF;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.MalformedQueryException;
+import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.AggregateFunctionCall;
 import org.eclipse.rdf4j.query.algebra.AggregateOperator;
 import org.eclipse.rdf4j.query.algebra.And;
@@ -323,6 +325,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 	 *-----------*/
 
 	protected ValueFactory valueFactory;
+	private final boolean useGraphAlgebra;
 	private Map<Value, Var> constantVars = new HashMap<>();
 	private final Set<String> occupiedVarNames = new HashSet<>();
 	private long nextConstantVar;
@@ -351,7 +354,13 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 	 *--------------*/
 
 	public TupleExprBuilder(ValueFactory valueFactory) {
+		this(valueFactory, QueryParseOptions.DEFAULT);
+	}
+
+	public TupleExprBuilder(ValueFactory valueFactory, QueryParseOptions options) {
 		this.valueFactory = valueFactory;
+		useGraphAlgebra = options.resolveGraphAlgebraMode(GraphAlgebraMode.LEGACY)
+				.graphAlgebraMode() == GraphAlgebraMode.GRAPH;
 	}
 
 	/** Reserves user and parser-created names before allocating internal constant bindings. */
@@ -656,7 +665,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 
 		// Start with building the graph pattern
 		graphPattern = new GraphPattern(parentGP);
-		if (node.getSelect().isSubSelect()) {
+		if (useGraphAlgebra && node.getSelect().isSubSelect()) {
 			graphPattern.enterSubquery();
 		}
 		try {
@@ -1019,7 +1028,7 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 			// set context var at the level of the projection. This allows us
 			// to distinguish named graphs selected in the
 			// outer query from named graphs selected as part of the sub-select.
-			Var callerContext = graphPattern.getProjectionContext();
+			Var callerContext = useGraphAlgebra ? graphPattern.getProjectionContext() : graphPattern.getContextVar();
 			((Projection) result).setProjectionContext(callerContext == null ? null : callerContext.clone());
 		}
 
@@ -1878,6 +1887,23 @@ public class TupleExprBuilder extends AbstractASTVisitor {
 
 	@Override
 	public Object visit(ASTGraphGraphPattern node, Object data) throws VisitorException {
+		if (!useGraphAlgebra) {
+			// Preserve the historical lowering. In particular, an empty or BIND-only body does not enumerate
+			// named graphs. Removing a Graph wrapper would leave its body in the default graph instead.
+			Var previousContext = graphPattern.getContextVar();
+			Scope previousScope = graphPattern.getStatementPatternScope();
+			Var graphName = mapValueExprToVar((ValueExpr) node.jjtGetChild(0).jjtAccept(this, null));
+			graphPattern.setContextVar(graphName);
+			graphPattern.setStatementPatternScope(Scope.NAMED_CONTEXTS);
+			try {
+				node.jjtGetChild(1).jjtAccept(this, null);
+			} finally {
+				graphPattern.setContextVar(previousContext);
+				graphPattern.setStatementPatternScope(previousScope);
+			}
+			return null;
+		}
+
 		GraphPattern parent = graphPattern;
 		Var graphName = mapValueExprToVar((ValueExpr) node.jjtGetChild(0).jjtAccept(this, null));
 		graphPattern = new GraphPattern();

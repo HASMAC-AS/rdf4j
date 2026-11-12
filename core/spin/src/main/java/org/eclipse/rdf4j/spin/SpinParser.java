@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -54,6 +55,8 @@ import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryLanguage;
+import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.AggregateOperator;
 import org.eclipse.rdf4j.query.algebra.And;
 import org.eclipse.rdf4j.query.algebra.ArbitraryLengthPath;
@@ -199,6 +202,8 @@ public class SpinParser {
 
 	private final Input input;
 
+	private final QueryParseOptions parseOptions;
+
 	private final Function<IRI, String> wellKnownVars;
 
 	private final Function<IRI, String> wellKnownFunctions;
@@ -218,12 +223,23 @@ public class SpinParser {
 	}
 
 	public SpinParser(Input input) {
-		this(input, SpinWellKnownVars.INSTANCE::getName, SpinWellKnownFunctions.INSTANCE::getName);
+		this(input, QueryParseOptions.DEFAULT);
+	}
+
+	/** The immutable policy also scopes this parser's cached templates; AUTO selects legacy algebra. */
+	public SpinParser(Input input, QueryParseOptions options) {
+		this(input, SpinWellKnownVars.INSTANCE::getName, SpinWellKnownFunctions.INSTANCE::getName, options);
 	}
 
 	public SpinParser(Input input, Function<IRI, String> wellKnownVarsMapper,
 			Function<IRI, String> wellKnownFuncMapper) {
+		this(input, wellKnownVarsMapper, wellKnownFuncMapper, QueryParseOptions.DEFAULT);
+	}
+
+	public SpinParser(Input input, Function<IRI, String> wellKnownVarsMapper,
+			Function<IRI, String> wellKnownFuncMapper, QueryParseOptions options) {
 		this.input = input;
+		this.parseOptions = Objects.requireNonNull(options).resolveGraphAlgebraMode(GraphAlgebraMode.LEGACY);
 		this.wellKnownVars = wellKnownVarsMapper;
 		this.wellKnownFunctions = wellKnownFuncMapper;
 		this.functionParsers = Arrays.<FunctionParser>asList(
@@ -440,6 +456,16 @@ public class SpinParser {
 			parsedOp = tmpl.call(argValues);
 		}
 
+		parsedOp.setParseOptions(parseOptions);
+		if (parsedOp instanceof ParsedUpdate update) {
+			for (UpdateExpr expression : update.getUpdateExprs()) {
+				if (expression instanceof InsertData data) {
+					data.setParseOptions(data.getParseOptions().withGraphAlgebraMode(parseOptions.graphAlgebraMode()));
+				} else if (expression instanceof DeleteData data) {
+					data.setParseOptions(data.getParseOptions().withGraphAlgebraMode(parseOptions.graphAlgebraMode()));
+				}
+			}
+		}
 		return parsedOp;
 	}
 
@@ -593,9 +619,9 @@ public class SpinParser {
 		Value text = TripleSources.singleValue(queryResource, SP.TEXT_PROPERTY, store);
 		if (text != null) {
 			if (QUERY_TYPES.contains(queryType)) {
-				return QueryParserUtil.parseQuery(QueryLanguage.SPARQL, text.stringValue(), null);
+				return QueryParserUtil.parseQuery(QueryLanguage.SPARQL, text.stringValue(), null, parseOptions);
 			} else if (UPDATE_TYPES.contains(queryType)) {
-				return QueryParserUtil.parseUpdate(QueryLanguage.SPARQL, text.stringValue(), null);
+				return QueryParserUtil.parseUpdate(QueryLanguage.SPARQL, text.stringValue(), null, parseOptions);
 			} else {
 				throw new MalformedSpinException(String.format("Unrecognised command type: %s", queryType));
 			}
@@ -934,6 +960,9 @@ public class SpinParser {
 			projElems = new LinkedHashMap<>();
 			Projection projection = visitResultVariables((Resource) resultVars, oldProjElems);
 			projection.setSubquery(subquery);
+			if (subquery && parseOptions.graphAlgebraMode() == GraphAlgebraMode.LEGACY && namedGraph != null) {
+				projection.setProjectionContext(namedGraph.clone());
+			}
 			TupleExpr whereExpr = visitWhere(select);
 			projection.setArg(whereExpr);
 
@@ -1416,15 +1445,17 @@ public class SpinParser {
 					try {
 						Value graphValue = TripleSources.singleValue(r, SP.GRAPH_NAME_NODE_PROPERTY, store);
 						Var graphName = getVar(graphValue);
-						namedGraph = updateTemplate ? graphName : null;
+						boolean contextEncoded = updateTemplate
+								|| parseOptions.graphAlgebraMode() == GraphAlgebraMode.LEGACY;
+						namedGraph = contextEncoded ? graphName : null;
 						Value elements = TripleSources.singleValue(r, SP.ELEMENTS_PROPERTY, store);
 						if (!(elements instanceof Resource)) {
 							throw new MalformedSpinException(
 									String.format("Value of %s is not a resource", SP.ELEMENTS_PROPERTY));
 						}
 						TupleExpr body = visitGroupGraphPattern((Resource) elements);
-						// Query evaluation needs the GRAPH boundary; update execution reads statement contexts.
-						tupleNode = updateTemplate ? body : new Graph(graphName, body);
+						// Legacy consumers and update templates read statement contexts directly.
+						tupleNode = contextEncoded ? body : new Graph(graphName, body);
 					} finally {
 						namedGraph = oldGraph;
 					}
@@ -1531,8 +1562,12 @@ public class SpinParser {
 						}
 						Var subjVar = getVar(subj);
 						Var objVar = getVar(obj);
-						tupleNode = new ArbitraryLengthPath(subjVar,
-								new StatementPattern(subjVar.clone(), getVar(subPath), objVar.clone()), objVar,
+						Scope pathScope = namedGraph == null ? Scope.DEFAULT_CONTEXTS : Scope.NAMED_CONTEXTS;
+						tupleNode = new ArbitraryLengthPath(pathScope, subjVar,
+								new StatementPattern(pathScope, subjVar.clone(), getVar(subPath), objVar.clone(),
+										namedGraph == null ? null : namedGraph.clone()),
+								objVar,
+								namedGraph == null ? null : namedGraph.clone(),
 								minPath.longValue());
 					} else {
 						throw new UnsupportedOperationException(types.toString());
@@ -1545,7 +1580,15 @@ public class SpinParser {
 						throw new MalformedSpinException(
 								String.format("Value of %s is not a resource", SP.ELEMENTS_PROPERTY));
 					}
-					TupleExpr groupExpr = visitGroupGraphPattern((Resource) elements, true);
+					Var oldGraph = namedGraph;
+					TupleExpr groupExpr;
+					try {
+						// A remote service starts with its own active graph in either algebra representation.
+						namedGraph = null;
+						groupExpr = visitGroupGraphPattern((Resource) elements, true);
+					} finally {
+						namedGraph = oldGraph;
+					}
 
 					boolean isSilent = TripleSources.booleanValue(r, SP.SILENT_PROPERTY, store);
 					String exprString;

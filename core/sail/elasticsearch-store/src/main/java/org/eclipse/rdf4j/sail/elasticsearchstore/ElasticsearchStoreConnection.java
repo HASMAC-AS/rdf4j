@@ -23,4 +23,9 @@ public class ElasticsearchStoreConnection extends ExtensibleStoreConnection<Elas
 	ElasticsearchStoreConnection(ElasticsearchStore sail) {
 		super(sail);
 	}
+
+	@Override
+	public boolean supportsGraphAlgebra() {
+		return getClass() == ElasticsearchStoreConnection.class && supportsGraphAlgebraEvaluation();
+	}
 }

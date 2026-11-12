@@ -1125,6 +1125,11 @@ public class LmdbStore extends AbstractNotifyingSail
 			implements EvaluationStrategyFactory, FederatedServiceResolverClient {
 
 		@Override
+		public boolean supportsGraphAlgebra() {
+			return getEvaluationStrategyFactory().supportsGraphAlgebra();
+		}
+
+		@Override
 		public void setQuerySolutionCacheThreshold(long threshold) {
 			getEvaluationStrategyFactory().setQuerySolutionCacheThreshold(threshold);
 		}

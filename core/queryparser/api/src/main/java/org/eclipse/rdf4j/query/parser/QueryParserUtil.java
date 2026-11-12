@@ -12,10 +12,12 @@
 package org.eclipse.rdf4j.query.parser;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.UnsupportedQueryLanguageException;
 import org.eclipse.rdf4j.query.parser.QueryPrologLexer.Token;
 
@@ -23,6 +25,29 @@ import org.eclipse.rdf4j.query.parser.QueryPrologLexer.Token;
  * Utility class for creating query parsers and parsing queries in various query languages.
  */
 public class QueryParserUtil {
+
+	/**
+	 * Resolve requested AUTO policy against both the registered parser factory and the local evaluation path. Explicit
+	 * choices are returned unchanged. Configure parser registrations before preparing operations, just as evaluation
+	 * factories must be configured before preparing operations that depend on their capabilities.
+	 *
+	 * @param language                the query language
+	 * @param requested               the requested immutable parsing policy
+	 * @param evaluationSupportsGraph whether the complete local evaluation path supports GRAPH
+	 * @return options with a concrete algebra mode
+	 */
+	public static QueryParseOptions resolveQueryParseOptions(QueryLanguage language, QueryParseOptions requested,
+			boolean evaluationSupportsGraph) {
+		Objects.requireNonNull(requested);
+		if (requested.graphAlgebraMode() != GraphAlgebraMode.AUTO) {
+			return requested;
+		}
+		boolean supportsGraph = evaluationSupportsGraph && QueryParserRegistry.getInstance()
+				.get(language)
+				.map(QueryParserFactory::supportsGraphAlgebra)
+				.orElse(false);
+		return requested.resolveGraphAlgebraMode(supportsGraph ? GraphAlgebraMode.GRAPH : GraphAlgebraMode.LEGACY);
+	}
 
 	public static QueryParser createParser(QueryLanguage ql) throws UnsupportedQueryLanguageException {
 		QueryParserFactory factory = QueryParserRegistry.getInstance()

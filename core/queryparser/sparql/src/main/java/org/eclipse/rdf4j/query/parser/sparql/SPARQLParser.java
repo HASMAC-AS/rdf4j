@@ -31,6 +31,7 @@ import org.eclipse.rdf4j.query.IncompatibleOperationException;
 import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.DeleteData;
 import org.eclipse.rdf4j.query.algebra.FunctionCall;
 import org.eclipse.rdf4j.query.algebra.InsertData;
@@ -107,6 +108,7 @@ public class SPARQLParser implements QueryParser {
 	@Override
 	public ParsedUpdate parseUpdate(String updateStr, String baseURI, QueryParseOptions options)
 			throws MalformedQueryException {
+		options = Objects.requireNonNull(options).resolveGraphAlgebraMode(GraphAlgebraMode.LEGACY);
 		try {
 
 			ParsedUpdate update = new ParsedUpdate(updateStr);
@@ -162,7 +164,7 @@ public class SPARQLParser implements QueryParser {
 				PrefixDeclProcessor.process(uc, customPrefixes);
 				BlankNodeVarProcessor.process(uc);
 
-				UpdateExprBuilder updateExprBuilder = new UpdateExprBuilder(SimpleValueFactory.getInstance());
+				UpdateExprBuilder updateExprBuilder = new UpdateExprBuilder(SimpleValueFactory.getInstance(), options);
 				updateExprBuilder.reserveVariableNames(uc);
 
 				ASTUpdate updateNode = uc.getUpdate();
@@ -225,6 +227,7 @@ public class SPARQLParser implements QueryParser {
 	@Override
 	public ParsedQuery parseQuery(String queryStr, String baseURI, QueryParseOptions options)
 			throws MalformedQueryException {
+		options = Objects.requireNonNull(options).resolveGraphAlgebraMode(GraphAlgebraMode.LEGACY);
 		try {
 			ASTQueryContainer qc = SyntaxTreeBuilder.parseQuery(queryStr);
 			Set<String> reservedIDs = BNodeReferenceProcessor.process(qc, options);
@@ -239,7 +242,7 @@ public class SPARQLParser implements QueryParser {
 
 				// handle query operation
 
-				TupleExpr tupleExpr = buildQueryModel(qc);
+				TupleExpr tupleExpr = buildQueryModel(qc, options);
 				validateStableIndexFunctions(tupleExpr);
 
 				// Ensure we always return a rooted query.
@@ -298,8 +301,8 @@ public class SPARQLParser implements QueryParser {
 		});
 	}
 
-	private TupleExpr buildQueryModel(Node qc) throws MalformedQueryException {
-		TupleExprBuilder tupleExprBuilder = new TupleExprBuilder(SimpleValueFactory.getInstance());
+	private TupleExpr buildQueryModel(Node qc, QueryParseOptions options) throws MalformedQueryException {
+		TupleExprBuilder tupleExprBuilder = new TupleExprBuilder(SimpleValueFactory.getInstance(), options);
 		try {
 			return (TupleExpr) qc.jjtAccept(tupleExprBuilder, null);
 		} catch (VisitorException e) {

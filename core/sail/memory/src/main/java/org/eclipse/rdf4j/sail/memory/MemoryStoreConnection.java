@@ -60,6 +60,11 @@ public class MemoryStoreConnection extends SailSourceConnection implements Threa
 	 *---------*/
 
 	@Override
+	public boolean supportsGraphAlgebra() {
+		return getClass() == MemoryStoreConnection.class && supportsGraphAlgebraEvaluation();
+	}
+
+	@Override
 	protected void startTransactionInternal() throws SailException {
 		if (!sail.isWritable()) {
 			throw new SailReadOnlyException("Unable to start transaction: data file is locked or read-only");

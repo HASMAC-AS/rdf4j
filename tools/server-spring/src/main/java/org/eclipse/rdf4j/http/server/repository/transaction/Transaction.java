@@ -30,6 +30,7 @@ import org.eclipse.rdf4j.common.transaction.IsolationLevel;
 import org.eclipse.rdf4j.common.transaction.TransactionSetting;
 import org.eclipse.rdf4j.http.client.QueryCircuitBreakerHandle;
 import org.eclipse.rdf4j.http.client.QueryExecutionContext;
+import org.eclipse.rdf4j.http.server.repository.RepositoryInterceptor;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Namespace;
 import org.eclipse.rdf4j.model.Resource;
@@ -141,11 +142,11 @@ class Transaction implements AutoCloseable {
 		return id;
 	}
 
-	/** Captures the endpoint's syntax policy on the connection's dedicated transaction thread. */
+	/** Merges endpoint parsing policy on the connection's dedicated transaction thread, preserving AUTO semantics. */
 	void setQueryParseOptions(QueryParseOptions options)
 			throws InterruptedException, ExecutionException {
 		getFromFuture(submit(() -> {
-			txnConnection.setQueryParseOptions(options);
+			RepositoryInterceptor.applyQueryParseOptions(txnConnection, options);
 			return true;
 		}));
 	}

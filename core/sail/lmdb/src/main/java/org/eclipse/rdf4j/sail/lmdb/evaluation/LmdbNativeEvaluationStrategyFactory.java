@@ -34,6 +34,11 @@ public final class LmdbNativeEvaluationStrategyFactory extends StrictEvaluationS
 	}
 
 	@Override
+	public boolean supportsGraphAlgebra() {
+		return getOptimizerPipeline().isEmpty();
+	}
+
+	@Override
 	public EvaluationStrategy createEvaluationStrategy(Dataset dataset, TripleSource tripleSource,
 			EvaluationStatistics evaluationStatistics) {
 		EvaluationStatistics effectiveStatistics = evaluationStatistics == null ? new EvaluationStatistics()

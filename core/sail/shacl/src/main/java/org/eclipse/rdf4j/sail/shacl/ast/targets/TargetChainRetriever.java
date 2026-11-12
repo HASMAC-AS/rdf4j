@@ -32,6 +32,8 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryLanguage;
+import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.QueryRoot;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.ArrayBindingBasedQueryEvaluationContext;
@@ -74,6 +76,7 @@ public class TargetChainRetriever implements PlanNode {
 	private final List<StatementMatcher> removedStatementMatchers;
 	private final String queryFragment;
 	private final QueryParserFactory queryParserFactory;
+	private final QueryParseOptions parseOptions;
 	private final ConstraintComponent.Scope scope;
 	private final Resource[] dataGraph;
 	private final Dataset dataset;
@@ -123,12 +126,16 @@ public class TargetChainRetriever implements PlanNode {
 		this.queryParserFactory = QueryParserRegistry.getInstance()
 				.get(QueryLanguage.SPARQL)
 				.get();
+		this.parseOptions = QueryParseOptions.DEFAULT.resolveGraphAlgebraMode(
+				connectionsGroup.getBaseConnection().supportsGraphAlgebra() && queryParserFactory.supportsGraphAlgebra()
+						? GraphAlgebraMode.GRAPH
+						: GraphAlgebraMode.LEGACY);
 
 		this.queryStr = "select * where {\n" + this.queryFragment + "\n}";
 
 		this.varNamesInQueryFragment = Set.of(ArrayBindingBasedQueryEvaluationContext
 				.findAllVariablesUsedInQuery(((QueryRoot) queryParserFactory.getParser()
-						.parseQuery(queryStr, null)
+						.parseQuery(queryStr, null, parseOptions)
 						.getTupleExpr())));
 
 		assert !varNamesInQueryFragment.isEmpty();
@@ -282,7 +289,7 @@ public class TargetChainRetriever implements PlanNode {
 									queryFragment + "\n" +
 									"}";
 
-							parsedQuery = queryParserFactory.getParser().parseQuery(query, null);
+							parsedQuery = queryParserFactory.getParser().parseQuery(query, null, parseOptions);
 						}
 
 						List<BindingSet> bulk = readStatementsInBulk(currentVarNames);

@@ -95,6 +95,12 @@ public class FedXConnection extends AbstractSailConnection {
 	}
 
 	@Override
+	public boolean supportsGraphAlgebra() {
+		return getClass() == FedXConnection.class
+				&& federationContext.getManager().getFederationEvaluationStrategyFactory().supportsGraphAlgebra();
+	}
+
+	@Override
 	public void setTransactionSettings(TransactionSetting... settings) {
 		super.setTransactionSettings(settings);
 		this.getWriteStrategyInternal().setTransactionSettings(settings);

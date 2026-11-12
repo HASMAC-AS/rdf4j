@@ -399,6 +399,33 @@ class FedXRemoteBlankNodeGraphTest {
 	}
 
 	@Test
+	void snapshotReparseKeepsEmptyGraphEnumeration() throws Exception {
+		initialize("local");
+		var context = federation.getFederationContext();
+		var strategy = context.createStrategy(null);
+		QueryInfo info = new QueryInfo(RemoteGraphSnapshot.queryString(), null, QueryType.SELECT, 0, false,
+				context, strategy, null);
+		RemoteGraphSnapshot snapshot = null;
+		try (RemoteGraphSnapshot.Load load = new RemoteGraphSnapshot.Load(info)) {
+			RepositoryConnection connection = load.retain(first.getConnection());
+			snapshot = RemoteGraphSnapshot.capture(connection.prepareTupleQuery(RemoteGraphSnapshot.queryString()),
+					"local", load);
+			String text = "SELECT ?g WHERE { GRAPH ?g {} }";
+			TupleQuery query = connection.prepareTupleQuery(text);
+			try (var result = snapshot.evaluate(text, query, EmptyBindingSet.getInstance(),
+					context.getFederatedServiceResolver())) {
+				assertThat(QueryResults.asList(result)).extracting(row -> row.getValue("g"))
+						.containsExactlyInAnyOrderElementsOf(snapshot.graphNames());
+			}
+		} finally {
+			if (snapshot != null) {
+				snapshot.release();
+			}
+			info.close();
+		}
+	}
+
+	@Test
 	void nativeSnapshotCatalogIncludesNestedTermsOnceAcrossContexts() throws Exception {
 		initialize("local");
 		IRI nestedObject = VF.createIRI("urn:nested-object");

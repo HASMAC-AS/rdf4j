@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.rdf4j.query.Query;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.SingletonSet;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.sail.helpers.SailConnectionWrapper;
@@ -55,6 +56,19 @@ class SailConnectionParseOptionsCompatibilityTest {
 	}
 
 	@Test
+	void resolvedLegacyPolicyUsesOldHookButGraphNeverDoes() {
+		AtomicInteger legacyCalls = new AtomicInteger();
+		SailConnection connection = legacyConnection(legacyCalls);
+		QueryParseOptions legacy = QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.LEGACY);
+		QueryParseOptions graph = QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.GRAPH);
+
+		assertSame(LEGACY_RESULT.get(), connection.prepareQuery(LANGUAGE, TYPE, QUERY, null, legacy).orElseThrow());
+		assertEquals(1, legacyCalls.get());
+		assertFalse(connection.prepareQuery(LANGUAGE, TYPE, QUERY, null, graph).isPresent());
+		assertEquals(1, legacyCalls.get());
+	}
+
+	@Test
 	void sailConnectionWrapperForwardsTheConfiguredPolicy() {
 		List<QueryParseOptions> forwarded = new ArrayList<>();
 		SailConnection delegate = (SailConnection) Proxy.newProxyInstance(SailConnection.class.getClassLoader(),
@@ -71,7 +85,8 @@ class SailConnectionParseOptionsCompatibilityTest {
 				.orElseThrow());
 		assertSame(LEGACY_RESULT.get(), wrapper.prepareQuery(LANGUAGE, TYPE, QUERY, null, QueryParseOptions.DEFAULT)
 				.orElseThrow());
-		assertEquals(List.of(QueryParseOptions.STRICT, QueryParseOptions.DEFAULT), forwarded);
+		assertEquals(List.of(QueryParseOptions.STRICT,
+				QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.LEGACY)), forwarded);
 	}
 
 	@Test
@@ -101,6 +116,13 @@ class SailConnectionParseOptionsCompatibilityTest {
 
 		assertFalse(nested.prepareQuery(LANGUAGE, TYPE, QUERY, null, QueryParseOptions.STRICT).isPresent());
 		assertEquals(2, legacyCalls.get(), "strict policy must not invoke a legacy-only override");
+
+		assertSame(LEGACY_RESULT.get(), nested.prepareQuery(LANGUAGE, TYPE, QUERY, null,
+				QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.LEGACY)).orElseThrow());
+		assertEquals(3, legacyCalls.get(), "resolved legacy policy must still reach a legacy wrapper override");
+		assertFalse(nested.prepareQuery(LANGUAGE, TYPE, QUERY, null,
+				QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.GRAPH)).isPresent());
+		assertEquals(3, legacyCalls.get(), "GRAPH must never invoke a legacy-only override");
 	}
 
 	private static SailConnection legacyConnection(AtomicInteger legacyCalls) {

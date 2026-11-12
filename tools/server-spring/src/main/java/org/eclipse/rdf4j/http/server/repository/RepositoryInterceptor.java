@@ -21,6 +21,7 @@ import org.eclipse.rdf4j.http.server.ProtocolUtil;
 import org.eclipse.rdf4j.http.server.ServerHTTPException;
 import org.eclipse.rdf4j.http.server.ServerInterceptor;
 import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.repository.Repository;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryException;
@@ -68,7 +69,7 @@ public class RepositoryInterceptor extends ServerInterceptor {
 		repositoryManager = Objects.requireNonNull(repMan, "Repository manager was null");
 	}
 
-	/** Configures syntax policy for new requests; prepared operations retain their snapshot. */
+	/** Configures parsing policy for new requests; prepared operations retain their snapshot. */
 	public void setQueryParseOptions(QueryParseOptions options) {
 		queryParseOptions = Objects.requireNonNull(options);
 	}
@@ -172,6 +173,17 @@ public class RepositoryInterceptor extends ServerInterceptor {
 	}
 
 	/**
+	 * Apply endpoint syntax policy independently of algebra policy. Endpoint AUTO preserves the connection's algebra
+	 * choice; an explicit endpoint mode overrides it. Remaining AUTO is resolved by the preparing evaluator.
+	 */
+	public static void applyQueryParseOptions(RepositoryConnection connection, QueryParseOptions requested) {
+		QueryParseOptions effective = requested.graphAlgebraMode() == GraphAlgebraMode.AUTO
+				? requested.withGraphAlgebraMode(connection.getQueryParseOptions().graphAlgebraMode())
+				: requested;
+		connection.setQueryParseOptions(effective);
+	}
+
+	/**
 	 * Obtain a new {@link RepositoryConnection} with suitable parser/writer configuration for handling the incoming
 	 * HTTP request. The caller of this method is responsible for closing the connection.
 	 *
@@ -185,7 +197,7 @@ public class RepositoryInterceptor extends ServerInterceptor {
 		}
 		RepositoryConnection conn = repo.getConnection();
 		try {
-			conn.setQueryParseOptions(getQueryParseOptions(request));
+			applyQueryParseOptions(conn, getQueryParseOptions(request));
 			conn.getParserConfig().addNonFatalError(BasicParserSettings.VERIFY_DATATYPE_VALUES);
 			conn.getParserConfig().addNonFatalError(BasicParserSettings.VERIFY_LANGUAGE_TAGS);
 			return conn;

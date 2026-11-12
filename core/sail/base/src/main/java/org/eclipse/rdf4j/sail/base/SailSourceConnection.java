@@ -232,6 +232,11 @@ public abstract class SailSourceConnection extends AbstractNotifyingSailConnecti
 		this.federatedServiceResolver = resolver;
 	}
 
+	/** Support declared by the active factory; concrete connections must also opt in to GRAPH algebra. */
+	protected final boolean supportsGraphAlgebraEvaluation() {
+		return evalStratFactory.supportsGraphAlgebra();
+	}
+
 	protected EvaluationStrategy getEvaluationStrategy(Dataset dataset, TripleSource tripleSource) {
 		EvaluationStrategy evalStrat = evalStratFactory.createEvaluationStrategy(dataset, tripleSource,
 				store.getEvaluationStatistics(), getSailBase().getQueryExecutionPolicy());

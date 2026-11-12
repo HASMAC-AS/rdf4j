@@ -182,6 +182,11 @@ public class ShaclSailConnection extends NotifyingSailConnectionWrapper implemen
 	}
 
 	@Override
+	public boolean supportsGraphAlgebra() {
+		return getClass() == ShaclSailConnection.class && getWrappedConnection().supportsGraphAlgebra();
+	}
+
+	@Override
 	public void setTransactionSettings(TransactionSetting... settings) {
 		super.setTransactionSettings(settings);
 		this.transactionSettingsRaw = settings;

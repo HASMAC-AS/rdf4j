@@ -30,6 +30,7 @@ import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.Query;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.QueryParseOptions;
+import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolver;
 import org.eclipse.rdf4j.query.algebra.evaluation.federation.FederatedServiceResolverClient;
@@ -125,8 +126,15 @@ public class SailConnectionWrapper
 	}
 
 	@Override
+	public boolean supportsGraphAlgebra() {
+		// A subclass may inspect or replace algebra and must explicitly confirm its own compatibility.
+		return getClass() == SailConnectionWrapper.class && wrappedCon.supportsGraphAlgebra();
+	}
+
+	@Override
 	public Optional<TupleExpr> prepareQuery(QueryLanguage ql, Query.QueryType type, String query, String baseURI) {
-		return wrappedCon.prepareQuery(ql, type, query, baseURI, QueryParseOptions.DEFAULT);
+		return wrappedCon.prepareQuery(ql, type, query, baseURI,
+				QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.LEGACY));
 	}
 
 	@Override
@@ -301,7 +309,7 @@ public class SailConnectionWrapper
 	public Optional<TupleExpr> prepareQuery(QueryLanguage language, Query.QueryType type,
 			String query, String baseURI, QueryParseOptions options) {
 		Objects.requireNonNull(options);
-		return options.equals(QueryParseOptions.DEFAULT)
+		return options.blankNodeReferences() && options.graphAlgebraMode() != GraphAlgebraMode.GRAPH
 				? prepareQuery(language, type, query, baseURI)
 				: wrappedCon.prepareQuery(language, type, query, baseURI, options);
 	}

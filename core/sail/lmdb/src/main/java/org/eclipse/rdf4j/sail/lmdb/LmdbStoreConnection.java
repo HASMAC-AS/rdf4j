@@ -257,6 +257,11 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 	}
 
 	@Override
+	public boolean supportsGraphAlgebra() {
+		return getClass() == LmdbStoreConnection.class && supportsGraphAlgebraEvaluation();
+	}
+
+	@Override
 	public <T> CloseableIteration<? extends T> exposeIteration(CloseableIteration<? extends T> source,
 			SailResultValueExtractor<T> extractor) {
 		if (!extractor.hasValues()) {
