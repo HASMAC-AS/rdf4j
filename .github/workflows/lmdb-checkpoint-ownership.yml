@@ -91,7 +91,7 @@ jobs:
             label="$(printf '%02d' "$i")-coordinate-$mode"
             echo "=== $label: AUTO (no forced strategy), coordinates=$mode ===" | tee "coordinate-results/$label.txt"
             java -Xms1g -Xmx3g -Drdf4j.lmdb.resultCoordinates.enabled="$mode" -cp "$cp" \
-              org.eclipse.rdf4j.sail.lmdb.benchmark.OptionalFanoutBenchmark --small \
+              org.eclipse.rdf4j.sail.lmdb.benchmark.OptionalFanoutBenchmark --dimensions 40 4 \
               >> "coordinate-results/$label.txt" 2>&1
             java -cp "$cp" org.openjdk.jmh.Main '.*OptionalFanoutBenchmark.runQuery' \
               -p measurementCount=40 -p readingsPerMeasurement=4 \

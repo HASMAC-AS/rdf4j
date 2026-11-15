@@ -150,12 +150,14 @@ public class OptionalFanoutBenchmark {
 	/** Separate, untimed diagnostics: direct execution counters followed by executed-plan telemetry. */
 	public static void main(String[] args) throws IOException {
 		OptionalFanoutBenchmark benchmark = new OptionalFanoutBenchmark();
-		if (args.length != 0 && !Arrays.equals(args, new String[] { "--small" })) {
-			throw new IllegalArgumentException("Use no arguments for the full fixture or --small for 2 x 2");
-		}
-		if (args.length != 0) {
+		if (args.length == 1 && "--small".equals(args[0])) {
 			benchmark.measurementCount = 2;
 			benchmark.readingsPerMeasurement = 2;
+		} else if (args.length == 3 && "--dimensions".equals(args[0])) {
+			benchmark.measurementCount = Integer.parseInt(args[1]);
+			benchmark.readingsPerMeasurement = Integer.parseInt(args[2]);
+		} else if (args.length != 0) {
+			throw new IllegalArgumentException("Use no arguments, --small, or --dimensions MEASUREMENTS READINGS");
 		}
 		benchmark.setup();
 		try {
