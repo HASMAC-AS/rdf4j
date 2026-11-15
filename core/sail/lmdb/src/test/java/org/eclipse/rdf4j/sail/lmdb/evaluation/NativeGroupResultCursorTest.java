@@ -267,6 +267,8 @@ class NativeGroupResultCursorTest {
 			group.enclosingFused = fixture.root;
 			NativeInvocationCarrier invocation = group.invocationCarrier();
 			assertNotSame(fixture.root, invocation.session());
+			group.invocationStrategy = fixture.strategy.forInvocation(fixture.source, invocation.session(),
+					fixture.source.executionContext());
 			NativeGroupResultCursor.GroupingPlan selected = NativeGroupResultCursor.tablePlan(group);
 			try (NativeGroupResultCursor cursor = new NativeGroupResultCursor(null, group,
 					fixture.source.executionContext(), false, selected, true)) {

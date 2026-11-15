@@ -93,6 +93,8 @@ final class NativeResultMaterializerPlan {
  */
 final class NativeResultMaterializer implements AutoCloseable {
 
+	/** Ablation only: normal AUTO selection and value ownership are unchanged. */
+	static final String COORDINATE_TRANSPORT_PROPERTY = "rdf4j.lmdb.lazyResultCoordinateTransport.enabled";
 	private static final long SIMPLE_LEAF_VERSION = Long.MIN_VALUE;
 	private static final Object NO_REVISION_OWNER = new Object();
 	private static final int PAGE_SHIFT = 6;
@@ -102,6 +104,7 @@ final class NativeResultMaterializer implements AutoCloseable {
 
 	private final NativeResultMaterializerPlan plan;
 	private final LmdbQueryMemoryManager.QueryLedger ledger;
+	private final boolean coordinateTransportEnabled;
 	private final LongConsumer retireNamespace = this::retireFactorNamespace;
 	private WeakReference<NativeLmdbQuerySource> source;
 	private LmdbQueryMemoryManager.Reservation reservation;
@@ -139,6 +142,8 @@ final class NativeResultMaterializer implements AutoCloseable {
 	NativeResultMaterializer(NativeResultMaterializerPlan plan, LmdbQueryMemoryManager.QueryLedger ledger) {
 		this.plan = plan;
 		this.ledger = ledger;
+		this.coordinateTransportEnabled = Boolean
+				.parseBoolean(System.getProperty(COORDINATE_TRANSPORT_PROPERTY, "true"));
 	}
 
 	/** Begin one accepted outward row; null declines reuse for this row. */
@@ -188,7 +193,9 @@ final class NativeResultMaterializer implements AutoCloseable {
 
 	/** Publishes only a live producer position; no factor cache entry is admitted here. */
 	synchronized long position(NativeResultCoordinates producer, long[] row) {
-		if (closed || coordinateSequenceExhausted) {
+		// Isolate transport bookkeeping while retaining the same weak-value cache,
+		// reference witnesses, reservation ledger, projection and lifetime.
+		if (!coordinateTransportEnabled || closed || coordinateSequenceExhausted) {
 			return 0L;
 		}
 		if (producer == null) {

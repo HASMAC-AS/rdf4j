@@ -167,6 +167,17 @@ final class LmdbNativeKernelHooks implements KernelHooks {
 				this.scratch.borrowPreparationAttempt(liveRow);
 			}
 			this.scratch.fusedSession = liveRow.fusedSession;
+			// The kernel's scratch row executes semantic BIND/FILTER callbacks. Its
+			// invocation authority must be identical to the live row's, not inferred
+			// from an ambient source or thread.
+			NativeExecutionContext execution = liveRow.executionContextOrNull();
+			if (execution != null) {
+				this.scratch.setExecutionContext(execution);
+			}
+			LmdbNativeEvaluationStrategy invocation = liveRow.invocationStrategyOrNull();
+			if (invocation != null) {
+				this.scratch.bindInvocationStrategy(invocation);
+			}
 			this.scratch.lexicalInputMask = liveRow.lexicalInputMask;
 			this.scratch.lexicalScopeDepth = liveRow.lexicalScopeDepth;
 			this.scratch.encounterOrderRequired = liveRow.encounterOrderRequired;
