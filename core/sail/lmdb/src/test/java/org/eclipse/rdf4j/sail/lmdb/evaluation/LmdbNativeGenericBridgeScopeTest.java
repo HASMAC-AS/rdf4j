@@ -1102,7 +1102,10 @@ public class LmdbNativeGenericBridgeScopeTest {
 			MapBindingSet api = new MapBindingSet();
 			api.addBinding("hidden", vf.createIRI(EX, "excluded" + evaluation));
 			List<BindingSet> actual = evaluateStep(outcome.step(), api);
-			assertThat(SCALAR_OUTER_NOW_RECORDED).isNotEmpty();
+			assertThat(SCALAR_OUTER_NOW_RECORDED)
+					.as("Native projected NOW: output rows=%s; inner NOW calls=%s; api=%s", actual,
+							SCALAR_INNER_NOW_RECORDED.size(), api)
+					.isNotEmpty();
 			assertThat(SCALAR_INNER_NOW_RECORDED).isNotEmpty();
 			Value now = SCALAR_OUTER_NOW_RECORDED.getFirst();
 			assertThat(SCALAR_OUTER_NOW_RECORDED).allSatisfy(value -> assertThat(value).isSameAs(now));

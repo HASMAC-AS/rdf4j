@@ -94,6 +94,11 @@ public class NativeValueResolutionContractTest {
 		}
 
 		@Override
+		public Object resultValueScope() {
+			return scope;
+		}
+
+		@Override
 		public long idOf(Value v) {
 			calls.incrementAndGet();
 			duringLookup.run();
