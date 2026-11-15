@@ -336,7 +336,9 @@ public class NativeValueResolutionContractTest {
 			check(NativeRowSeeder.seed(seeded, layout,
 					new ListBindingSet(List.of("input"), imported), evaluation));
 			equal(456L, seeded[0]);
-			check(masks.equals(List.of(9, 4)));
+			if (!masks.equals(List.of(9, 4))) {
+				throw new AssertionError("destination position masks: " + masks);
+			}
 		} finally {
 			evaluation.executionContext().close();
 		}

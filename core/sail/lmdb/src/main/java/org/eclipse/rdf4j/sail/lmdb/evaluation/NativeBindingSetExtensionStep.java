@@ -693,7 +693,12 @@ final class NativeBindingSetValueCompiler {
 			return scalarSubquery;
 		}
 		GenericSubplanDescriptor descriptor = GenericSubplanDescriptor.create(expression, strategy);
-		if (strategy.enclosingFusedInvocation() == null) {
+		// A user-defined TripleTerm may have mutable, cyclic or side-effecting components.
+		// Generic precompilation scans nested blank-node identities. Defer that scan until
+		// the first reached row; a zero-row native child must never inspect the value.
+		if (strategy.enclosingFusedInvocation() == null
+				|| expression instanceof ValueConstant constant
+						&& constant.getValue() instanceof org.eclipse.rdf4j.model.TripleTerm) {
 			return new EvaluationScopedValueEvaluator(descriptor, strategy, context);
 		}
 		QueryValueEvaluationStep valueStep = descriptor.precompileValue(strategy, context);

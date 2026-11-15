@@ -187,7 +187,12 @@ final class PlanValueCatalog {
 		 * nested descriptors are published. These scratch claims share the tree ledger.
 		 */
 		boolean reserveRecipeMetadata(long bytes) {
-			LmdbQueryMemoryManager.Reservation reservation = reserveCompilationScratch(null, bytes);
+			checkPreparing();
+			// Earlier price evidence may have attached the tree to the invocation's
+			// ledger. Reserve from that exact ledger rather than silently declining.
+			LmdbQueryMemoryManager.Reservation reservation = compilationLedger == null
+					? reserveCompilationScratch(null, bytes)
+					: compilationLedger.tryReserveWithoutReclamation(bytes);
 			if (reservation == null) {
 				return false;
 			}
