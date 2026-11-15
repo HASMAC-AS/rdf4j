@@ -361,18 +361,26 @@ class NativeResultWrapperBindingTest {
 			planner.layout.freeze(planner.slotNames);
 			firstRow = new RowState(firstSource, planner.layout, empty);
 			firstRow.fusedSession = firstWorker;
+			firstRow.setExecutionContext(firstSource.executionContext());
+			firstRow.bindInvocationStrategy(
+					strategy.forInvocation(firstSource, firstWorker, firstSource.executionContext()));
 			assertThat(NativeRowSeeder.seed(firstRow.slots, planner.layout, empty, firstSource)).isTrue();
 			firstRow.recomputeBoundMask();
 			secondRow = new RowState(secondSource, planner.layout, empty);
 			secondRow.fusedSession = secondWorker;
+			secondRow.setExecutionContext(secondSource.executionContext());
+			secondRow.bindInvocationStrategy(
+					strategy.forInvocation(secondSource, secondWorker, secondSource.executionContext()));
 			assertThat(NativeRowSeeder.seed(secondRow.slots, planner.layout, empty, secondSource)).isTrue();
 			secondRow.recomputeBoundMask();
 
 			afterCompilation.set(true);
 			NativeScalarPlan.WorkerContext firstWorkerContext = NativeScalarPlan.WorkerContext.forSource(firstSource,
-					firstContext, firstWorker, firstSource.executionContext());
+					firstContext, firstWorker, firstSource.executionContext(),
+					firstRow.invocationStrategyOrNull(), boundary);
 			NativeScalarPlan.WorkerContext secondWorkerContext = NativeScalarPlan.WorkerContext.forSource(secondSource,
-					secondContext, secondWorker, secondSource.executionContext());
+					secondContext, secondWorker, secondSource.executionContext(),
+					secondRow.invocationStrategyOrNull(), boundary);
 			NativeSubqueryPlan first = original;
 			NativeSubqueryPlan second = original;
 			if (workerExpected) {

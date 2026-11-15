@@ -295,7 +295,10 @@ class NativeWrapperConstantCaptureTest {
 
 		@Override
 		public Value getObject() {
-			if (++objectReads > 16) {
+			if (++objectReads == 1) {
+				new Exception("Diagnostic: first custom triple component read").printStackTrace();
+			}
+			if (objectReads > 16) {
 				throw new AssertionError("descriptor capture followed a cyclic triple");
 			}
 			return this;
