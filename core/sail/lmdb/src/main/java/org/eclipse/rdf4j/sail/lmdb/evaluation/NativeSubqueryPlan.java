@@ -611,7 +611,18 @@ final class NativeSubqueryPlan implements SlotPlan {
 	 * The candidate session claims every retained binding; the execution owns cleanup.
 	 */
 	private WorkerCompiledState compiledForWorker(NativeScalarPlan.WorkerContext worker) {
-		if (compiledResultRecipe == null || !compiledResultRecipe.compatible(worker.source())
+		boolean recipeCompatible = compiledResultRecipe != null && compiledResultRecipe.compatible(worker.source());
+		if (Boolean.getBoolean("rdf4j.lmdb.debugWorkerRecipe")) {
+			System.out.printf("WORKER-RECIPE plan=%s recipe=%s compatible=%s catalogSize=%d "
+							+ "sourcePlanCatalog=%s ownCatalog=%s frame=%d private=%d lateral=%s strategy=%s%n",
+					describe(), compiledResultRecipe != null, recipeCompatible,
+					compiledResultRecipe == null ? -1 : compiledResultRecipe.catalog().size(),
+					worker.source().detachedDomainStamp().planCatalog(),
+					compiledResultRecipe == null ? null : compiledResultRecipe.catalog().detachedIdentity(),
+					frameInputSlots.length, privateGraphParameters.length, lateralStepFactory != null,
+					worker.invocationStrategy() != null && worker.invocationStrategy().isBoundTo(worker));
+		}
+		if (!recipeCompatible
 				|| frameInputSlots.length != 0 || privateGraphParameters.length != 0 || lateralStepFactory != null
 				|| worker.invocationStrategy() == null || !worker.invocationStrategy().isBoundTo(worker)) {
 			return null;
@@ -633,6 +644,12 @@ final class NativeSubqueryPlan implements SlotPlan {
 					return null;
 				}
 				QueryEvaluationStep step = compiledResultRecipe.recipe().bind(binding);
+				if (Boolean.getBoolean("rdf4j.lmdb.debugWorkerRecipe")) {
+					System.out.printf("WORKER-BOUND step=%s native=%s physical=%s stillCompatible=%s%n",
+							step == null ? null : step.getClass().getName(), step instanceof NativeResultStep,
+							step instanceof NativeResultStep ns && ns.requiresPhysicalResults(),
+							compiledResultRecipe.compatible(worker.source()));
+				}
 				if (!(step instanceof NativeResultStep nativeStep) || nativeStep.requiresPhysicalResults()
 						|| !compiledResultRecipe.compatible(worker.source())) {
 					return null;

@@ -30,6 +30,7 @@ jobs:
           mvn -B -ntp -pl core/sail/lmdb test --fail-at-end \
             -PskipSlowTests,-formatting -DskipITs \
             -Dmaven.javadoc.skip=true -Djapicmp.skip=true -Denforcer.skip=true -Danimal.sniffer.skip=true \
+            -Drdf4j.lmdb.debugWorkerRecipe=true \
             -Dtest=LmdbNativeLazyProjectedResultTest,NativeValueResolutionContractTest,NativeResultMaterializerTest,NativeResultWrapperBindingTest,NativeWrapperConstantCaptureTest,LmdbValuesPlanOwnershipTest,LmdbPatternPlanOwnershipTest,LmdbNativeEntryBindingSeedTest,NativeLazyResultReplayTest,NativeGroupResultCursorTest,LmdbNativeIrFactorCoordinateTransportTest,KernelResultCoordinatesTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativeGenericBridgeScopeTest,LmdbNativeGenericRootHostTest \
             -Dsurefire.failIfNoSpecifiedTests=false
       - name: Alternating AUTO coordinate ablation (only after ownership is green)
