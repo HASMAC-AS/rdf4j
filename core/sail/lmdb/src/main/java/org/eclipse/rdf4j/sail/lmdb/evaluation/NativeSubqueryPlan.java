@@ -842,6 +842,7 @@ final class NativeSubqueryPlan implements SlotPlan {
 		LmdbFusedSipFactorizedRuntime.Session session = row.fusedSession();
 		LmdbFusedSipFactorizedRuntime.Session.Lease sessionLease = session.retain();
 		NativePhysicalPreparation.Lease physicalLease = null;
+		NativePhysicalPreparation recipePreparation = null;
 		LmdbFusedSipFactorizedRuntime.PreparationAttempt preparation = null;
 		NativeResultCursor scoped = null;
 		try {
@@ -852,11 +853,18 @@ final class NativeSubqueryPlan implements SlotPlan {
 				physicalLease = physicalBinding.preparation().retain();
 				physicalBinding.preparation().close();
 			}
+			if (physicalBinding == null && compiledResultRecipe != null
+					&& compiledResultRecipe.compatible(source)) {
+				// The shared lexical descriptor has no query-owned mutable values. Binding it under
+				// this replay's exact preparation avoids iterating the original VALUES source again.
+				recipePreparation = NativePhysicalPreparation.tryCreate(session);
+			}
 			preparation = new LmdbFusedSipFactorizedRuntime.PreparationAttempt(null, new Object());
 			LmdbFusedSipFactorizedRuntime.PreparationAttempt replayPreparation = preparation;
 			NativePhysicalPreparation.Lease replayPhysical = physicalLease;
+			NativePhysicalPreparation replayRecipe = recipePreparation;
 			BoundExecution bound = inLexicalScope(source, cancellation,
-					() -> preparedExecution(row, session, replayPreparation));
+					() -> preparedExecution(row, session, replayPreparation, replayRecipe));
 			BindingSet bodyInput = NativeEntryBindings.preserve(input, projection == null ? input
 					: ProjectionQueryEvaluationStep.withInheritedGraphInput(projection, input, bound.context()));
 			if (physicalBinding != null && (!physicalBinding.matches(row)
@@ -926,6 +934,7 @@ final class NativeSubqueryPlan implements SlotPlan {
 			AutoCloseable lifetime = () -> {
 				Throwable failure = KernelRuntime.closeResource(replayPreparation, null);
 				failure = KernelRuntime.closeResource(replayPhysical, failure);
+				failure = KernelRuntime.closeResource(replayRecipe, failure);
 				failure = KernelRuntime.closeResource(sessionLease, failure);
 				KernelRuntime.rethrowCloseFailure(failure);
 			};
@@ -934,6 +943,7 @@ final class NativeSubqueryPlan implements SlotPlan {
 			Throwable retained = KernelRuntime.closeResource(scoped, failure);
 			retained = KernelRuntime.closeResource(preparation, retained);
 			retained = KernelRuntime.closeResource(physicalLease, retained);
+			retained = KernelRuntime.closeResource(recipePreparation, retained);
 			retained = KernelRuntime.closeResource(sessionLease, retained);
 			KernelRuntime.rethrowCloseFailureIfNotPrimary(retained, failure);
 			throw failure;
@@ -942,7 +952,8 @@ final class NativeSubqueryPlan implements SlotPlan {
 
 	/** Bind once when the original replay key creates its producer; subsequent readers reuse that producer. */
 	private BoundExecution preparedExecution(RowState row, LmdbFusedSipFactorizedRuntime.Session session,
-			LmdbFusedSipFactorizedRuntime.PreparationAttempt preparation) {
+			LmdbFusedSipFactorizedRuntime.PreparationAttempt preparation,
+			NativePhysicalPreparation recipePreparation) {
 		if (physicalInput != null) {
 			if (physicalBinding == null || !physicalBinding.matches(row)) {
 				throw new IllegalStateException("physical child has no matching preflight");
@@ -954,6 +965,16 @@ final class NativeSubqueryPlan implements SlotPlan {
 		}
 		NativeScalarPlan.WorkerContext invocation = NativeScalarPlan.WorkerContext.forSource(row.source, context,
 				session, row.executionContext(), row.invocationStrategyOrNull(), row.diagnosticRoot());
+		if (recipePreparation != null && compiledResultRecipe != null
+				&& compiledResultRecipe.compatible(row.source)) {
+			NativeResultBinding binding = compiledBinding(invocation, recipePreparation);
+			if (binding != null) {
+				QueryEvaluationStep boundRecipe = compiledResultRecipe.recipe().bind(binding);
+				if (boundRecipe != null) {
+					return new BoundExecution(boundRecipe, binding.context(), null);
+				}
+			}
+		}
 		BoundExecution bound = preparation.scope(session, row.source)
 				.prepare(this,
 						() -> Objects.requireNonNull(invocationFactory.bind(invocation),
