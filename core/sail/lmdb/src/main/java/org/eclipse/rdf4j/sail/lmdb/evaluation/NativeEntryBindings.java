@@ -69,11 +69,12 @@ final class NativeEntryBindings extends AbstractBindingSet implements GraphFrame
 			Object facade = synthetic.entryAuthorityToken();
 			Object lookup = source.valueLookupScope();
 			Object result = source.resultValueScope();
-			if (facade == null || lookup == null || result == null) {
-				return null;
-			}
 			EntryDomainAnchor anchor = synthetic.entryDomainAnchor();
 			DomainStamp currentDomain = source.detachedDomainStamp();
+			if (facade == null || (lookup == null || result == null)
+					&& (anchor == null || anchor.domain() == null || !source.certifiesIdOrigins())) {
+				return null;
+			}
 			boolean anchored = anchor != null && anchor.facade() == facade && anchor.lookup() == lookup
 					&& anchor.result() == result
 					&& (anchor.domain() == null || anchor.domain().sameDomain(currentDomain));
@@ -85,6 +86,12 @@ final class NativeEntryBindings extends AbstractBindingSet implements GraphFrame
 		}
 
 		boolean matches(NativeLmdbQuerySource source) {
+			// A domain anchored before ID production proves the same statement, plan and runtime spaces
+			// even when the backing source intentionally exposes no live lookup-scope objects.
+			if (domain != null && source.certifiesIdOrigins()
+					&& domain.sameDomain(source.detachedDomainStamp())) {
+				return domain.sameDomain(source.detachedDomainStamp());
+			}
 			Object originLookup = lookup.get();
 			Object originResult = result.get();
 			if (originLookup == null || originResult == null) {

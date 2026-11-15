@@ -791,7 +791,10 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 		Object lookup = valueLookupScope();
 		Object result = resultValueScope();
 		DomainStamp domain = detachedDomainStamp();
-		boolean stable = facade != null && lookup != null && result != null && facade == entryAuthorityToken()
+		// A detached, certified domain also anchors IDs when the backing provider exposes no live scope token.
+		// Capture the proof before the first producer row; it must not be retrofitted afterwards.
+		boolean stable = facade != null && (lookup != null && result != null
+				|| domain != null && certifiesIdOrigins()) && facade == entryAuthorityToken()
 				&& lookup == valueLookupScope() && result == resultValueScope()
 				&& (domain == null || domain.sameDomain(detachedDomainStamp()));
 		synchronized (this) {

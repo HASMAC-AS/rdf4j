@@ -759,7 +759,9 @@ public class LmdbNativeGenericBridgeScopeTest {
 				NativeValueOutcome result = scalar.evaluateForRow(EmptyBindingSet.getInstance(), row);
 				return result.isBound() && BooleanLiteral.TRUE.equals(result.value());
 			}, 1L);
-			NativeLmdbQuerySource source = (NativeLmdbQuerySource) dataset;
+			SyntheticValueSource evaluationSource = SyntheticValueSource.forEvaluation((NativeLmdbQuerySource) dataset);
+			evaluationSource.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
+			NativeLmdbQuerySource source = evaluationSource;
 			NativeSlotLayout layout = new NativeSlotLayout(Map.of("outer", 0), null);
 			layout.freeze(List.of("outer"));
 			SingletonSet outerTarget = new SingletonSet();
@@ -787,6 +789,8 @@ public class LmdbNativeGenericBridgeScopeTest {
 					row.closeDecodedInputs();
 					row.completeRuntimePlan();
 				}
+			} finally {
+				evaluationSource.executionContext().close();
 			}
 			assertThat(actual).containsExactly(21L, 22L, 23L);
 			assertThat(NativeScalarSubqueryValueEvaluator.EVALUATIONS.get() - evaluationsBefore).isEqualTo(3L);
