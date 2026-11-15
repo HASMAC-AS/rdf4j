@@ -353,6 +353,19 @@ public final class LmdbNativeEvaluationStrategy extends StrictEvaluationStrategy
 		return nativeSource;
 	}
 
+	/** Native scalar subqueries run with a pinned invocation that can own synthetic plan/runtime IDs.
+	 * Do not weaken the ordinary pattern-planner canonical-ID requirement or accept legacy stores. */
+	NativeLmdbQuerySource nativeScalarSubquerySource() {
+		if (nativeSource != null) {
+			return nativeSource;
+		}
+		if (invocationSource instanceof SyntheticValueSource synthetic && synthetic.delegate.hasCanonicalIds()
+				&& synthetic.certifiesIdOrigins()) {
+			return synthetic;
+		}
+		return null;
+	}
+
 	TripleSource graphTripleSource() {
 		return tripleSourceArg;
 	}

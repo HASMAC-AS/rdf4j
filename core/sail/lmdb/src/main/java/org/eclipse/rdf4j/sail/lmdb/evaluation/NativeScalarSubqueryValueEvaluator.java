@@ -94,7 +94,7 @@ final class NativeScalarSubqueryValueEvaluator implements NativeBindingSetValueE
 			return null;
 		}
 		QueryEvaluationStep subquery = LmdbNativeAggregateCompiler.tryCompile(operator.getSubQuery(), context, strategy,
-				strategy.nativeSource());
+				strategy.nativeScalarSubquerySource());
 		if (subquery == null || subquery instanceof GenericRootPlan) {
 			return null;
 		}
