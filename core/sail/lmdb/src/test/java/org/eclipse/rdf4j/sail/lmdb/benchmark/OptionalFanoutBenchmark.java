@@ -116,28 +116,46 @@ public class OptionalFanoutBenchmark {
 
 	@Benchmark
 	public long runQuery() {
+		return runQueryTimed(null);
+	}
+
+	/** Optional boundary timing; the JMH default avoids any additional per-query clock reads. */
+	static final class Timings {
+		long preparationNanos;
+		long evaluationNanos;
+	}
+
+	long runQueryTimed(Timings timings) {
 		long rowCount = 0;
 		long checksum = 0;
-		try (SailRepositoryConnection connection = repository.getConnection();
-				TupleQueryResult results = connection.prepareTupleQuery(query).evaluate()) {
-			if (!results.getBindingNames().equals(PROJECTED_NAMES)) {
-				throw new IllegalStateException("Unexpected projection: " + results.getBindingNames());
-			}
-			while (results.hasNext()) {
-				BindingSet row = results.next();
-				if (row.size() != PROJECTED_NAMES.size()) {
-					throw new IllegalStateException("Unexpected binding width: " + row.size());
+		long started = timings == null ? 0L : System.nanoTime();
+		try (SailRepositoryConnection connection = repository.getConnection()) {
+			var prepared = connection.prepareTupleQuery(query);
+			long evaluationStart = timings == null ? 0L : System.nanoTime();
+			try (TupleQueryResult results = prepared.evaluate()) {
+				if (!results.getBindingNames().equals(PROJECTED_NAMES)) {
+					throw new IllegalStateException("Unexpected projection: " + results.getBindingNames());
 				}
-				long rowHash = OptionalFanoutFixture.rowHashStart();
-				for (String name : OptionalFanoutFixture.BINDINGS) {
-					Value value = row.getValue(name);
-					if (value == null) {
-						throw new IllegalStateException("Unbound projected value: " + name);
+				while (results.hasNext()) {
+					BindingSet row = results.next();
+					if (row.size() != PROJECTED_NAMES.size()) {
+						throw new IllegalStateException("Unexpected binding width: " + row.size());
 					}
-					rowHash = OptionalFanoutFixture.mix(rowHash, value.stringValue());
+					long rowHash = OptionalFanoutFixture.rowHashStart();
+					for (String name : OptionalFanoutFixture.BINDINGS) {
+						Value value = row.getValue(name);
+						if (value == null) {
+							throw new IllegalStateException("Unbound projected value: " + name);
+						}
+						rowHash = OptionalFanoutFixture.mix(rowHash, value.stringValue());
+					}
+					checksum += rowHash;
+					rowCount++;
 				}
-				checksum += rowHash;
-				rowCount++;
+			}
+			if (timings != null) {
+				timings.preparationNanos = evaluationStart - started;
+				timings.evaluationNanos = System.nanoTime() - evaluationStart;
 			}
 		}
 		if (rowCount != expectedRows || checksum != expectedChecksum) {
