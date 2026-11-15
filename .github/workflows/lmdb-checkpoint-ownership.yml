@@ -1,0 +1,60 @@
+name: LMDB checkpoint ownership verification
+
+on:
+  push:
+    branches:
+      - GH-0000-lmdb-ownership-ablation-15fe7d5
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ownership-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build dependencies and compile
+        run: mvn -B --no-transfer-progress -T 2C -Pquick -DskipTests -DskipITs -Dmaven.javadoc.skip=true -Djapicmp.skip=true install
+      - name: Focused ownership and coordinate regression tests
+        id: focused
+        run: |
+          mvn -B --no-transfer-progress -pl core/sail/lmdb -PskipSlowTests,-formatting -DskipITs -Dmaven.javadoc.skip=true -Djapicmp.skip=true -Denforcer.skip=true -Danimal.sniffer.skip=true \
+            '-Dtest=NativeResultWrapperBindingTest,LmdbValuesPlanOwnershipTest,LmdbPatternPlanOwnershipTest,NativeWorkerConditionFrameLifetimeTest,NativeWrapperConstantCaptureTest,LmdbNativeEntryBindingSeedTest,NativeValueResolutionContractTest,NativeResultMaterializerTest,NativeGroupResultCursorTest,NativeLazyResultReplayTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeLazyProjectedResultTest,LmdbNativeGenericBridgeScopeTest,LmdbNativeIrOptionalFanoutCoordinateTest,KernelResultCoordinatesTest' \
+            test
+      - name: Summarize failing test reports
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          reports=glob.glob('core/sail/lmdb/target/surefire-reports/TEST-*.xml')
+          n=0
+          for f in reports:
+              root=ET.parse(f).getroot()
+              cases=root.findall('.//testcase')
+              for case in cases:
+                  issue=case.find('failure')
+                  if issue is None: issue=case.find('error')
+                  if issue is not None:
+                      n+=1
+                      print(f"{case.get('classname')}#{case.get('name')}: {issue.get('message','')[:400]}")
+          print(f"XML reports: {len(reports)}; failing/error cases: {n}")
+          PY
+      - name: Preserve test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-ownership-surefire
+          path: core/sail/lmdb/target/surefire-reports/
+          retention-days: 7
+          if-no-files-found: ignore
