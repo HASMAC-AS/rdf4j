@@ -237,7 +237,7 @@ final class LmdbNativeAggregateCompiler {
 	 */
 	static QueryValueEvaluationStep tryCompileExists(TupleExpr expr, QueryEvaluationContext context,
 			LmdbNativeEvaluationStrategy strategy, NativeLmdbQuerySource source) {
-		if (!source.certifiesIdOrigins()) {
+		if (source == null || !source.certifiesIdOrigins()) {
 			return null;
 		}
 		PlanValueCatalog.Builder catalog = PlanValueCatalog.Builder.compiledTree();
@@ -363,7 +363,7 @@ final class LmdbNativeAggregateCompiler {
 			LmdbNativeEvaluationStrategy strategy, NativeLmdbQuerySource source, boolean rootEvaluation,
 			Set<String> inheritedFrameInputNames, Set<String> inheritedLateralFrameInputNames,
 			PlanValueCatalog.Builder catalog) {
-		if (!source.certifiesIdOrigins()) {
+		if (source == null || !source.certifiesIdOrigins()) {
 			return new CompileResult(null, null, false, false);
 		}
 		NativeGraphFusion.Prepared physical = NativeGraphFusion.prepare(expr, context.getDataset(), strategy);

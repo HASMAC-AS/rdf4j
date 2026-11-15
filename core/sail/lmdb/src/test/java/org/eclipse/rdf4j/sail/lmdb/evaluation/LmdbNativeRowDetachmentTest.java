@@ -132,6 +132,17 @@ public class LmdbNativeRowDetachmentTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN_ID ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
 		public Value lazyValue(long id) {
 			return valuesById.get(id);
 		}

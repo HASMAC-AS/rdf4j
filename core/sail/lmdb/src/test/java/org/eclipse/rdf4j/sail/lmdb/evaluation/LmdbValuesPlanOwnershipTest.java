@@ -13,6 +13,7 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.NativeLmdbQuerySource.UNKNOWN_ID;
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -191,7 +192,7 @@ class LmdbValuesPlanOwnershipTest {
 		names.put("alias", 2);
 		NativeSlotLayout layout = new NativeSlotLayout(names, null);
 		layout.freeze(new ArrayList<>(names.keySet()));
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(mock(NativeLmdbQuerySource.class), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, UNKNOWN_ID);
 		row.recomputeBoundMask();
 		row.encounterOrderRequired = true;

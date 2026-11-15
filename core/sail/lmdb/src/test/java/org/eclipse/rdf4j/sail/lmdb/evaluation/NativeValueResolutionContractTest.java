@@ -101,6 +101,17 @@ public class NativeValueResolutionContractTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
 		public Value lazyValue(long id) {
 			for (var e : ids.entrySet())
 				if (e.getValue() == id)
