@@ -93,6 +93,11 @@ final class LmdbNativeKernelExecution {
 	 * expanding site cannot replay its own members; an opaque plan producer may itself contain a factor product.
 	 */
 	private static long resultCoordinateColumns(LmdbNativeKernelLowering.Lowered lowered, long demandedSlots) {
+		// Diagnostic ablation: disable producer transport, not the common result-ownership code.
+		// The default preserves AUTO planner and both interpreted and compiled IR behavior.
+		if (!Boolean.parseBoolean(System.getProperty("rdf4j.lmdb.resultCoordinates.enabled", "true"))) {
+			return 0L;
+		}
 		LmdbNativeKernelIr.Kernel kernel = lowered.kernel;
 		if (demandedSlots == 0L || !kernel.resumable || !(kernel.terminal instanceof LmdbNativeKernelIr.Emit emit)
 				|| emit.mods.orderKeys != null || emit.mods.limit == 0L || emit.mods.limit == 1L
