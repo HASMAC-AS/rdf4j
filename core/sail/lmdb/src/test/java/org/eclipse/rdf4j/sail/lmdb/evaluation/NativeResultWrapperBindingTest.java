@@ -374,10 +374,14 @@ class NativeResultWrapperBindingTest {
 			secondRow.recomputeBoundMask();
 
 			afterCompilation.set(true);
-			NativeScalarPlan.WorkerContext firstWorkerContext = NativeScalarPlan.WorkerContext.forSource(firstSource,
-					firstContext, firstWorker, firstSource.executionContext());
-			NativeScalarPlan.WorkerContext secondWorkerContext = NativeScalarPlan.WorkerContext.forSource(secondSource,
-					secondContext, secondWorker, secondSource.executionContext());
+			LmdbNativeEvaluationStrategy firstInvocation = strategy.forInvocation(firstSource, firstWorker,
+					firstSource.executionContext());
+		LmdbNativeEvaluationStrategy secondInvocation = strategy.forInvocation(secondSource, secondWorker,
+					secondSource.executionContext());
+		NativeScalarPlan.WorkerContext firstWorkerContext = NativeScalarPlan.WorkerContext.forSource(firstSource,
+					firstContext, firstWorker, firstSource.executionContext(), firstInvocation, boundary);
+		NativeScalarPlan.WorkerContext secondWorkerContext = NativeScalarPlan.WorkerContext.forSource(secondSource,
+					secondContext, secondWorker, secondSource.executionContext(), secondInvocation, boundary);
 			NativeSubqueryPlan first = original;
 			NativeSubqueryPlan second = original;
 			if (workerExpected) {

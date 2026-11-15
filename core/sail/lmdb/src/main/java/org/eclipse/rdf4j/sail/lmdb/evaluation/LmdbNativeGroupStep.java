@@ -293,10 +293,13 @@ final class NativeGroupStep implements NativeResultStep, LmdbNativePhysicalPlan 
 		iteration.enclosingExecution = boundStrategy == null ? null : boundStrategy.enclosingExecutionContext();
 		iteration.invocationStrategy = boundStrategy;
 		iteration.invocationPolicy = queryExecutionPolicy();
-		iteration.invocationCarrier();
+		boolean closeContext = evaluation != boundSource && !SyntheticValueSource.inheritedEvaluation(evaluation);
+		try (NativeExecutionContext.ProducerScope ignored = closeContext ? null
+				: evaluation.executionContext().borrowCachedProducer()) {
+			iteration.invocationCarrier();
+		}
 		iteration.typeMatrix = typeMatrix;
 		iteration.alternatives = alternatives;
-		boolean closeContext = evaluation != boundSource && !SyntheticValueSource.inheritedEvaluation(evaluation);
 		if (fixedPlan != null) {
 			NativeAggregateExecutionEvent.Descriptor diagnostic = NativeAggregateExecutionEvent.describe(iteration,
 					fixedPlan.tag(), NativeAggregatePhysicalPlan.typed(fixedPlan, iteration));

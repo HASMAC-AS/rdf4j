@@ -71,7 +71,12 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 		this.fixedPlan = fixedPlan;
 		this.iteration = iteration;
 		this.context = context;
-		this.invocation = iteration.invocationCarrier();
+		NativeInvocationCarrier selectedInvocation;
+		try (NativeExecutionContext.ProducerScope ignored = context == null || closeContext ? null
+				: context.borrowCachedProducer()) {
+			selectedInvocation = iteration.invocationCarrier();
+		}
+		this.invocation = selectedInvocation;
 		this.closeInvocation = fixedPlan == null || closeAggregateContext;
 		this.closeContext = closeContext;
 		this.closeAggregateContext = closeAggregateContext;

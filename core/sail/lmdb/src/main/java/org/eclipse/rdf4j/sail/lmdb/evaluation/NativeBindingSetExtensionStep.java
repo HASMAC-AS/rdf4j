@@ -682,6 +682,11 @@ final class NativeBindingSetValueCompiler {
 
 	static NativeBindingSetValueEvaluator compile(ValueExpr expression, LmdbNativeEvaluationStrategy strategy,
 			QueryEvaluationContext context) {
+		if (expression instanceof ValueConstant constant) {
+			// The opaque value belongs to the expression. Never inspect a potentially cyclic custom
+			// TripleTerm while compiling a result that may not be consumed.
+			return bindings -> NativeValueOutcome.bound(constant.getValue());
+		}
 		NativeBindingSetValueEvaluator scalarSubquery = NativeScalarSubqueryValueEvaluator.tryCompile(expression,
 				strategy, context);
 		if (scalarSubquery != null) {

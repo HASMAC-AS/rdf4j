@@ -328,8 +328,10 @@ public class NativeValueResolutionContractTest {
 		layout.positionMasks(Map.of("input", 4, "result", 9), Map.of("input", 4, "result", 9));
 		layout.freeze(List.of("input", "result"));
 		SyntheticValueSource evaluation = eval(source);
+		LmdbFusedSipFactorizedRuntime.Session fused = LmdbFusedSipFactorizedRuntime.create(401L, false);
 		try {
 			RowState row = new RowState(evaluation, layout, EmptyBindingSet.getInstance());
+			row.fusedSession = fused;
 			CopyBinding assignment = CopyBinding.semanticValue(1,
 					bindings -> NativeValueOutcome.bound(computed), true);
 			equal(123L, assignment.value(row));
@@ -339,6 +341,7 @@ public class NativeValueResolutionContractTest {
 			equal(456L, seeded[0]);
 			check(masks.equals(List.of(9, 4)));
 		} finally {
+			fused.close();
 			evaluation.executionContext().close();
 		}
 	}

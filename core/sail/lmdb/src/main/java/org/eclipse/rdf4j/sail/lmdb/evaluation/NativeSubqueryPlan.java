@@ -89,15 +89,28 @@ final class NativeSubqueryPlan implements SlotPlan {
 					|| !before.sameDomain(after)) {
 				return null;
 			}
-			NativeCompiledResultRecipe recipe = provider.compiledRecipe();
-			if (recipe == null) {
+			// The descriptor itself needs an admission claim even when the algebra-cost quote is absent.
+			// Use the existing compilation ledger; a rejected claim must publish no recipe.
+			NativeExecutionContext execution = source instanceof SyntheticValueSource synthetic
+					? synthetic.executionContext()
+					: null;
+			LmdbQueryMemoryManager.Reservation claim = receipts.reserveCompilationScratch(execution, 512L);
+			if (claim == null) {
 				return null;
 			}
-			LmdbNativeCostVectors.AlgebraEstimate estimate = LmdbNativeCostVectors.captureAlgebraEstimate(projection,
-					receipts, before);
-			return before.sameDomain(source.detachedDomainStamp())
-					? new CompiledResultRecipe(recipe, before, catalog, estimate)
-					: null;
+			try {
+				NativeCompiledResultRecipe recipe = provider.compiledRecipe();
+				if (recipe == null) {
+					return null;
+				}
+				LmdbNativeCostVectors.AlgebraEstimate estimate = LmdbNativeCostVectors.captureAlgebraEstimate(projection,
+						receipts, before);
+				return before.sameDomain(source.detachedDomainStamp())
+						? new CompiledResultRecipe(recipe, before, catalog, estimate)
+						: null;
+			} finally {
+				claim.close();
+			}
 		}
 
 		boolean compatible(NativeLmdbQuerySource source) {
