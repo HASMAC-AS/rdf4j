@@ -111,6 +111,14 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 		return context;
 	}
 
+	/** A cached producer cannot keep its own execution-context cleanup waiting on its lease. */
+	void transferToNativeState(NativeExecutionContext cacheOwner) {
+		if (context != cacheOwner || invocation.executionContext() != cacheOwner) {
+			throw new IllegalArgumentException("cached group producer belongs to another execution context");
+		}
+		invocation.transferToCache(cacheOwner);
+	}
+
 	@Override
 	public NativeInvocationCarrier invocationCarrier() {
 		return invocation;

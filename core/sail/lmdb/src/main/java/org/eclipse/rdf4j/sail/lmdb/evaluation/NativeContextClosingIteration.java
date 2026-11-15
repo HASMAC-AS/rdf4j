@@ -507,6 +507,11 @@ final class NativeInvocationCarrier implements AutoCloseable, InvocationOwner {
 		session.onFinalClose(action);
 	}
 
+	/** Called only after the producer has been published under the exact cache owner. */
+	void transferToCache(NativeExecutionContext cacheOwner) {
+		owner.transferToCache(execution, cacheOwner);
+	}
+
 	@Override
 	public void close() {
 		owner.releaseOwner();
@@ -533,7 +538,8 @@ final class NativeInvocationCarrier implements AutoCloseable, InvocationOwner {
 	}
 
 	private static final class Owner {
-		private final NativeExecutionContext.Lease executionLease;
+		private NativeExecutionContext.Lease executionLease;
+		private boolean cachedProducer;
 		private final NativeExecutionContext ownedExecution;
 		private final LmdbFusedSipFactorizedRuntime.Session session;
 		private final LmdbFusedSipFactorizedRuntime.PreparationAttempt preparation;
@@ -547,6 +553,26 @@ final class NativeInvocationCarrier implements AutoCloseable, InvocationOwner {
 			this.ownedExecution = ownedExecution;
 			this.session = session;
 			this.preparation = preparation;
+		}
+
+		/**
+		 * The cache already owns this invocation. Drop its self-retaining execution lease
+		 * after publication, but retain any independent parent authority. Accepted readers
+		 * still hold their own full leases through a close request.
+		 */
+		private void transferToCache(NativeExecutionContext execution, NativeExecutionContext cacheOwner) {
+			NativeExecutionContext.Lease reduced = execution.retainForOwnedProducer(cacheOwner);
+			NativeExecutionContext.Lease previous;
+			synchronized (this) {
+				if (ownerReleased || cachedProducer) {
+					reduced.close();
+					return;
+				}
+				previous = executionLease;
+				executionLease = reduced;
+				cachedProducer = true;
+			}
+			previous.close();
 		}
 
 		private synchronized Lease retain() {

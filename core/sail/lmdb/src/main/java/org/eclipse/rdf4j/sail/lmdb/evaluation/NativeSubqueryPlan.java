@@ -89,6 +89,9 @@ final class NativeSubqueryPlan implements SlotPlan {
 					|| !before.sameDomain(after)) {
 				return null;
 			}
+			if (receipts == null || !receipts.reserveRecipeMetadata(512L)) {
+				return null;
+			}
 			NativeCompiledResultRecipe recipe = provider.compiledRecipe();
 			if (recipe == null) {
 				return null;

@@ -131,6 +131,7 @@ final class PlanValueCatalog {
 		private IdentityHashMap<StatementPattern, LmdbNativeCostVectors.PatternEstimate> patternEstimates;
 		private IdentityHashMap<BindingSetAssignment, LmdbNativeAggregatePlannerBase.ColdLookupTable> coldLookups;
 		private ArrayList<LmdbQueryMemoryManager.Reservation> estimateReservations;
+		private ArrayList<LmdbQueryMemoryManager.Reservation> recipeReservations;
 		private EstimateScope estimateScope;
 		private LmdbQueryMemoryManager.QueryLedger compilationLedger;
 		private boolean ownsCompilationLedger;
@@ -179,6 +180,27 @@ final class PlanValueCatalog {
 				return null;
 			}
 			return compilationLedger.tryReserveWithoutReclamation(bytes);
+		}
+
+		/**
+		 * A detached recipe must have a bounded preparation claim before any of its
+		 * nested descriptors are published. These scratch claims share the tree ledger.
+		 */
+		boolean reserveRecipeMetadata(long bytes) {
+			LmdbQueryMemoryManager.Reservation reservation = reserveCompilationScratch(null, bytes);
+			if (reservation == null) {
+				return false;
+			}
+			try {
+				if (recipeReservations == null) {
+					recipeReservations = new ArrayList<>();
+				}
+				recipeReservations.add(reservation);
+				return true;
+			} catch (RuntimeException | Error failure) {
+				reservation.close();
+				throw failure;
+			}
 		}
 
 		LmdbNativeAggregatePlannerBase.ColdLookupTable coldLookups(BindingSetAssignment values) {
@@ -338,6 +360,13 @@ final class PlanValueCatalog {
 				}
 				estimateReservations.clear();
 				estimateReservations = null;
+			}
+			if (recipeReservations != null) {
+				for (LmdbQueryMemoryManager.Reservation reservation : recipeReservations) {
+					reservation.close();
+				}
+				recipeReservations.clear();
+				recipeReservations = null;
 			}
 			if (compilationLedger != null && ownsCompilationLedger) {
 				compilationLedger.close();

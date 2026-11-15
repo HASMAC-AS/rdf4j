@@ -783,6 +783,15 @@ final class NativeExecutionContext implements AutoCloseable {
 				if (cleanup != null) {
 					throw nativeStateFailure(cleanup);
 				}
+			} else if (created instanceof NativeGroupResultCursor cached
+					&& cached.executionContext() == this) {
+				try {
+					cached.transferToNativeState(this);
+				} catch (RuntimeException | Error failure) {
+					KernelRuntime.rethrowCloseFailureIfNotPrimary(
+							KernelRuntime.closeResource(() -> discardNativeState(plan, created), failure), failure);
+					throw failure;
+				}
 			}
 			return (T) published;
 		} finally {

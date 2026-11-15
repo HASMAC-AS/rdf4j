@@ -768,9 +768,13 @@ public class LmdbNativeGenericBridgeScopeTest {
 			assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, source, layout)).isTrue();
 			row.runtimePlan = LmdbNativeExplain.recordRuntimeEntryPlan(outerTarget, outer, layout, row.boundMask());
 			List<Long> actual = new ArrayList<>();
-			try (LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(
-					System.identityHashCode(outer), true)) {
+			try (NativeExecutionContext execution = new NativeExecutionContext();
+					LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(
+							System.identityHashCode(outer), true)) {
+				execution.initializeQueryBase(EmptyBindingSet.getInstance());
 				row.fusedSession = invocation;
+				row.setExecutionContext(execution);
+				row.bindInvocationStrategy(strategy.forInvocation(source, invocation, execution));
 				try (LmdbNativeStrategyProposal<RowCursor> proposal = LmdbNativeKernelExecution.proposeRows(outer, row,
 						outerTarget, false)) {
 					assertThat(proposal).as("the outer VALUES kernel must be admitted").isNotNull();
