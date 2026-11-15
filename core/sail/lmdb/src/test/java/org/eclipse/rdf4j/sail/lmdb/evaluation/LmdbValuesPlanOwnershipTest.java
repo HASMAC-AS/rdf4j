@@ -191,7 +191,7 @@ class LmdbValuesPlanOwnershipTest {
 		names.put("alias", 2);
 		NativeSlotLayout layout = new NativeSlotLayout(names, null);
 		layout.freeze(new ArrayList<>(names.keySet()));
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(new NativeValueResolutionContractTest.Source(), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, UNKNOWN_ID);
 		row.recomputeBoundMask();
 		row.encounterOrderRequired = true;

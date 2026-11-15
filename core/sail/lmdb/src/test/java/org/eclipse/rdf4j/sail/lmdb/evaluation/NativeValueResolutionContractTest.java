@@ -101,6 +101,18 @@ public class NativeValueResolutionContractTest {
 		}
 
 		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			// The fake is an exact in-memory dictionary, so its hits and misses have known origins.
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
 		public Value lazyValue(long id) {
 			for (var e : ids.entrySet())
 				if (e.getValue() == id)

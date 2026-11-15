@@ -15,8 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.NativeLmdbQuerySource.UNKNOWN_ID;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -154,6 +156,7 @@ class NativeResultWrapperBindingTest {
 		when(store.valueLookupScope()).thenReturn(store);
 		when(store.resultValueScope()).thenReturn(store);
 		when(store.snapshotId()).thenReturn(1L);
+		certifyStoredDictionary(store);
 		when(store.idOf(any(Value.class))).thenAnswer(call -> ids.getOrDefault(call.getArgument(0), UNKNOWN_ID));
 		when(store.lazyValue(anyLong())).thenAnswer(call -> terms.get(call.getArgument(0)));
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(store);
@@ -246,6 +249,23 @@ class NativeResultWrapperBindingTest {
 		}
 	}
 
+	/** This deterministic dictionary fixture certifies store IDs, rather than relying on the unsafe default. */
+	private static void certifyStoredDictionary(NativeLmdbQuerySource.ParallelSource store) {
+		when(store.certifiesIdOrigins()).thenReturn(true);
+		when(store.detachedDomainStamp()).thenReturn(
+				new NativeLmdbQuerySource.DomainStamp(store, store, store, store,
+						NativeLmdbQuerySource.DomainStamp.EXPLICIT, null, null));
+		doAnswer(call -> {
+			Value value = call.getArgument(0);
+			int positionMask = call.getArgument(1);
+			NativeLmdbQuerySource.IdLookup result = call.getArgument(2);
+			long id = store.idOf(value, positionMask);
+			result.set(id, id == UNKNOWN_ID ? NativeLmdbQuerySource.IdOrigin.ABSENT
+					: NativeLmdbQuerySource.IdOrigin.STORED);
+			return null;
+		}).when(store).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+	}
+
 	/** Real lexical aggregate and result modifiers, including duplicate projected groups before DISTINCT. */
 	private static Outcome evaluate(ValueExpr aliasExpression) throws Exception {
 		return evaluate(aliasExpression, true);
@@ -308,6 +328,7 @@ class NativeResultWrapperBindingTest {
 		when(store.valueLookupScope()).thenReturn(store);
 		when(store.resultValueScope()).thenReturn(store);
 		when(store.snapshotId()).thenReturn(1L);
+		certifyStoredDictionary(store);
 		when(store.idOf(any(Value.class))).thenAnswer(call -> {
 			if (afterCompilation.get()) {
 				lookups.incrementAndGet();
