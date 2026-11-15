@@ -1,0 +1,69 @@
+name: LMDB lazy result ownership validation
+on:
+  push:
+    branches:
+      - GH-0000-lmdb-lazy-result-validation
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  focused-ownership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Verify exact baseline
+        run: |
+          git log -1 --oneline
+          java -version
+          mvn -version
+      - name: Build workspace, without running unrelated tests
+        run: mvn -B -ntp -T 2C install --fail-at-end -Pquick -DskipTests -DskipITs -Dmaven.javadoc.skip=true -Djapicmp.skip=true
+      - name: Focused lazy result, ownership, and coordinate tests
+        id: tests
+        run: |
+          mvn -B -ntp -pl core/sail/lmdb test --fail-at-end \
+            -PskipSlowTests,-formatting -DskipITs \
+            -Dmaven.javadoc.skip=true -Djapicmp.skip=true -Denforcer.skip=true -Danimal.sniffer.skip=true \
+            -Dtest=LmdbNativeLazyProjectedResultTest,NativeValueResolutionContractTest,NativeResultMaterializerTest,NativeResultWrapperBindingTest,NativeWrapperConstantCaptureTest,LmdbValuesPlanOwnershipTest,LmdbPatternPlanOwnershipTest,LmdbNativeEntryBindingSeedTest,NativeLazyResultReplayTest,NativeGroupResultCursorTest,LmdbNativeIrFactorCoordinateTransportTest,KernelResultCoordinatesTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativeGenericBridgeScopeTest,LmdbNativeGenericRootHostTest \
+            -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Summarize XML failures
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, xml.etree.ElementTree as ET
+          base='core/sail/lmdb/target/surefire-reports'
+          counts=[0,0,0,0]
+          if os.path.isdir(base):
+              for filename in sorted(os.listdir(base)):
+                  if not filename.startswith('TEST-') or not filename.endswith('.xml'):
+                      continue
+                  try:
+                      root=ET.parse(os.path.join(base,filename)).getroot()
+                  except Exception as e:
+                      print('parse failure:',filename,e)
+                      continue
+                  for i,name in enumerate(('tests','failures','errors','skipped')):
+                      counts[i]+=int(root.attrib.get(name,'0'))
+                  for case in root.iter('testcase'):
+                      for failure in list(case):
+                          if failure.tag in ('failure','error'):
+                              print('FAILED',case.attrib.get('classname'),case.attrib.get('name'),failure.tag)
+                              print((failure.attrib.get('message') or '')[:500])
+                              print((failure.text or '')[:3500])
+          print('TOTAL tests/failures/errors/skipped',*counts)
+          PY
+      - name: Upload reproducible test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lmdb-lazy-result-validation-${{ github.sha }}
+          path: core/sail/lmdb/target/surefire-reports/
+          retention-days: 14
+          if-no-files-found: warn
