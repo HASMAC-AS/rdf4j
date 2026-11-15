@@ -592,6 +592,66 @@ final class NativeSubqueryPlan implements SlotPlan {
 								: actual.boundPhysical(recipe, physicalBindings, binding, witness, preparation);
 	}
 
+	/** Per-worker compiled recipe, owned and eventually closed by the worker's execution. */
+	private record WorkerCompiledKey(NativeSubqueryPlan plan, NativeLmdbQuerySource source,
+			LmdbFusedSipFactorizedRuntime.Session session) {
+	}
+
+	private record WorkerCompiledState(QueryEvaluationStep step, QueryEvaluationContext context,
+			NativePhysicalPreparation preparation) implements AutoCloseable {
+		@Override
+		public void close() {
+			preparation.close();
+		}
+	}
+
+	/**
+	 * Native lexical workers reuse the already-detached VALUES and result-modifier recipe
+	 * without enumerating, interning or resolving the original mutable VALUES source.
+	 * The candidate session claims every retained binding; the execution owns cleanup.
+	 */
+	private WorkerCompiledState compiledForWorker(NativeScalarPlan.WorkerContext worker) {
+		if (compiledResultRecipe == null || !compiledResultRecipe.compatible(worker.source())
+				|| frameInputSlots.length != 0 || privateGraphParameters.length != 0 || lateralStepFactory != null
+				|| worker.invocationStrategy() == null || !worker.invocationStrategy().isBoundTo(worker)) {
+			return null;
+		}
+		NativeExecutionContext execution = worker.requireExecutionContext();
+		return execution.nativeState(new WorkerCompiledKey(this, worker.source(), worker.requireFusedSession()), () -> {
+			NativePhysicalPreparation preparation = NativePhysicalPreparation.tryCreate(worker.requireFusedSession());
+			if (preparation == null) {
+				return null;
+			}
+			boolean accepted = false;
+			Throwable primary = null;
+			try {
+				if (!preparation.reserveBytes(512L)) {
+					return null;
+				}
+				NativeResultBinding binding = compiledBinding(worker, preparation);
+				if (binding == null) {
+					return null;
+				}
+				QueryEvaluationStep step = compiledResultRecipe.recipe().bind(binding);
+				if (!(step instanceof NativeResultStep nativeStep) || nativeStep.requiresPhysicalResults()
+						|| !compiledResultRecipe.compatible(worker.source())) {
+					return null;
+				}
+				WorkerCompiledState result = new WorkerCompiledState(step, binding.context(), preparation);
+				accepted = true;
+				return result;
+			} catch (RuntimeException | Error failure) {
+				primary = failure;
+				throw failure;
+			} finally {
+				if (!accepted) {
+					KernelRuntime.rethrowCloseFailureIfNotPrimary(KernelRuntime.closeResource(preparation, primary),
+							primary);
+				}
+			}
+		});
+	}
+
 	NativeSubqueryPlan forWorker(NativeScalarPlan.WorkerContext worker) {
 		return forWorker(worker, null);
 	}
@@ -605,6 +665,15 @@ final class NativeSubqueryPlan implements SlotPlan {
 			}
 			WORKER_BINDINGS.incrementAndGet();
 			return bound;
+		}
+		WorkerCompiledState compiled = compiledForWorker(worker);
+		if (compiled != null) {
+			WORKER_BINDINGS.incrementAndGet();
+			// Already bound to this exact worker. InvocationFactory would recreate the
+			// original algebra tree and reread the VALUES source on every replay.
+			return new NativeSubqueryPlan(compiled.step(), outSlots, outNames, frameInputSlots,
+					frameInputNames, frameParameterNames, privateGraphParameters, projection, compiled.context(),
+					workerFactory, null, null, compiledResultRecipe);
 		}
 		BoundExecution bound = workerFactory == null ? null : workerFactory.bind(worker);
 		if (bound == null || bound.step() == null) {
