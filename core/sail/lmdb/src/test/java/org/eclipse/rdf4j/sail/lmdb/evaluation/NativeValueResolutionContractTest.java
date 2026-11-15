@@ -340,6 +340,7 @@ public class NativeValueResolutionContractTest {
 					new ListBindingSet(List.of("input"), imported), evaluation));
 			equal(456L, seeded[0]);
 			check(masks.equals(List.of(9, 4)));
+			// The source must see the destination positions (computed output before imported input).
 		} finally {
 			fused.close();
 			evaluation.executionContext().close();

@@ -378,6 +378,9 @@ class NativeResultWrapperBindingTest {
 					firstSource.executionContext());
 		LmdbNativeEvaluationStrategy secondInvocation = strategy.forInvocation(secondSource, secondWorker,
 					secondSource.executionContext());
+		// The two public consumers use the same strategy as their independent worker invocations.
+		firstRow.setInvocationStrategy(firstInvocation);
+		secondRow.setInvocationStrategy(secondInvocation);
 		NativeScalarPlan.WorkerContext firstWorkerContext = NativeScalarPlan.WorkerContext.forSource(firstSource,
 					firstContext, firstWorker, firstSource.executionContext(), firstInvocation, boundary);
 		NativeScalarPlan.WorkerContext secondWorkerContext = NativeScalarPlan.WorkerContext.forSource(secondSource,
