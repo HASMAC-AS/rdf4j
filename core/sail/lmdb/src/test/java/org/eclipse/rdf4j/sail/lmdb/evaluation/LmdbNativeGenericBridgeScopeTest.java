@@ -1082,7 +1082,12 @@ public class LmdbNativeGenericBridgeScopeTest {
 		Projection subquery = new Projection(innerNow,
 				new ProjectionElemList(new ProjectionElem("hidden"), new ProjectionElem("innerNow")));
 		subquery.setSubquery(true);
-		Filter witness = new Filter(pattern.clone(), new Exists(subquery));
+		// EXISTS may legally skip unused projected expressions. Make the inner
+		// NOW-bearing binding semantically necessary before comparing its scope.
+		Filter witnessedInnerNow = new Filter(subquery,
+				new org.eclipse.rdf4j.query.algebra.Compare(Var.of("innerNow"), new FunctionCall("NOW"),
+						CompareOp.EQ));
+		Filter witness = new Filter(pattern.clone(), new Exists(witnessedInnerNow));
 		Extension outerNow = new Extension(pattern,
 				new ExtensionElem(new FunctionCall(RECORD_SCALAR_OUTER_NOW_URI, new FunctionCall("NOW")), "outerNow"));
 		Filter filter = new Filter(outerNow, new And(new Not(new Bound(Var.of("hidden"))), new Exists(witness)));
