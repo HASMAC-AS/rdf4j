@@ -16,7 +16,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.NativeLmdbQuerySource.UNKNOWN_ID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -155,6 +157,7 @@ class NativeResultWrapperBindingTest {
 		when(store.resultValueScope()).thenReturn(store);
 		when(store.snapshotId()).thenReturn(1L);
 		when(store.idOf(any(Value.class))).thenAnswer(call -> ids.getOrDefault(call.getArgument(0), UNKNOWN_ID));
+		certifyStoredIds(store, ids);
 		when(store.lazyValue(anyLong())).thenAnswer(call -> terms.get(call.getArgument(0)));
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(store);
 		BindingSet empty = EmptyBindingSet.getInstance();
@@ -247,6 +250,18 @@ class NativeResultWrapperBindingTest {
 	}
 
 	/** Real lexical aggregate and result modifiers, including duplicate projected groups before DISTINCT. */
+	private static void certifyStoredIds(NativeLmdbQuerySource.ParallelSource store, Map<Value, Long> ids) {
+		when(store.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(call -> {
+			Value value = call.getArgument(0);
+			NativeLmdbQuerySource.IdLookup result = call.getArgument(2);
+			long id = ids.getOrDefault(value, UNKNOWN_ID);
+			result.set(id, id == UNKNOWN_ID ? NativeLmdbQuerySource.IdOrigin.ABSENT
+					: NativeLmdbQuerySource.IdOrigin.STORED);
+			return null;
+		}).when(store).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+	}
+
 	private static Outcome evaluate(ValueExpr aliasExpression) throws Exception {
 		return evaluate(aliasExpression, true);
 	}
@@ -315,6 +330,7 @@ class NativeResultWrapperBindingTest {
 			return ids.getOrDefault(call.getArgument(0), UNKNOWN_ID);
 		});
 		when(store.lazyValue(anyLong())).thenAnswer(call -> terms.get(call.getArgument(0)));
+		certifyStoredIds(store, ids);
 
 		SyntheticValueSource firstSource = SyntheticValueSource.forEvaluation(store);
 		SyntheticValueSource secondSource = SyntheticValueSource.forEvaluation(store);

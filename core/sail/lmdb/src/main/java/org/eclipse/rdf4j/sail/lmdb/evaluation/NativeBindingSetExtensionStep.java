@@ -671,6 +671,11 @@ interface NativeBindingSetValueEvaluator {
 	}
 
 	default NativeValueOutcome evaluateForRow(BindingSet bindings, RowState row) {
+		// Pure, explicitly supplied row evaluators do not need an invocation. A partial
+		// invocation is never valid: still require its exact source, session and owner.
+		if (row.executionContextOrNull() == null && row.fusedSession == null) {
+			return evaluate(bindings);
+		}
 		return evaluateInInvocation(bindings, row.executionContext(), row.source, row.fusedSession());
 	}
 }

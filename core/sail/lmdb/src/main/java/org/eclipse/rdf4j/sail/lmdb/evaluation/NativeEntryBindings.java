@@ -80,18 +80,23 @@ final class NativeEntryBindings extends AbstractBindingSet implements GraphFrame
 			Object facade = synthetic.entryAuthorityToken();
 			Object lookup = source.valueLookupScope();
 			Object result = source.resultValueScope();
-			if (facade == null || lookup == null || result == null) {
-				return null;
-			}
 			EntryDomainAnchor anchor = synthetic.entryDomainAnchor();
 			DomainStamp currentDomain = source.detachedDomainStamp();
 			boolean anchored = anchor != null && anchor.facade() == facade && anchor.lookup() == lookup
 					&& anchor.result() == result
 					&& (anchor.domain() == null || anchor.domain().sameDomain(currentDomain));
-			// A domain observed after an anchor without one cannot certify IDs produced before that observation.
+			// A post-row receipt cannot establish what was true when the ID was produced.
 			DomainStamp domain = anchor == null ? currentDomain : anchored ? anchor.domain() : null;
-			IdAuthority proof = new IdAuthority(facade, new WeakReference<>(lookup), new WeakReference<>(result),
-					domain, anchored);
+			if (facade == null || (lookup == null) != (result == null)
+					|| lookup == null && (!anchored || domain == null)) {
+				return null;
+			}
+			// Some sources expose their two view generations only through the detached domain receipt.
+			// Never treat null lookup scopes alone as proof that two generations are identical.
+			Object lookupWitness = lookup == null ? domain.lookupScope() : lookup;
+			Object resultWitness = result == null ? domain.resultScope() : result;
+			IdAuthority proof = new IdAuthority(facade, new WeakReference<>(lookupWitness),
+					new WeakReference<>(resultWitness), domain, anchored);
 			return proof.matches(source) ? proof : null;
 		}
 
@@ -101,11 +106,15 @@ final class NativeEntryBindings extends AbstractBindingSet implements GraphFrame
 			if (originLookup == null || originResult == null) {
 				return false;
 			}
-			Object currentLookup = source.valueLookupScope();
-			Object currentResult = source.resultValueScope();
-			if (currentLookup == null || currentResult == null) {
+			Object rawLookup = source.valueLookupScope();
+			Object rawResult = source.resultValueScope();
+			DomainStamp currentDomain = domain == null ? null : source.detachedDomainStamp();
+			boolean sameDomain = domain != null && domain.sameDomain(currentDomain);
+			if ((rawLookup == null) != (rawResult == null) || rawLookup == null && !sameDomain) {
 				return false;
 			}
+			Object currentLookup = rawLookup == null ? currentDomain.lookupScope() : rawLookup;
+			Object currentResult = rawResult == null ? currentDomain.resultScope() : rawResult;
 			SyntheticValueSource synthetic = source instanceof SyntheticValueSource ? (SyntheticValueSource) source
 					: null;
 			Object targetFacade = synthetic == null ? null : synthetic.entryAuthorityToken();
@@ -114,11 +123,9 @@ final class NativeEntryBindings extends AbstractBindingSet implements GraphFrame
 			}
 			boolean sameFacade = targetFacade == facade && currentLookup == originLookup
 					&& currentResult == originResult;
-			DomainStamp currentDomain = domain == null ? null : source.detachedDomainStamp();
-			boolean sameDomain = domain != null && domain.sameDomain(currentDomain);
 			return (sameFacade || sameDomain) && (domain == null || sameDomain)
-					&& currentLookup == source.valueLookupScope()
-					&& currentResult == source.resultValueScope()
+					&& rawLookup == source.valueLookupScope()
+					&& rawResult == source.resultValueScope()
 					&& (synthetic == null || synthetic.entryAuthorityToken() == targetFacade)
 					&& (domain == null || domain.sameDomain(source.detachedDomainStamp()));
 		}

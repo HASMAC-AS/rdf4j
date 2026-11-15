@@ -25,6 +25,7 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 	private final NativeGroupIteration iteration;
 	private final NativeGroupStep owner;
 	private final GroupingPlan fixedPlan;
+	private final boolean fixedPlanPrepared;
 	private final List<AutoCloseable> alternatives = new ArrayList<>();
 	private NativeResultCursor selectedResults;
 	private final NativeExecutionContext context;
@@ -67,8 +68,15 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 
 	NativeGroupResultCursor(NativeGroupStep owner, NativeGroupIteration iteration, NativeExecutionContext context,
 			boolean closeContext, GroupingPlan fixedPlan, boolean closeAggregateContext) {
+		this(owner, iteration, context, closeContext, fixedPlan, closeAggregateContext, false);
+	}
+
+	private NativeGroupResultCursor(NativeGroupStep owner, NativeGroupIteration iteration, NativeExecutionContext context,
+			boolean closeContext, GroupingPlan fixedPlan, boolean closeAggregateContext,
+			boolean fixedPlanPrepared) {
 		this.owner = owner;
 		this.fixedPlan = fixedPlan;
+		this.fixedPlanPrepared = fixedPlanPrepared;
 		this.iteration = iteration;
 		this.context = context;
 		this.invocation = iteration.invocationCarrier();
@@ -208,7 +216,8 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 					authority.closeDecodedInputs();
 				}
 			}
-			return new NativeGroupResultCursor(null, iteration, context, false, selected);
+			return new NativeGroupResultCursor(null, iteration, context, false, selected, false,
+					NativeAggregatePhysicalPlan.hasPhysicalLexicalInput(selected.input()));
 		}
 	}
 
@@ -268,7 +277,7 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 			return;
 		}
 		GroupingPlan plan = fixedPlan;
-		if (plan != null && NativeAggregatePhysicalPlan.hasPhysicalLexicalInput(plan.input())) {
+		if (plan != null && !fixedPlanPrepared && NativeAggregatePhysicalPlan.hasPhysicalLexicalInput(plan.input())) {
 			SlotPlan rebound = NativeAggregatePhysicalPlan.bindLexicalInputs(plan.input(), row);
 			if (rebound == null) {
 				throw new IllegalStateException("physical group input was not prepared for its invocation");

@@ -685,6 +685,12 @@ public class LmdbNativeEntryBindingSeedTest {
 		when(source.valueLookupScope()).thenReturn(new Object());
 		when(source.resultValueScope()).thenReturn(new Object());
 		when(source.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(call -> {
+			IdLookup lookup = call.getArgument(2);
+			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, IdOrigin.ABSENT);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(IdLookup.class));
 		return source;
 	}
 
