@@ -70,6 +70,11 @@ class LmdbNativeUncorrelatedExistsModeQuoteTest {
 	void anUncorrelatedNativeJoinKeepsItsInnerMembershipWork(int acceptedOrdinal) {
 		CountingSource source = new CountingSource(acceptedOrdinal);
 		RowState row = row(source);
+		NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null, row.base,
+				System.identityHashCode(row), null);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
 		try {
 			PatternPlan edge = new PatternPlan(Term.constant(ROOT), Term.constant(EDGE), Term.slot(1),
 					Term.constant(GRAPH), ContextConstraint.UNRESTRICTED, true, null, "", null,
@@ -126,7 +131,11 @@ class LmdbNativeUncorrelatedExistsModeQuoteTest {
 					.as("a native outer hook cannot make its inner native membership work disappear")
 					.isGreaterThanOrEqualTo(source.flagTests);
 		} finally {
-			row.memoryScope.close();
+			try {
+				row.closeDecodedInputs();
+			} finally {
+				invocation.close();
+			}
 		}
 	}
 

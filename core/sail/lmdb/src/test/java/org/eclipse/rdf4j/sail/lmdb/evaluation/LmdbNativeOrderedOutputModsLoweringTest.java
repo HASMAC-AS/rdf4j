@@ -72,7 +72,11 @@ class LmdbNativeOrderedOutputModsLoweringTest {
 		long declinedBefore = KernelExecutionTestAccess.declined();
 		long hostedBefore = KernelExecutionTestAccess.hostedGenericCompiles();
 		long islandsBefore = KernelExecutionTestAccess.islandCompiles();
-		try {
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null, row.base,
+				System.identityHashCode(input), null)) {
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			var lowered = LmdbNativeKernelLowering.lowerOrderedRows(input, row, false, orderSlots, directions,
 					limit, offset, false);
 			assertThat(lowered).isNotNull();

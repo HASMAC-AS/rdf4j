@@ -431,6 +431,16 @@ class LmdbNativeKernelHooksIdentityTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			result.set(UNKNOWN, IdOrigin.ABSENT);
+		}
+
+		@Override
 		public Value lazyValue(long id) throws QueryEvaluationException {
 			throw new AssertionError("the synthetic authority should resolve plan/runtime ids before the delegate");
 		}

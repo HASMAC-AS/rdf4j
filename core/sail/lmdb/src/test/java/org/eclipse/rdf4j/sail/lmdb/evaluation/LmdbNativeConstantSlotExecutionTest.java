@@ -402,24 +402,35 @@ class LmdbNativeConstantSlotExecutionTest {
 			domains[i] = values.clone();
 		}
 		RowState runtimeRow = row.fork();
-		LmdbNativeKernelHooks hooks = new LmdbNativeKernelHooks(runtimeRow, lowered.bindings);
-		int[] offsets = new int[domains.length];
-		int[] lengths = new int[domains.length];
-		for (int i = 0; i < domains.length; i++) {
-			lengths[i] = domains[i].length;
-		}
-		LmdbNativeKernelBindings.BoundDomains boundDomains = new LmdbNativeKernelBindings.BoundDomains(domains, offsets,
-				lengths);
-		KernelContext context = lowered.bindings.context(views, boundDomains, runtimeRow, hooks);
-		JaninoKernel kernel = compiled ? KernelCompilationTestSupport.compile(lowered.kernel)
-				: LmdbNativeKernelInterpreter.forRows(lowered.kernel);
-		assertThat(kernel).as("kernel tier declined %s", compiled ? "generated" : "interpreted").isNotNull();
-		try {
-			kernel.bind(context);
-			return drain(kernel, lowered.kernel.stride());
-		} finally {
-			kernel.close();
-			hooks.closeFilters();
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(runtimeRow.source, null,
+				runtimeRow.base, System.identityHashCode(lowered.kernel), null)) {
+			runtimeRow.fusedSession = invocation.session();
+			runtimeRow.setExecutionContext(invocation.executionContext());
+			runtimeRow.swapPreparationAttempt(invocation.preparationAttempt());
+			try {
+				LmdbNativeKernelHooks hooks = new LmdbNativeKernelHooks(runtimeRow, lowered.bindings);
+				int[] offsets = new int[domains.length];
+				int[] lengths = new int[domains.length];
+				for (int i = 0; i < domains.length; i++) {
+					lengths[i] = domains[i].length;
+				}
+				LmdbNativeKernelBindings.BoundDomains boundDomains = new LmdbNativeKernelBindings.BoundDomains(domains,
+						offsets,
+						lengths);
+				KernelContext context = lowered.bindings.context(views, boundDomains, runtimeRow, hooks);
+				JaninoKernel kernel = compiled ? KernelCompilationTestSupport.compile(lowered.kernel)
+						: LmdbNativeKernelInterpreter.forRows(lowered.kernel);
+				assertThat(kernel).as("kernel tier declined %s", compiled ? "generated" : "interpreted").isNotNull();
+				try {
+					kernel.bind(context);
+					return drain(kernel, lowered.kernel.stride());
+				} finally {
+					kernel.close();
+					hooks.closeFilters();
+				}
+			} finally {
+				runtimeRow.closeDecodedInputs();
+			}
 		}
 	}
 

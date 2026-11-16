@@ -80,7 +80,7 @@ class NativeExpressionDomainFailureTest {
 			RowState decodedRow = fixture.row();
 			RowState inlineRow = fixture.row();
 			long semanticBytesBefore = runtimeValueBytes(semanticRow);
-			Throwable semanticFailure = evaluateCopyUnderProbe(semantic, semanticRow, semanticDeadline);
+			Throwable semanticFailure = evaluateSemanticCopyUnderProbe(semantic, semanticRow, semanticDeadline);
 			long semanticBytesAfter = runtimeValueBytes(semanticRow);
 			long decodedBytesBefore = runtimeValueBytes(decodedRow);
 			Throwable decodedFailure = evaluateCopyUnderProbe(decoded, decodedRow, decodedDeadline);
@@ -152,7 +152,7 @@ class NativeExpressionDomainFailureTest {
 			RowState decodedRow = fixture.row();
 			RowState inlineRow = fixture.row();
 			long semanticBytesBefore = runtimeValueBytes(semanticRow);
-			Throwable semanticFailure = evaluateCopyUnderProbe(semantic, semanticRow, semanticDeadline);
+			Throwable semanticFailure = evaluateSemanticCopyUnderProbe(semantic, semanticRow, semanticDeadline);
 			long semanticBytesAfter = runtimeValueBytes(semanticRow);
 			long decodedBytesBefore = runtimeValueBytes(decodedRow);
 			Throwable decodedFailure = evaluateCopyUnderProbe(decoded, decodedRow, decodedDeadline);
@@ -178,6 +178,17 @@ class NativeExpressionDomainFailureTest {
 					() -> assertThat(semanticRow.cancellation.cancellationPublished()).isFalse(),
 					() -> assertThat(decodedRow.cancellation.cancellationPublished()).isFalse(),
 					() -> assertThat(inlineRow.cancellation.cancellationPublished()).isFalse());
+		}
+	}
+
+	private static Throwable evaluateSemanticCopyUnderProbe(CopyBinding copy, RowState row,
+			LmdbNativeProbeDeadline deadline) {
+		try (NativeInvocationCarrier ignored = NativeTestStrategies.invocation(row)) {
+			try {
+				return evaluateCopyUnderProbe(copy, row, deadline);
+			} finally {
+				row.closeDecodedInputs();
+			}
 		}
 	}
 

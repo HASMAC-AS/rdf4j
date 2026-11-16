@@ -67,9 +67,12 @@ final class NativeBindingSetProjectionStep implements NativeResultStep, LmdbNati
 	}
 
 	@Override
-	public NativeCompiledResultRecipe compiledRecipe() {
+	public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+		capture.reserve(128L);
+		capture.strings(sourceNames);
+		capture.strings(targetNames);
 		NativeCompiledResultRecipe child = arg instanceof NativeCompiledRecipeProvider provider
-				? provider.compiledRecipe()
+				? provider.compiledRecipe(capture)
 				: null;
 		return child == null ? null
 				: new ProjectionRecipe(child, sourceNames.clone(), targetNames.clone(),
@@ -313,6 +316,11 @@ final class NativeBindingSetProjectionStep implements NativeResultStep, LmdbNati
 		@Override
 		public NativeExecutionContext executionContext() {
 			return executionContext;
+		}
+
+		@Override
+		public NativeInvocationCarrier invocationCarrier() {
+			return NativeExecutionContextCarrier.invocationOf(delegate);
 		}
 	}
 

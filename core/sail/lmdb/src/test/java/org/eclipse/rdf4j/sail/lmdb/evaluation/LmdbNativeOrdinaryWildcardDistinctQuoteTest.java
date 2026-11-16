@@ -14,7 +14,6 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -179,8 +178,7 @@ class LmdbNativeOrdinaryWildcardDistinctQuoteTest {
 				assertThat(tracker.opened).as("lowering does not bind storage").isZero();
 				double expectedRows = LmdbNativeWork.rowsOut(join, row, row.boundMask());
 				assertThat(expectedRows).as("the positive producer expectation must be priced").isPositive();
-				LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-				when(strategy.forcedExecutionStrategyName()).thenReturn(tier.tag);
+				LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tier.tag);
 				NativeRowsStep step = spy(new NativeRowsStep(evaluation, join, layout, new int[] { 0 },
 						new String[] { "s" }, distinct, new int[0], new boolean[0], 0L, -1L,
 						false, strategy, null, null, Set.of(), null, null));

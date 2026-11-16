@@ -172,6 +172,12 @@ final class GenericRootPlan implements QueryEvaluationStep, LmdbNativePhysicalPl
 
 	@Override
 	public void explainStrategies() {
+		if (LmdbNativeStrategyPreview.active()) {
+			// The hosted step stays lazy, but Optimized explanation still needs its interior native claims.
+			// Reuse the current compilation scope: a new invocation would recapture constants and lose the
+			// structural planning context. No iteration is opened and the diagnostic step is not retained.
+			recipe.genericPrecompile(strategy, context);
+		}
 		LmdbNativeStrategyPreview.direct("generic dispatch", LmdbNativeAttemptMetrics.PATH_GENERIC_FALLBACK,
 				reason, null);
 	}

@@ -104,17 +104,28 @@ final class NativeGroupStep implements NativeResultStep, LmdbNativePhysicalPlan 
 	private NativeGroupStep fullValueAlternative;
 
 	@Override
-	public NativeCompiledResultRecipe compiledRecipe() {
-		NativeCompiledInputRecipe input = NativeCompiledInputRecipe.capture(arg);
-		NativeDiagnosticPath diagnostic = NativeDiagnosticPath.capture(originalExpr);
+	public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+		capture.reserve(128L);
+		NativeCompiledInputRecipe input = NativeCompiledInputRecipe.capture(arg, capture);
+		NativeDiagnosticPath diagnostic = NativeDiagnosticPath.capture(originalExpr, capture);
 		if (!layout.isFrozen() || input == null || originalExpr != null && diagnostic == null || prefixPattern != null
 				|| prefixRunPlan != null || prefixRunFilter != null || prefixRootKindFilter != null
 				|| existsIntersection != null || adjacencyAggregate != null || typeMatrix != null
 				|| !alternatives.isEmpty() || havingCondition != null || fullValueCompiler != null) {
 			return null;
 		}
+		layout.accountRecipeSnapshot(capture);
+		capture.reserve(128L + 4L * groupSlots.length + 8L * aggregates.length + 64L * optionalOnlyNames.length);
+		capture.strings(optionalOnlyNames);
 		AggregateSpec[] specs = new AggregateSpec[aggregates.length];
 		for (int i = 0; i < specs.length; i++) {
+			if (aggregates[i].constant != NativeLmdbQuerySource.UNKNOWN_ID && aggregates[i].constant != 0L) {
+				capture.requireSourceAuthority();
+			}
+			capture.reserve(192L + (aggregates[i].rowSlots == null ? 0L : 4L * aggregates[i].rowSlots.length));
+			capture.string(aggregates[i].name);
+			capture.string(aggregates[i].separator);
+			capture.retain(aggregates[i].definition, 32L);
 			specs[i] = aggregates[i].compiledSnapshot();
 			if (specs[i] == null) {
 				return null;
@@ -122,15 +133,21 @@ final class NativeGroupStep implements NativeResultStep, LmdbNativePhysicalPlan 
 		}
 		return new CompiledGroupRecipe(input, layout.snapshot(), groupSlots.clone(), specs, strictCompare,
 				Set.copyOf(Arrays.asList(optionalOnlyNames)), rootEvaluationScoped, requiresPhysicalResults(),
-				diagnostic,
-				nativePhysicalPlan());
+				diagnostic);
 	}
 
 	/** Source/session-free built-in group metadata; more complex callbacks require their own typed recipes. */
 	private record CompiledGroupRecipe(NativeCompiledInputRecipe input, NativeSlotLayout layout, int[] groupSlots,
 			AggregateSpec[] aggregates, boolean strictCompare, Set<String> optionalOnlyNames,
-			boolean rootEvaluationScoped, boolean requiresPhysicalResults, NativeDiagnosticPath diagnostic,
-			String describe) implements NativeCompiledResultRecipe {
+			boolean rootEvaluationScoped, boolean requiresPhysicalResults, NativeDiagnosticPath diagnostic)
+			implements NativeCompiledResultRecipe {
+		@Override
+		public String describe() {
+			return "NativeGroup(slots=" + layout.slotNames().length + ", groups=" + groupSlots.length
+					+ ", aggregates=" + aggregates.length + ", strict=" + strictCompare
+					+ ", physical=" + requiresPhysicalResults + ")";
+		}
+
 		@Override
 		public QueryEvaluationStep bind(NativeResultBinding binding) {
 			if (binding.worker() == null || binding.strategy() == null || binding.context() == null
@@ -708,24 +725,39 @@ final class NativeGroupStep implements NativeResultStep, LmdbNativePhysicalPlan 
 				adjacencyAggregate, havingCondition, originalExpr, forcedExecutionStrategyName());
 		iteration.typeMatrix = typeMatrix;
 		iteration.alternatives = alternatives;
-		RowState row = new RowState(source, layout, QueryExplanationContext.bindings(), originalExpr);
-		if (iteration.initialize(row)) {
-			if (requiresPhysicalResults()) {
-				try (NativeGroupResultCursor owner = new NativeGroupResultCursor(this, iteration, null, false)) {
-					owner.previewPhysicalSite(row);
-				} catch (IOException failure) {
-					throw new QueryEvaluationException(failure);
-				} finally {
-					row.closeDecodedInputs();
+		iteration.enclosingFused = strategy == null ? null : strategy.enclosingFusedInvocation();
+		iteration.enclosingExecution = strategy == null ? null : strategy.enclosingExecutionContext();
+		iteration.invocationStrategy = strategy;
+		iteration.invocationPolicy = queryExecutionPolicy();
+		try (iteration) {
+			NativeInvocationCarrier invocation = iteration.invocationCarrier();
+			RowState row = new RowState(source, layout, QueryExplanationContext.bindings(), originalExpr);
+			row.setExecutionContext(invocation.executionContext());
+			row.fusedSession = invocation.session();
+			row.bindInvocationStrategy(strategy);
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			try {
+				if (iteration.initialize(row)) {
+					if (requiresPhysicalResults()) {
+						try (NativeGroupResultCursor owner = new NativeGroupResultCursor(this, iteration, null,
+								false)) {
+							owner.previewPhysicalSite(row);
+						} catch (IOException failure) {
+							throw new QueryEvaluationException(failure);
+						}
+					} else {
+						iteration.explainStrategies(row);
+					}
+					if (typeMatrix != null) {
+						typeMatrix.explainMorselStrategies();
+					}
+				} else {
+					LmdbNativeStrategyPreview.empty("GROUP BY dispatch",
+							"Incoming bindings have no matching stored values");
 				}
-			} else {
-				iteration.explainStrategies(row);
+			} finally {
+				row.closeDecodedInputs();
 			}
-			if (typeMatrix != null) {
-				typeMatrix.explainMorselStrategies();
-			}
-		} else {
-			LmdbNativeStrategyPreview.empty("GROUP BY dispatch", "Incoming bindings have no matching stored values");
 		}
 		LmdbNativeStrategyPreview.inspect(arg);
 	}
@@ -1130,6 +1162,21 @@ final class NativeGroupIteration
 			physicalFused = invocation.session();
 			if (!(source instanceof SyntheticValueSource)) {
 				cancellation = new NativeCancellationToken(invocation.executionContext().cancellation());
+			}
+		}
+		return invocation;
+	}
+
+	synchronized NativeInvocationCarrier borrowedInvocationCarrier(NativeExecutionContext owner) {
+		if (invocation == null) {
+			if (closed) {
+				throw new IllegalStateException("native group invocation is closed");
+			}
+			invocation = NativeInvocationCarrier.openForBorrowedProducer(source, owner, enclosingFused,
+					System.identityHashCode(arg), explainTarget);
+			physicalFused = invocation.session();
+			if (!(source instanceof SyntheticValueSource)) {
+				cancellation = new NativeCancellationToken(owner.cancellation());
 			}
 		}
 		return invocation;

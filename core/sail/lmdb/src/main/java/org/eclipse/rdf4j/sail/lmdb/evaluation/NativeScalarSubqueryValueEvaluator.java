@@ -74,7 +74,7 @@ final class NativeScalarSubqueryValueEvaluator implements NativeBindingSetValueE
 
 	private static NativeScalarSubqueryValueEvaluator compileBound(ValueExpr expression,
 			LmdbNativeEvaluationStrategy strategy, QueryEvaluationContext context) {
-		if (!(expression instanceof CompareSubQueryValueOperator operator)) {
+		if (!(expression instanceof CompareSubQueryValueOperator operator) || strategy.nativeSource() == null) {
 			return null;
 		}
 		Quantifier quantifier;

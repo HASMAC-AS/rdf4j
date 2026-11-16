@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -565,6 +566,15 @@ class NativeRowTermDomainExecutionTest {
 			when(delegate.idOf(any(Value.class))).thenAnswer(call -> ids.getOrDefault(call.getArgument(0), -1L));
 			when(delegate.idOf(any(Value.class), anyInt()))
 					.thenAnswer(call -> ids.getOrDefault(call.getArgument(0), -1L));
+			when(delegate.certifiesIdOrigins()).thenReturn(true);
+			doAnswer(call -> {
+				long id = ids.getOrDefault(call.getArgument(0), NativeLmdbQuerySource.UNKNOWN_ID);
+				NativeLmdbQuerySource.IdLookup lookup = call.getArgument(2);
+				lookup.set(id, id == NativeLmdbQuerySource.UNKNOWN_ID
+						? NativeLmdbQuerySource.IdOrigin.ABSENT
+						: NativeLmdbQuerySource.IdOrigin.STORED);
+				return null;
+			}).when(delegate).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 			when(delegate.lazyValue(anyLong())).thenAnswer(call -> terms.get((long) call.getArgument(0)));
 			when(delegate.lazyValue(anyLong(), anyInt())).thenAnswer(call -> terms.get((long) call.getArgument(0)));
 			when(delegate.nativeValueCodec()).thenReturn(codec);

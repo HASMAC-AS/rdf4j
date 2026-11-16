@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeCostVector.Feature;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -154,10 +155,16 @@ class LmdbNativeParallelDistinctMergeQuoteTest {
 		final PathSource source = new PathSource();
 		final SyntheticValueSource evaluation = SyntheticValueSource.forEvaluation(source);
 		final RowState row = row(evaluation);
+		final NativeInvocationCarrier invocation = NativeInvocationCarrier.open(evaluation, null, row.base,
+				System.identityHashCode(this), null);
 		final MultiJoinPlan join = new MultiJoinPlan(
 				new SlotPlan[] { edge(0, 1L, 1, 8D), edge(1, 2L, 2, 8D) }, new MaskedFilter[0]);
 
 		Fixture() {
+			evaluation.executionContext().initializeQueryBase(row.base);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			set("rdf4j.lmdb.parallel.enabled", "true");
 			set("rdf4j.lmdb.parallel.threads", "2");
 			set("rdf4j.lmdb.parallel.maxTasks", "2");
@@ -177,8 +184,10 @@ class LmdbNativeParallelDistinctMergeQuoteTest {
 
 		@Override
 		public void close() {
-			row.memoryScope.close();
-			evaluation.executionContext().close();
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(row.memoryScope::close, failure);
+			failure = KernelRuntime.closeResource(evaluation.executionContext(), failure);
 			previous.forEach((key, value) -> {
 				if (value == null) {
 					System.clearProperty(key);
@@ -186,6 +195,7 @@ class LmdbNativeParallelDistinctMergeQuoteTest {
 					System.setProperty(key, value);
 				}
 			});
+			KernelRuntime.rethrowCloseFailure(failure);
 		}
 	}
 

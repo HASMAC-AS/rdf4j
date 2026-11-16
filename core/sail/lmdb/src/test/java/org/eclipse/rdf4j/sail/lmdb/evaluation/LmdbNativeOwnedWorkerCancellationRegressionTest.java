@@ -15,9 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -29,12 +30,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.rdf4j.http.client.QueryExecutionContext;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.QueryExecutionPolicy;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.LmdbRootScanPartition;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelCancellation;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelQueryCancelledException;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.parallel.Execution;
@@ -43,6 +46,17 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 /** Deterministic close/cancellation ordering for native parallel workers. */
 @Execution(ExecutionMode.SAME_THREAD)
 class LmdbNativeOwnedWorkerCancellationRegressionTest {
+	private final List<AutoCloseable> invocationOwners = new ArrayList<>();
+
+	@AfterEach
+	void closeInvocations() {
+		Throwable failure = null;
+		for (int index = invocationOwners.size() - 1; index >= 0; index--) {
+			failure = KernelRuntime.closeResource(invocationOwners.get(index), failure);
+		}
+		invocationOwners.clear();
+		KernelRuntime.rethrowCloseFailure(failure);
+	}
 
 	@Test
 	@Timeout(30)
@@ -355,10 +369,10 @@ class LmdbNativeOwnedWorkerCancellationRegressionTest {
 		PatternPlan root = new PatternPlan(Term.slot(0), Term.constant(19L), Term.slot(1), Term.unbound(),
 				ContextConstraint.UNRESTRICTED, false, 10D);
 		MultiJoinPlan plan = new MultiJoinPlan(new SlotPlan[] { root }, new MaskedFilter[0]);
-		NativeRowsStep step = new NativeRowsStep(null, plan, layout, new int[] { 0, 1 }, new String[] { "a", "b" },
+		RowState consumerRow = row(layout, sharedToken);
+		NativeRowsStep step = new NativeRowsStep(consumerRow.source, plan, layout, new int[] { 0, 1 },
+				new String[] { "a", "b" },
 				false, new int[0], new boolean[0], 0L, -1L, false, null, null, null, Set.of(), null, null);
-		RowState consumerRow = new RowState(null, layout, EmptyBindingSet.getInstance(), (TupleExpr) null,
-				sharedToken);
 		NativeLmdbQuerySource.ParallelSource source = mock(NativeLmdbQuerySource.ParallelSource.class);
 		LmdbNativeParallelPipelines.TaskReservation reservation = LmdbNativeParallelPipelines.tryReserveTasks(false, 1);
 		assertThat(reservation).isNotNull();
@@ -453,8 +467,7 @@ class LmdbNativeOwnedWorkerCancellationRegressionTest {
 			}
 		};
 		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
 		NativeSlotLayout layout = NativeSlotLayout.empty();
 		NativeRowsStep step = new NativeRowsStep(source, input, layout, new int[0], new String[0], false,
 				new int[0], new boolean[0], 0L, -1L, false, strategy, null, null, Set.of(), null, null);
@@ -480,8 +493,7 @@ class LmdbNativeOwnedWorkerCancellationRegressionTest {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
 		NativeLmdbQuerySource.ParallelSource workerSource = mock(NativeLmdbQuerySource.ParallelSource.class);
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
 		AtomicReference<NativeRowsStep> stepRef = new AtomicReference<>();
 		AtomicReference<java.util.concurrent.Future<?>> task = new AtomicReference<>();
 		SlotPlan input = new SlotPlan() {
@@ -714,14 +726,28 @@ class LmdbNativeOwnedWorkerCancellationRegressionTest {
 		}
 	}
 
-	private static LmdbNativeParallelPipelines.ParallelRowCursor cursor(NativeCancellationToken cancellation) {
+	private LmdbNativeParallelPipelines.ParallelRowCursor cursor(NativeCancellationToken cancellation) {
 		NativeSlotLayout layout = NativeSlotLayout.empty();
-		NativeRowsStep step = new NativeRowsStep(null, SlotPlan.empty(), layout, new int[0], new String[0], false,
+		RowState row = row(layout, cancellation);
+		NativeRowsStep step = new NativeRowsStep(row.source, SlotPlan.empty(), layout, new int[0], new String[0], false,
 				new int[0], new boolean[0], 0L, -1L, false, null, null, null, Set.of(), null, null);
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance(), (TupleExpr) null, cancellation);
 		return new LmdbNativeParallelPipelines.ParallelRowCursor(step, row, null,
 				new MultiJoinPlan[] { null }, new NativeLmdbQuerySource.ParallelSource[] { null },
 				new LmdbNativeParallelPipelines.TaskReservation(0), new LmdbRootScanPartition[0], false);
+	}
+
+	private RowState row(NativeSlotLayout layout, NativeCancellationToken cancellation) {
+		RowState row = new RowState(new LmdbNativeRowDetachmentTest.FakeStoreSource(), layout,
+				EmptyBindingSet.getInstance(), (TupleExpr) null, cancellation);
+		NativeInvocationCarrier invocation = NativeInvocationCarrier.openStandalone(row.source, row.base,
+				System.identityHashCode(row), null, QueryExecutionPolicy.DEFAULT, null);
+		invocationOwners.add(invocation);
+		invocationOwners.add(row::closeDecodedInputs);
+		row.setExecutionContext(invocation.executionContext());
+		row.fusedSession = invocation.session();
+		row.bindInvocationStrategy(NativeTestStrategies.forced(null));
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		return row;
 	}
 
 	private static void await(CountDownLatch latch) {

@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeAggregateCompiler.UNKNOWN;
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -118,7 +119,7 @@ class LmdbNativeChunkPrefixRowStateTest {
 	private static RowState row() {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("input", 0, "produced", 1, "downstream", 2), null);
 		layout.freeze(List.of("input", "produced", "downstream"));
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(mock(NativeLmdbQuerySource.class), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, UNKNOWN);
 		row.recomputeBoundMask();
 		return row;

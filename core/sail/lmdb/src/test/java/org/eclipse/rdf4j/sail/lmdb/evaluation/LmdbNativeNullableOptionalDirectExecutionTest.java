@@ -12,8 +12,6 @@
 package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.StringReader;
@@ -199,8 +197,7 @@ class LmdbNativeNullableOptionalDirectExecutionTest {
 
 	private static List<String> directRows(SyntheticValueSource source, NativeSlotLayout layout, SlotPlan input,
 			String forcing) throws Exception {
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(forcing);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(forcing);
 		NativeRowsStep step = new NativeRowsStep(source, input, layout, new int[] { 1, 0 },
 				new String[] { "row", "s" }, false, new int[0], new boolean[0], 0L, -1L, false,
 				strategy, null, null, Set.of(), null, null);

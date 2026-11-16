@@ -259,6 +259,14 @@ final class LmdbNativeCostVectors {
 	 */
 	static AlgebraEstimate captureAlgebraEstimate(TupleExpr expr, PlanValueCatalog.Builder receipts,
 			NativeLmdbQuerySource.DomainStamp domain) {
+		return captureAlgebraEstimate(expr, receipts, domain, null);
+	}
+
+	static AlgebraEstimate captureAlgebraEstimate(TupleExpr expr, PlanValueCatalog.Builder receipts,
+			NativeLmdbQuerySource.DomainStamp domain, NativeRecipeMemory.Capture capture) {
+		if (capture != null) {
+			capture.reserve(128L);
+		}
 		if (expr == null) {
 			return UNKNOWN_ESTIMATE;
 		}
@@ -267,6 +275,9 @@ final class LmdbNativeCostVectors {
 			return new ConstantEstimate(annotated);
 		}
 		if (expr instanceof StatementPattern pattern) {
+			if (capture != null) {
+				capture.requireSourceAuthority();
+			}
 			PatternEstimate estimate = receipts.patternEstimate(pattern);
 			return estimate != null && domain != null && domain.sameDomain(estimate.domain()) ? estimate
 					: UNKNOWN_ESTIMATE;
@@ -279,27 +290,28 @@ final class LmdbNativeCostVectors {
 			return count == null ? UNKNOWN_ESTIMATE : new ConstantEstimate(count);
 		}
 		if (expr instanceof Union union) {
-			return combine(EstimateOperation.SUM, captureAlgebraEstimate(union.getLeftArg(), receipts, domain),
-					captureAlgebraEstimate(union.getRightArg(), receipts, domain));
+			return combine(EstimateOperation.SUM, captureAlgebraEstimate(union.getLeftArg(), receipts, domain, capture),
+					captureAlgebraEstimate(union.getRightArg(), receipts, domain, capture));
 		}
 		if (expr instanceof Join join) {
-			return combine(EstimateOperation.MAX, captureAlgebraEstimate(join.getLeftArg(), receipts, domain),
-					captureAlgebraEstimate(join.getRightArg(), receipts, domain));
+			return combine(EstimateOperation.MAX, captureAlgebraEstimate(join.getLeftArg(), receipts, domain, capture),
+					captureAlgebraEstimate(join.getRightArg(), receipts, domain, capture));
 		}
 		if (expr instanceof LeftJoin join) {
-			return captureAlgebraEstimate(join.getLeftArg(), receipts, domain);
+			return captureAlgebraEstimate(join.getLeftArg(), receipts, domain, capture);
 		}
 		if (expr instanceof Difference difference) {
-			return captureAlgebraEstimate(difference.getLeftArg(), receipts, domain);
+			return captureAlgebraEstimate(difference.getLeftArg(), receipts, domain, capture);
 		}
 		if (expr instanceof Group group && group.getGroupBindingNames().isEmpty()) {
 			return new ConstantEstimate(1D);
 		}
 		if (expr instanceof Slice slice && slice.hasLimit()) {
 			return combine(EstimateOperation.MIN, new ConstantEstimate(slice.getLimit()),
-					captureAlgebraEstimate(slice.getArg(), receipts, domain));
+					captureAlgebraEstimate(slice.getArg(), receipts, domain, capture));
 		}
-		return expr instanceof UnaryTupleOperator unary ? captureAlgebraEstimate(unary.getArg(), receipts, domain)
+		return expr instanceof UnaryTupleOperator unary
+				? captureAlgebraEstimate(unary.getArg(), receipts, domain, capture)
 				: UNKNOWN_ESTIMATE;
 	}
 

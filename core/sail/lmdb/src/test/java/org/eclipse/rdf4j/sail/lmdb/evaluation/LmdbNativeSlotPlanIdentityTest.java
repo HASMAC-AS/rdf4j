@@ -12,6 +12,7 @@
 package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -100,7 +101,7 @@ class LmdbNativeSlotPlanIdentityTest {
 	@Test
 	void lateralKeepsOneLexicalInputMaskAcrossRightRows() throws Exception {
 		NativeSlotLayout layout = layout(2);
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(mock(NativeLmdbQuerySource.class), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 		row.recomputeBoundMask();
 		SlotPlan left = SlotPlan.values(new ValuesRow[] {

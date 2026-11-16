@@ -13,14 +13,18 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.algebra.Compare;
@@ -210,7 +214,7 @@ class LmdbNativeCompoundExistsPlacementTest {
 				new Compare(new Var("a"), new Var("c"), Compare.CompareOp.NE));
 		LmdbNativeAggregatePlanner planner = new LmdbNativeAggregatePlanner(
 				new QueryEvaluationContext.Minimal((Dataset) null), mock(LmdbNativeEvaluationStrategy.class),
-				mock(NativeLmdbQuerySource.class));
+				dictionarySource());
 		SlotPlan planned = planner.compileTuple(new Join(filter, pattern("c", "r", "a")), false);
 		assertThat(planned).isInstanceOf(JoinPlan.class);
 		assertThat(((JoinPlan) planned).left).isInstanceOf(FilterPlan.class);
@@ -227,7 +231,7 @@ class LmdbNativeCompoundExistsPlacementTest {
 		QueryValueEvaluationStep value = bindings -> SimpleValueFactory.getInstance().createLiteral(true);
 		when(strategy.precompile(any(ValueExpr.class), any(QueryEvaluationContext.class))).thenReturn(value);
 		LmdbNativeAggregatePlanner planner = new LmdbNativeAggregatePlanner(
-				new QueryEvaluationContext.Minimal((Dataset) null), strategy, mock(NativeLmdbQuerySource.class));
+				new QueryEvaluationContext.Minimal((Dataset) null), strategy, dictionarySource());
 		SlotPlan planned = planner.compileTuple(input, false);
 		assertThat(planned).isInstanceOf(MultiJoinPlan.class);
 	}
@@ -279,7 +283,7 @@ class LmdbNativeCompoundExistsPlacementTest {
 				pattern("local", "detail", "value")))));
 		LmdbNativeAggregatePlanner planner = new LmdbNativeAggregatePlanner(
 				new QueryEvaluationContext.Minimal((Dataset) null), mock(LmdbNativeEvaluationStrategy.class),
-				mock(NativeLmdbQuerySource.class));
+				dictionarySource());
 		SlotPlan planned = planner.compileTuple(filter, false);
 		assertThat(planned).isInstanceOf(JoinPlan.class);
 		JoinPlan join = (JoinPlan) planned;
@@ -567,6 +571,21 @@ class LmdbNativeCompoundExistsPlacementTest {
 				return scalar(1L << slot).capabilities();
 			}
 		};
+	}
+
+	private static NativeLmdbQuerySource dictionarySource() {
+		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
+		Map<Value, Long> ids = new HashMap<>();
+		when(source.idOf(any(Value.class)))
+				.thenAnswer(invocation -> ids.computeIfAbsent(invocation.getArgument(0), ignored -> 1L + ids.size()));
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			long id = source.idOf(invocation.getArgument(0, Value.class));
+			invocation.getArgument(2, NativeLmdbQuerySource.IdLookup.class)
+					.set(id, NativeLmdbQuerySource.IdOrigin.STORED);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+		return source;
 	}
 
 	private static int drainInOrder(SlotPlan plan) throws IOException {

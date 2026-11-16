@@ -1,0 +1,86 @@
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/benchmark/OptionalFanoutExperiment.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/benchmark/OptionalFanoutExperiment.java
+@@ -22,6 +22,7 @@
+ import java.util.Arrays;
+ import java.util.LinkedHashMap;
+ import java.util.List;
++import java.util.concurrent.TimeUnit;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.TreeMap;
+@@ -34,6 +35,8 @@
+ import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
+ import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager;
+ import org.eclipse.rdf4j.sail.lmdb.LmdbStore;
++import org.eclipse.rdf4j.sail.lmdb.LmdbTestUtil;
++import org.eclipse.rdf4j.sail.lmdb.NamespaceAdjacencyObservation;
+ import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+ import org.eclipse.rdf4j.sail.lmdb.evaluation.OptionalFanoutRouteAccess;
+ import org.eclipse.rdf4j.sail.lmdb.evaluation.OptionalFanoutRouteAccess.Counters;
+@@ -62,22 +65,32 @@
+ 				: Files.createDirectory(options.store);
+ 		LmdbStoreConfig config = new LmdbStoreConfig("spoc,ospc,psoc,posc");
+ 		config.setNativeEvaluationEnabled(true);
++		config.setDirectAdjacencyEnabled(true);
+ 		config.setForceSync(false);
+ 		config.setValueDBSize(256L * 1024 * 1024);
+ 		config.setTripleDBSize(256L * 1024 * 1024);
+-		SailRepository repository = new SailRepository(new LmdbStore(store.toFile(), config));
++		LmdbStore nativeStore = new LmdbStore(store.toFile(), config);
++		SailRepository repository = new SailRepository(nativeStore);
+ 		try (PrintWriter output = options.output == null ? new PrintWriter(System.out, true)
+ 				: new PrintWriter(Files.newBufferedWriter(options.output, StandardCharsets.UTF_8,
+ 						StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))) {
+ 			try {
+ 				repository.init();
++				LmdbTestUtil.awaitBackgroundMaintenance(nativeStore, 30L, TimeUnit.SECONDS);
+ 				OptionalFanoutExperimentFixture.Dataset dataset;
+ 				try (SailRepositoryConnection connection = repository.getConnection()) {
+ 					dataset = fixture.populate(connection);
+ 				}
+-				emit(output, metadata(options, fixture, dataset, config, store));
++				if (!nativeStore.awaitDirectAdjacencyReady(30L, TimeUnit.SECONDS)) {
++					throw new IllegalStateException("Direct adjacency not ready: "
++							+ nativeStore.getDirectAdjacencyReadinessDescription());
++				}
++				Map<String, Object> metadata = metadata(options, fixture, dataset, config, store);
++				metadata.put("namespaceExperimentHarness", "native-and-direct-adjacency-v1");
++				metadata.put("adjacencySetup", NamespaceAdjacencyObservation.snapshot(nativeStore).setup());
++				emit(output, metadata);
+ 				for (int i = -options.warmup; i < options.measurementsToRun; i++) {
+-					Map<String, Object> sample = run(repository, fixture, options, allocation, i);
++					Map<String, Object> sample = run(repository, nativeStore, fixture, options, allocation, i);
+ 					emit(output, sample);
+ 					if (!Boolean.TRUE.equals(sample.get("valid"))) {
+ 						throw new IllegalStateException("Experiment validation failed; inspect the preceding sample");
+@@ -93,12 +106,13 @@
+ 		}
+ 	}
+ 
+-	private static Map<String, Object> run(SailRepository repository, OptionalFanoutExperimentFixture fixture,
++	private static Map<String, Object> run(SailRepository repository, LmdbStore nativeStore, OptionalFanoutExperimentFixture fixture,
+ 			Options options, AllocationCounter allocation, int iteration) {
+ 		LmdbQueryMemoryManager memory = LmdbQueryMemoryManager.process();
+ 		long ledgerBefore = memory.usedBytes();
+ 		memory.resetPeakUsedBytesForTesting();
+ 		Counters countersBefore = OptionalFanoutRouteAccess.counters();
++		var adjacencyBefore = NamespaceAdjacencyObservation.snapshot(nativeStore);
+ 		long toRetain = options.retain == 0 ? fixture.expectedRows : Math.min(options.retain, fixture.expectedRows);
+ 		List<BindingSet> retained = options.consumption == Consumption.RETAINED
+ 				? new ArrayList<>(Math.toIntExact(toRetain))
+@@ -181,6 +195,7 @@
+ 		long ledgerAfter = memory.usedBytes();
+ 		long ledgerPeak = memory.peakUsedBytes();
+ 		Counters counters = OptionalFanoutRouteAccess.counters().minus(countersBefore);
++		var adjacencyAfter = NamespaceAdjacencyObservation.snapshot(nativeStore);
+ 		List<SelectedRoute> selections = capture.snapshot();
+ 		boolean complete = rows == fixture.expectedRows;
+ 		boolean rowCountValid = rows == (options.consumption == Consumption.EARLY
+@@ -227,6 +242,7 @@
+ 				"routeEvidence", routeEvidence, "successfulSelectionCount",
+ 				selections.stream().mapToLong(SelectedRoute::count).sum(), "valid", valid);
+ 		record.put("counters", counterFields(counters));
++		record.put("adjacency", adjacencyAfter.minus(adjacencyBefore));
+ 		record.put("successfulSelections", selections.stream()
+ 				.map(route -> fields("point", route.decisionPoint(),
+ 						"label", route.label(), "strategy", route.strategy(), "mode", route.mode(), "count",

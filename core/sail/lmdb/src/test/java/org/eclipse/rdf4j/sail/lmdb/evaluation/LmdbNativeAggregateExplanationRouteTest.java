@@ -465,7 +465,8 @@ class LmdbNativeAggregateExplanationRouteTest {
 	@Test
 	void actualUnavailableLoweringIsRecordedWithoutMutatingOptimizedPreview() {
 		set(LmdbNativeKernelLowering.PLAN_BRIDGE_PROPERTY, "false");
-		RowState row = new RowState(null, NativeSlotLayout.empty(), EmptyBindingSet.getInstance());
+		RowState row = new RowState(mock(NativeLmdbQuerySource.class), NativeSlotLayout.empty(),
+				EmptyBindingSet.getInstance());
 		SingletonSet actualTarget = new SingletonSet();
 		actualTarget.setRuntimeTelemetryEnabled(true);
 		assertThat(LmdbNativeKernelExecution.aggregateRouteForExplanation(SingletonPlan.INSTANCE, row, new int[0],

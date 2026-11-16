@@ -87,6 +87,15 @@ public final class LmdbQueryMemoryManager {
 		return peakUsedBytes;
 	}
 
+	/**
+	 * Starts a new observation window in a dedicated test/benchmark process. Existing live claims remain part of the
+	 * peak; resetting this diagnostic never changes admission, reservations, or either byte limit.
+	 */
+	@InternalUseOnly
+	public synchronized void resetPeakUsedBytesForTesting() {
+		peakUsedBytes = usedBytes;
+	}
+
 	private boolean makeRoom(QueryLedger query, long additionalBytes, Reservation excluded) {
 		if (additionalBytes > perQueryMaxBytes || additionalBytes > maxBytes) {
 			return false;

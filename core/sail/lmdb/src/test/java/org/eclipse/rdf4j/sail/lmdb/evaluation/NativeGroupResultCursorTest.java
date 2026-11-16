@@ -265,6 +265,7 @@ class NativeGroupResultCursorTest {
 					new AggregateSpec[] { AggregateSpec.star("count") }, false, fixture.bindings, null, null, false,
 					null);
 			group.enclosingFused = fixture.root;
+			group.invocationStrategy = fixture.strategy;
 			NativeInvocationCarrier invocation = group.invocationCarrier();
 			assertNotSame(fixture.root, invocation.session());
 			NativeGroupResultCursor.GroupingPlan selected = NativeGroupResultCursor.tablePlan(group);

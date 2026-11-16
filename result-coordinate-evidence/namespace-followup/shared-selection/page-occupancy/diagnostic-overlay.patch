@@ -1,0 +1,628 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -136,10 +136,12 @@
+ 	private boolean admissionRefused;
+ 	private boolean closed;
+ 	private long weakMisses;
++	private final FactorPageDiagnostics pageDiagnostics;
+ 
+ 	NativeResultMaterializer(NativeResultMaterializerPlan plan, LmdbQueryMemoryManager.QueryLedger ledger) {
+ 		this.plan = plan;
+ 		this.ledger = ledger;
++		pageDiagnostics = new FactorPageDiagnostics(plan.projection.names);
+ 	}
+ 
+ 	/** Begin one accepted outward row; null declines reuse for this row. */
+@@ -260,6 +262,7 @@
+ 					weakMisses++;
+ 					clear(index);
+ 				} else if (matches(index, id, value)) {
++					pageDiagnostics.ordinaryCacheHits++;
+ 					if (rowSequence != 0L) {
+ 						// The same ID can be reached from a different accepted factor member.
+ 						rememberFactor(index, id, rowSequence);
+@@ -511,6 +514,8 @@
+ 			page.clear(cell);
+ 			return null;
+ 		}
++		pageDiagnostics.factorHits++;
++		pageDiagnostics.factorHitsByTarget[target]++;
+ 		ids[target] = id;
+ 		versions[target] = page.versions[cell];
+ 		revisionIds[target] = page.revisionIds[cell];
+@@ -520,6 +525,10 @@
+ 	}
+ 
+ 	private void rememberFactor(int target, long id, long rowSequence) {
++		pageDiagnostics.publicationCalls++;
++		if (values[target] != null && factorAdmissionRefused && factorPages == null) {
++			pageDiagnostics.blockedInitialPublications++;
++		}
+ 		if (values[target] == null || factorAdmissionRefused && factorPages == null
+ 				|| !captureCoordinate(target, id, rowSequence)) {
+ 			return;
+@@ -534,6 +543,10 @@
+ 		FactorPage page = memoPage(target, canonical, pageIndex);
+ 		if (page == null) {
+ 			page = factorPage(canonical, pageIndex);
++		}
++		if (page == null && factorAdmissionRefused) {
++			pageDiagnostics.blockedMissingPagePublications++;
++			pageDiagnostics.blockedMissingPagesByTarget[target]++;
+ 		}
+ 		if (page == null && !factorAdmissionRefused) {
+ 			page = admitFactorPage(canonical, pageIndex);
+@@ -600,29 +613,40 @@
+ 	}
+ 
+ 	private FactorPage admitFactorPage(int target, long pageIndex) {
++		pageDiagnostics.pageAdmissionAttempts++;
+ 		if (factorOwner == null) {
+ 			factorOwner = new WeakReference<>(coordinateSource);
+ 			factorActivation = coordinateActivation;
+ 		}
+ 		if (factorPages == null && !resizeFactorDirectory(8)) {
++			pageDiagnostics.firstRefusal(1, target, coordinateScratch, pageIndex, ledger.usedBytes());
+ 			return null;
+ 		}
+ 		if (((long) factorPageCount + 1L) * 4L >= (long) factorPages.length * 3L) {
+ 			if (factorPages.length > Integer.MAX_VALUE / 2 || !resizeFactorDirectory(factorPages.length * 2)) {
++				if (factorPages.length > Integer.MAX_VALUE / 2) {
++					pageDiagnostics.directoryCapacityOverflowRefusals++;
++				}
++				pageDiagnostics.firstRefusal(2, target, coordinateScratch, pageIndex, ledger.usedBytes());
+ 				factorAdmissionRefused = true;
+ 				return null;
+ 			}
+ 		}
+ 		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(PAGE_BYTES);
+ 		if (claim == null) {
++			pageDiagnostics.pagePayloadRefusals++;
++			pageDiagnostics.firstRefusal(3, target, coordinateScratch, pageIndex, ledger.usedBytes());
+ 			if (factorPageCount == 0) {
+ 				factorPages = null;
++				pageDiagnostics.releasingDirectory(factorDirectoryReservation.bytes());
+ 				factorDirectoryReservation.close();
+ 				factorDirectoryReservation = null;
+ 			}
+ 			factorAdmissionRefused = true;
+ 			return null;
+ 		}
++		pageDiagnostics.pagePayloadReservationGrants++;
++		pageDiagnostics.pagePayloadBytesGranted += claim.bytes();
+ 		try {
+ 			FactorPage page = new FactorPage(target, coordinateScratch[NativeResultCoordinates.NAMESPACE],
+ 					coordinateScratch[NativeResultCoordinates.GROUP],
+@@ -631,20 +655,31 @@
+ 					pageIndex, claim);
+ 			insertFactorPage(factorPages, page);
+ 			factorPageCount++;
++			pageDiagnostics.admittedPage(target, factorPageCount);
+ 			return page;
+ 		} catch (RuntimeException | Error failure) {
++			pageDiagnostics.pageConstructionFailureReleases++;
++			pageDiagnostics.pagePayloadBytesObservedBeforeRelease += claim.bytes();
+ 			claim.close();
+ 			throw failure;
+ 		}
+ 	}
+ 
+ 	private boolean resizeFactorDirectory(int capacity) {
++		pageDiagnostics.directoryReserveAttempts++;
+ 		long bytes = 128L + 8L * capacity;
+ 		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
+ 		if (claim == null) {
++			if (factorPages == null) {
++				pageDiagnostics.directoryInitialRefusals++;
++			} else {
++				pageDiagnostics.directoryGrowthRefusals++;
++			}
+ 			factorAdmissionRefused = true;
+ 			return false;
+ 		}
++		pageDiagnostics.grantedDirectory(claim.bytes(),
++				factorDirectoryReservation == null ? 0L : factorDirectoryReservation.bytes());
+ 		try {
+ 			FactorPage[] replacement = new FactorPage[capacity];
+ 			if (factorPages != null) {
+@@ -658,10 +693,13 @@
+ 			factorPages = replacement;
+ 			factorDirectoryReservation = claim;
+ 			if (old != null) {
++				pageDiagnostics.directoryReplacements++;
++				pageDiagnostics.releasingDirectory(old.bytes());
+ 				old.close();
+ 			}
+ 			return true;
+ 		} catch (RuntimeException | Error failure) {
++			pageDiagnostics.releasingDirectory(claim.bytes());
+ 			claim.close();
+ 			throw failure;
+ 		}
+@@ -706,6 +744,7 @@
+ 			if (recentFactorPage == page) {
+ 				recentFactorPage = null;
+ 			}
++			pageDiagnostics.releasingPage(page.values, page.reservation.bytes(), true);
+ 			page.close();
+ 			factorPageCount--;
+ 			removed = true;
+@@ -733,6 +772,9 @@
+ 
+ 	private void clearFactorPages() {
+ 		FactorPage[] old = factorPages;
++		if (!pageDiagnostics.finalClose && factorPageCount != 0) {
++			pageDiagnostics.nonemptyClearCallsBeforeFinalClose++;
++		}
+ 		factorPages = null;
+ 		recentFactorPage = null;
+ 		factorPageCount = 0;
+@@ -741,6 +783,7 @@
+ 		FactorMemo oldMemo = factorMemo;
+ 		factorMemo = null;
+ 		if (oldMemo != null) {
++			pageDiagnostics.memoBytesObservedBeforeRelease += oldMemo.reservation.bytes();
+ 			oldMemo.close();
+ 		}
+ 		if (factorOwner != null) {
+@@ -750,11 +793,13 @@
+ 		if (old != null) {
+ 			for (FactorPage page : old) {
+ 				if (page != null) {
++					pageDiagnostics.releasingPage(page.values, page.reservation.bytes(), false);
+ 					page.close();
+ 				}
+ 			}
+ 		}
+ 		if (factorDirectoryReservation != null) {
++			pageDiagnostics.releasingDirectory(factorDirectoryReservation.bytes());
+ 			factorDirectoryReservation.close();
+ 			factorDirectoryReservation = null;
+ 		}
+@@ -763,20 +808,26 @@
+ 	private FactorMemo allocateFactorMemo() {
+ 		int width = plan.projection.names.length;
+ 		if (width > Integer.MAX_VALUE / FactorMemo.STRIDE) {
++			pageDiagnostics.memoWidthRefusals++;
+ 			factorMemoRefused = true;
+ 			return null;
+ 		}
++		pageDiagnostics.memoReserveAttempts++;
+ 		long bytes = 1_024L + 96L * width;
+ 		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
+ 		if (claim == null) {
++			pageDiagnostics.memoRefusals++;
+ 			factorMemoRefused = true;
+ 			return null;
+ 		}
++		pageDiagnostics.memoReservationGrants++;
++		pageDiagnostics.memoBytesGranted += claim.bytes();
+ 		try {
+ 			FactorMemo memo = new FactorMemo(width, claim);
+ 			factorMemo = memo;
+ 			return memo;
+ 		} catch (RuntimeException | Error failure) {
++			pageDiagnostics.memoBytesObservedBeforeRelease += claim.bytes();
+ 			claim.close();
+ 			throw failure;
+ 		}
+@@ -950,32 +1001,52 @@
+ 		revisionOwners[index] = null;
+ 	}
+ 
++	private void capturePageDiagnosticTable() {
++		pageDiagnostics.beginFinalClose(factorPageCount, factorPages == null ? 0 : factorPages.length,
++				reservation == null ? 0L : reservation.bytes(),
++				factorDirectoryReservation == null ? 0L : factorDirectoryReservation.bytes(),
++				factorMemo == null ? 0L : factorMemo.reservation.bytes(), ledger.usedBytes(), ledger.maxBytes());
++		if (factorPages != null) {
++			for (FactorPage page : factorPages) {
++				if (page != null) {
++					pageDiagnostics.snapshotPage(page.target, page.namespace, page.group, page.parent, page.column,
++							page.pageIndex, page.reservation.bytes(), page.values);
++				}
++			}
++		}
++	}
++
+ 	@Override
+ 	public synchronized void close() {
+ 		if (!closed) {
+-			clearEntries();
+-			clearFactorPages();
+-			closed = true;
+-			coordinateSource = null;
+-			coordinateRow = null;
+-			view = null;
+-			exposure = null;
+-			if (source != null) {
+-				source.clear();
+-			}
+-			if (reservation != null) {
+-				reservation.close();
+-			}
+-			source = null;
+-			reservation = null;
+-			values = null;
+-			ids = null;
+-			versions = null;
+-			revisionIds = null;
+-			revisionOwners = null;
+-			coordinateScratch = null;
+-			hitMasks = null;
+-			hitMasksInUse = false;
++			try {
++				capturePageDiagnosticTable();
++			} finally {
++				clearEntries();
++				clearFactorPages();
++				closed = true;
++				coordinateSource = null;
++				coordinateRow = null;
++				view = null;
++				exposure = null;
++				if (source != null) {
++					source.clear();
++				}
++				if (reservation != null) {
++					reservation.close();
++				}
++				source = null;
++				reservation = null;
++				values = null;
++				ids = null;
++				versions = null;
++				revisionIds = null;
++				revisionOwners = null;
++				coordinateScratch = null;
++				hitMasks = null;
++				hitMasksInUse = false;
++			}
++			pageDiagnostics.publish();
+ 		}
+ 	}
+ }
+--- /dev/null
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/FactorPageDiagnostics.java
+@@ -0,0 +1,341 @@
++/*******************************************************************************
++ * Copyright (c) 2026 Eclipse RDF4J contributors.
++ *
++ * All rights reserved. This program and the accompanying materials
++ * are made available under the terms of the Eclipse Distribution License v1.0
++ * which accompanies this distribution, and is available at
++ * http://www.eclipse.org/org/documents/edl-v10.php.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ *******************************************************************************/
++// Some portions generated by Codex
++package org.eclipse.rdf4j.sail.lmdb.evaluation;
++
++import java.io.BufferedWriter;
++import java.io.IOException;
++import java.io.UncheckedIOException;
++import java.lang.ref.WeakReference;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.StandardOpenOption;
++import java.util.concurrent.atomic.AtomicLong;
++
++/**
++ * Diagnostic-only companion to the copied original materializer. It does not reserve query memory or own Values.
++ * Fixed counters are allocated once per materializer; the page table and text output are allocated only on final close.
++ * A live weak-referent count is a transient observation that can itself briefly strengthen a referent.
++ */
++final class FactorPageDiagnostics {
++
++	static final String OUTPUT_PROPERTY = "rdf4j.lmdb.factorPageDiagnostic.output";
++	private static final AtomicLong NEXT_OWNER = new AtomicLong();
++	private static final int RECORD_WORDS = 9;
++	private static final int CELLS = 64;
++	private static final long DECLARED_PAGE_BYTES = 16_384L;
++
++	final long owner = NEXT_OWNER.incrementAndGet();
++	final String[] targetNames;
++	final long[] admissionsByTarget;
++	final long[] factorHitsByTarget;
++	final long[] blockedMissingPagesByTarget;
++	final long[] allRemovedOccupiedSlots = new long[CELLS + 1];
++	final long[] allRemovedLiveReferents = new long[CELLS + 1];
++	final long[] finalOccupiedSlots = new long[CELLS + 1];
++	final long[] finalLiveReferents = new long[CELLS + 1];
++	final long[] beforeFinalOccupiedSlots = new long[CELLS + 1];
++	final long[] beforeFinalLiveReferents = new long[CELLS + 1];
++	final long[] firstRefusedKey = new long[6];
++
++	long pageAdmissionAttempts;
++	long pageAdmissions;
++	long pagePayloadReservationGrants;
++	long pagePayloadRefusals;
++	long pagePayloadBytesGranted;
++	long pagePayloadBytesObservedBeforeRelease;
++	long pageDeclaredBytesReleased;
++	long pageConstructionFailureReleases;
++	long pageReleases;
++	long peakLivePages;
++	long pagesRetiredByNamespace;
++	long pagesClearedBeforeFinalClose;
++	long nonemptyClearCallsBeforeFinalClose;
++	long ordinaryCacheHits;
++	long factorHits;
++	long publicationCalls;
++	long blockedInitialPublications;
++	long blockedMissingPagePublications;
++	long directoryReserveAttempts;
++	long directoryReservationGrants;
++	long directoryInitialRefusals;
++	long directoryGrowthRefusals;
++	long directoryCapacityOverflowRefusals;
++	long directoryBytesGranted;
++	long directoryBytesObservedBeforeRelease;
++	long directoryPeakChargeIncludingResizeOverlap;
++	long directoryReplacements;
++	long memoReserveAttempts;
++	long memoReservationGrants;
++	long memoRefusals;
++	long memoWidthRefusals;
++	long memoBytesGranted;
++	long memoBytesObservedBeforeRelease;
++	long firstRefusalLedgerBytes = -1L;
++	int firstRefusalKind;
++	boolean finalClose;
++	long snapshotLedgerBytes;
++	long snapshotQueryLimitBytes;
++	long snapshotBaseClaimBytes;
++	long snapshotDirectoryClaimBytes;
++	long snapshotMemoClaimBytes;
++	long snapshotPageClaimBytes;
++	int snapshotDirectoryCapacity;
++	int snapshotExpectedPages;
++	int snapshotPages;
++	private long[] finalPageTable;
++
++	FactorPageDiagnostics(String[] targetNames) {
++		this.targetNames = targetNames;
++		admissionsByTarget = new long[targetNames.length];
++		factorHitsByTarget = new long[targetNames.length];
++		blockedMissingPagesByTarget = new long[targetNames.length];
++	}
++
++	void admittedPage(int target, int livePages) {
++		pageAdmissions++;
++		admissionsByTarget[target]++;
++		peakLivePages = Math.max(peakLivePages, livePages);
++	}
++
++	void grantedDirectory(long bytes, long existingClaimBytes) {
++		directoryReservationGrants++;
++		directoryBytesGranted += bytes;
++		directoryPeakChargeIncludingResizeOverlap = Math.max(directoryPeakChargeIncludingResizeOverlap,
++				bytes + existingClaimBytes);
++	}
++
++	void releasingDirectory(long bytes) {
++		directoryBytesObservedBeforeRelease += bytes;
++	}
++
++	void firstRefusal(int kind, int target, long[] coordinate, long pageIndex, long ledgerBytes) {
++		if (firstRefusalKind == 0) {
++			firstRefusalKind = kind;
++			firstRefusalLedgerBytes = ledgerBytes;
++			firstRefusedKey[0] = target;
++			firstRefusedKey[1] = coordinate[NativeResultCoordinates.NAMESPACE];
++			firstRefusedKey[2] = coordinate[NativeResultCoordinates.GROUP];
++			firstRefusedKey[3] = coordinate[NativeResultCoordinates.PARENT];
++			firstRefusedKey[4] = coordinate[NativeResultCoordinates.COLUMN];
++			firstRefusedKey[5] = pageIndex;
++		}
++	}
++
++	/** Called before the original cleanup, which is protected by its caller's finally block. */
++	void beginFinalClose(int pages, int directoryCapacity, long baseBytes, long directoryBytes, long memoBytes,
++			long ledgerBytes, long queryLimitBytes) {
++		finalClose = true;
++		snapshotExpectedPages = pages;
++		snapshotDirectoryCapacity = directoryCapacity;
++		snapshotBaseClaimBytes = baseBytes;
++		snapshotDirectoryClaimBytes = directoryBytes;
++		snapshotMemoClaimBytes = memoBytes;
++		snapshotLedgerBytes = ledgerBytes;
++		snapshotQueryLimitBytes = queryLimitBytes;
++		finalPageTable = new long[Math.multiplyExact(pages, RECORD_WORDS)];
++	}
++
++	void snapshotPage(int target, long namespace, long group, long parent, long column, long pageIndex, long claimBytes,
++			Object[] values) {
++		int occupancy = occupancy(values);
++		int occupied = occupancy >>> 8;
++		int live = occupancy & 255;
++		int base = snapshotPages * RECORD_WORDS;
++		finalPageTable[base] = target;
++		finalPageTable[base + 1] = namespace;
++		finalPageTable[base + 2] = group;
++		finalPageTable[base + 3] = parent;
++		finalPageTable[base + 4] = column;
++		finalPageTable[base + 5] = pageIndex;
++		finalPageTable[base + 6] = claimBytes;
++		finalPageTable[base + 7] = occupied;
++		finalPageTable[base + 8] = live;
++		snapshotPages++;
++		snapshotPageClaimBytes += claimBytes;
++		finalOccupiedSlots[occupied]++;
++		finalLiveReferents[live]++;
++		allRemovedOccupiedSlots[occupied]++;
++		allRemovedLiveReferents[live]++;
++	}
++
++	/** Invoked exactly once, immediately before an existing page.close(), without creating a per-page record. */
++	void releasingPage(Object[] values, long claimBytes, boolean namespaceRetirement) {
++		pageReleases++;
++		pagePayloadBytesObservedBeforeRelease += claimBytes;
++		pageDeclaredBytesReleased += DECLARED_PAGE_BYTES;
++		if (!finalClose) {
++			int occupancy = occupancy(values);
++			int occupied = occupancy >>> 8;
++			int live = occupancy & 255;
++			beforeFinalOccupiedSlots[occupied]++;
++			beforeFinalLiveReferents[live]++;
++			allRemovedOccupiedSlots[occupied]++;
++			allRemovedLiveReferents[live]++;
++			if (namespaceRetirement) {
++				pagesRetiredByNamespace++;
++			} else {
++				pagesClearedBeforeFinalClose++;
++			}
++		}
++	}
++
++	private static int occupancy(Object[] values) {
++		int occupied = 0;
++		int live = 0;
++		for (Object value : values) {
++			if (value != null) {
++				occupied++;
++				if (((WeakReference<?>) value).get() != null) {
++					live++;
++				}
++			}
++		}
++		return (occupied << 8) | live;
++	}
++
++	/** Called after the original owner cleanup. An output failure fails the diagnostic after resources are released. */
++	void publish() {
++		String destination = System.getProperty(OUTPUT_PROPERTY);
++		if (destination == null || destination.isEmpty()) {
++			throw new IllegalStateException("Diagnostic overlay requires " + OUTPUT_PROPERTY);
++		}
++		Path output = Path.of(destination).resolve("owner-" + owner + ".jsonl");
++		try (BufferedWriter writer = Files.newBufferedWriter(output, StandardOpenOption.CREATE_NEW,
++				StandardOpenOption.WRITE)) {
++			for (int i = 0; i < snapshotPages; i++) {
++				int base = i * RECORD_WORDS;
++				writer.write("{\"type\":\"factor-page\",\"owner\":" + owner
++						+ ",\"target\":" + finalPageTable[base]
++						+ ",\"namespace\":" + finalPageTable[base + 1]
++						+ ",\"group\":" + finalPageTable[base + 2]
++						+ ",\"parent\":" + finalPageTable[base + 3]
++						+ ",\"column\":" + finalPageTable[base + 4]
++						+ ",\"pageIndex\":" + finalPageTable[base + 5]
++						+ ",\"reservationBytesAtSnapshot\":" + finalPageTable[base + 6]
++						+ ",\"declaredPageBytes\":" + DECLARED_PAGE_BYTES
++						+ ",\"cellCapacity\":" + CELLS
++						+ ",\"occupiedWeakReferenceSlots\":" + finalPageTable[base + 7]
++						+ ",\"liveWeakReferentsAtSnapshot\":" + finalPageTable[base + 8] + "}\n");
++			}
++			StringBuilder summary = new StringBuilder(8192);
++			summary.append("{\"type\":\"factor-page-summary\",\"format\":1");
++			field(summary, "owner", owner);
++			field(summary, "pageSize", CELLS);
++			field(summary, "pageChargeBytes", DECLARED_PAGE_BYTES);
++			field(summary, "pageAdmissionAttempts", pageAdmissionAttempts);
++			field(summary, "pageAdmissions", pageAdmissions);
++			field(summary, "pagePayloadReservationGrants", pagePayloadReservationGrants);
++			field(summary, "pagePayloadRefusals", pagePayloadRefusals);
++			field(summary, "pagePayloadBytesGranted", pagePayloadBytesGranted);
++			field(summary, "pagePayloadBytesObservedBeforeRelease", pagePayloadBytesObservedBeforeRelease);
++			field(summary, "pageDeclaredBytesReleased", pageDeclaredBytesReleased);
++			field(summary, "pageConstructionFailureReleases", pageConstructionFailureReleases);
++			field(summary, "pageReleases", pageReleases);
++			field(summary, "peakLivePages", peakLivePages);
++			field(summary, "peakDeclaredPageBytes", peakLivePages * DECLARED_PAGE_BYTES);
++			field(summary, "pagesRetiredByNamespace", pagesRetiredByNamespace);
++			field(summary, "pagesClearedBeforeFinalClose", pagesClearedBeforeFinalClose);
++			field(summary, "nonemptyClearCallsBeforeFinalClose", nonemptyClearCallsBeforeFinalClose);
++			field(summary, "ordinaryCacheHits", ordinaryCacheHits);
++			field(summary, "factorHits", factorHits);
++			field(summary, "publicationCalls", publicationCalls);
++			field(summary, "blockedInitialPublications", blockedInitialPublications);
++			field(summary, "blockedMissingPagePublications", blockedMissingPagePublications);
++			field(summary, "directoryReserveAttempts", directoryReserveAttempts);
++			field(summary, "directoryReservationGrants", directoryReservationGrants);
++			field(summary, "directoryInitialRefusals", directoryInitialRefusals);
++			field(summary, "directoryGrowthRefusals", directoryGrowthRefusals);
++			field(summary, "directoryCapacityOverflowRefusals", directoryCapacityOverflowRefusals);
++			field(summary, "directoryBytesGranted", directoryBytesGranted);
++			field(summary, "directoryBytesObservedBeforeRelease", directoryBytesObservedBeforeRelease);
++			field(summary, "directoryGrantedLessObservedReleaseBytes",
++					directoryBytesGranted - directoryBytesObservedBeforeRelease);
++			field(summary, "directoryPeakChargeIncludingResizeOverlap", directoryPeakChargeIncludingResizeOverlap);
++			field(summary, "directoryReplacements", directoryReplacements);
++			field(summary, "memoReserveAttempts", memoReserveAttempts);
++			field(summary, "memoReservationGrants", memoReservationGrants);
++			field(summary, "memoRefusals", memoRefusals);
++			field(summary, "memoWidthRefusals", memoWidthRefusals);
++			field(summary, "memoBytesGranted", memoBytesGranted);
++			field(summary, "memoBytesObservedBeforeRelease", memoBytesObservedBeforeRelease);
++			field(summary, "firstRefusalKind", firstRefusalKind);
++			field(summary, "firstRefusalLedgerBytes", firstRefusalLedgerBytes);
++			field(summary, "snapshotLedgerBytes", snapshotLedgerBytes);
++			field(summary, "snapshotQueryLimitBytes", snapshotQueryLimitBytes);
++			field(summary, "snapshotBaseClaimBytes", snapshotBaseClaimBytes);
++			field(summary, "snapshotDirectoryClaimBytes", snapshotDirectoryClaimBytes);
++			field(summary, "snapshotMemoClaimBytes", snapshotMemoClaimBytes);
++			field(summary, "snapshotPageClaimBytes", snapshotPageClaimBytes);
++			field(summary, "snapshotDirectoryCapacity", snapshotDirectoryCapacity);
++			field(summary, "snapshotExpectedPages", snapshotExpectedPages);
++			field(summary, "snapshotPages", snapshotPages);
++			summary.append(",\"finalPageTableCoversAllAdmissions\":")
++					.append(snapshotPages == pageAdmissions && pagesRetiredByNamespace == 0L
++							&& pagesClearedBeforeFinalClose == 0L);
++			summary.append(",\"targetNames\":[");
++			for (int i = 0; i < targetNames.length; i++) {
++				if (i != 0) {
++					summary.append(',');
++				}
++				quoted(summary, targetNames[i]);
++			}
++			summary.append(']');
++			array(summary, "admissionsByTarget", admissionsByTarget);
++			array(summary, "factorHitsByTarget", factorHitsByTarget);
++			array(summary, "blockedMissingPagesByTarget", blockedMissingPagesByTarget);
++			array(summary, "firstRefusedKey", firstRefusedKey);
++			array(summary, "allRemovedOccupiedSlots", allRemovedOccupiedSlots);
++			array(summary, "allRemovedLiveReferents", allRemovedLiveReferents);
++			array(summary, "finalOccupiedSlots", finalOccupiedSlots);
++			array(summary, "finalLiveReferents", finalLiveReferents);
++			array(summary, "beforeFinalOccupiedSlots", beforeFinalOccupiedSlots);
++			array(summary, "beforeFinalLiveReferents", beforeFinalLiveReferents);
++			summary.append("}\n");
++			writer.write(summary.toString());
++		} catch (IOException failure) {
++			throw new UncheckedIOException("Cannot publish factor-page diagnostic " + output, failure);
++		}
++	}
++
++	private static void field(StringBuilder out, String name, long value) {
++		out.append(",\"").append(name).append("\":").append(value);
++	}
++
++	private static void array(StringBuilder out, String name, long[] values) {
++		out.append(",\"").append(name).append("\":[");
++		for (int i = 0; i < values.length; i++) {
++			if (i != 0) {
++				out.append(',');
++			}
++			out.append(values[i]);
++		}
++		out.append(']');
++	}
++
++	private static void quoted(StringBuilder out, String value) {
++		out.append('"');
++		for (int i = 0; i < value.length(); i++) {
++			char c = value.charAt(i);
++			if (c == '"' || c == '\\') {
++				out.append('\\').append(c);
++			} else if (c < 32) {
++				out.append("\\u");
++				for (int shift = 12; shift >= 0; shift -= 4) {
++					out.append(Character.forDigit((c >>> shift) & 15, 16));
++				}
++			} else {
++				out.append(c);
++			}
++		}
++		out.append('"');
++	}
++}

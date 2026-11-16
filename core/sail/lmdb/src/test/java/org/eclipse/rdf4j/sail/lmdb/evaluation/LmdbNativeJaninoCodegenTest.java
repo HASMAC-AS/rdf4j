@@ -176,7 +176,11 @@ public class LmdbNativeJaninoCodegenTest {
 		CountDownLatch releaseSource = new CountDownLatch(1);
 		Map<String, String> capture = new LinkedHashMap<>();
 		Map<String, String> previous = LmdbNativeAttemptMetrics.installDeclineCapture(capture);
-		try {
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null, row.base,
+				System.identityHashCode(input), null)) {
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			assertNull(LmdbNativeJaninoCodegen.kernel(ir.shapeKey(), ir.className(), () -> {
 				sourceEntered.countDown();
 				try {
@@ -433,14 +437,20 @@ public class LmdbNativeJaninoCodegenTest {
 			}
 		};
 
-		LmdbNativeJaninoCodegen.ValidationException bind = assertThrows(
-				LmdbNativeJaninoCodegen.ValidationException.class,
-				() -> LmdbNativeJaninoCodegen.bind(failing, new KernelContext(null, null, null, null), "testBind"));
-		assertEquals("bind failed", bind.getCause().getMessage());
-		LmdbNativeJaninoCodegen.ValidationException execution = assertThrows(
-				LmdbNativeJaninoCodegen.ValidationException.class,
-				() -> LmdbNativeJaninoCodegen.fill(failing, new long[1], 1, "testExecution"));
-		assertEquals("execution failed", execution.getCause().getMessage());
+		KernelContext context = new KernelContext(null, null, null, null).withStandaloneFusedRuntime();
+		try {
+			LmdbNativeJaninoCodegen.ValidationException bind = assertThrows(
+					LmdbNativeJaninoCodegen.ValidationException.class,
+					() -> LmdbNativeJaninoCodegen.bind(failing, context, "testBind"));
+			assertEquals("bind failed", bind.getCause().getMessage());
+			LmdbNativeJaninoCodegen.ValidationException execution = assertThrows(
+					LmdbNativeJaninoCodegen.ValidationException.class,
+					() -> LmdbNativeJaninoCodegen.fill(failing, new long[1], 1, "testExecution"));
+			assertEquals("execution failed", execution.getCause().getMessage());
+		} finally {
+			// This deliberately failing stub never accepts ownership of its invocation.
+			context.releaseOwnedFusedRuntime();
+		}
 	}
 
 	@Test

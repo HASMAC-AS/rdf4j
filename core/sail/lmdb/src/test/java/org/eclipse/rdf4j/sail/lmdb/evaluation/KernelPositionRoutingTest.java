@@ -66,7 +66,7 @@ class KernelPositionRoutingTest {
 		for (boolean compiled : new boolean[] { false, true }) {
 			AggregatePositionHooks hooks = new AggregatePositionHooks();
 			KernelContext context = new KernelContext(null, new long[0], new long[0],
-					new long[][] { { 11, 7 } }, hooks);
+					new long[][] { { 11, 7 } }, hooks).withStandaloneFusedRuntime();
 			JaninoKernel kernel = compiled ? KernelCompilationTestSupport.compile(ir)
 					: LmdbNativeKernelInterpreter.forAggregate(ir);
 			assertThat(kernel).isNotNull();

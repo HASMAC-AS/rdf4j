@@ -46,47 +46,63 @@ public final class LmdbWildcardPredicateBatchCancellationTestAccess {
 		slots.put("o", 2);
 		NativeSlotLayout layout = new NativeSlotLayout(slots, null);
 		layout.freeze(List.copyOf(slots.keySet()));
-		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
-		Arrays.fill(row.slots, LmdbNativeAggregateCompiler.UNKNOWN);
-		row.recomputeBoundMask();
-		fixture.cancellation = row.cancellation;
-		SlotPlan left = SlotPlan.values(new ValuesRow[] {
-				new ValuesRow(new int[] { 0 }, new long[] { 1L }),
-				new ValuesRow(new int[] { 0 }, new long[] { 2L }) });
-		PatternPlan wildcard = new PatternPlan(Term.slot(0), Term.slot(1), Term.slot(2), Term.constant(9L),
-				new ContextConstraint(new long[] { 9L }), true, 128D);
-		int rows;
-		if (mode.startsWith("fixed-optional")) {
-			PatternPlan fixed = new PatternPlan(Term.slot(0), Term.constant(10L), Term.slot(2), Term.constant(9L),
-					new ContextConstraint(new long[] { 9L }), true, 128D);
-			PatternPlan leftWildcard = new PatternPlan(Term.constant(17L), Term.slot(1), Term.slot(0),
-					Term.constant(7L), new ContextConstraint(new long[] { 7L }), true, 4D);
-			SlotPlan plan = SlotPlan.leftJoin(leftWildcard, fixed);
-			try (RowCursor cursor = LmdbWildcardPredicateBatch.openWeightedProjection(plan, row,
-					new int[] { 0, 1, 2 }, 4)) {
-				assertThat(cursor).isNotNull();
-				rows = cursor.next() ? 1 : 0;
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(null);
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, strategy,
+				EmptyBindingSet.getInstance(), System.identityHashCode(fixture), null)) {
+			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance(), null, null,
+					invocation.executionContext().cancellation());
+			row.setExecutionContext(invocation.executionContext());
+			row.fusedSession = invocation.session();
+			row.bindInvocationStrategy(strategy);
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			try {
+				Arrays.fill(row.slots, LmdbNativeAggregateCompiler.UNKNOWN);
+				row.recomputeBoundMask();
+				fixture.cancellation = row.cancellation;
+				SlotPlan left = SlotPlan.values(new ValuesRow[] {
+						new ValuesRow(new int[] { 0 }, new long[] { 1L }),
+						new ValuesRow(new int[] { 0 }, new long[] { 2L }) });
+				PatternPlan wildcard = new PatternPlan(Term.slot(0), Term.slot(1), Term.slot(2), Term.constant(9L),
+						new ContextConstraint(new long[] { 9L }), true, 128D);
+				int rows;
+				if (mode.startsWith("fixed-optional")) {
+					PatternPlan fixed = new PatternPlan(Term.slot(0), Term.constant(10L), Term.slot(2),
+							Term.constant(9L),
+							new ContextConstraint(new long[] { 9L }), true, 128D);
+					PatternPlan leftWildcard = new PatternPlan(Term.constant(17L), Term.slot(1), Term.slot(0),
+							Term.constant(7L), new ContextConstraint(new long[] { 7L }), true, 4D);
+					SlotPlan plan = SlotPlan.leftJoin(leftWildcard, fixed);
+					try (RowCursor cursor = LmdbWildcardPredicateBatch.openWeightedProjection(plan, row,
+							new int[] { 0, 1, 2 }, 4)) {
+						assertThat(cursor).isNotNull();
+						rows = cursor.next() ? 1 : 0;
+					}
+				} else {
+					BatchCursor opened = switch (mode) {
+					case "optional", "optional-single" ->
+						LmdbWildcardPredicateBatch.tryOpenOptional(left, wildcard, row, 4);
+					case "lateral" -> LmdbWildcardPredicateBatch.tryOpenLateral(left, wildcard, 1L, row, 4);
+					case "predicate-major" -> LmdbWildcardPredicateBatch.tryOpenPayload(wildcard, row, 4);
+					case "payload", "parallel-payload" ->
+						LmdbWildcardPredicateBatch.tryOpenPayload(left, wildcard, row, 4);
+					default -> throw new IllegalArgumentException(mode);
+					};
+					assertThat(opened).isNotNull();
+					try (BatchCursor cursor = opened) {
+						NativeBatch output = new NativeBatch(row.slots.length, 4);
+						rows = cursor.fill(output);
+						assertThat(output.selectedCount).isZero();
+					}
+				}
+				assertThat(fixture.cancellation.isCancellationRequested()).isTrue();
+				assertThat(rows).as("cancelled %s must not emit a match or OPTIONAL null extension", mode).isZero();
+				assertThat(fixture.metadataReads).hasValue(1);
+				if (mode.equals("parallel-payload")) {
+					assertThat(fixture.parallelSourcesOpened).hasPositiveValue();
+				}
+			} finally {
+				row.closeDecodedInputs();
 			}
-		} else {
-			BatchCursor opened = switch (mode) {
-			case "optional", "optional-single" -> LmdbWildcardPredicateBatch.tryOpenOptional(left, wildcard, row, 4);
-			case "lateral" -> LmdbWildcardPredicateBatch.tryOpenLateral(left, wildcard, 1L, row, 4);
-			case "predicate-major" -> LmdbWildcardPredicateBatch.tryOpenPayload(wildcard, row, 4);
-			case "payload", "parallel-payload" -> LmdbWildcardPredicateBatch.tryOpenPayload(left, wildcard, row, 4);
-			default -> throw new IllegalArgumentException(mode);
-			};
-			assertThat(opened).isNotNull();
-			try (BatchCursor cursor = opened) {
-				NativeBatch output = new NativeBatch(row.slots.length, 4);
-				rows = cursor.fill(output);
-				assertThat(output.selectedCount).isZero();
-			}
-		}
-		assertThat(fixture.cancellation.isCancellationRequested()).isTrue();
-		assertThat(rows).as("cancelled %s must not emit a match or OPTIONAL null extension", mode).isZero();
-		assertThat(fixture.metadataReads).hasValue(1);
-		if (mode.equals("parallel-payload")) {
-			assertThat(fixture.parallelSourcesOpened).hasPositiveValue();
 		}
 	}
 

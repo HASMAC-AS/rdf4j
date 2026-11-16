@@ -1,0 +1,35 @@
+# Fixed diagnostic for resolver-count variation
+
+This is a new diagnostic investigation after the publication timing study stopped. It cannot rescue, extend, or replace that study. The failed timing protocol, its nine completed JVMs, and its unequal resolver-count pair remain unchanged. No performance acceptance or implementation selection follows from this diagnostic.
+
+Run four fresh shared-tail JVMs in the fixed order **all, omit, omit, all**. Both arms use the already frozen masked-capable, 130-entry diagnostic runtime at `diagnostic/generated/publication-overlay-v1/runtime.json`. The only arm difference is the publication mask property: empty for all, `l0,l1` for omit. All use DENSE transport, the original page representation, ordinary reuse, normal AUTO, full consumption, the same 64-root, 128-left, 128-right, tuple-width-two fixture, a fixed 1 GiB G1 heap, a 1 GiB global ledger, and a 512 MiB query ledger.
+
+Each JVM runs eight warmups and five further observed queries, preserving all 13 records. The harness calls the latter records `measurement`; here they remain diagnostic observations. Total scope is exactly four JVMs and 52 queries. Do not select a query subset, replace a run, add repetitions, or extend the experiment if no miss appears. If an execution or correctness/identity check fails, preserve the partial prefix and the failure without substitution.
+
+Add only the JVM logging option `-Xlog:gc*,gc+ref=debug:file=<fresh-run-directory>/gc.log:time,uptime,level,tags:filecount=0`. No forced GC, reference clearing, retention changes, heap changes, source changes, extra weak-reference reads, or new classes are allowed. The helper counters and close-time page snapshots/JSON already alter allocation and GC pressure. The all arm publishes twice as many shared-tail pages in the prior diagnostic, so even this diagnostic overhead differs between arms. Do not compare latency, allocation, GC cost, GC frequency, or inferred natural miss rates. Raw harness duration/allocation fields are retained solely to preserve the original records.
+
+The GC log describes a whole JVM. The unchanged helper has no per-query GC timestamps, so this experiment does not align individual GC events to individual cache misses. Reference-processing messages do not identify the referent responsible for a miss. A newly observed weak branch demonstrates that branch in this instrumented run; it does not prove the cause of the original timing query.
+
+## Frozen evidence and correctness checks
+
+Before execution, pin the driver, this protocol, the investigation note, all imported diagnostic source helpers, the existing runtime descriptor and complete classpath manifest, and the previously completed all/omit 512 MiB diagnostic reference files. Freeze all four full Java command arrays in `probe-v1/protocol.json`. The driver refuses injected Java option environment variables, changed inputs, existing output directories, altered order, altered configuration, or missing exclusive-slot authorization. It does not compile Java.
+
+For every query, verify full result count, checksum, exact independent bag and membership oracle, projected names, identity aliases, all six bound reads per row, normal AUTO selection, native IR row count, active current-revision adjacency, zero hosted generic roots, and zero final query-ledger endpoints. Observed queries must use the compiled tier; warmups retain normal tier behavior. Verify every ordinary/factor lookup and publication/admission partition, explicit page grants and releases, and each target's final factor-miss sum against its remember count. Verify aggregate find count equals binding reads, ordinary hits plus factor hits plus resolver calls equals binding reads, and remember count equals resolver calls. Do not require resolver counts, cache misses, page admission counts, or ledger peaks to equal a prior query.
+
+Ordinary/directory/memo claim fields remain close-time snapshots; only page grants/releases have explicit event counters. Ledger charge and occupancy are not physical memory or live-referent measurements. Requested-target counters and canonical page counters stay distinct. The no-alias condition is checked before using target-by-target comparisons for this fixture.
+
+## Source-qualified outcome accounting
+
+Report every query, its source identity, raw owner/sample references, per-target counters, and numerical counter differences against the same arm's four-query 512 MiB reference. That reference had exactly 32,833 resolver calls in every query. Prior target counters are comparison references, not acceptance thresholds.
+
+The final factor outcomes form an exclusive partition: initial rejection, absent page, absent/mismatched cell, cleared weak referent, failed witness, or hit. Under the checked no-alias/full-read equations, the sum of the five final miss outcomes equals resolver calls, both globally and per target. The factor weak and factor witness branches directly return null. Initial rejection combines missing factor storage, coordinate-capture rejection, and owner/activation rejection; existing instrumentation does not distinguish these subcauses.
+
+Ordinary lookup outcomes are a separate earlier partition. An ordinary weak miss can be recovered by a factor hit. The same failed binding lookup can observe both an ordinary weak miss and a factor weak miss. Consequently, **never add ordinary and factor weak counts and call that the number of additional resolver calls**. Publish the exclusive final-factor decomposition and the ordinary partition alongside it. Page admission refusals are independent publication events; a page miss is not proof of admission refusal. Record witness events, refusal events, other final-factor misses, and any reconciliation failure separately. A reconciliation failure is a diagnostic validation failure requiring investigation, not evidence that one particular ownership defect has been identified.
+
+No observation in this probe retrospectively establishes the original timing event's cause. Non-reproduction leaves that cause unresolved.
+
+## Commands and outputs
+
+From the repository root, prepare with `python3 result-coordinate-evidence/publication-followup/diagnostic/resolver-variation/run_resolver_variation.py prepare --name probe-v1`. The prepare action performs read-only identity checks and writes a fresh immutable plan; it launches no JVM. After independent review, protocol freeze, and the coordinator's exclusive Java-slot grant, execute the same driver with `run --name probe-v1 --slot-granted`.
+
+Each `runs/NN-arm/` directory contains its exact command, process result, console log, unrotated GC log, unchanged harness samples and root audit, owner JSONL files, and query-by-query analysis. `summary.json` preserves all completed records and any failure, declares `diagnosticOnly=true`, `performanceInference=false`, and `acceptedTimingComparison=false`. A complete successful probe contains four JVMs and 52 query observations regardless of whether a weak miss is observed.

@@ -178,61 +178,70 @@ class LmdbNativeParallelNodeDomainIntersectionTest {
 		NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, new int[0],
 				new AggregateSpec[] { AggregateSpec.star("count") }, false, EmptyBindingSet.getInstance(), null, null,
 				false, telemetry);
+		source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
+		NativeInvocationCarrier invocation = emitter.invocationCarrier();
 		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
-		if (!emitter.initialize(row)) {
-			throw new AssertionError("count aggregate entry did not initialize");
-		}
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		try (NativeExecutionContext execution = source.executionContext(); emitter) {
+			try {
+				if (!emitter.initialize(row)) {
+					throw new AssertionError("count aggregate entry did not initialize");
+				}
 
-		Aggregate terminal = new Aggregate(new int[0], new AggregateOutput[] { AggregateOutput.countStar() }, null,
-				OutputMods.none());
-		Kernel kernel = new Kernel(1, List.of(new EnumerateNodeDomainIntersection(0, 0)), terminal);
-		KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0], new AggOut[] {
-				new AggOut(emitter.aggregates[0], LmdbNativeKernelBindings.ENC_LONG_COUNT) });
-		LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-				new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-				new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0], new int[0],
-				List.of(), groupLayout, false)
-						.withNodeDomainIntersectionRequests(
-								new LmdbNativeKernelBindings.NodeDomainIntersectionRequest[] {
-										new LmdbNativeKernelBindings.NodeDomainIntersectionRequest(true, false) });
-		LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-		BoundDomains domains = new BoundDomains(new long[0][], new int[0], new int[0]);
-		NativeLmdbQuerySource.NodeDomainIntersection rootView = work.newView();
-		Set<Long> partitionNodes = new HashSet<>();
-		for (int partition = 0; partition < rootView.partitionCount(); partition++) {
-			NativeLmdbQuerySource.NodeDomainIntersection.Cursor cursor = rootView.cursor(partition);
-			while (cursor.next()) {
-				assertThat(partitionNodes.add(cursor.nodeId()))
-						.as("node ids must belong to exactly one synthetic partition")
-						.isTrue();
+				Aggregate terminal = new Aggregate(new int[0], new AggregateOutput[] { AggregateOutput.countStar() },
+						null,
+						OutputMods.none());
+				Kernel kernel = new Kernel(1, List.of(new EnumerateNodeDomainIntersection(0, 0)), terminal);
+				KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0], new AggOut[] {
+						new AggOut(emitter.aggregates[0], LmdbNativeKernelBindings.ENC_LONG_COUNT) });
+				LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+						new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+						new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+						new int[0],
+						List.of(), groupLayout, false)
+								.withNodeDomainIntersectionRequests(
+										new LmdbNativeKernelBindings.NodeDomainIntersectionRequest[] {
+												new LmdbNativeKernelBindings.NodeDomainIntersectionRequest(true,
+														false) });
+				LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+				BoundDomains domains = new BoundDomains(new long[0][], new int[0], new int[0]);
+				NativeLmdbQuerySource.NodeDomainIntersection rootView = work.newView();
+				Set<Long> partitionNodes = new HashSet<>();
+				for (int partition = 0; partition < rootView.partitionCount(); partition++) {
+					NativeLmdbQuerySource.NodeDomainIntersection.Cursor cursor = rootView.cursor(partition);
+					while (cursor.next()) {
+						assertThat(partitionNodes.add(cursor.nodeId()))
+								.as("node ids must belong to exactly one synthetic partition")
+								.isTrue();
+					}
+				}
+				assertThat(partitionNodes).hasSize(Math.toIntExact(EXPECTED_INTERSECTION_COUNT));
+				AtomicLong parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS;
+				long parallelRunsBefore = parallelBefore.get();
+				List<BindingSet> results = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+						new NativeLmdbQuerySource.NativeAdjacency[0],
+						LmdbNativeKernelBindings.VariablePredicateViews.NONE,
+						new NativeLmdbQuerySource.NodeDomainIntersection[] { rootView },
+						null, domains, SlotPlan.singleton(), row, emitter, telemetry,
+						LmdbNativeParallelNodeDomainIntersectionTest::compiledKernel);
+				assertThat(results).as("the source-bound node-domain kernel must execute").isNotNull().hasSize(1);
+				long resultCount = ((org.eclipse.rdf4j.model.Literal) results.get(0).getValue("count")).longValue();
+				return new RunResult(resultCount, parallelBefore.get() - parallelRunsBefore,
+						telemetry.getStringMetricActual("nativeIrSelectedOperatorActual"),
+						Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelPartitionCountActual")),
+						Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelWorkersStartedActual")),
+						Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelPeakActiveWorkersActual")),
+						Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelWorkersWithNonZeroWorkActual")),
+						telemetry.getStringMetricActual("nativeIrParallelMorselsPerWorkerActual"),
+						telemetry.getLongMetricActual("nativeIrParallelWorkerOverlapNanosActual"),
+						work.peakActive.get(),
+						work.partitionCalls(), work.partitionOwners(), work.partitionsByWorker());
+			} finally {
+				row.closeDecodedInputs();
 			}
 		}
-		assertThat(partitionNodes).hasSize(Math.toIntExact(EXPECTED_INTERSECTION_COUNT));
-		AtomicLong parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS;
-		long parallelRunsBefore = parallelBefore.get();
-		List<BindingSet> results;
-		try {
-			results = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-					new NativeLmdbQuerySource.NativeAdjacency[0],
-					LmdbNativeKernelBindings.VariablePredicateViews.NONE,
-					new NativeLmdbQuerySource.NodeDomainIntersection[] { rootView },
-					null, domains, SlotPlan.singleton(), row, emitter, telemetry,
-					LmdbNativeParallelNodeDomainIntersectionTest::compiledKernel);
-		} finally {
-			row.closeDecodedInputs();
-			source.executionContext().close();
-		}
-		assertThat(results).as("the source-bound node-domain kernel must execute").isNotNull().hasSize(1);
-		long resultCount = ((org.eclipse.rdf4j.model.Literal) results.get(0).getValue("count")).longValue();
-		return new RunResult(resultCount, parallelBefore.get() - parallelRunsBefore,
-				telemetry.getStringMetricActual("nativeIrSelectedOperatorActual"),
-				Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelPartitionCountActual")),
-				Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelWorkersStartedActual")),
-				Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelPeakActiveWorkersActual")),
-				Math.toIntExact(telemetry.getLongMetricActual("nativeIrParallelWorkersWithNonZeroWorkActual")),
-				telemetry.getStringMetricActual("nativeIrParallelMorselsPerWorkerActual"),
-				telemetry.getLongMetricActual("nativeIrParallelWorkerOverlapNanosActual"), work.peakActive.get(),
-				work.partitionCalls(), work.partitionOwners(), work.partitionsByWorker());
 	}
 
 	private static JaninoKernel compiledKernel(Kernel kernel) {

@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -141,7 +142,7 @@ class NativeSummaryRowStateTest {
 	@Test
 	void projectedConditionOwnsItsExactEntryFrameWhileSharingTermsAndTypedCells() {
 		NativeLmdbQuerySource store = mock(NativeLmdbQuerySource.class);
-		when(store.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		certifyEmptyDictionary(store);
 		SyntheticValueSource root = SyntheticValueSource.forEvaluation(store);
 		QueryBindingSet base = new QueryBindingSet();
 		base.setBinding("visible", SimpleValueFactory.getInstance().createLiteral("first"));
@@ -209,7 +210,9 @@ class NativeSummaryRowStateTest {
 		when(store.idSpace()).thenReturn(storedIdSpace);
 		when(firstStore.idSpace()).thenReturn(storedIdSpace);
 		when(secondStore.idSpace()).thenReturn(storedIdSpace);
-		when(store.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		certifyEmptyDictionary(store);
+		certifyEmptyDictionary(firstStore);
+		certifyEmptyDictionary(secondStore);
 		when(store.openParallelSources(2)).thenReturn(new ParallelSource[] { firstStore, secondStore });
 		SyntheticValueSource root = SyntheticValueSource.forEvaluation(store);
 		QueryBindingSet base = new QueryBindingSet();
@@ -270,6 +273,16 @@ class NativeSummaryRowStateTest {
 
 	private static RowState row() {
 		return row(mock(NativeLmdbQuerySource.class));
+	}
+
+	private static void certifyEmptyDictionary(NativeLmdbQuerySource source) {
+		when(source.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
+			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 	}
 
 	private static RowState row(NativeLmdbQuerySource source) {

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -63,7 +64,7 @@ class NativeCensusTermIdentityTest {
 		long objectIdOne = ValueIds.createId(ValueIds.T_URI, 311L);
 		long objectIdTwo = ValueIds.createId(ValueIds.T_URI, 312L);
 
-		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
+		NativeLmdbQuerySource source = certifiedSource();
 		when(source.idSpace()).thenReturn(source);
 		when(source.hasCanonicalIds()).thenReturn(false);
 		when(source.idOf(any(Value.class))).thenAnswer(invocation -> {
@@ -159,7 +160,7 @@ class NativeCensusTermIdentityTest {
 		long objectIdOne = ValueIds.createId(ValueIds.T_URI, 301L);
 		long objectIdTwo = ValueIds.createId(ValueIds.T_URI, 302L);
 
-		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
+		NativeLmdbQuerySource source = certifiedSource();
 		when(source.idSpace()).thenReturn(source);
 		when(source.hasCanonicalIds()).thenReturn(false);
 		when(source.idOf(any(Value.class))).thenAnswer(invocation -> {
@@ -246,6 +247,19 @@ class NativeCensusTermIdentityTest {
 			assertFalse(rows.hasNext());
 		}
 		verify(adjacency, times(2)).openPageCursor();
+	}
+
+	private static NativeLmdbQuerySource certifiedSource() {
+		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			long id = source.idOf(invocation.getArgument(0), invocation.getArgument(1));
+			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
+			lookup.set(id, id == NativeLmdbQuerySource.UNKNOWN_ID ? NativeLmdbQuerySource.IdOrigin.ABSENT
+					: NativeLmdbQuerySource.IdOrigin.STORED);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+		return source;
 	}
 
 	private static Value term(Map<Long, Value> termsById, long id) {

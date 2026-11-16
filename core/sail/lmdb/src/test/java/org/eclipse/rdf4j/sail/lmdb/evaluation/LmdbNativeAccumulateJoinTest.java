@@ -840,18 +840,13 @@ class LmdbNativeAccumulateJoinTest {
 			AtomicReference<LmdbQueryMemoryManager.QueryLedger> leftLedger = new AtomicReference<>();
 			AtomicReference<Object> leftRuntime = new AtomicReference<>();
 			AtomicReference<NativeLmdbQuerySource.DomainStamp> leftDomain = new AtomicReference<>();
+			AtomicReference<BindingSet> projectedInput = new AtomicReference<>();
 			QueryEvaluationContext context = new QueryEvaluationContext.Minimal((Dataset) null) {
 				@Override
 				public Function<BindingSet, Value> getValue(String name) {
 					Function<BindingSet, Value> delegate = super.getValue(name);
 					return bindings -> {
-						if (bindings instanceof RowBindingSetView row
-								&& row.nativeSource() instanceof SyntheticValueSource synthetic) {
-							NativeExecutionContext execution = synthetic.executionContext();
-							leftLedger.compareAndSet(null, execution.memoryLedger());
-							leftRuntime.compareAndSet(null, execution.detachedRuntimeIdSpace());
-							leftDomain.compareAndSet(null, synthetic.detachedDomainStamp());
-						}
+						projectedInput.compareAndSet(null, bindings);
 						return delegate.apply(bindings);
 					};
 				}
@@ -871,7 +866,22 @@ class LmdbNativeAccumulateJoinTest {
 			Projection projection = new Projection(assignment, new ProjectionElemList(new ProjectionElem("key")));
 			NativeBareRowsStep left = NativeRowsStep.bareFragment(source, leftValues, leftLayout, new int[] { 0 },
 					new String[] { "key" }, false, strategy, assignment, context);
-			QueryEvaluationStep projected = new ProjectionQueryEvaluationStep(projection, left, context);
+			QueryEvaluationStep observedLeft = bindings -> {
+				CloseableIteration<BindingSet> rows = left.evaluate(bindings);
+				try {
+					NativeInvocationCarrier owner = NativeExecutionContextCarrier.invocationOf(rows);
+					assertThat(owner).as("the native producer exposes its live invocation").isNotNull();
+					NativeExecutionContext execution = owner.executionContext();
+					leftLedger.compareAndSet(null, execution.memoryLedger());
+					leftRuntime.compareAndSet(null, execution.detachedRuntimeIdSpace());
+					leftDomain.compareAndSet(null, owner.source().detachedDomainStamp());
+					return rows;
+				} catch (RuntimeException | Error failure) {
+					rows.close();
+					throw failure;
+				}
+			};
+			QueryEvaluationStep projected = new ProjectionQueryEvaluationStep(projection, observedLeft, context);
 			NativeSlotLayout rightLayout = new NativeSlotLayout(Map.of("key", 0, "found", 1), null);
 			rightLayout.freeze(List.of("key", "found"));
 			SlotPlan rightValues = SlotPlan.values(new ValuesRow[] {
@@ -897,6 +907,9 @@ class LmdbNativeAccumulateJoinTest {
 					.containsExactlyInAnyOrder(List.of(first, firstMatch), List.of(first, firstMatch),
 							List.of(second, secondMatch));
 			assertThat(leftDomain.get()).as("native left emitted through the generic projection").isNotNull();
+			assertThat(projectedInput.get()).as("the generic projection receives a detached native row")
+					.isInstanceOf(NativeEntryBindings.class);
+			assertThat(projectedInput.get().getValue("key")).as("the input survives producer closure").isEqualTo(first);
 			assertThat(leftDomain.get().sameBackingView(domain)).as("the left uses the original source view").isTrue();
 			assertThat(leftLedger.get()).as("the native left is charged to the existing root").isSameAs(ledger);
 			assertThat(leftRuntime.get()).as("the left shares the root runtime term authority").isSameAs(rootRuntime);

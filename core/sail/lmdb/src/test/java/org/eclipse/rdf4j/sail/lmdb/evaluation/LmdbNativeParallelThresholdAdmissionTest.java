@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.query.explanation.QueryExplanationContext;
 import org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeCostVector.Feature;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedParallelQuoteOwnershipTest.SnapshotSource;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -220,10 +221,16 @@ class LmdbNativeParallelThresholdAdmissionTest {
 		final SnapshotSource source = new SnapshotSource();
 		final SyntheticValueSource evaluation = SyntheticValueSource.forEvaluation(source);
 		final RowState row = row(evaluation);
+		final NativeInvocationCarrier invocation = NativeInvocationCarrier.open(evaluation, null, row.base,
+				System.identityHashCode(this), null);
 		final MultiJoinPlan join = new MultiJoinPlan(
 				new SlotPlan[] { edge(0, 1L, 1, 16D), edge(0, 2L, 2, 16D) }, new MaskedFilter[0]);
 
 		Fixture(String threshold) {
+			evaluation.executionContext().initializeQueryBase(row.base);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			set("rdf4j.lmdb.parallel.enabled", "true");
 			set("rdf4j.lmdb.parallel.threads", "2");
 			set("rdf4j.lmdb.parallel.maxTasks", "2");
@@ -296,22 +303,19 @@ class LmdbNativeParallelThresholdAdmissionTest {
 
 		@Override
 		public void close() {
-			try {
-				row.memoryScope.close();
-			} finally {
-				try {
-					evaluation.executionContext().close();
-				} finally {
-					previous.forEach((key, value) -> {
-						if (value == null) {
-							System.clearProperty(key);
-						} else {
-							System.setProperty(key, value);
-						}
-					});
-					unforced.close();
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(row.memoryScope::close, failure);
+			failure = KernelRuntime.closeResource(evaluation.executionContext(), failure);
+			previous.forEach((key, value) -> {
+				if (value == null) {
+					System.clearProperty(key);
+				} else {
+					System.setProperty(key, value);
 				}
-			}
+			});
+			failure = KernelRuntime.closeResource(unforced, failure);
+			KernelRuntime.rethrowCloseFailure(failure);
 		}
 	}
 }

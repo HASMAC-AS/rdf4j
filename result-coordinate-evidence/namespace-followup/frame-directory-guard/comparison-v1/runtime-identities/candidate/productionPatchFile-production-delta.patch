@@ -1,0 +1,31 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/codegen/KernelResultCoordinates.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/codegen/KernelResultCoordinates.java
+@@ -422,11 +422,15 @@
+ 			return;
+ 		}
+ 		int base = Math.multiplyExact(frame, registerWidth);
+-		if (activeFrames[frame]) {
++		// Enabled registers cannot hold managed namespaces before the directory exists. Once allocated, keep
++		// reference bookkeeping even after its last namespace retires; source batches still validate every cell.
++		if (activeFrames[frame] && namespaceIds != null) {
+ 			releaseRange(frames, base, registerWidth);
+ 		}
+ 		System.arraycopy(registers, 0, frames, base, registerWidth);
+-		retainRange(frames, base, registerWidth);
++		if (namespaceIds != null) {
++			retainRange(frames, base, registerWidth);
++		}
+ 		activeFrames[frame] = true;
+ 	}
+ 
+@@ -453,7 +457,9 @@
+ 	/** Releases a previously saved frame once its structural scope is no longer active. */
+ 	public void releaseFrame(int frame) {
+ 		if (frame >= 0 && enabled() && activeFrames[frame]) {
+-			releaseRange(frames, frame * registerWidth, registerWidth);
++			if (namespaceIds != null) {
++				releaseRange(frames, frame * registerWidth, registerWidth);
++			}
+ 			activeFrames[frame] = false;
+ 		}
+ 	}

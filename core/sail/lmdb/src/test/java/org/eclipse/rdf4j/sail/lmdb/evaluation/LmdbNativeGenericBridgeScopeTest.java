@@ -759,7 +759,7 @@ public class LmdbNativeGenericBridgeScopeTest {
 				NativeValueOutcome result = scalar.evaluateForRow(EmptyBindingSet.getInstance(), row);
 				return result.isBound() && BooleanLiteral.TRUE.equals(result.value());
 			}, 1L);
-			NativeLmdbQuerySource source = (NativeLmdbQuerySource) dataset;
+			SyntheticValueSource source = SyntheticValueSource.forEvaluation((NativeLmdbQuerySource) dataset);
 			NativeSlotLayout layout = new NativeSlotLayout(Map.of("outer", 0), null);
 			layout.freeze(List.of("outer"));
 			SingletonSet outerTarget = new SingletonSet();
@@ -768,9 +768,11 @@ public class LmdbNativeGenericBridgeScopeTest {
 			assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, source, layout)).isTrue();
 			row.runtimePlan = LmdbNativeExplain.recordRuntimeEntryPlan(outerTarget, outer, layout, row.boundMask());
 			List<Long> actual = new ArrayList<>();
-			try (LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(
-					System.identityHashCode(outer), true)) {
+			try (NativeExecutionContext execution = source.executionContext();
+					LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(
+							System.identityHashCode(outer), true)) {
 				row.fusedSession = invocation;
+				row.bindInvocationStrategy(strategy);
 				try (LmdbNativeStrategyProposal<RowCursor> proposal = LmdbNativeKernelExecution.proposeRows(outer, row,
 						outerTarget, false)) {
 					assertThat(proposal).as("the outer VALUES kernel must be admitted").isNotNull();

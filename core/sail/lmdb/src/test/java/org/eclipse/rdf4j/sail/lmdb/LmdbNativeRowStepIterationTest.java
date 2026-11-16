@@ -15,8 +15,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -1385,10 +1383,7 @@ class LmdbNativeRowStepIterationTest {
 			PatternPlan right = pattern(2, P2, 3);
 			MultiJoinPlan join = new MultiJoinPlan(new SlotPlan[] { left, right }, new MaskedFilter[0]);
 			// Exercise the lazy factorized consumer even when a different producer has a lower automatic quote.
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn("factorizedRows");
-			when(strategy.getQueryExecutionPolicy()).thenReturn(org.eclipse.rdf4j.query.QueryExecutionPolicy.DEFAULT);
-			when(strategy.captureEvaluationValues(source)).thenReturn(source);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced("factorizedRows");
 			NativeRowsStep step = new NativeRowsStep(source, join, layout, new int[] { 0, 1, 2, 3 },
 					new String[] { "s1", "o1", "s2", "o2" }, false, new int[0], new boolean[0], 0, -1, true,
 					strategy, null, null, Set.of(), null, null);
@@ -1672,7 +1667,8 @@ class LmdbNativeRowStepIterationTest {
 		explanationTarget.setExecutionSummaryEnabled(true);
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("s", 0), null);
 		layout.freeze(List.of("s"));
-		NativeRowsStep step = new NativeRowsStep(null, new RecordingPlan(0), layout, new int[] { 0 },
+		NativeRowsStep step = new NativeRowsStep(new RecordingNativeSource(), new RecordingPlan(0), layout,
+				new int[] { 0 },
 				new String[] { "s" }, false, new int[] { 0 }, new boolean[] { true }, 0, 0, true, null,
 				explanationTarget, null, Set.of(), null, null);
 
@@ -2489,6 +2485,27 @@ class LmdbNativeRowStepIterationTest {
 		@Override
 		public long idOf(Value value) {
 			return value.equals(mappedValue) ? 41L : UNKNOWN_ID;
+		}
+
+		@Override
+		public Object valueLookupScope() {
+			return this;
+		}
+
+		@Override
+		public Object resultValueScope() {
+			return this;
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return mappedValue != null;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value);
+			result.set(id, id == UNKNOWN_ID ? IdOrigin.UNCERTIFIED : IdOrigin.STORED);
 		}
 
 		@Override

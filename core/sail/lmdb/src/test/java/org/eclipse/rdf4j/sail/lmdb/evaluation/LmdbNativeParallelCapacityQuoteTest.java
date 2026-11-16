@@ -247,6 +247,7 @@ class LmdbNativeParallelCapacityQuoteTest {
 		final AtomicInteger probes = new AtomicInteger();
 		final NativeLmdbQuerySource source;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan join;
 
 		KernelFixture() {
@@ -274,6 +275,7 @@ class LmdbNativeParallelCapacityQuoteTest {
 				}).when(source).newProbe();
 			}
 			row = row(source);
+			invocation = NativeTestStrategies.invocation(row);
 			join = new MultiJoinPlan(new SlotPlan[] { edge(0, 1L, 1, 90_000D), edge(0, 2L, 2, 90_000D) },
 					new MaskedFilter[0]);
 		}
@@ -287,6 +289,8 @@ class LmdbNativeParallelCapacityQuoteTest {
 
 		@Override
 		public void close() {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			previous.forEach((key, value) -> {
 				if (value == null) {

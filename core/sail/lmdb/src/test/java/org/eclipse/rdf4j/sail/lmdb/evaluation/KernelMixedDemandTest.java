@@ -107,9 +107,10 @@ public class KernelMixedDemandTest {
 		KernelContext result = new KernelContext(original.adjacencies, original.constants, original.entrySlots,
 				original.keyDomains, original.keyDomainOffsets, original.keyDomainLengths, original.hooks,
 				original.scanner, plans, original.distinctExpected, original.nodePredicates,
-				original.dynamicAdjacencies, original.wildcardAdjacencies);
+				original.dynamicAdjacencies, original.wildcardAdjacencies).withStandaloneFusedRuntime();
 		result.withNodeDomainIntersections(original.nodeDomainIntersections);
 		result.cancellation = original.cancellation;
+		original.releaseOwnedFusedRuntime();
 		return result;
 	}
 
@@ -232,7 +233,7 @@ public class KernelMixedDemandTest {
 			try (AutoCloseable ignored = executable::close) {
 				executable
 						.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[] { adjacency }, new long[0],
-								new long[0], new long[][] { domain }));
+								new long[0], new long[][] { domain }).withStandaloneFusedRuntime());
 				long[] buffer = new long[2 * 64];
 				check(executable.fill(buffer, 1) == 1, "pure native nested kernel lost first row");
 				check(Arrays.equals(Arrays.copyOf(buffer, 2), new long[] { 1L, 100_001L }), "wrong first row");
@@ -344,7 +345,8 @@ public class KernelMixedDemandTest {
 						List.of(new BindAlias(Operand.constant(0), 0), optional, new PlanRows(0, new int[] { 2 })),
 						new Emit(new int[] { 0, 1, 2 }, false, OutputMods.none()));
 				KernelContext ctx = new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[] { empty },
-						new long[] { 7 }, new long[0], null, null, null, new KernelPlan[] { twoRows }, 16);
+						new long[] { 7 }, new long[0], null, null, null, new KernelPlan[] { twoRows }, 16)
+								.withStandaloneFusedRuntime();
 				check(KernelExpansionContractTest.execute(ir, ctx, compiled, 1)
 						.equals(List.of("[7, -1, 20]", "[7, -1, 21]")),
 						"null continuation lost, group=" + group + " compiled=" + compiled);
@@ -436,7 +438,7 @@ public class KernelMixedDemandTest {
 			};
 			KernelContext ctx = new KernelContext(
 					new NativeLmdbQuerySource.NativeAdjacency[] { repeated, repeated, repeated }, new long[] { 7 },
-					new long[0], null);
+					new long[0], null).withStandaloneFusedRuntime();
 			try {
 				KernelExpansionContractTest.execute(ir, ctx, compiled, 1);
 				throw new AssertionError("2^63 mappings silently lost, compiled=" + compiled);

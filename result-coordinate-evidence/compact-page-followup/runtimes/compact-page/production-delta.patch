@@ -1,0 +1,225 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -98,7 +98,9 @@
+ 	private static final Object NO_REVISION_OWNER = new Object();
+ 	private static final int PAGE_SHIFT = 6;
+ 	private static final int PAGE_SIZE = 1 << PAGE_SHIFT;
+-	// Includes five page arrays, per-cell weak-reference metadata, the page object, and alignment.
++	// Stable page shell, one inline cell, weak-reference metadata, and reservation bookkeeping.
++	private static final long COMPACT_PAGE_BYTES = 512L;
++	// Total dense budget includes the shell, five arrays, weak-reference metadata, and both reservations.
+ 	private static final long PAGE_BYTES = 16_384L;
+ 
+ 	private final NativeResultMaterializerPlan plan;
+@@ -384,7 +386,7 @@
+ 		if (factorPages != null) {
+ 			for (FactorPage page : factorPages) {
+ 				if (page != null) {
+-					bytes += page.reservation.bytes();
++					bytes += page.retainedBytes();
+ 				}
+ 			}
+ 		}
+@@ -498,6 +500,9 @@
+ 			factorMemo.pages[target] = page;
+ 		}
+ 		int cell = (int) (position & (PAGE_SIZE - 1));
++		if (page.values == null) {
++			return findSingleFactor(page, target, id, cell);
++		}
+ 		if (page.values[cell] == null || page.ids[cell] != id) {
+ 			return null;
+ 		}
+@@ -519,6 +524,28 @@
+ 		return value;
+ 	}
+ 
++	private Value findSingleFactor(FactorPage page, int target, long id, int cell) {
++		if (page.singleValue == null || page.singleCell != cell || page.singleId != id) {
++			return null;
++		}
++		Value value = dereference(page.singleValue);
++		if (value == null) {
++			weakMisses++;
++			page.clear(cell);
++			return null;
++		}
++		if (!matches(page.singleVersion, page.singleRevisionId, page.singleRevisionOwner, id, value)) {
++			page.clear(cell);
++			return null;
++		}
++		ids[target] = id;
++		versions[target] = page.singleVersion;
++		revisionIds[target] = page.singleRevisionId;
++		revisionOwners[target] = page.singleRevisionOwner;
++		values[target] = page.singleValue;
++		return value;
++	}
++
+ 	private void rememberFactor(int target, long id, long rowSequence) {
+ 		if (values[target] == null || factorAdmissionRefused && factorPages == null
+ 				|| !captureCoordinate(target, id, rowSequence)) {
+@@ -542,7 +569,11 @@
+ 			return;
+ 		}
+ 		int cell = (int) (position & (PAGE_SIZE - 1));
+-		if (page.ids[cell] != id || page.versions[cell] != versions[target]
++		if (page.values == null) {
++			if (!rememberSingleFactor(page, target, id, cell)) {
++				return;
++			}
++		} else if (page.ids[cell] != id || page.versions[cell] != versions[target]
+ 				|| page.revisionIds[cell] != revisionIds[target] || page.revisionOwners[cell] != revisionOwners[target]
+ 				|| page.values[cell] != values[target]) {
+ 			page.ids[cell] = id;
+@@ -564,6 +595,33 @@
+ 		}
+ 	}
+ 
++	private boolean rememberSingleFactor(FactorPage page, int target, long id, int cell) {
++		if (page.singleValue == null || page.singleCell == cell) {
++			if (page.singleCell != cell || page.singleId != id || page.singleVersion != versions[target]
++					|| page.singleRevisionId != revisionIds[target]
++					|| page.singleRevisionOwner != revisionOwners[target] || page.singleValue != values[target]) {
++				page.singleCell = cell;
++				page.singleId = id;
++				page.singleVersion = versions[target];
++				page.singleRevisionId = revisionIds[target];
++				page.singleRevisionOwner = revisionOwners[target];
++				page.singleValue = values[target];
++			}
++			return true;
++		}
++		// A large optional promotion may fail while another compact page can still fit.
++		// Retry on a later insertion so memory released by another owner can enable promotion.
++		if (!page.promote(ledger)) {
++			return false;
++		}
++		page.ids[cell] = id;
++		page.versions[cell] = versions[target];
++		page.revisionIds[cell] = revisionIds[target];
++		page.revisionOwners[cell] = revisionOwners[target];
++		page.values[cell] = values[target];
++		return true;
++	}
++
+ 	private FactorPage memoPage(int target, int canonical, long pageIndex) {
+ 		FactorMemo memo = factorMemo;
+ 		FactorPage page = memo == null ? null : memo.pages[target];
+@@ -613,7 +671,7 @@
+ 				return null;
+ 			}
+ 		}
+-		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(PAGE_BYTES);
++		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(COMPACT_PAGE_BYTES);
+ 		if (claim == null) {
+ 			if (factorPageCount == 0) {
+ 				factorPages = null;
+@@ -857,7 +915,7 @@
+ 		}
+ 	}
+ 
+-	/** One sparse, source-position page; references and mutation witnesses are weak from first insertion. */
++	/** One source-position page, initially inline; values and mutation witnesses remain weak after promotion. */
+ 	private static final class FactorPage implements AutoCloseable {
+ 		final int target;
+ 		final long namespace;
+@@ -866,11 +924,18 @@
+ 		final long column;
+ 		final long pageIndex;
+ 		final LmdbQueryMemoryManager.Reservation reservation;
+-		final Object[] values = new Object[PAGE_SIZE];
+-		final long[] ids = new long[PAGE_SIZE];
+-		final long[] versions = new long[PAGE_SIZE];
+-		final long[] revisionIds = new long[PAGE_SIZE];
+-		final Object[] revisionOwners = new Object[PAGE_SIZE];
++		LmdbQueryMemoryManager.Reservation payloadReservation;
++		int singleCell;
++		long singleId;
++		long singleVersion;
++		long singleRevisionId;
++		Object singleValue;
++		Object singleRevisionOwner;
++		Object[] values;
++		long[] ids;
++		long[] versions;
++		long[] revisionIds;
++		Object[] revisionOwners;
+ 
+ 		FactorPage(int target, long namespace, long group, long parent, long column, long pageIndex,
+ 				LmdbQueryMemoryManager.Reservation reservation) {
+@@ -883,6 +948,43 @@
+ 			this.reservation = reservation;
+ 		}
+ 
++		boolean promote(LmdbQueryMemoryManager.QueryLedger ledger) {
++			LmdbQueryMemoryManager.Reservation claim = ledger
++					.tryReserveWithoutReclamation(PAGE_BYTES - COMPACT_PAGE_BYTES);
++			if (claim == null) {
++				return false;
++			}
++			try {
++				Object[] allocatedValues = new Object[PAGE_SIZE];
++				long[] allocatedIds = new long[PAGE_SIZE];
++				long[] allocatedVersions = new long[PAGE_SIZE];
++				long[] allocatedRevisionIds = new long[PAGE_SIZE];
++				Object[] allocatedRevisionOwners = new Object[PAGE_SIZE];
++				allocatedValues[singleCell] = singleValue;
++				allocatedIds[singleCell] = singleId;
++				allocatedVersions[singleCell] = singleVersion;
++				allocatedRevisionIds[singleCell] = singleRevisionId;
++				allocatedRevisionOwners[singleCell] = singleRevisionOwner;
++				// Keep the stable shell and its claim. Publish only after every allocation and copy succeeds.
++				ids = allocatedIds;
++				versions = allocatedVersions;
++				revisionIds = allocatedRevisionIds;
++				revisionOwners = allocatedRevisionOwners;
++				values = allocatedValues;
++				payloadReservation = claim;
++				singleValue = null;
++				singleRevisionOwner = null;
++				return true;
++			} catch (RuntimeException | Error failure) {
++				claim.close();
++				throw failure;
++			}
++		}
++
++		long retainedBytes() {
++			return reservation.bytes() + (payloadReservation == null ? 0L : payloadReservation.bytes());
++		}
++
+ 		boolean matches(int target, long namespace, long group, long parent, long column, long pageIndex) {
+ 			return this.target == target && this.namespace == namespace && this.group == group && this.parent == parent
+ 					&& this.column == column
+@@ -890,14 +992,26 @@
+ 		}
+ 
+ 		void clear(int cell) {
+-			values[cell] = null;
+-			revisionOwners[cell] = null;
++			if (values != null) {
++				values[cell] = null;
++				revisionOwners[cell] = null;
++			} else if (singleCell == cell) {
++				singleValue = null;
++				singleRevisionOwner = null;
++			}
+ 		}
+ 
+ 		@Override
+ 		public void close() {
+-			Arrays.fill(values, null);
+-			Arrays.fill(revisionOwners, null);
++			singleValue = null;
++			singleRevisionOwner = null;
++			if (values != null) {
++				Arrays.fill(values, null);
++				Arrays.fill(revisionOwners, null);
++			}
++			if (payloadReservation != null) {
++				payloadReservation.close();
++			}
+ 			reservation.close();
+ 		}
+ 	}

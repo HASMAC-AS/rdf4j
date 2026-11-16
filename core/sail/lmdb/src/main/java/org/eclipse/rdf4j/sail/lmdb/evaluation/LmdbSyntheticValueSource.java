@@ -114,7 +114,6 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 				: new LmdbNativeTermAuthority(delegate, catalog, context, idSpace());
 		if (context != null) {
 			context.installEvaluationSource(this);
-			context.installQueryScopedValueRegistrar(this::retainQueryScopedValue);
 		}
 	}
 
@@ -791,7 +790,8 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 		Object lookup = valueLookupScope();
 		Object result = resultValueScope();
 		DomainStamp domain = detachedDomainStamp();
-		boolean stable = facade != null && lookup != null && result != null && facade == entryAuthorityToken()
+		boolean stable = facade != null && (domain != null || lookup != null && result != null)
+				&& facade == entryAuthorityToken()
 				&& lookup == valueLookupScope() && result == resultValueScope()
 				&& (domain == null || domain.sameDomain(detachedDomainStamp()));
 		synchronized (this) {

@@ -440,6 +440,21 @@ final class NativeInvocationCarrier implements AutoCloseable, InvocationOwner {
 				LmdbNativeExplain.runtimeTelemetryEnabled(target), policy, null);
 	}
 
+	/** An idle producer stored by this execution borrows its owner; accepted readers retain the owner separately. */
+	static NativeInvocationCarrier openForBorrowedProducer(NativeLmdbQuerySource source,
+			NativeExecutionContext owner, LmdbFusedSipFactorizedRuntime.Session enclosingSession,
+			long queryKey, TupleExpr target) {
+		Objects.requireNonNull(owner, "owner");
+		if (source instanceof SyntheticValueSource synthetic && synthetic.executionContext() != owner) {
+			throw new IllegalArgumentException("borrowed producer requires its exact execution owner");
+		}
+		boolean telemetry = LmdbNativeExplain.runtimeTelemetryEnabled(target);
+		LmdbFusedSipFactorizedRuntime.Session session = enclosingSession == null
+				? LmdbFusedSipFactorizedRuntime.create(queryKey, telemetry)
+				: enclosingSession.invocation(queryKey, telemetry);
+		return new NativeInvocationCarrier(owner, source, session, false, owner);
+	}
+
 	private static NativeInvocationCarrier open(NativeLmdbQuerySource source, NativeExecutionContext enclosing,
 			LmdbFusedSipFactorizedRuntime.Session enclosingSession, BindingSet bindings, long queryKey,
 			boolean telemetry, QueryExecutionPolicy policy, NativeExecutionContext cacheOwner) {

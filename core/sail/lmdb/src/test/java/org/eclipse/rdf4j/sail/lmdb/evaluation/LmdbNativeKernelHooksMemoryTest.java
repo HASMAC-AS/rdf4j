@@ -405,6 +405,16 @@ class LmdbNativeKernelHooksMemoryTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			result.set(UNKNOWN_ID, IdOrigin.ABSENT);
+		}
+
+		@Override
 		public Value lazyValue(long id) throws QueryEvaluationException {
 			return SimpleValueFactory.getInstance().createLiteral(Long.toString(id), CoreDatatype.XSD.INTEGER);
 		}

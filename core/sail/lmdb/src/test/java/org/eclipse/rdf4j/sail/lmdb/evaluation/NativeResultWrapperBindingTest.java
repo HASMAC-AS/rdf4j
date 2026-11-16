@@ -15,8 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.NativeLmdbQuerySource.UNKNOWN_ID;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -64,6 +66,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.Function;
 import org.eclipse.rdf4j.query.algebra.evaluation.function.FunctionRegistry;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.ArrayBindingBasedQueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
@@ -85,6 +88,16 @@ class NativeResultWrapperBindingTest {
 		assertThat(result.bindingReads()).as("worker binding must reuse the compiled VALUES table").isZero();
 		assertThat(result.bindingLookups()).as("worker binding must not resolve VALUES terms again").isZero();
 		assertThat(result.invocationReads()).as("invocation binding must reuse the compiled VALUES table").isZero();
+	}
+
+	@Test
+	void compiledLexicalBindingsKeepPrivateNamesOutsideCallerLayout() throws Exception {
+		Outcome result = evaluate(new Var("term"), true, true, true);
+		assertThat(result.first()).containsExactly("3:3", "2:2");
+		assertThat(result.second()).containsExactly("3:3", "2:2");
+		assertThat(result.bindingReads()).isZero();
+		assertThat(result.bindingLookups()).isZero();
+		assertThat(result.invocationReads()).isZero();
 	}
 
 	@Test
@@ -154,6 +167,7 @@ class NativeResultWrapperBindingTest {
 		when(store.valueLookupScope()).thenReturn(store);
 		when(store.resultValueScope()).thenReturn(store);
 		when(store.snapshotId()).thenReturn(1L);
+		certifyStoreIds(store);
 		when(store.idOf(any(Value.class))).thenAnswer(call -> ids.getOrDefault(call.getArgument(0), UNKNOWN_ID));
 		when(store.lazyValue(anyLong())).thenAnswer(call -> terms.get(call.getArgument(0)));
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(store);
@@ -196,7 +210,7 @@ class NativeResultWrapperBindingTest {
 	void multiProjectionDoesNotClaimAnUncomparablePhysicalSummary() {
 		NativeResultStep child = mock(NativeResultStep.class);
 		NativeCompiledResultRecipe childRecipe = mock(NativeCompiledResultRecipe.class);
-		when(child.compiledRecipe()).thenReturn(childRecipe);
+		when(child.compiledRecipe(any(NativeRecipeMemory.Capture.class))).thenReturn(childRecipe);
 		when(childRecipe.requiresPhysicalResults()).thenReturn(true);
 		MultiProjection projection = new MultiProjection(new BindingSetAssignment(),
 				List.of(new ProjectionElemList(new ProjectionElem("summary", "alias"))));
@@ -256,6 +270,11 @@ class NativeResultWrapperBindingTest {
 	}
 
 	private static Outcome evaluate(ValueExpr aliasExpression, boolean workerExpected, boolean topK) throws Exception {
+		return evaluate(aliasExpression, workerExpected, topK, false);
+	}
+
+	private static Outcome evaluate(ValueExpr aliasExpression, boolean workerExpected, boolean topK,
+			boolean fixedCallerLayout) throws Exception {
 		List<BindingSet> input = new ArrayList<>();
 		Map<Value, Long> ids = new HashMap<>();
 		Map<Long, Value> terms = new HashMap<>();
@@ -308,6 +327,7 @@ class NativeResultWrapperBindingTest {
 		when(store.valueLookupScope()).thenReturn(store);
 		when(store.resultValueScope()).thenReturn(store);
 		when(store.snapshotId()).thenReturn(1L);
+		certifyStoreIds(store);
 		when(store.idOf(any(Value.class))).thenAnswer(call -> {
 			if (afterCompilation.get()) {
 				lookups.incrementAndGet();
@@ -343,20 +363,34 @@ class NativeResultWrapperBindingTest {
 					.as("worker admission reflects the lexical child's repeatability")
 					.isEqualTo(workerExpected);
 			planner.layout.freeze(planner.slotNames);
-			firstRow = new RowState(firstSource, planner.layout, empty);
+			firstRow = new RowState(firstSource, planner.layout, empty, boundary);
 			firstRow.fusedSession = firstWorker;
+			LmdbNativeEvaluationStrategy firstInvocation = strategy.forInvocation(firstSource, firstWorker,
+					firstSource.executionContext());
+			firstRow.bindInvocationStrategy(firstInvocation);
 			assertThat(NativeRowSeeder.seed(firstRow.slots, planner.layout, empty, firstSource)).isTrue();
 			firstRow.recomputeBoundMask();
-			secondRow = new RowState(secondSource, planner.layout, empty);
+			secondRow = new RowState(secondSource, planner.layout, empty, boundary);
 			secondRow.fusedSession = secondWorker;
+			LmdbNativeEvaluationStrategy secondInvocation = strategy.forInvocation(secondSource, secondWorker,
+					secondSource.executionContext());
+			secondRow.bindInvocationStrategy(secondInvocation);
 			assertThat(NativeRowSeeder.seed(secondRow.slots, planner.layout, empty, secondSource)).isTrue();
 			secondRow.recomputeBoundMask();
 
 			afterCompilation.set(true);
+			QueryEvaluationContext firstWorkerEvaluation = fixedCallerLayout
+					? new ArrayBindingBasedQueryEvaluationContext(firstContext, new String[] { "outer" },
+							firstContext.getComparator())
+					: firstContext;
+			QueryEvaluationContext secondWorkerEvaluation = fixedCallerLayout
+					? new ArrayBindingBasedQueryEvaluationContext(secondContext, new String[] { "outer" },
+							secondContext.getComparator())
+					: secondContext;
 			NativeScalarPlan.WorkerContext firstWorkerContext = NativeScalarPlan.WorkerContext.forSource(firstSource,
-					firstContext, firstWorker, firstSource.executionContext());
+					firstWorkerEvaluation, firstWorker, firstSource.executionContext(), firstInvocation, boundary);
 			NativeScalarPlan.WorkerContext secondWorkerContext = NativeScalarPlan.WorkerContext.forSource(secondSource,
-					secondContext, secondWorker, secondSource.executionContext());
+					secondWorkerEvaluation, secondWorker, secondSource.executionContext(), secondInvocation, boundary);
 			NativeSubqueryPlan first = original;
 			NativeSubqueryPlan second = original;
 			if (workerExpected) {
@@ -398,6 +432,19 @@ class NativeResultWrapperBindingTest {
 
 	private static String result(RowState row) {
 		return ((Literal) row.view.getValue("term")).getLabel() + ":" + row.view.getValue("alias").stringValue();
+	}
+
+	private static void certifyStoreIds(NativeLmdbQuerySource store) {
+		when(store.certifiesIdOrigins()).thenReturn(true);
+		when(store.detachedDomainStamp()).thenReturn(new NativeLmdbQuerySource.DomainStamp(new Object(),
+				new Object(), new Object(), new Object(), NativeLmdbQuerySource.DomainStamp.EXPLICIT, null, null));
+		doAnswer(call -> {
+			long id = store.idOf(call.getArgument(0), call.getArgument(1));
+			NativeLmdbQuerySource.IdLookup lookup = call.getArgument(2);
+			lookup.set(id, id == UNKNOWN_ID ? NativeLmdbQuerySource.IdOrigin.ABSENT
+					: NativeLmdbQuerySource.IdOrigin.STORED);
+			return null;
+		}).when(store).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 	}
 
 	private record Outcome(List<String> first, List<String> second, int bindingReads, int bindingLookups,

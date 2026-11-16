@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.model.ValueFactory;
@@ -280,21 +281,40 @@ class LmdbNativeLegacyScalarExpressionTest {
 		return new NativeBindingSetValueEvaluator() {
 			@Override
 			public NativeValueOutcome evaluate(BindingSet bindings) {
-				return evaluateActual(bindings, null, false);
+				return evaluateActual(null, () -> actual.evaluate(bindings));
 			}
 
 			@Override
 			public NativeValueOutcome evaluate(BindingSet bindings, NativeExecutionContext executionContext) {
-				return evaluateActual(bindings, executionContext, true);
+				return evaluateActual(executionContext, () -> actual.evaluate(bindings, executionContext));
 			}
 
-			private NativeValueOutcome evaluateActual(BindingSet bindings, NativeExecutionContext executionContext,
-					boolean scoped) {
+			@Override
+			public NativeValueOutcome evaluateInInvocation(BindingSet bindings, NativeExecutionContext executionContext,
+					NativeLmdbQuerySource source, LmdbFusedSipFactorizedRuntime.Session invocation) {
+				return evaluateActual(executionContext,
+						() -> actual.evaluateInInvocation(bindings, executionContext, source, invocation));
+			}
+
+			@Override
+			public NativeValueOutcome evaluateInPreparation(BindingSet bindings,
+					NativeExecutionContext executionContext,
+					LmdbFusedSipFactorizedRuntime.PreparationScope preparation) {
+				return evaluateActual(executionContext,
+						() -> actual.evaluateInPreparation(bindings, executionContext, preparation));
+			}
+
+			@Override
+			public NativeValueOutcome evaluateForRow(BindingSet bindings, RowState row) {
+				return evaluateActual(row.executionContext(), () -> actual.evaluateForRow(bindings, row));
+			}
+
+			private NativeValueOutcome evaluateActual(NativeExecutionContext executionContext,
+					Supplier<NativeValueOutcome> evaluation) {
 				ScalarInvocation invocation = new ScalarInvocation(operator, executionContext);
 				invocations.add(invocation);
 				try {
-					NativeValueOutcome outcome = scoped ? actual.evaluate(bindings, executionContext)
-							: actual.evaluate(bindings);
+					NativeValueOutcome outcome = evaluation.get();
 					invocation.outcome = outcome.kind() + ":" + outcome.value();
 					afterEvaluation.run();
 					return outcome;

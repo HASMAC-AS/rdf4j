@@ -188,67 +188,70 @@ class LmdbNativeReplayWorkerContextTest {
 				// reads the forced name when it is constructed, so the context is set first.
 				SlowQueryContextHolder.SlowQueryContext previousContext = SlowQueryContextHolder.set(query,
 						Query.QueryType.TUPLE, dispatch.grouped ? "parallelAggregation" : "parallelPipelines");
-				var strategy = new LmdbNativeEvaluationStrategy(
-						new SailDatasetTripleTermSource(repository.getValueFactory(), dataset),
-						null, null, 0L, new EvaluationStatistics(), false);
-				var root = QueryParserUtil.parseTupleQuery(QueryLanguage.SPARQL, query, null).getTupleExpr();
-				var compiled = LmdbNativeAggregateCompiler.compileRoot(root,
-						new QueryEvaluationContext.Minimal((Dataset) null), strategy, source);
-				assertThat(compiled.isSupported()).as("actual native root: %s", compiled.reason()).isTrue();
-				long before = runs(dispatch);
-				Throwable failure = null;
-				List<BindingSet> rows = new ArrayList<>();
-				try (var initializerScope = QueryExecutionContext.activateExternalValueInitializer(initializer);
-						var replayScope = QueryExecutionContext.activateReplaySafepoint(checkpoints::incrementAndGet,
-								() -> {
-									captures.incrementAndGet();
-									return () -> {
-										Object old = OWNER.get();
-										OWNER.set(queryOwner);
-										activations.incrementAndGet();
-										AtomicBoolean active = new AtomicBoolean(true);
+				try {
+					var strategy = new LmdbNativeEvaluationStrategy(
+							new SailDatasetTripleTermSource(repository.getValueFactory(), dataset),
+							null, null, 0L, new EvaluationStatistics(), false);
+					var root = QueryParserUtil.parseTupleQuery(QueryLanguage.SPARQL, query, null).getTupleExpr();
+					var compiled = LmdbNativeAggregateCompiler.compileRoot(root,
+							new QueryEvaluationContext.Minimal((Dataset) null), strategy, source);
+					assertThat(compiled.isSupported()).as("actual native root: %s", compiled.reason()).isTrue();
+					long before = runs(dispatch);
+					Throwable failure = null;
+					List<BindingSet> rows = new ArrayList<>();
+					try (var initializerScope = QueryExecutionContext.activateExternalValueInitializer(initializer);
+							var replayScope = QueryExecutionContext.activateReplaySafepoint(
+									checkpoints::incrementAndGet,
+									() -> {
+										captures.incrementAndGet();
 										return () -> {
-											assertThat(active.compareAndSet(true, false)).isTrue();
-											OWNER.set(old);
-											releases.incrementAndGet();
+											Object old = OWNER.get();
+											OWNER.set(queryOwner);
+											activations.incrementAndGet();
+											AtomicBoolean active = new AtomicBoolean(true);
+											return () -> {
+												assertThat(active.compareAndSet(true, false)).isTrue();
+												OWNER.set(old);
+												releases.incrementAndGet();
+											};
 										};
-									};
-								});
-						var result = compiled.step().evaluate(EmptyBindingSet.getInstance())) {
-					while (result.hasNext()) {
-						rows.add(result.next());
+									});
+							var result = compiled.step().evaluate(EmptyBindingSet.getInstance())) {
+						while (result.hasNext()) {
+							rows.add(result.next());
+						}
+					} catch (Throwable problem) {
+						failure = problem;
 					}
-				} catch (Throwable problem) {
-					failure = problem;
+					assertThat(workerCalls.get()).as("production dispatch (failure=%s, row rejection=%s)", failure,
+							LmdbNativeParallelPipelines.LAST_REJECTION.get()).isPositive();
+					assertThat(workers).doesNotContain(consumer);
+					if (dispatch.failure) {
+						assertThat(contains(failure, injected)).as("injected worker error must escape, got %s", failure)
+								.isTrue();
+					} else {
+						assertThat(failure).isNull();
+						assertThat(runs(dispatch)).isGreaterThan(before);
+						if (dispatch.grouped) {
+							assertThat(rows).hasSize(1);
+							assertThat(((Literal) rows.getFirst().getValue("count")).longValue()).isEqualTo(240);
+						} else {
+							assertThat(rows).hasSize(240);
+							for (BindingSet row : rows) {
+								assertThat(row.getValue("o").stringValue())
+										.isEqualTo(row.getValue("s").stringValue().replace(EX + "s", EX + "o"));
+							}
+						}
+					}
+					assertThat(missingContext.get()).as("worker external preparation and read-attempt owner")
+							.isZero();
+					assertThat(prepared.get()).isEqualTo(workerCalls.get());
+					assertThat(checkpoints.get()).isGreaterThanOrEqualTo(workerCalls.get());
+					assertThat(captures.get()).isPositive();
+					assertThat(activations.get()).isPositive().isEqualTo(releases.get());
 				} finally {
 					SlowQueryContextHolder.restore(previousContext);
 				}
-				assertThat(workerCalls.get()).as("production dispatch (failure=%s, row rejection=%s)", failure,
-						LmdbNativeParallelPipelines.LAST_REJECTION.get()).isPositive();
-				assertThat(workers).doesNotContain(consumer);
-				if (dispatch.failure) {
-					assertThat(contains(failure, injected)).as("injected worker error must escape, got %s", failure)
-							.isTrue();
-				} else {
-					assertThat(failure).isNull();
-					assertThat(runs(dispatch)).isGreaterThan(before);
-					if (dispatch.grouped) {
-						assertThat(rows).hasSize(1);
-						assertThat(((Literal) rows.getFirst().getValue("count")).longValue()).isEqualTo(240);
-					} else {
-						assertThat(rows).hasSize(240);
-						for (BindingSet row : rows) {
-							assertThat(row.getValue("o").stringValue())
-									.isEqualTo(row.getValue("s").stringValue().replace(EX + "s", EX + "o"));
-						}
-					}
-				}
-				assertThat(missingContext.get()).as("worker external preparation and read-attempt owner")
-						.isZero();
-				assertThat(prepared.get()).isEqualTo(workerCalls.get());
-				assertThat(checkpoints.get()).isGreaterThanOrEqualTo(workerCalls.get());
-				assertThat(captures.get()).isPositive();
-				assertThat(activations.get()).isPositive().isEqualTo(releases.get());
 			}
 		} finally {
 			visitAllWorkers(pool, thread -> {
@@ -376,6 +379,26 @@ class LmdbNativeReplayWorkerContextTest {
 		@Override
 		public long idOf(Value value, int mask) {
 			return delegate.idOf(value, mask);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return delegate.certifiesIdOrigins();
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int mask, IdLookup result) {
+			delegate.idOfWithOrigin(value, mask, result);
+		}
+
+		@Override
+		public Object resultValueScope() {
+			return delegate.resultValueScope();
+		}
+
+		@Override
+		public DomainStamp detachedDomainStamp() {
+			return delegate.detachedDomainStamp();
 		}
 
 		@Override

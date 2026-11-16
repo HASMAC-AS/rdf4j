@@ -1,0 +1,46 @@
+--- v1/org/eclipse/rdf4j/sail/lmdb/evaluation/codegen/KernelResultCoordinates.java
++++ v2/org/eclipse/rdf4j/sail/lmdb/evaluation/codegen/KernelResultCoordinates.java
+@@ -41,8 +41,9 @@
+             "directRetain", "directRelease", "otherLookup", "retirementLink" };
+     private static final String[] NS_DIAG_METRICS = { "rangeCalls", "visitedCells", "positionedCells", "managedCells",
+             "managedTransitions", "managedRuns", "singletonManagedRanges", "singletonPhysicalRanges", "emptyManagedRanges",
+-            "referenceCalls", "managedReferenceCalls", "directoryLookups", "directoryProbes", "directoryMisses" };
+-    private static final int NS_DIAG_WIDTH = 14;
++            "referenceCalls", "managedReferenceCalls", "directoryLookups", "directoryProbes", "directoryMisses",
++            "directoryAbsentRangeCalls", "directoryAbsentVisitedCells" };
++    private static final int NS_DIAG_WIDTH = 16;
+     private static final int NS_DIAG_SIZE = NS_DIAG_SCOPES.length * NS_DIAG_WIDTH;
+     private static final java.util.concurrent.atomic.AtomicLongArray NS_DIAG_TOTALS =
+             new java.util.concurrent.atomic.AtomicLongArray(NS_DIAG_SIZE + 1);
+@@ -836,12 +837,15 @@
+         namespaceDiagnosticScope = scope;
+         int metric = scope * NS_DIAG_WIDTH;
+         namespaceDiagnosticCounters[metric]++;
++        boolean directoryAbsentAtEntry = namespaceIds == null;
++        if (directoryAbsentAtEntry) namespaceDiagnosticCounters[metric + 14]++;
+         if (length == WIDTH) namespaceDiagnosticCounters[metric + 7]++;
+         long managed = 0L;
+         long previousManagedNamespace = 0L;
+         try {
+             for (int at = start; enabled() && at < start + length; at += WIDTH) {
+                 namespaceDiagnosticCounters[metric + 1]++;
++                if (directoryAbsentAtEntry) namespaceDiagnosticCounters[metric + 15]++;
+                 if (array[at + POSITION] >= 0L) {
+                     namespaceDiagnosticCounters[metric + 2]++;
+                     long namespace = array[at + NAMESPACE];
+@@ -869,12 +873,15 @@
+         namespaceDiagnosticScope = scope;
+         int metric = scope * NS_DIAG_WIDTH;
+         namespaceDiagnosticCounters[metric]++;
++        boolean directoryAbsentAtEntry = namespaceIds == null;
++        if (directoryAbsentAtEntry) namespaceDiagnosticCounters[metric + 14]++;
+         if (length == WIDTH) namespaceDiagnosticCounters[metric + 7]++;
+         long managed = 0L;
+         long previousManagedNamespace = 0L;
+         try {
+             for (int at = start; enabled() && at < start + length; at += WIDTH) {
+                 namespaceDiagnosticCounters[metric + 1]++;
++                if (directoryAbsentAtEntry) namespaceDiagnosticCounters[metric + 15]++;
+                 if (array[at + POSITION] >= 0L) {
+                     namespaceDiagnosticCounters[metric + 2]++;
+                     long namespace = array[at + NAMESPACE];

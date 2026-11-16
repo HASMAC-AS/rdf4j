@@ -218,7 +218,7 @@ class LmdbNativeKernelInterpreterRowParityTest {
 		assertThat(kernel).isNotNull();
 		try {
 			kernel.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0], new long[0],
-					new long[][] { domain }));
+					new long[][] { domain }).withStandaloneFusedRuntime());
 			long[] row = new long[1];
 			assertThat(kernel.fill(row, 1)).isEqualTo(1);
 			assertThat(row[0]).isEqualTo(1L);
@@ -286,7 +286,7 @@ class LmdbNativeKernelInterpreterRowParityTest {
 			LmdbNativeKernelInterpreter kernel = (LmdbNativeKernelInterpreter) LmdbNativeKernelInterpreter.forRows(ir);
 			try {
 				kernel.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0], new long[0],
-						new long[][] { domain }));
+						new long[][] { domain }).withStandaloneFusedRuntime());
 				kernel.fill(new long[1], 1);
 				assertThat(kernel.retainedRowCapacityForTest()).isGreaterThan(0);
 			} finally {
@@ -319,7 +319,7 @@ class LmdbNativeKernelInterpreterRowParityTest {
 			JaninoKernel control = rowKernel(ir, false);
 			try {
 				control.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0], new long[0],
-						new long[][] { domain }));
+						new long[][] { domain }).withStandaloneFusedRuntime());
 				assertThat(control.fill(new long[64], 64)).as("control row cardinality").isEqualTo(8);
 			} finally {
 				control.close();
@@ -331,7 +331,7 @@ class LmdbNativeKernelInterpreterRowParityTest {
 						.currentKernelCancellation();
 				assertThat(cancellation.materializationRowLimit()).isEqualTo(4);
 				kernel.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0],
-						new long[0], new long[][] { domain })
+						new long[0], new long[][] { domain }).withStandaloneFusedRuntime()
 								.withCancellation(cancellation));
 				assertThatThrownBy(() -> kernel.fill(new long[64], 64))
 						.as(compiled ? "compiled probe materialization" : "interpreted probe materialization")
@@ -412,7 +412,7 @@ class LmdbNativeKernelInterpreterRowParityTest {
 
 		try {
 			kernel.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0], new long[0],
-					new long[][] { domain }));
+					new long[][] { domain }).withStandaloneFusedRuntime());
 			long[] buffer = new long[64];
 			List<Long> rows = new ArrayList<>();
 			int filled;

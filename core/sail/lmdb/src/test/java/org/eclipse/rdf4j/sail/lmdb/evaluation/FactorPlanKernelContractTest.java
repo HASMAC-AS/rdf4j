@@ -168,7 +168,7 @@ public class FactorPlanKernelContractTest {
 	static long[][] drain(JaninoKernel kernel, Kernel shape, KernelPlan plan, long[] constants,
 			KernelCancellation cancellation) {
 		KernelContext context = new KernelContext(null, constants, new long[0], null, null, null,
-				new KernelPlan[] { plan }, 16);
+				new KernelPlan[] { plan }, 16).withStandaloneFusedRuntime();
 		context.cancellation = cancellation;
 		try {
 			kernel.bind(context);

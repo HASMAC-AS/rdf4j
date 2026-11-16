@@ -120,7 +120,8 @@ public class GeneratedBorrowedFtreeContractTest {
 					if (on(sel[0], root))
 						expected += wt[0][root] * branch1[root] * s2[root];
 				}
-				kernel.bind(new KernelContext(null, new long[0], new long[0], null).withPackedFtree(p));
+				kernel.bind(new KernelContext(null, new long[0], new long[0], null).withStandaloneFusedRuntime()
+						.withPackedFtree(p));
 				kernel.fill(new long[0], 1);
 				equal(expected, p.totalRows);
 				for (int root = 0; root < 4; root++) {
@@ -153,21 +154,27 @@ public class GeneratedBorrowedFtreeContractTest {
 		try {
 			JaninoKernel kernel = compile("org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.TestBorrowedCount",
 					PackedFtreeKernelSource.source(new int[][] { { 1, 2 }, {}, {} }, 0, "TestBorrowedCount"), dir);
-			PackedFtreeContext p = new PackedFtreeContext(new long[][] { { 1 }, {}, {} }, new long[3][],
-					new long[][] { new long[1], {}, {} }, new long[3][], new int[3][], new int[] { 1, 0, 0 },
-					new int[3], new int[] { 1, 0, 0 }, new boolean[3]);
-			p.needOutsideCounts = false;
-			p.borrowedCounts[1] = new long[] { 3_000_000_000L };
-			p.borrowedCounts[2] = new long[] { 2 };
-			kernel.bind(new KernelContext(null, new long[0], new long[0], null).withPackedFtree(p));
-			kernel.fill(new long[0], 1);
-			equal(6_000_000_000L, p.totalRows);
-			p.borrowedCounts[1][0] = Long.MAX_VALUE;
-			kernel.bind(new KernelContext(null, new long[0], new long[0], null).withPackedFtree(p));
 			try {
+				PackedFtreeContext p = new PackedFtreeContext(new long[][] { { 1 }, {}, {} }, new long[3][],
+						new long[][] { new long[1], {}, {} }, new long[3][], new int[3][], new int[] { 1, 0, 0 },
+						new int[3], new int[] { 1, 0, 0 }, new boolean[3]);
+				p.needOutsideCounts = false;
+				p.borrowedCounts[1] = new long[] { 3_000_000_000L };
+				p.borrowedCounts[2] = new long[] { 2 };
+				kernel.bind(new KernelContext(null, new long[0], new long[0], null).withStandaloneFusedRuntime()
+						.withPackedFtree(p));
 				kernel.fill(new long[0], 1);
-				throw new AssertionError("overflow accepted");
-			} catch (org.eclipse.rdf4j.query.QueryEvaluationException expected) {
+				equal(6_000_000_000L, p.totalRows);
+				p.borrowedCounts[1][0] = Long.MAX_VALUE;
+				kernel.bind(new KernelContext(null, new long[0], new long[0], null).withStandaloneFusedRuntime()
+						.withPackedFtree(p));
+				try {
+					kernel.fill(new long[0], 1);
+					throw new AssertionError("overflow accepted");
+				} catch (org.eclipse.rdf4j.query.QueryEvaluationException expected) {
+				}
+			} finally {
+				kernel.close();
 			}
 		} finally {
 			remove(dir);
@@ -207,7 +214,9 @@ public class GeneratedBorrowedFtreeContractTest {
 				int threshold = dense ? 3 : 35;
 				KernelCancellation cancellation = new KernelCancellation(System.nanoTime() + 1_000_000_000_000L, null,
 						() -> ++polls[0] >= threshold);
-				KernelContext context = new KernelContext(null, new long[0], new long[0], null).withPackedFtree(p);
+				KernelContext context = new KernelContext(null, new long[0], new long[0], null)
+						.withStandaloneFusedRuntime()
+						.withPackedFtree(p);
 				context.cancellation = cancellation;
 				kernel.bind(context);
 				try {
@@ -237,7 +246,8 @@ public class GeneratedBorrowedFtreeContractTest {
 			KernelCancellation cancellation = new KernelCancellation(System.nanoTime() + 1_000_000_000_000L);
 			cancellation.cancel();
 			// Null packed data is intentional: cancellation must precede reading it.
-			KernelContext context = new KernelContext(null, new long[0], new long[0], null);
+			KernelContext context = new KernelContext(null, new long[0], new long[0], null)
+					.withStandaloneFusedRuntime();
 			context.cancellation = cancellation;
 			kernel.bind(context);
 			try {

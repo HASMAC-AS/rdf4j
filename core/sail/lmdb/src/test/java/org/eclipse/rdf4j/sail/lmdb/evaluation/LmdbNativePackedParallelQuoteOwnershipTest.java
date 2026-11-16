@@ -216,6 +216,7 @@ class LmdbNativePackedParallelQuoteOwnershipTest {
 		final Map<String, String> previous = new LinkedHashMap<>();
 		final SnapshotSource source = new SnapshotSource();
 		final RowState row = row(source);
+		final NativeInvocationCarrier invocation = NativeTestStrategies.invocation(row);
 		final SlotPlan input;
 
 		Fixture(boolean composed) {
@@ -233,6 +234,8 @@ class LmdbNativePackedParallelQuoteOwnershipTest {
 
 		@Override
 		public void close() {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			previous.forEach((key, value) -> {
 				if (value == null) {
@@ -256,6 +259,7 @@ class LmdbNativePackedParallelQuoteOwnershipTest {
 		set(previous, LmdbNativePackedMorsels.ROWS_PROPERTY, "1");
 		SnapshotSource source = new SnapshotSource();
 		RowState row = row(source);
+		NativeInvocationCarrier invocation = NativeTestStrategies.invocation(row);
 		MultiJoinPlan join = new MultiJoinPlan(new SlotPlan[] { edge(0, 1L, 1, 16D), edge(0, 2L, 2, 16D) },
 				new MaskedFilter[0]);
 		NativeRowsStep step = new NativeRowsStep(source, join, row.layout, new int[] { 0, 1, 2 },
@@ -272,6 +276,8 @@ class LmdbNativePackedParallelQuoteOwnershipTest {
 					.map(LmdbNativeDecisionTestAccess.Captured::id))
 							.contains("packedFtree(serial)", "packedFtree(parallel)");
 		} finally {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			previous.forEach((key, value) -> {
 				if (value == null) {
@@ -306,6 +312,7 @@ class LmdbNativePackedParallelQuoteOwnershipTest {
 		set(previous, LmdbNativePackedMorsels.ROWS_PROPERTY, "1");
 		SnapshotSource source = new SnapshotSource();
 		RowState row = row(source);
+		NativeInvocationCarrier invocation = NativeTestStrategies.invocation(row);
 		MultiJoinPlan join = new MultiJoinPlan(new SlotPlan[] { edge(0, 1L, 1, 16D), edge(0, 2L, 2, 16D) },
 				new MaskedFilter[0]);
 		try (LmdbNativeParallelPipelines.TaskReservation other = occupiedWorkers == 0 ? null
@@ -335,6 +342,8 @@ class LmdbNativePackedParallelQuoteOwnershipTest {
 				assertThat(source.opened.get()).isEqualTo(parallel ? 4 - occupiedWorkers : 0);
 			}
 		} finally {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			previous.forEach((key, value) -> {
 				if (value == null) {

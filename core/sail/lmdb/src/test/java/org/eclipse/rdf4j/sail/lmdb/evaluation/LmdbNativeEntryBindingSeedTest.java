@@ -642,6 +642,14 @@ public class LmdbNativeEntryBindingSeedTest {
 		long otherPlanId = otherCatalog.internConstant(SimpleValueFactory.getInstance().createIRI(EX, "other-plan"));
 		NativeLmdbQuerySource originBacking = emptyEntrySource();
 		NativeLmdbQuerySource otherBacking = emptyEntrySource();
+		for (NativeLmdbQuerySource backing : List.of(originBacking, otherBacking)) {
+			when(backing.certifiesIdOrigins()).thenReturn(true);
+			doAnswer(call -> {
+				IdLookup lookup = call.getArgument(2);
+				lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, IdOrigin.ABSENT);
+				return null;
+			}).when(backing).idOfWithOrigin(any(Value.class), anyInt(), any(IdLookup.class));
+		}
 		SyntheticValueSource origin = new SyntheticValueSource(originBacking, originCatalog.build()).forEvaluation();
 		SyntheticValueSource other = new SyntheticValueSource(otherBacking, otherCatalog.build()).forEvaluation();
 		try {

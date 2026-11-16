@@ -110,7 +110,7 @@ public class KernelExpansionContractTest {
 	}
 
 	static KernelContext context(NativeAdjacency... views) {
-		return new KernelContext(views, new long[] { 7 }, new long[0], null);
+		return new KernelContext(views, new long[] { 7 }, new long[0], null).withStandaloneFusedRuntime();
 	}
 
 	static Intersect intersection(int arity) {

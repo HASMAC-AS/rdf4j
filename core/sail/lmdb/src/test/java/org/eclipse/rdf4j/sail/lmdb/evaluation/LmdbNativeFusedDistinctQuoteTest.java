@@ -14,10 +14,8 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTest.coveringProfile;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTest.row;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,6 +33,7 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeCostVector.Feature;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -471,6 +470,7 @@ class LmdbNativeFusedDistinctQuoteTest {
 		final CountingSource source;
 		final SyntheticValueSource evaluation;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan join;
 
 		Fixture() {
@@ -493,6 +493,11 @@ class LmdbNativeFusedDistinctQuoteTest {
 			source = new CountingSource(shape == Shape.EMPTY_BRANCH ? 0 : FANOUT);
 			evaluation = SyntheticValueSource.forEvaluation(source);
 			row = row(evaluation);
+			evaluation.executionContext().initializeQueryBase(row.base);
+			invocation = NativeInvocationCarrier.open(evaluation, null, row.base, System.identityHashCode(this), null);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			PatternPlan city = pattern(CITY, 1, SUBJECTS);
 			PatternPlan knows = pattern(KNOWS, 2, SUBJECTS * source.fanout);
 			join = new MultiJoinPlan(shape == Shape.KEYS_ONLY_FALLBACK ? new SlotPlan[] { knows, city }
@@ -505,8 +510,7 @@ class LmdbNativeFusedDistinctQuoteTest {
 		}
 
 		NativeRowsStep step(String tag, boolean distinct, long offset, long limit) {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tag);
 			return new NativeRowsStep(evaluation, join, row.layout, new int[] { 1 }, new String[] { "city" }, distinct,
 					new int[0], new boolean[0], offset, limit, false, strategy, null, null, Set.of(), null, null);
 		}
@@ -523,8 +527,10 @@ class LmdbNativeFusedDistinctQuoteTest {
 
 		@Override
 		public void close() {
-			row.memoryScope.close();
-			evaluation.executionContext().close();
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(row.memoryScope::close, failure);
+			failure = KernelRuntime.closeResource(evaluation.executionContext(), failure);
 			previous.forEach((key, value) -> {
 				if (value == null) {
 					System.clearProperty(key);
@@ -532,6 +538,7 @@ class LmdbNativeFusedDistinctQuoteTest {
 					System.setProperty(key, value);
 				}
 			});
+			KernelRuntime.rethrowCloseFailure(failure);
 		}
 	}
 

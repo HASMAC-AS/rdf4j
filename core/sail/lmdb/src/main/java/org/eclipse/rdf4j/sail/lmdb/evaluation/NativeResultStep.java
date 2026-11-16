@@ -46,6 +46,10 @@ interface NativeResultStep extends QueryEvaluationStep, NativeCompiledRecipeProv
 /** A shared operator exposes a recipe only when every retained descriptor is independent of runtime ownership. */
 interface NativeCompiledRecipeProvider {
 	default NativeCompiledResultRecipe compiledRecipe() {
+		return NativeRecipeMemory.capture(this);
+	}
+
+	default NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
 		return null;
 	}
 }
@@ -57,6 +61,15 @@ interface NativeCompiledRecipeProvider {
  */
 interface NativeCompiledResultRecipe {
 	QueryEvaluationStep bind(NativeResultBinding binding);
+
+	default int valuesIdDomains() {
+		return 0;
+	}
+
+	/** Unknown recipes conservatively retain the complete compile-time synthetic authority. */
+	default boolean requiresSourceAuthority() {
+		return true;
+	}
 
 	boolean requiresPhysicalResults();
 
@@ -96,8 +109,15 @@ final class NativeDiagnosticPath {
 	}
 
 	static NativeDiagnosticPath capture(TupleExpr target) {
+		return capture(target, null);
+	}
+
+	static NativeDiagnosticPath capture(TupleExpr target, NativeRecipeMemory.Capture capture) {
 		if (target == null) {
 			return null;
+		}
+		if (capture != null) {
+			capture.reserve(256L);
 		}
 		List<Integer> childIndices = new ArrayList<>();
 		List<Object> tokens = new ArrayList<>();
@@ -106,6 +126,9 @@ final class NativeDiagnosticPath {
 		DirectChild visitor = new DirectChild();
 		QueryModelNode node = LmdbNativeExplain.logicalOrigin(target);
 		while (node != null) {
+			if (capture != null) {
+				capture.reserve(128L);
+			}
 			if (seen.put(node, Boolean.TRUE) != null) {
 				return null;
 			}

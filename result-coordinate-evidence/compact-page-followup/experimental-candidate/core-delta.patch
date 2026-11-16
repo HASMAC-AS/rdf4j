@@ -1,0 +1,570 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -98,7 +98,9 @@
+ 	private static final Object NO_REVISION_OWNER = new Object();
+ 	private static final int PAGE_SHIFT = 6;
+ 	private static final int PAGE_SIZE = 1 << PAGE_SHIFT;
+-	// Includes five page arrays, per-cell weak-reference metadata, the page object, and alignment.
++	// Stable page shell, one inline cell, weak-reference metadata, and reservation bookkeeping.
++	private static final long COMPACT_PAGE_BYTES = 512L;
++	// Total dense budget includes the shell, five arrays, weak-reference metadata, and both reservations.
+ 	private static final long PAGE_BYTES = 16_384L;
+ 
+ 	private final NativeResultMaterializerPlan plan;
+@@ -384,7 +386,7 @@
+ 		if (factorPages != null) {
+ 			for (FactorPage page : factorPages) {
+ 				if (page != null) {
+-					bytes += page.reservation.bytes();
++					bytes += page.retainedBytes();
+ 				}
+ 			}
+ 		}
+@@ -498,6 +500,9 @@
+ 			factorMemo.pages[target] = page;
+ 		}
+ 		int cell = (int) (position & (PAGE_SIZE - 1));
++		if (page.values == null) {
++			return findSingleFactor(page, target, id, cell);
++		}
+ 		if (page.values[cell] == null || page.ids[cell] != id) {
+ 			return null;
+ 		}
+@@ -519,6 +524,28 @@
+ 		return value;
+ 	}
+ 
++	private Value findSingleFactor(FactorPage page, int target, long id, int cell) {
++		if (page.singleValue == null || page.singleCell != cell || page.singleId != id) {
++			return null;
++		}
++		Value value = dereference(page.singleValue);
++		if (value == null) {
++			weakMisses++;
++			page.clear(cell);
++			return null;
++		}
++		if (!matches(page.singleVersion, page.singleRevisionId, page.singleRevisionOwner, id, value)) {
++			page.clear(cell);
++			return null;
++		}
++		ids[target] = id;
++		versions[target] = page.singleVersion;
++		revisionIds[target] = page.singleRevisionId;
++		revisionOwners[target] = page.singleRevisionOwner;
++		values[target] = page.singleValue;
++		return value;
++	}
++
+ 	private void rememberFactor(int target, long id, long rowSequence) {
+ 		if (values[target] == null || factorAdmissionRefused && factorPages == null
+ 				|| !captureCoordinate(target, id, rowSequence)) {
+@@ -542,7 +569,11 @@
+ 			return;
+ 		}
+ 		int cell = (int) (position & (PAGE_SIZE - 1));
+-		if (page.ids[cell] != id || page.versions[cell] != versions[target]
++		if (page.values == null) {
++			if (!rememberSingleFactor(page, target, id, cell)) {
++				return;
++			}
++		} else if (page.ids[cell] != id || page.versions[cell] != versions[target]
+ 				|| page.revisionIds[cell] != revisionIds[target] || page.revisionOwners[cell] != revisionOwners[target]
+ 				|| page.values[cell] != values[target]) {
+ 			page.ids[cell] = id;
+@@ -564,6 +595,33 @@
+ 		}
+ 	}
+ 
++	private boolean rememberSingleFactor(FactorPage page, int target, long id, int cell) {
++		if (page.singleValue == null || page.singleCell == cell) {
++			if (page.singleCell != cell || page.singleId != id || page.singleVersion != versions[target]
++					|| page.singleRevisionId != revisionIds[target]
++					|| page.singleRevisionOwner != revisionOwners[target] || page.singleValue != values[target]) {
++				page.singleCell = cell;
++				page.singleId = id;
++				page.singleVersion = versions[target];
++				page.singleRevisionId = revisionIds[target];
++				page.singleRevisionOwner = revisionOwners[target];
++				page.singleValue = values[target];
++			}
++			return true;
++		}
++		// A large optional promotion may fail while another compact page can still fit.
++		// Retry on a later insertion so memory released by another owner can enable promotion.
++		if (!page.promote(ledger)) {
++			return false;
++		}
++		page.ids[cell] = id;
++		page.versions[cell] = versions[target];
++		page.revisionIds[cell] = revisionIds[target];
++		page.revisionOwners[cell] = revisionOwners[target];
++		page.values[cell] = values[target];
++		return true;
++	}
++
+ 	private FactorPage memoPage(int target, int canonical, long pageIndex) {
+ 		FactorMemo memo = factorMemo;
+ 		FactorPage page = memo == null ? null : memo.pages[target];
+@@ -613,7 +671,7 @@
+ 				return null;
+ 			}
+ 		}
+-		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(PAGE_BYTES);
++		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(COMPACT_PAGE_BYTES);
+ 		if (claim == null) {
+ 			if (factorPageCount == 0) {
+ 				factorPages = null;
+@@ -857,7 +915,7 @@
+ 		}
+ 	}
+ 
+-	/** One sparse, source-position page; references and mutation witnesses are weak from first insertion. */
++	/** One source-position page, initially inline; values and mutation witnesses remain weak after promotion. */
+ 	private static final class FactorPage implements AutoCloseable {
+ 		final int target;
+ 		final long namespace;
+@@ -866,11 +924,18 @@
+ 		final long column;
+ 		final long pageIndex;
+ 		final LmdbQueryMemoryManager.Reservation reservation;
+-		final Object[] values = new Object[PAGE_SIZE];
+-		final long[] ids = new long[PAGE_SIZE];
+-		final long[] versions = new long[PAGE_SIZE];
+-		final long[] revisionIds = new long[PAGE_SIZE];
+-		final Object[] revisionOwners = new Object[PAGE_SIZE];
++		LmdbQueryMemoryManager.Reservation payloadReservation;
++		int singleCell;
++		long singleId;
++		long singleVersion;
++		long singleRevisionId;
++		Object singleValue;
++		Object singleRevisionOwner;
++		Object[] values;
++		long[] ids;
++		long[] versions;
++		long[] revisionIds;
++		Object[] revisionOwners;
+ 
+ 		FactorPage(int target, long namespace, long group, long parent, long column, long pageIndex,
+ 				LmdbQueryMemoryManager.Reservation reservation) {
+@@ -883,6 +948,43 @@
+ 			this.reservation = reservation;
+ 		}
+ 
++		boolean promote(LmdbQueryMemoryManager.QueryLedger ledger) {
++			LmdbQueryMemoryManager.Reservation claim = ledger
++					.tryReserveWithoutReclamation(PAGE_BYTES - COMPACT_PAGE_BYTES);
++			if (claim == null) {
++				return false;
++			}
++			try {
++				Object[] allocatedValues = new Object[PAGE_SIZE];
++				long[] allocatedIds = new long[PAGE_SIZE];
++				long[] allocatedVersions = new long[PAGE_SIZE];
++				long[] allocatedRevisionIds = new long[PAGE_SIZE];
++				Object[] allocatedRevisionOwners = new Object[PAGE_SIZE];
++				allocatedValues[singleCell] = singleValue;
++				allocatedIds[singleCell] = singleId;
++				allocatedVersions[singleCell] = singleVersion;
++				allocatedRevisionIds[singleCell] = singleRevisionId;
++				allocatedRevisionOwners[singleCell] = singleRevisionOwner;
++				// Keep the stable shell and its claim. Publish only after every allocation and copy succeeds.
++				ids = allocatedIds;
++				versions = allocatedVersions;
++				revisionIds = allocatedRevisionIds;
++				revisionOwners = allocatedRevisionOwners;
++				values = allocatedValues;
++				payloadReservation = claim;
++				singleValue = null;
++				singleRevisionOwner = null;
++				return true;
++			} catch (RuntimeException | Error failure) {
++				claim.close();
++				throw failure;
++			}
++		}
++
++		long retainedBytes() {
++			return reservation.bytes() + (payloadReservation == null ? 0L : payloadReservation.bytes());
++		}
++
+ 		boolean matches(int target, long namespace, long group, long parent, long column, long pageIndex) {
+ 			return this.target == target && this.namespace == namespace && this.group == group && this.parent == parent
+ 					&& this.column == column
+@@ -890,14 +992,26 @@
+ 		}
+ 
+ 		void clear(int cell) {
+-			values[cell] = null;
+-			revisionOwners[cell] = null;
++			if (values != null) {
++				values[cell] = null;
++				revisionOwners[cell] = null;
++			} else if (singleCell == cell) {
++				singleValue = null;
++				singleRevisionOwner = null;
++			}
+ 		}
+ 
+ 		@Override
+ 		public void close() {
+-			Arrays.fill(values, null);
+-			Arrays.fill(revisionOwners, null);
++			singleValue = null;
++			singleRevisionOwner = null;
++			if (values != null) {
++				Arrays.fill(values, null);
++				Arrays.fill(revisionOwners, null);
++			}
++			if (payloadReservation != null) {
++				payloadReservation.close();
++			}
+ 			reservation.close();
+ 		}
+ 	}
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializerTest.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializerTest.java
+@@ -583,6 +583,293 @@
+ 	}
+ 
+ 	@Test
++	void sparseFactorPagesReuseWithinCompactPageBudget() {
++		CountingSource source = new CountingSource();
++		Value firstValue = VF.createBNode("compact-page-first");
++		Value secondValue = VF.createBNode("compact-page-second");
++		source.put(42L, ValuePosition.OBJECT, firstValue);
++		source.put(43L, ValuePosition.OBJECT, secondValue);
++		NativeProjectedBindingSet.ProjectionLayout layout = oneValueColumn();
++		NativeResultMaterializerPlan plan = new NativeResultMaterializerPlan(layout);
++		long firstPosition = 1L << 34;
++		TestCoordinates coordinates = new TestCoordinates(Map.of(42L, firstPosition, 43L, firstPosition + 64L));
++		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(4_096L, 4_096L);
++
++		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery()) {
++			try (NativeResultMaterializer materializer = plan.open(ledger)) {
++				NativeProjectedBindingSet first = captureAtPosition(source, layout, materializer, coordinates, 42L);
++				NativeProjectedBindingSet second = captureAtPosition(source, layout, materializer, coordinates, 43L);
++				NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates, 42L);
++
++				assertThat(first.getValue("value")).isSameAs(firstValue);
++				assertThat(second.getValue("value")).isSameAs(secondValue);
++				assertThat(replay.getValue("value")).isSameAs(firstValue);
++				assertThat(source.calls).containsExactly(
++						new Lookup(42L, ValuePosition.OBJECT),
++						new Lookup(43L, ValuePosition.OBJECT));
++				assertThat(materializer.retainedBytes()).isEqualTo(ledger.usedBytes()).isLessThanOrEqualTo(4_096L);
++			}
++			assertThat(ledger.usedBytes()).isZero();
++		}
++		assertThat(manager.usedBytes()).isZero();
++	}
++
++	@Test
++	void factorPagePromotionPreservesAllLongPositionCells() {
++		CountingSource source = new CountingSource();
++		Value[] members = new Value[64];
++		Map<Long, Long> positions = new HashMap<>();
++		long firstPosition = 1L << 34;
++		for (int cell = 0; cell < members.length; cell++) {
++			members[cell] = VF.createBNode("promoted-cell-" + cell);
++			source.put(1_000L + cell, ValuePosition.OBJECT, members[cell]);
++			positions.put(1_000L + cell, firstPosition + cell);
++		}
++		TestCoordinates coordinates = new TestCoordinates(positions);
++		NativeProjectedBindingSet.ProjectionLayout layout = oneValueColumn();
++		NativeResultMaterializerPlan plan = new NativeResultMaterializerPlan(layout);
++		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(30_000L, 30_000L);
++		List<Lookup> expectedCalls = new ArrayList<>();
++
++		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery()) {
++			try (NativeResultMaterializer materializer = plan.open(ledger)) {
++				NativeProjectedBindingSet first = captureAtPosition(source, layout, materializer, coordinates, 1_063L);
++				expectedCalls.add(new Lookup(1_063L, ValuePosition.OBJECT));
++				assertThat(first.getValue("value")).isSameAs(members[63]);
++
++				// The first distinct position is zero; the original cell must stay at offset 63 after promotion.
++				for (int cell = 0; cell < 63; cell++) {
++					NativeProjectedBindingSet row = captureAtPosition(source, layout, materializer, coordinates,
++							1_000L + cell);
++					expectedCalls.add(new Lookup(1_000L + cell, ValuePosition.OBJECT));
++					assertThat(row.getValue("value")).isSameAs(members[cell]);
++					assertThat(materializer.retainedBytes()).isEqualTo(18_368L);
++					assertThat(ledger.usedBytes()).isEqualTo(materializer.retainedBytes());
++				}
++
++				for (int cell = 63; cell >= 0; cell--) {
++					materializer.unbound(0);
++					NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates,
++							1_000L + cell);
++					assertThat(replay.getValue("value")).isSameAs(members[cell]);
++				}
++				assertThat(source.calls).containsExactlyElementsOf(expectedCalls);
++				assertThat(materializer.retainedBytes()).isEqualTo(18_368L);
++				assertThat(manager.peakUsedBytes()).isEqualTo(18_368L);
++				assertThat(first.getValue("value")).isSameAs(members[63]);
++			}
++			assertThat(ledger.usedBytes()).isZero();
++		}
++		assertThat(manager.usedBytes()).isZero();
++	}
++
++	@Test
++	void refusedFactorPagePromotionPreservesCellsAndRetriesAfterMemoryRelease() {
++		CountingSource source = new CountingSource();
++		Value firstValue = VF.createBNode("promotion-pressure-first");
++		Value secondValue = VF.createBNode("promotion-pressure-second");
++		Value otherPageValue = VF.createBNode("promotion-pressure-other-page");
++		source.put(42L, ValuePosition.OBJECT, firstValue);
++		source.put(43L, ValuePosition.OBJECT, secondValue);
++		source.put(44L, ValuePosition.OBJECT, otherPageValue);
++		TestCoordinates coordinates = new TestCoordinates(Map.of(42L, 0L, 43L, 1L, 44L, 64L));
++		NativeProjectedBindingSet.ProjectionLayout layout = oneValueColumn();
++		NativeResultMaterializerPlan plan = new NativeResultMaterializerPlan(layout);
++		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(30_000L, 30_000L);
++		int[] reclamationCalls = new int[2];
++
++		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery()) {
++			try (NativeResultMaterializer materializer = plan.open(ledger)) {
++				NativeProjectedBindingSet first = captureAtPosition(source, layout, materializer, coordinates, 42L);
++				long beforePressure = materializer.retainedBytes();
++				try (LmdbQueryMemoryManager.Reservation blocker = ledger.reserve(
++						ledger.maxBytes() - ledger.usedBytes() - 512L, nonReclaiming(reclamationCalls))) {
++					assertThat(blocker).isNotNull();
++					NativeProjectedBindingSet second = captureAtPosition(source, layout, materializer, coordinates,
++							43L);
++					NativeProjectedBindingSet replayFirst = captureAtPosition(source, layout, materializer,
++							coordinates, 42L);
++					NativeProjectedBindingSet otherPage = captureAtPosition(source, layout, materializer,
++							coordinates, 44L);
++					materializer.unbound(0);
++					NativeProjectedBindingSet replayOtherPage = captureAtPosition(source, layout, materializer,
++							coordinates, 44L);
++
++					assertThat(first.getValue("value")).isSameAs(firstValue);
++					assertThat(second.getValue("value")).isSameAs(secondValue);
++					assertThat(replayFirst.getValue("value")).isSameAs(firstValue);
++					assertThat(otherPage.getValue("value")).isSameAs(otherPageValue);
++					assertThat(replayOtherPage.getValue("value")).isSameAs(otherPageValue);
++					assertThat(source.calls).containsExactly(
++							new Lookup(42L, ValuePosition.OBJECT),
++							new Lookup(43L, ValuePosition.OBJECT),
++							new Lookup(44L, ValuePosition.OBJECT));
++					assertThat(materializer.retainedBytes()).isEqualTo(beforePressure + 512L);
++					assertThat(ledger.usedBytes()).isEqualTo(30_000L)
++							.isEqualTo(materializer.retainedBytes() + blocker.bytes());
++					assertThat(reclamationCalls).containsExactly(0, 0);
++				}
++
++				long beforePromotion = materializer.retainedBytes();
++				NativeProjectedBindingSet promoted = captureAtPosition(source, layout, materializer, coordinates, 43L);
++				assertThat(promoted.getValue("value")).isSameAs(secondValue);
++				assertThat(materializer.retainedBytes()).isEqualTo(beforePromotion + 15_872L);
++				assertThat(ledger.usedBytes()).isEqualTo(materializer.retainedBytes());
++				for (long id : new long[] { 42L, 43L, 44L }) {
++					materializer.unbound(0);
++					NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates, id);
++					assertThat(replay.getValue("value"))
++							.isSameAs(id == 42L ? firstValue : id == 43L ? secondValue : otherPageValue);
++				}
++				assertThat(source.calls).containsExactly(
++						new Lookup(42L, ValuePosition.OBJECT),
++						new Lookup(43L, ValuePosition.OBJECT),
++						new Lookup(44L, ValuePosition.OBJECT),
++						new Lookup(43L, ValuePosition.OBJECT));
++				assertThat(reclamationCalls).containsExactly(0, 0);
++				assertThat(manager.peakUsedBytes()).isEqualTo(30_000L);
++			}
++			assertThat(ledger.usedBytes()).isZero();
++		}
++		assertThat(manager.usedBytes()).isZero();
++	}
++
++	@Test
++	void factorPageReusesClearedCellAfterSamePositionWitnessReplacement() {
++		CountingSource source = new CountingSource();
++		ValueStoreRevision revision = new ValueStoreRevision.Default(null);
++		LmdbLiteral firstValue = new LmdbLiteral(revision, "before", 42L);
++		LmdbLiteral replacement = new LmdbLiteral(revision, "before", 42L);
++		Value uncachedValue = VF.createLiteral("uncacheable member");
++		Value otherValue = VF.createBNode("cleared-page-cell");
++		source.put(42L, ValuePosition.OBJECT, firstValue);
++		source.put(43L, ValuePosition.OBJECT, otherValue);
++		NativeProjectedBindingSet.ProjectionLayout layout = oneValueColumn();
++		NativeResultMaterializerPlan plan = new NativeResultMaterializerPlan(layout);
++		NamespaceCoordinates coordinates = new NamespaceCoordinates();
++		long firstPosition = 1L << 34;
++		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(30_000L, 30_000L);
++
++		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery()) {
++			try (NativeResultMaterializer materializer = plan.open(ledger)) {
++				NativeProjectedBindingSet retained = captureAtPosition(source, layout, materializer, coordinates,
++						42L, 601L, firstPosition + 63L);
++				long originalReservation = materializer.retainedBytes();
++				firstValue.setLabel("mutated by retained caller");
++				assertThat(firstValue.getInternalID()).isEqualTo(LmdbValue.UNKNOWN_ID);
++				source.put(42L, ValuePosition.OBJECT, replacement);
++				materializer.unbound(0);
++				coordinates.changedSlots(1L);
++				NativeProjectedBindingSet repaired = captureAtPosition(source, layout, materializer, coordinates,
++						42L, 601L, firstPosition + 63L);
++				materializer.unbound(0);
++				NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates,
++						42L, 601L, firstPosition + 63L);
++
++				assertThat(retained.getValue("value")).isSameAs(firstValue);
++				assertThat(firstValue.getLabel()).isEqualTo("mutated by retained caller");
++				assertThat(repaired.getValue("value")).isSameAs(replacement);
++				assertThat(replay.getValue("value")).isSameAs(replacement);
++				assertThat(replacement.getLabel()).isEqualTo("before");
++				assertThat(materializer.retainedBytes()).isEqualTo(originalReservation);
++				assertThat(source.calls).containsExactly(
++						new Lookup(42L, ValuePosition.OBJECT),
++						new Lookup(42L, ValuePosition.OBJECT));
++
++				// An uncachable replacement leaves the explicitly invalidated factor cell empty.
++				replacement.setLabel("mutated again");
++				source.put(42L, ValuePosition.OBJECT, uncachedValue);
++				materializer.unbound(0);
++				coordinates.changedSlots(1L);
++				NativeProjectedBindingSet uncached = captureAtPosition(source, layout, materializer, coordinates,
++						42L, 601L, firstPosition + 63L);
++				coordinates.changedSlots(1L);
++				NativeProjectedBindingSet other = captureAtPosition(source, layout, materializer, coordinates,
++						43L, 601L, firstPosition);
++				materializer.unbound(0);
++				NativeProjectedBindingSet replayOther = captureAtPosition(source, layout, materializer, coordinates,
++						43L, 601L, firstPosition);
++
++				assertThat(uncached.getValue("value")).isSameAs(uncachedValue);
++				assertThat(other.getValue("value")).isSameAs(otherValue);
++				assertThat(replayOther.getValue("value")).isSameAs(otherValue);
++				assertThat(materializer.retainedBytes()).isEqualTo(originalReservation);
++				assertThat(ledger.usedBytes()).isEqualTo(originalReservation);
++				assertThat(source.calls).containsExactly(
++						new Lookup(42L, ValuePosition.OBJECT),
++						new Lookup(42L, ValuePosition.OBJECT),
++						new Lookup(42L, ValuePosition.OBJECT),
++						new Lookup(43L, ValuePosition.OBJECT));
++			}
++			assertThat(ledger.usedBytes()).isZero();
++		}
++		assertThat(manager.usedBytes()).isZero();
++	}
++
++	@Test
++	void factorPageRetirementAndLedgerCloseReleaseMixedPageRepresentations() {
++		CountingSource source = new CountingSource();
++		Value[] members = new Value[6];
++		for (int member = 0; member < members.length; member++) {
++			members[member] = VF.createBNode("mixed-page-member-" + member);
++			source.put(42L + member, ValuePosition.OBJECT, members[member]);
++		}
++		NativeProjectedBindingSet.ProjectionLayout layout = oneValueColumn();
++		NativeResultMaterializerPlan plan = new NativeResultMaterializerPlan(layout);
++		NamespaceCoordinates coordinates = new NamespaceCoordinates();
++		long firstPosition = 1L << 34;
++		long[] positions = { firstPosition + 63L, firstPosition, firstPosition + 64L };
++		NativeProjectedBindingSet[] retained = new NativeProjectedBindingSet[members.length];
++		List<Lookup> expectedCalls = new ArrayList<>();
++		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
++
++		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery()) {
++			try (NativeResultMaterializer materializer = plan.open(ledger)) {
++				long oneNamespaceReservation = 0L;
++				for (int member = 0; member < members.length; member++) {
++					coordinates.changedSlots(1L);
++					retained[member] = captureAtPosition(source, layout, materializer, coordinates, 42L + member,
++							member < 3 ? 701L : 702L, positions[member % 3]);
++					expectedCalls.add(new Lookup(42L + member, ValuePosition.OBJECT));
++					assertThat(retained[member].getValue("value")).isSameAs(members[member]);
++					if (member == 2) {
++						oneNamespaceReservation = materializer.retainedBytes();
++					}
++				}
++				assertThat(materializer.retainedBytes()).isGreaterThan(oneNamespaceReservation);
++				assertThat(ledger.usedBytes()).isEqualTo(materializer.retainedBytes());
++
++				coordinates.retire(701L);
++				for (int member = 3; member < members.length; member++) {
++					materializer.unbound(0);
++					coordinates.changedSlots(1L);
++					NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates,
++							42L + member, 702L, positions[member % 3]);
++					assertThat(replay.getValue("value")).isSameAs(members[member]);
++				}
++				assertThat(coordinates.drainedNamespaces).containsExactly(701L);
++				assertThat(materializer.retainedBytes()).isEqualTo(oneNamespaceReservation);
++				assertThat(ledger.usedBytes()).isEqualTo(oneNamespaceReservation);
++				assertThat(source.calls).containsExactlyElementsOf(expectedCalls);
++
++				// The query may release claims before the page owner closes; both closes remain idempotent.
++				ledger.close();
++				assertThat(materializer.retainedBytes()).isZero();
++				assertThat(manager.usedBytes()).isZero();
++				materializer.close();
++				materializer.close();
++				source.retireResultValueScope();
++				for (int member = 0; member < members.length; member++) {
++					assertThat(retained[member].getValue("value")).isSameAs(members[member]);
++				}
++				assertThat(source.calls).containsExactlyElementsOf(expectedCalls);
++			}
++			assertThat(ledger.usedBytes()).isZero();
++		}
++		assertThat(manager.usedBytes()).isZero();
++	}
++
++	@Test
+ 	void factorPagesUseLongMemberPositionsAndRetireOnActivationChanges() {
+ 		CountingSource source = new CountingSource();
+ 		Value firstMember = VF.createBNode("factor-long-position-42");
+@@ -1371,21 +1658,36 @@
+ 			try (materializer) {
+ 				NativeProjectedBindingSet first = captureAtPosition(source, layout, materializer, coordinates, 42L);
+ 				assertThat(first.getValue("value")).isSameAs(firstValue);
+-				assertThat(materializer.retainedBytes()).isEqualTo(17_248L);
+-				assertThat(ledger.reserve(32L, nonReclaiming(reclamationCalls))).isNotNull();
+-				NativeProjectedBindingSet second = captureAtPosition(source, layout, materializer, coordinates, 43L);
+-				NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates, 42L);
+-
+-				assertThat(second.getValue("value")).isSameAs(secondValue);
+-				assertThat(replay.getValue("value")).isSameAs(firstValue);
+-				assertThat(source.calls).containsExactly(
+-						new Lookup(42L, ValuePosition.OBJECT),
+-						new Lookup(43L, ValuePosition.OBJECT));
+-				assertThat(materializer.retainedBytes()).isEqualTo(17_248L);
+-			}
++				long firstReservation = materializer.retainedBytes();
++				assertThat(firstReservation).isGreaterThan(672L).isEqualTo(ledger.usedBytes());
++				try (LmdbQueryMemoryManager.Reservation blocker = ledger.reserve(
++						ledger.maxBytes() - ledger.usedBytes() - 16L, nonReclaiming(reclamationCalls))) {
++					assertThat(blocker).isNotNull();
++					NativeProjectedBindingSet second = captureAtPosition(source, layout, materializer, coordinates,
++							43L);
++					NativeProjectedBindingSet replay = captureAtPosition(source, layout, materializer, coordinates,
++							42L);
++					materializer.unbound(0);
++					NativeProjectedBindingSet uncachedReplay = captureAtPosition(source, layout, materializer,
++							coordinates, 43L);
++
++					assertThat(second.getValue("value")).isSameAs(secondValue);
++					assertThat(replay.getValue("value")).isSameAs(firstValue);
++					assertThat(uncachedReplay.getValue("value")).isSameAs(secondValue);
++					assertThat(source.calls).containsExactly(
++							new Lookup(42L, ValuePosition.OBJECT),
++							new Lookup(43L, ValuePosition.OBJECT),
++							new Lookup(43L, ValuePosition.OBJECT));
++					assertThat(materializer.retainedBytes()).isEqualTo(firstReservation);
++					assertThat(ledger.usedBytes()).isEqualTo(firstReservation + blocker.bytes());
++				}
++				assertThat(ledger.usedBytes()).isEqualTo(firstReservation);
++			}
++			assertThat(ledger.usedBytes()).isZero();
+ 		}
+ 
+ 		assertThat(reclamationCalls).containsExactly(0, 0);
++		assertThat(manager.usedBytes()).isZero();
+ 	}
+ 
+ 	@Test

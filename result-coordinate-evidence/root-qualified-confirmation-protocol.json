@@ -1,0 +1,152 @@
+{
+  "actualClasspathEntries": 127,
+  "balancedRotations": [
+    [
+      "off",
+      "dense",
+      "changes",
+      "rows"
+    ],
+    [
+      "dense",
+      "changes",
+      "rows",
+      "off"
+    ],
+    [
+      "changes",
+      "rows",
+      "off",
+      "dense"
+    ],
+    [
+      "rows",
+      "off",
+      "dense",
+      "changes"
+    ]
+  ],
+  "classpathFile": "result-coordinate-evidence/root-qualified-launcher/classpath.txt",
+  "classpathRule": "Exact original 126 measured entries, in original order, followed by exactly one directory containing only the unique external launcher class. No original class, source, or resource is overlaid.",
+  "command": {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/run-root-qualified-coordinate-experiments.py",
+      "--classpath-file",
+      "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classpath.txt",
+      "--protocol-file",
+      "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-confirmation-protocol.json",
+      "--java",
+      "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+      "--heap",
+      "1024m",
+      "--suite",
+      "ablation",
+      "--modes",
+      "off,dense,changes,rows",
+      "--forks",
+      "4",
+      "--warmup",
+      "5",
+      "--iterations",
+      "5",
+      "--timeout",
+      "240",
+      "--source",
+      "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+      "--cwd",
+      "/workspace/scratch/37853bcaea36/rdf4j",
+      "--output",
+      "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-transport-comparison"
+    ],
+    "cwd": "/workspace/scratch/37853bcaea36/rdf4j"
+  },
+  "createdAtUtc": "2026-11-15T15:43:45.274657+00:00",
+  "deliveredSourceUnmodified": "15fe7d5011+worktree-sha256-8c59454811c9927d79739c1780fa88238c4d613bc0c111cf8d4cde8feeb49059",
+  "driver": "result-coordinate-evidence/run-root-qualified-coordinate-experiments.py",
+  "driverSha256": "9e118ffcc973152fa5d07b9cdaa7da6aeb8e0d3443a75a4dc9f112328ce394cb",
+  "expectedFreshJvms": 16,
+  "expectedMeasuredQueries": 80,
+  "expectedTotalQueries": 160,
+  "expectedWarmupQueries": 80,
+  "failurePolicy": "Any nonzero hosting/hard-decline counter, missing audit, incomplete/invalid sample, checksum/ledger failure, changed artifact, or process failure stops the entire confirmation. Preserve all raw data; do not replace or silently remove a fork. No confirmation aggregate is accepted when blocked.",
+  "fixture": {
+    "consumption": "full",
+    "expectedRows": 1152000,
+    "measurements": 100,
+    "readings": 10,
+    "statuses": 2,
+    "uniquePayloads": 0,
+    "width": 12
+  },
+  "forks": 4,
+  "format": 1,
+  "frozenClasspathManifest": "result-coordinate-evidence/transport-comparison/classpath-manifest.json",
+  "frozenClasspathManifestSha256": "cc29a5b89e9e892452933ab561566935db93476abbf373015e24dee90981cc6b",
+  "iterations": 5,
+  "jvm": {
+    "arguments": [
+      "-Xms1024m",
+      "-Xmx1024m",
+      "-XX:+UseG1GC"
+    ],
+    "java": "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+    "otherJvmLoadsDuringTiming": "none; serial benchmark forks only",
+    "recordedVersion": "25.0.5",
+    "strategy": "normal AUTO; only transport property varies",
+    "transportProperty": "rdf4j.lmdb.resultCoordinateTransport"
+  },
+  "launcherClassDirectory": "result-coordinate-evidence/root-qualified-launcher/classes",
+  "launcherClassDirectorySha256": "044cf5e6cca19abbaf98ff8789ee92480fd25c04f05483be257d3e18807e867a",
+  "launcherClassFiles": [
+    {
+      "bytes": 3481,
+      "path": "org/eclipse/rdf4j/sail/lmdb/evaluation/RootQualifiedOptionalFanoutLauncher.class",
+      "sha256": "1002a57163e81224b16a1296b25a7590e45e246fd94b31195daf7748f7c62b00"
+    }
+  ],
+  "launcherMain": "org.eclipse.rdf4j.sail.lmdb.evaluation.RootQualifiedOptionalFanoutLauncher",
+  "launcherSource": "result-coordinate-evidence/root-qualified-launcher/src/org/eclipse/rdf4j/sail/lmdb/evaluation/RootQualifiedOptionalFanoutLauncher.java",
+  "launcherSourceSha256": "c445011e1aea38f397e2b625ccc1fd8722d1cf8ab4269e5297f8555a0ad726cd",
+  "modes": [
+    "off",
+    "dense",
+    "changes",
+    "rows"
+  ],
+  "name": "Root-qualified four-arm default-fixture confirmation",
+  "originalDriver": "result-coordinate-evidence/run-coordinate-experiments.py",
+  "originalDriverSha256": "e5da76de8253209adc5304e0461be56a7272f4d2faeb6504d526c38658e3003d",
+  "originalFreezeDriverSha256": "6156af4e22fe93b2fb2566ee0c8c0a9b3d3988d565047b1f91801360754875e1",
+  "preRunCondition": "Final 484-class broad gate completed green; no other Java/compiler/test/archive jobs active when timing begins.",
+  "preRunReviewCorrections": [
+    "Require one semantic compilation in every individual query, in addition to absolute and summed totals.",
+    "Verify exact Java executable, original driver/freeze driver hashes, and reference classpath manifest hash before timing and preserve the source/manifest checks afterward."
+  ],
+  "preRunReviewUpdatedAtUtc": "2026-11-15T15:44:16.803499+00:00",
+  "reason": "The original timing schema recorded native selections/tiers but not outer-root hosting. This independent confirmation closes that observation gap while preserving the original measured harness and engine bytes.",
+  "rootCounterObservation": {
+    "claimBoundary": "Zero HOSTED_GENERIC establishes no generic outer-root host in the new process. It does not reconstruct outer-root choices of earlier protocols or prove the absence of every possible generic interior operator.",
+    "monotonicityProof": {
+      "COMPILED": "AtomicLong initialized to zero; production writes are increments after successful root or non-BGP interior compilation",
+      "HOSTED_GENERIC": "AtomicLong initialized to zero; sole production mutation is incrementAndGet in compileHostedPlan after constructing GenericRootPlan",
+      "UNHOSTED_HARD_DECLINES": "AtomicLong initialized to zero; no production mutation or reset path",
+      "harness": "OptionalFanoutExperiment and invoked fixture/telemetry paths never call root counter reset. OptionalFanoutRouteAccess.resetIrKernelMetrics is not invoked by this harness."
+    },
+    "output": "root-host-audit.json beside each samples.jsonl",
+    "requiredCompileCountConsistency": "Absolute COMPILED equals the sum of all ten raw semanticNativeCompiles deltas, one per query",
+    "requiredHostedGenericTotal": 0,
+    "requiredSemanticNativeCompilesTotal": 10,
+    "requiredUnhostedHardDeclinesTotal": 0,
+    "scope": "Absolute process totals cover every warmup and measurement query in a fresh JVM",
+    "when": "After original OptionalFanoutExperiment.main has returned or thrown; no pre-main counter read/reset"
+  },
+  "source": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+  "statistics": {
+    "pooling": "Keep this protocol separate from all earlier protocols and retain all earlier raw results.",
+    "primary": "Median of five measured totalNs or allThreadAllocatedBytes within each JVM, then candidate/OFF ratio within each matched round, then median of four round ratios. Report every round and full paired range.",
+    "routeQualification": "Require root-host zeros across all160 queries and report observed native selection/tier frequency histograms for measured samples. A histogram mismatch qualifies the interpretation; it does not justify exclusion.",
+    "secondary": "Direct CHANGES/DENSE and ROWS/DENSE paired ratios; preparation/evaluation/consumption phase medians; optional last-three measured sensitivity clearly labelled secondary."
+  },
+  "warmup": 5
+}

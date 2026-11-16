@@ -211,9 +211,10 @@ final class NativeRootPipeline {
 	}
 
 	/** These stages compare RDF mappings; a physical summary cannot cross that observer boundary. */
-	private static NativeCompiledResultRecipe semanticChild(QueryEvaluationStep step) {
+	private static NativeCompiledResultRecipe semanticChild(QueryEvaluationStep step,
+			NativeRecipeMemory.Capture capture) {
 		NativeCompiledResultRecipe child = step instanceof NativeCompiledRecipeProvider provider
-				? provider.compiledRecipe()
+				? provider.compiledRecipe(capture)
 				: null;
 		return child == null || child.requiresPhysicalResults() ? null : child;
 	}
@@ -224,10 +225,11 @@ final class NativeRootPipeline {
 				&& binding.strategy().isBoundTo(binding.worker()) && binding.physicalPreparation().reserveBytes(bytes);
 	}
 
-	private static List<CompiledOrderKey> captureOrderKeys(OrderKey[] keys) {
+	private static List<CompiledOrderKey> captureOrderKeys(OrderKey[] keys, NativeRecipeMemory.Capture capture) {
+		capture.reserve(64L + 64L * keys.length);
 		List<CompiledOrderKey> captured = new ArrayList<>(keys.length);
 		for (OrderKey key : keys) {
-			NativeCompiledBindingSetValue expression = NativeCompiledBindingSetValue.capture(key.expression());
+			NativeCompiledBindingSetValue expression = NativeCompiledBindingSetValue.capture(key.expression(), capture);
 			if (expression == null) {
 				return null;
 			}
@@ -394,8 +396,10 @@ final class NativeRootPipeline {
 		}
 
 		@Override
-		public NativeCompiledResultRecipe compiledRecipe() {
-			NativeCompiledResultRecipe child = semanticChild(staged);
+		public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+			capture.reserve(128L);
+			NativeCompiledResultRecipe child = semanticChild(staged, capture);
+			capture.string(physicalPlan);
 			return child == null ? null : new PipelineRecipe(child, physicalPlan);
 		}
 
@@ -438,9 +442,10 @@ final class NativeRootPipeline {
 		}
 
 		@Override
-		public NativeCompiledResultRecipe compiledRecipe() {
-			NativeCompiledResultRecipe child = semanticChild(arg);
-			List<CompiledOrderKey> expressions = captureOrderKeys(keys);
+		public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+			capture.reserve(128L);
+			NativeCompiledResultRecipe child = semanticChild(arg, capture);
+			List<CompiledOrderKey> expressions = captureOrderKeys(keys, capture);
 			return child == null || expressions == null ? null
 					: new TopKRecipe(child, expressions, strict, policy, offset, limit, retained);
 		}
@@ -674,8 +679,9 @@ final class NativeRootPipeline {
 		}
 
 		@Override
-		public NativeCompiledResultRecipe compiledRecipe() {
-			NativeCompiledResultRecipe child = semanticChild(arg);
+		public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+			capture.reserve(128L);
+			NativeCompiledResultRecipe child = semanticChild(arg, capture);
 			return child == null ? null : new SliceRecipe(child, offset, limit);
 		}
 
@@ -810,8 +816,9 @@ final class NativeRootPipeline {
 		}
 
 		@Override
-		public NativeCompiledResultRecipe compiledRecipe() {
-			NativeCompiledResultRecipe child = semanticChild(arg);
+		public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+			capture.reserve(128L);
+			NativeCompiledResultRecipe child = semanticChild(arg, capture);
 			return child == null ? null : new DistinctRecipe(child);
 		}
 
@@ -932,9 +939,10 @@ final class NativeRootPipeline {
 		}
 
 		@Override
-		public NativeCompiledResultRecipe compiledRecipe() {
-			NativeCompiledResultRecipe child = semanticChild(arg);
-			List<CompiledOrderKey> expressions = captureOrderKeys(keys);
+		public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+			capture.reserve(128L);
+			NativeCompiledResultRecipe child = semanticChild(arg, capture);
+			List<CompiledOrderKey> expressions = captureOrderKeys(keys, capture);
 			return child == null || expressions == null ? null : new OrderRecipe(child, expressions, strict, policy);
 		}
 

@@ -1,0 +1,27 @@
+--- run_diagnostic.py
++++ run_diagnostic_v2.py
+@@ -117,6 +117,15 @@
+         'superclass': pool[pool[superclass]], 'interfaces': interfaces, 'fields': members(), 'methods': members()}
+ 
+ 
++def verify_descriptor_inputs(descriptor):
++    for name, value in descriptor.items():
++        if not name.endswith('File'):
++            continue
++        digest = descriptor.get(name + 'Sha256', descriptor.get(name[:-4] + 'Sha256'))
++        if digest is not None:
++            assert sha(Path(value)) == digest, 'Changed selected runtime input: ' + name
++
++
+ def compile_overlay(args):
+     no_injected_options()
+     folder = args.generated.resolve(strict=True)
+@@ -127,7 +136,7 @@
+     assert generation['helperSha256'] == sha(folder / 'src' / HELPER)
+     descriptor_file = args.base_runtime.resolve(strict=True)
+     descriptor = json.loads(descriptor_file.read_text())
+-    base.descriptor_inputs(descriptor)
++    verify_descriptor_inputs(descriptor)
+     classpath = Path(descriptor['classpathFile']).read_text().strip()
+     manifest = identity.classpath_manifest(classpath)
+     assert manifest == json.loads(Path(descriptor['classpathManifestFile']).read_text())

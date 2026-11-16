@@ -26,11 +26,29 @@ import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.*;
 import org.eclipse.rdf4j.sail.lmdb.model.RdfTermKey;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /** Actual authority/interner/catalog, native tables, kernel runtime, generated Java and interpreter. */
 public class NativeIdHashContractTest {
 	static final SimpleValueFactory VF = SimpleValueFactory.getInstance();
+	private final List<NativeExecutionContext> executionOwners = new ArrayList<>();
+
+	private NativeExecutionContext executionContext() {
+		NativeExecutionContext context = new NativeExecutionContext();
+		executionOwners.add(context);
+		return context;
+	}
+
+	@AfterEach
+	void closeExecutionContexts() {
+		Throwable failure = null;
+		for (NativeExecutionContext context : executionOwners) {
+			failure = KernelRuntime.closeResource(context, failure);
+		}
+		executionOwners.clear();
+		KernelRuntime.rethrowCloseFailure(failure);
+	}
 
 	static void check(boolean condition) {
 		if (!condition)
@@ -79,6 +97,17 @@ public class NativeIdHashContractTest {
 				throw new AssertionError("dictionary lookup during raw-id operation");
 			return (canonical ? semanticIds.get(value) : spellingIds.get(RdfTermKey.of(value))) == null ? UNKNOWN
 					: (canonical ? semanticIds.get(value) : spellingIds.get(RdfTermKey.of(value)));
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
 		}
 
 		@Override
@@ -186,8 +215,8 @@ public class NativeIdHashContractTest {
 		}
 	}
 
-	static LmdbNativeTermAuthority authority(Source source) {
-		return new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, new NativeExecutionContext());
+	LmdbNativeTermAuthority authority(Source source) {
+		return new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, executionContext());
 	}
 
 	static Source unreadable() {
@@ -283,7 +312,7 @@ public class NativeIdHashContractTest {
 		long storedAlias = builder.internConstant(VF.createLiteral("stored", "EN"));
 		long lower = builder.internConstant(VF.createLiteral("absent", "en"));
 		long upper = builder.internConstant(VF.createLiteral("absent", "EN"));
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = executionContext();
 		long runtime = context.internValue(VF.createLiteral("absent", "En"));
 		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, builder.build(), context);
 		equal(100, a.canonicalTermKey(storedAlias));
@@ -307,7 +336,7 @@ public class NativeIdHashContractTest {
 		Source source = new Source(true);
 		source.put(123, VF.createLiteral("x", "en"));
 		source.forbidReads = true;
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = executionContext();
 		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, context);
 		Hooks hooks = new Hooks(a);
 		KernelRuntime.LongHashSet set = new KernelRuntime.LongHashSet(2, hooks);
@@ -325,7 +354,7 @@ public class NativeIdHashContractTest {
 	@Test
 	public void contextRuntimeNegativeGateDoesNotConfuseRetainedOrHighBitStoreIds() {
 		Source source = unreadable();
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = executionContext();
 		long runtime = context.internValue(VF.createLiteral("runtime"));
 		context.retainQueryScopedValue(VF.createLiteral("clock"), 100);
 		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, context);
@@ -345,7 +374,7 @@ public class NativeIdHashContractTest {
 		var datatype = VF.createIRI("http://www.w3.org/2001/XMLSchema#integer");
 		long one = builder.internConstant(VF.createLiteral("1", datatype));
 		long padded = builder.internConstant(VF.createLiteral("01", datatype));
-		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, builder.build(), new NativeExecutionContext());
+		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, builder.build(), executionContext());
 		check(!a.sameRdfTerm(one, padded));
 		check(a.canonicalTermKey(one) != a.canonicalTermKey(padded));
 		LongHashSet set = new LongHashSet(2, a);
@@ -407,7 +436,7 @@ public class NativeIdHashContractTest {
 		PlanValueCatalog.Builder builder = new PlanValueCatalog.Builder();
 		long lower = builder.internConstant(VF.createLiteral("x", "en")),
 				upper = builder.internConstant(VF.createLiteral("x", "EN"));
-		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, builder.build(), new NativeExecutionContext());
+		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, builder.build(), executionContext());
 		// Establish a different canonical representative before the set sees its first member.
 		a.canonicalTermKey(lower);
 		LongHashSet set = new LongHashSet(2, a);
@@ -427,7 +456,7 @@ public class NativeIdHashContractTest {
 	@Test
 	public void crossAuthorityMergesImportBeforeUsingLocalKeys() {
 		Source source = new Source(true);
-		NativeExecutionContext leftContext = new NativeExecutionContext(), rightContext = new NativeExecutionContext();
+		NativeExecutionContext leftContext = executionContext(), rightContext = executionContext();
 		long leftId = leftContext.internValue(VF.createLiteral("left"));
 		long rightId = rightContext.internValue(VF.createLiteral("right"));
 		equal(leftId, rightId);
@@ -453,7 +482,7 @@ public class NativeIdHashContractTest {
 	@Test
 	public void parallelSyntheticNormalizationPublishesOneStableRepresentative() throws Exception {
 		Source source = new Source(true);
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = executionContext();
 		long lower = context.internValue(VF.createLiteral("x", "en")),
 				upper = context.internValue(VF.createLiteral("x", "EN"));
 		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, context);
@@ -480,7 +509,7 @@ public class NativeIdHashContractTest {
 	public void nativeEmptyBucketAcceptsAliasesAndImportsItsOriginalRepresentative() {
 		Source source = new Source(true);
 		source.put(Long.MIN_VALUE, VF.createLiteral("sentinel", "en"));
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = executionContext();
 		long alias = context.internValue(VF.createLiteral("sentinel", "EN"));
 		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, context);
 		LongHashSet set = new LongHashSet(1, a);
@@ -537,7 +566,7 @@ public class NativeIdHashContractTest {
 
 	static List<long[]> execute(JaninoKernel implementation, Kernel shape, long[][] input, Hooks hooks) {
 		implementation.bind(new KernelContext(null, new long[0], new long[0], null, hooks, null,
-				new KernelPlan[] { rows(input) }, 2));
+				new KernelPlan[] { rows(input) }, 2).withStandaloneFusedRuntime());
 		List<long[]> result = new ArrayList<>();
 		long[] buffer = new long[3 * shape.stride()];
 		int n;
@@ -605,7 +634,7 @@ public class NativeIdHashContractTest {
 	public void generatedAndInterpretedAliasesShareGroupsWithoutChangingOutputs() throws Exception {
 		Source source = new Source(true);
 		source.put(41, VF.createLiteral("x", "en"));
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = executionContext();
 		long alias = context.internValue(VF.createLiteral("x", "EN"));
 		LmdbNativeTermAuthority a = new LmdbNativeTermAuthority(source, PlanValueCatalog.EMPTY, context);
 		Hooks hooks = new Hooks(a);

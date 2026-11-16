@@ -12,6 +12,7 @@
 package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test;
 
 /** Correctness, warm-switch, hidden-class and bounded-cache coverage for runtime batch specialization. */
 public class LmdbNativeSpecializationTest {
+	private static final NativeLmdbQuerySource SOURCE = mock(NativeLmdbQuerySource.class);
 
 	@BeforeEach
 	public void setUp() {
@@ -308,7 +310,7 @@ public class LmdbNativeSpecializationTest {
 		}
 		NativeSlotLayout layout = new NativeSlotLayout(Map.copyOf(names), null);
 		layout.freeze(List.copyOf(names.keySet()));
-		return new RowState(null, layout, EmptyBindingSet.getInstance());
+		return new RowState(SOURCE, layout, EmptyBindingSet.getInstance());
 	}
 
 	private static NativeBatch batch(int slots, int rows, long base) {

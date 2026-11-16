@@ -106,7 +106,7 @@ public class WeightedPlanKernelContractTest {
 					LmdbNativeKernelEmitter.emit(shape), dir);
 			try {
 				kernel.bind(new KernelContext(null, new long[0], new long[0], null, null, null,
-						new KernelPlan[] { plan }, 16));
+						new KernelPlan[] { plan }, 16).withStandaloneFusedRuntime());
 				List<long[]> rows = new ArrayList<>();
 				long[] buffer = new long[width * 2];
 				int n;

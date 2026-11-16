@@ -329,35 +329,44 @@ class LmdbNativeKernelLoweringTest {
 	@Test
 	void nativePlanBindingPreservesCorrelatedScope() {
 		RowState parent = freshRow();
-		parent.bind(0, PRED);
-		parent.enterLexicalScope(parent.boundMask());
-		SlotPlan nested = new SlotPlan() {
-			@Override
-			public RowCursor open(RowState row) {
-				assertEquals(parent.lexicalScopeDepth, row.lexicalScopeDepth,
-						"OPTIONAL must still recognize a correlated lexical scope inside a kernel operator");
-				assertEquals(parent.lexicalInputMask, row.lexicalInputMask);
-				assertEquals(PRED, row.slots[0]);
-				return SingletonPlan.INSTANCE.open(row);
-			}
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(parent.source, null, parent.base,
+				System.identityHashCode(parent), null)) {
+			parent.fusedSession = invocation.session();
+			parent.setExecutionContext(invocation.executionContext());
+			parent.swapPreparationAttempt(invocation.preparationAttempt());
+			try {
+				parent.bind(0, PRED);
+				parent.enterLexicalScope(parent.boundMask());
+				SlotPlan nested = new SlotPlan() {
+					@Override
+					public RowCursor open(RowState row) {
+						assertEquals(parent.lexicalScopeDepth, row.lexicalScopeDepth,
+								"OPTIONAL must still recognize a correlated lexical scope inside a kernel operator");
+						assertEquals(parent.lexicalInputMask, row.lexicalInputMask);
+						assertEquals(PRED, row.slots[0]);
+						return SingletonPlan.INSTANCE.open(row);
+					}
 
-			@Override
-			public long producedMask() {
-				return 0L;
+					@Override
+					public long producedMask() {
+						return 0L;
+					}
+				};
+				LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+						new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+						new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+						new int[0], List.of(), new StatementOrder[0],
+						new LmdbNativeKernelBindings.PlanRequest[] {
+								new LmdbNativeKernelBindings.PlanRequest(nested, new int[0]) },
+						null, false, 16);
+				try (KernelPlan plan = bindings.context(new NativeLmdbQuerySource.NativeAdjacency[0],
+						new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]), parent,
+						null).plans[0]; KernelPlan.Cursor cursor = plan.open()) {
+					assertEquals(1, cursor.fill(new long[0], 1));
+				}
+			} finally {
+				parent.closeDecodedInputs();
 			}
-		};
-		LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-				new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-				new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
-				new int[0], List.of(), new StatementOrder[0],
-				new LmdbNativeKernelBindings.PlanRequest[] {
-						new LmdbNativeKernelBindings.PlanRequest(nested, new int[0]) },
-				null, false, 16);
-		KernelPlan plan = bindings.context(new NativeLmdbQuerySource.NativeAdjacency[0],
-				new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]), parent,
-				null).plans[0];
-		try (KernelPlan.Cursor cursor = plan.open()) {
-			assertEquals(1, cursor.fill(new long[0], 1));
 		}
 	}
 
@@ -2440,7 +2449,7 @@ class LmdbNativeKernelLoweringTest {
 		assertNotNull(execution, lowered.kernel.shapeKey());
 		try {
 			execution.bind(new KernelContext(new NativeAdjacency[] { adjacency }, lowered.bindings.constants,
-					new long[lowered.bindings.entrySlotIds.length], new long[0][], hooks));
+					new long[lowered.bindings.entrySlotIds.length], new long[0][], hooks).withStandaloneFusedRuntime());
 			List<String> rows = new ArrayList<>();
 			long[] buffer = new long[lowered.kernel.stride()];
 			while (execution.fill(buffer, 1) > 0) {

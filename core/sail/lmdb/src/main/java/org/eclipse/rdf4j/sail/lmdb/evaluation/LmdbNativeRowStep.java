@@ -463,8 +463,8 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 	final NativeGeneratedKeyPlan generatedKeys;
 	final NativeConstantFalseWhenUnboundFilter[] constantFalseGuards;
 	/**
-	 * Bare-fragment mode: rows are full-slot snapshots carrying base bindings through ({@link RowBindingSetView})
-	 * instead of projections — the contract for BGP fragments the generic evaluator drives with its own bindings.
+	 * Bare-fragment mode: rows are detached full-slot snapshots carrying base bindings through
+	 * {@link NativeEntryBindings} — the contract for BGP fragments the generic evaluator drives with its own bindings.
 	 */
 	boolean snapshotRows;
 	/** Optional route label recorded before this step's ordinary bulk dispatcher chooses its concrete strategy. */
@@ -475,25 +475,41 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 	private GenericSubplanDescriptor genericFallbackDescriptor;
 
 	@Override
-	public NativeCompiledResultRecipe compiledRecipe() {
-		NativeCompiledInputRecipe input = NativeCompiledInputRecipe.capture(arg);
-		NativeDiagnosticPath diagnostic = NativeDiagnosticPath.capture(originalExpr);
+	public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+		capture.reserve(128L);
+		NativeCompiledInputRecipe input = NativeCompiledInputRecipe.capture(arg, capture);
+		NativeDiagnosticPath diagnostic = NativeDiagnosticPath.capture(originalExpr, capture);
 		if (!layout.isFrozen() || input == null || originalExpr != null && diagnostic == null || prefixPattern != null
 				|| prefixRunPlan != null) {
 			return null;
 		}
+		layout.accountRecipeSnapshot(capture);
+		capture.reserve(128L + 4L * (sourceSlots.length + orderSlots.length) + orderAscending.length
+				+ 64L * optionalOnlyNames.length);
+		capture.strings(targetNames);
+		capture.strings(optionalOnlyNames);
+		capture.string(entryPath);
 		return new CompiledRowsRecipe(input, layout.snapshot(), sourceSlots.clone(), targetNames.clone(), distinct,
 				orderSlots.clone(), orderAscending.clone(), offset, limit, strictCompare,
 				Set.copyOf(Arrays.asList(optionalOnlyNames)), snapshotRows, entryPath, rootEvaluationScoped,
-				requiresPhysicalResults(), diagnostic, nativePhysicalPlan());
+				requiresPhysicalResults(), diagnostic);
 	}
 
 	/** Source/session-free rows metadata; each candidate binds its own evaluators and diagnostic target. */
 	private record CompiledRowsRecipe(NativeCompiledInputRecipe input, NativeSlotLayout layout, int[] sourceSlots,
 			String[] targetNames, boolean distinct, int[] orderSlots, boolean[] orderAscending, long offset, long limit,
 			boolean strictCompare, Set<String> optionalOnlyNames, boolean snapshotRows, String entryPath,
-			boolean rootEvaluationScoped, boolean requiresPhysicalResults, NativeDiagnosticPath diagnostic,
-			String describe) implements NativeCompiledResultRecipe {
+			boolean rootEvaluationScoped, boolean requiresPhysicalResults, NativeDiagnosticPath diagnostic)
+			implements NativeCompiledResultRecipe {
+		@Override
+		public String describe() {
+			// Full execution diagnostics repeat variable names throughout the tree. A shared descriptor needs only
+			// bounded structural metadata; no expanded plan text is allocated or retained during capture.
+			return "NativeRows(slots=" + layout.slotNames().length + ", sourceWidth=" + sourceSlots.length
+					+ ", distinct=" + distinct + ", orderWidth=" + orderSlots.length + ", offset=" + offset
+					+ ", limit=" + limit + ", physical=" + requiresPhysicalResults + ")";
+		}
+
 		@Override
 		public QueryEvaluationStep bind(NativeResultBinding binding) {
 			if (binding.worker() == null || binding.strategy() == null || binding.context() == null
@@ -2965,7 +2981,8 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 		if (snapshotRows) {
 			RowBindingSetView view = new RowBindingSetView(values.source, layout, base,
 					Arrays.copyOf(slots, slots.length), true);
-			return containsEvaluationScopedId(values.source, slots, null) ? materialize(view) : view;
+			// Generic consumers can retain a fragment after closing its producer or advancing the source view.
+			return NativeEntryBindings.snapshot(view);
 		}
 		return withForeignBase(project(slots, values, projectionLayout, materializer), base);
 	}
@@ -3130,8 +3147,7 @@ final class NativeBareRowsStep implements QueryEvaluationStep, LmdbNativePhysica
 	BindingSet snapshot(NativeLmdbQuerySource evalSource, long[] slots, BindingSet base) {
 		RowBindingSetView view = new RowBindingSetView(evalSource, layout, base, Arrays.copyOf(slots, slots.length),
 				true);
-		return NativeRowsStep.containsEvaluationScopedId(evalSource, slots, null) ? NativeRowsStep.materialize(view)
-				: view;
+		return NativeEntryBindings.snapshot(view);
 	}
 }
 
@@ -3187,20 +3203,25 @@ final class NativeExistsValueStep implements QueryValueEvaluationStep {
 		LmdbNativeDispatchLoop.logDirect(step.originalExpr, "EXISTS dispatch",
 				LmdbNativeAttemptMetrics.PATH_BARE_EXISTS, "Boolean existence probe");
 		LmdbNativeExplain.recordExecutionPath(step.originalExpr, LmdbNativeAttemptMetrics.PATH_BARE_EXISTS);
-		LmdbFusedSipFactorizedRuntime.Session session = step.bulk.strategy == null
-				? LmdbFusedSipFactorizedRuntime.create(System.identityHashCode(step.arg), row.runtimePlan != null)
-				: step.bulk.strategy.newFusedInvocation(System.identityHashCode(step.arg), row.runtimePlan != null);
-		row.fusedSession = session;
+		NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, step.bulk.strategy, bindings,
+				System.identityHashCode(step.arg), step.originalExpr);
+		LmdbFusedSipFactorizedRuntime.Session session = invocation.session();
 		boolean exists;
 		Throwable primaryFailure = null;
-		try (NativeExistsPatternCursor cursor = new NativeExistsPatternCursor(existsPlan, row)) {
-			if (row.runtimePlan != null) {
-				row.runtimePlan.activate(LmdbNativeAttemptMetrics.PATH_BARE_EXISTS, existsPlan.patterns);
-				row.runtimePlan.janinoDeclined("UNSUPPORTED_ROUTE[bareExists]");
-				row.runtimePlan.adjacencyDecision("NOT_CONSIDERED", "UNSUPPORTED_ROUTE[bareExists]",
-						LmdbNativeExplain.describe(step.arg, step.layout));
+		try {
+			row.fusedSession = session;
+			row.setExecutionContext(invocation.executionContext());
+			row.bindInvocationStrategy(step.bulk.strategy);
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			try (NativeExistsPatternCursor cursor = new NativeExistsPatternCursor(existsPlan, row)) {
+				if (row.runtimePlan != null) {
+					row.runtimePlan.activate(LmdbNativeAttemptMetrics.PATH_BARE_EXISTS, existsPlan.patterns);
+					row.runtimePlan.janinoDeclined("UNSUPPORTED_ROUTE[bareExists]");
+					row.runtimePlan.adjacencyDecision("NOT_CONSIDERED", "UNSUPPORTED_ROUTE[bareExists]",
+							LmdbNativeExplain.describe(step.arg, step.layout));
+				}
+				exists = cursor.exists();
 			}
-			exists = cursor.exists();
 		} catch (IOException e) {
 			QueryEvaluationException problem = new QueryEvaluationException(e);
 			primaryFailure = problem;
@@ -3217,7 +3238,7 @@ final class NativeExistsValueStep implements QueryValueEvaluationStep {
 			if (failure == null) {
 				failure = KernelRuntime.closeResource(row::completeRuntimePlan, null);
 			}
-			failure = KernelRuntime.closeResource(session, failure);
+			failure = KernelRuntime.closeResource(invocation, failure);
 			KernelRuntime.rethrowCloseFailureIfNotPrimary(failure, primaryFailure);
 		}
 		return BooleanLiteral.valueOf(exists);

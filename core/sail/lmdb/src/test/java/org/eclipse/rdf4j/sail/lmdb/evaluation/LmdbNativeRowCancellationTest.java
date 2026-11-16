@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,6 +46,7 @@ import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelContext;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelPlan;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelQueryCancelledException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -57,6 +59,34 @@ import jdk.jfr.consumer.RecordingFile;
 class LmdbNativeRowCancellationTest {
 
 	private static final long FUTURE_TIMEOUT_SECONDS = 5L;
+	private static final Object FIXTURE_SESSION = new Object();
+	private final ConcurrentLinkedQueue<NativeExecutionContext> fixtureOwners = new ConcurrentLinkedQueue<>();
+	private final ConcurrentLinkedQueue<KernelContext> fixtureKernels = new ConcurrentLinkedQueue<>();
+
+	@AfterEach
+	void closeFixtureInvocations() {
+		fixtureKernels.forEach(context -> {
+			for (KernelPlan plan : context.plans) {
+				plan.close();
+			}
+		});
+		fixtureOwners.forEach(NativeExecutionContext::close);
+	}
+
+	private RowState row(NativeLmdbQuerySource source) {
+		RowState row = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		NativeExecutionContext execution = row.executionContextOrNull();
+		if (execution == null) {
+			execution = new NativeExecutionContext();
+			execution.initializeQueryBase(row.base);
+			row.setExecutionContext(execution);
+		}
+		row.fusedSession = execution.nativeState(FIXTURE_SESSION,
+				() -> LmdbFusedSipFactorizedRuntime.create(73L, false));
+		execution.nativeState(row, () -> (AutoCloseable) row::closeDecodedInputs);
+		fixtureOwners.add(execution);
+		return row;
+	}
 
 	@Test
 	void streamingRowOwnersCoalesceCorrelatedScansAcrossYields(@TempDir Path directory) throws Exception {
@@ -131,8 +161,8 @@ class LmdbNativeRowCancellationTest {
 			try (Recording recording = new Recording()) {
 				recording.enable(eventName).withThreshold(Duration.ZERO);
 				recording.start();
-				LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-				when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
+				LmdbNativeEvaluationStrategy strategy = NativeTestStrategies
+						.forced(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
 				NativeRowsStep step = new NativeRowsStep(source, probes, layout(), new int[] { 0 },
 						new String[] { "value" }, false, new int[0], new boolean[0], 0L, -1L, false, strategy,
 						null, null, Set.of(), null, null);
@@ -176,7 +206,7 @@ class LmdbNativeRowCancellationTest {
 
 	@Test
 	void rejectedFilterPollsEvaluationCancellationWithoutReturningToParent() throws Exception {
-		RowState row = new RowState(new StubSource(), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new StubSource());
 		assertThat(NativeRowSeeder.seed(row.slots, row.layout, row.base, row.source)).isTrue();
 		AtomicInteger rows = new AtomicInteger();
 		RowCursor input = new RowCursor() {
@@ -239,7 +269,7 @@ class LmdbNativeRowCancellationTest {
 		NativeSubqueryPlan subquery = new NativeSubqueryPlan(step, new int[0], new String[0], new int[0],
 				new String[0]);
 		try {
-			RowState first = new RowState(source, layout(), EmptyBindingSet.getInstance());
+			RowState first = row(source);
 			assertThat(NativeRowSeeder.seed(first.slots, first.layout, first.base, source)).isTrue();
 			first.recomputeBoundMask();
 			RowState second = first.fork();
@@ -300,7 +330,7 @@ class LmdbNativeRowCancellationTest {
 				}
 			};
 		}, new int[0], new String[0], new int[0], new String[0]);
-		RowState row = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		RowState row = row(source);
 		assertThat(NativeRowSeeder.seed(row.slots, row.layout, row.base, source)).isTrue();
 		row.recomputeBoundMask();
 		try {
@@ -366,7 +396,7 @@ class LmdbNativeRowCancellationTest {
 				closes.incrementAndGet();
 			}
 		}, new int[0], new String[0], new int[0], new String[0]);
-		RowState row = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		RowState row = row(source);
 		assertThat(NativeRowSeeder.seed(row.slots, row.layout, row.base, source)).isTrue();
 		row.recomputeBoundMask();
 		try {
@@ -427,7 +457,7 @@ class LmdbNativeRowCancellationTest {
 				new String[0]);
 		try {
 			for (int attempt = 1; attempt <= 2; attempt++) {
-				RowState row = new RowState(source, layout(), EmptyBindingSet.getInstance());
+				RowState row = row(source);
 				activeRow.set(row);
 				Assertions.assertThrows(KernelQueryCancelledException.class, () -> subquery.open(row),
 						"a cancelled lexical boundary cannot publish a partial memo as a successful subquery");
@@ -447,7 +477,7 @@ class LmdbNativeRowCancellationTest {
 				bindings -> new CloseableIteratorIteration<>(
 						List.<BindingSet>of(EmptyBindingSet.getInstance()).iterator()),
 				new int[0], new String[0], new int[0], new String[0]);
-		RowState row = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		RowState row = row(source);
 		try (RowCursor cursor = subquery.open(row)) {
 			row.cancellation.requestCancellation();
 			Assertions.assertThrows(KernelQueryCancelledException.class, cursor::next,
@@ -462,12 +492,12 @@ class LmdbNativeRowCancellationTest {
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(new StubSource());
 		SyntheticValueSource independent = SyntheticValueSource.forEvaluation(new StubSource());
 		source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
-		RowState parent = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		RowState parent = row(source);
 		AtomicReference<RowState> nested = new AtomicReference<>();
 		AtomicReference<RowState> foreign = new AtomicReference<>();
 		NativeSubqueryPlan subquery = new NativeSubqueryPlan(bindings -> {
-			nested.set(new RowState(source, layout(), EmptyBindingSet.getInstance()));
-			foreign.set(new RowState(independent, layout(), EmptyBindingSet.getInstance()));
+			nested.set(row(source));
+			foreign.set(row(independent));
 			parent.cancellation.requestCancellation();
 			return QueryEvaluationStep.EMPTY_ITERATION;
 		}, new int[0], new String[0], new int[0], new String[0]);
@@ -479,7 +509,7 @@ class LmdbNativeRowCancellationTest {
 			assertThat(foreign.get().cancellation.isCancellationRequested())
 					.as("an unrelated evaluation cannot inherit an ambient local cancellation")
 					.isFalse();
-			assertThat(new RowState(source, layout(), EmptyBindingSet.getInstance()).cancellation
+			assertThat(row(source).cancellation
 					.isCancellationRequested())
 							.as("failure must restore the previous scope without cancelling the shared query context")
 							.isFalse();
@@ -493,13 +523,13 @@ class LmdbNativeRowCancellationTest {
 	void nestedNativeCancellationScopeIsRestoredAfterExhaustion() throws Exception {
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(new StubSource());
 		source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
-		RowState parent = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		RowState parent = row(source);
 		NativeSubqueryPlan subquery = new NativeSubqueryPlan(bindings -> QueryEvaluationStep.EMPTY_ITERATION,
 				new int[0], new String[0], new int[0], new String[0]);
 		try (RowCursor cursor = subquery.open(parent)) {
 			assertThat(cursor.next()).isFalse();
 			parent.cancellation.requestCancellation();
-			assertThat(new RowState(source, layout(), EmptyBindingSet.getInstance()).cancellation
+			assertThat(row(source).cancellation
 					.isCancellationRequested())
 							.as("normal exhaustion must restore the previous cancellation scope")
 							.isFalse();
@@ -577,7 +607,7 @@ class LmdbNativeRowCancellationTest {
 	@Test
 	void boundPlanFillDoesNotAdvanceCancelledCursorBeforeFirstRow() throws Exception {
 		CancellationProbePlan plan = new CancellationProbePlan();
-		RowState row = new RowState(new StubSource(), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new StubSource());
 		row.cancellation.requestCancellation();
 		KernelPlan.Cursor cursor = boundPlan(row, plan).open();
 
@@ -593,7 +623,7 @@ class LmdbNativeRowCancellationTest {
 	@Test
 	void boundPlanWeightedFillDoesNotAdvanceCancelledCursorBeforeFirstRow() throws Exception {
 		CancellationProbePlan plan = new CancellationProbePlan();
-		RowState row = new RowState(new StubSource(), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new StubSource());
 		row.cancellation.requestCancellation();
 		KernelPlan.Cursor cursor = boundPlan(row, plan).openWeighted();
 
@@ -609,7 +639,7 @@ class LmdbNativeRowCancellationTest {
 	@Test
 	void boundPlanFillStopsAfterCancellationDuringPartialBatch() throws Exception {
 		PartialBatchPlan plan = new PartialBatchPlan();
-		RowState row = new RowState(new PartialBatchSource(plan), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new PartialBatchSource(plan));
 		KernelPlan.Cursor cursor = boundPlan(row, partialBatchPattern()).open();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		Future<Integer> worker = executor.submit(() -> cursor.fill(new long[4], 4));
@@ -635,7 +665,7 @@ class LmdbNativeRowCancellationTest {
 	@Test
 	void boundPlanWeightedFillStopsAfterCancellationDuringPartialBatch() throws Exception {
 		PartialBatchPlan plan = new PartialBatchPlan();
-		RowState row = new RowState(new PartialBatchSource(plan), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new PartialBatchSource(plan));
 		KernelPlan.Cursor cursor = boundPlan(row, partialBatchPattern()).openWeighted();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		long[] weights = new long[4];
@@ -665,7 +695,7 @@ class LmdbNativeRowCancellationTest {
 		IOException scanFailure = new IOException("synthetic bulk scan failure");
 		RuntimeException closeFailure = new IllegalStateException("synthetic cursor close failure");
 		IOExceptionPlan plan = new IOExceptionPlan(scanFailure, closeFailure);
-		RowState row = new RowState(new StubSource(), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new StubSource());
 		KernelPlan.Cursor cursor = boundPlan(row, plan).open();
 
 		try {
@@ -684,7 +714,7 @@ class LmdbNativeRowCancellationTest {
 		IOException scanFailure = new IOException("synthetic weighted scan failure");
 		RuntimeException closeFailure = new IllegalStateException("synthetic weighted cursor close failure");
 		IOExceptionPlan plan = new IOExceptionPlan(scanFailure, closeFailure);
-		RowState row = new RowState(new StubSource(), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new StubSource());
 		KernelPlan.Cursor cursor = boundPlan(row, plan).openWeighted();
 
 		try {
@@ -805,7 +835,7 @@ class LmdbNativeRowCancellationTest {
 	@Test
 	void generatedKernelContextPollsSharedRowCancellation() {
 		NativeLmdbQuerySource source = new StubSource();
-		RowState row = new RowState(source, layout(), EmptyBindingSet.getInstance());
+		RowState row = row(source);
 		LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
 				new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
 				new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0], new int[0],
@@ -813,6 +843,7 @@ class LmdbNativeRowCancellationTest {
 
 		KernelContext context = bindings.context(new NativeLmdbQuerySource.NativeAdjacency[0],
 				new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]), row, null);
+		fixtureKernels.add(context);
 		assertThat(context.cancellation)
 				.as("normal generated kernels must poll the evaluation token even outside a probe deadline")
 				.isNotNull();
@@ -823,7 +854,7 @@ class LmdbNativeRowCancellationTest {
 
 	@Test
 	void requestCancellationStopsWorkerWaitingForMorsel() throws Exception {
-		RowState row = new RowState(new StubSource(), layout(), EmptyBindingSet.getInstance());
+		RowState row = row(new StubSource());
 		PatternPlan root = new PatternPlan(Term.slot(0), Term.constant(7L), Term.unbound(), Term.unbound(),
 				ContextConstraint.UNRESTRICTED, false, 1D);
 		CountDownLatch queuePolled = new CountDownLatch(1);
@@ -862,7 +893,7 @@ class LmdbNativeRowCancellationTest {
 		return layout;
 	}
 
-	private static KernelPlan boundPlan(RowState row, SlotPlan nested) {
+	private KernelPlan boundPlan(RowState row, SlotPlan nested) {
 		LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
 				new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
 				new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
@@ -870,9 +901,11 @@ class LmdbNativeRowCancellationTest {
 				new LmdbNativeKernelBindings.PlanRequest[] {
 						new LmdbNativeKernelBindings.PlanRequest(nested, new int[] { 0 }) },
 				null, false, 16);
-		return bindings.context(new NativeLmdbQuerySource.NativeAdjacency[0],
+		KernelContext context = bindings.context(new NativeLmdbQuerySource.NativeAdjacency[0],
 				new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]), row,
-				null).plans[0];
+				null);
+		fixtureKernels.add(context);
+		return context.plans[0];
 	}
 
 	private static PatternPlan partialBatchPattern() {
@@ -1048,6 +1081,16 @@ class LmdbNativeRowCancellationTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			result.set(UNKNOWN_ID, IdOrigin.ABSENT);
+		}
+
+		@Override
 		public Value lazyValue(long id) {
 			if (projectionEntered != null) {
 				projectionEntered.countDown();
@@ -1058,6 +1101,16 @@ class LmdbNativeRowCancellationTest {
 
 		@Override
 		public Object idSpace() {
+			return idSpace;
+		}
+
+		@Override
+		public Object valueLookupScope() {
+			return idSpace;
+		}
+
+		@Override
+		public Object resultValueScope() {
 			return idSpace;
 		}
 

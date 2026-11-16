@@ -2057,7 +2057,7 @@ class LmdbNativeKernelIrEmitterTest {
 
 		KernelContext build() {
 			return new KernelContext(adjacencies, constants, entries, domains, domainOffsets, domainLengths, hooks,
-					null, plans, distinctExpected, null, null);
+					null, plans, distinctExpected, null, null).withStandaloneFusedRuntime();
 		}
 	}
 

@@ -1,0 +1,463 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -136,10 +136,12 @@
+ 	private boolean admissionRefused;
+ 	private boolean closed;
+ 	private long weakMisses;
++	private final PublicationDiagnostics publicationDiagnostics;
+ 
+ 	NativeResultMaterializer(NativeResultMaterializerPlan plan, LmdbQueryMemoryManager.QueryLedger ledger) {
+ 		this.plan = plan;
+ 		this.ledger = ledger;
++		publicationDiagnostics = new PublicationDiagnostics(plan);
+ 	}
+ 
+ 	/** Begin one accepted outward row; null declines reuse for this row. */
+@@ -254,20 +256,26 @@
+ 			if (closed || source == null || source.get() != currentSource || !sameScope(currentView, currentExposure)) {
+ 				return null;
+ 			}
++			publicationDiagnostics.increment(PublicationDiagnostics.FIND, index);
+ 			if (values[index] != null && ids[index] == id) {
+ 				Value value = dereference(values[index]);
+ 				if (value == null) {
++					publicationDiagnostics.increment(PublicationDiagnostics.ORDINARY_WEAK_MISS, index);
+ 					weakMisses++;
+ 					clear(index);
+ 				} else if (matches(index, id, value)) {
++					publicationDiagnostics.increment(PublicationDiagnostics.ORDINARY_HIT, index);
+ 					if (rowSequence != 0L) {
+ 						// The same ID can be reached from a different accepted factor member.
+ 						rememberFactor(index, id, rowSequence);
+ 					}
+ 					return value;
+ 				} else {
++					publicationDiagnostics.increment(PublicationDiagnostics.ORDINARY_WITNESS_MISS, index);
+ 					clear(index);
+ 				}
++			} else {
++				publicationDiagnostics.increment(PublicationDiagnostics.ORDINARY_ID_MISS, index);
+ 			}
+ 			return findFactor(index, id, rowSequence);
+ 		}
+@@ -282,6 +290,7 @@
+ 			if (closed || source == null || source.get() != currentSource || !sameScope(currentView, currentExposure)) {
+ 				return;
+ 			}
++			publicationDiagnostics.increment(PublicationDiagnostics.REMEMBER_CALL, index);
+ 			Object previous = values[index];
+ 			if (ids[index] == id && dereference(previous) == value && matches(index, id, value)) {
+ 				rememberFactor(index, id, rowSequence);
+@@ -441,6 +450,7 @@
+ 	}
+ 
+ 	private boolean captureCoordinate(int target, long id, long rowSequence) {
++		publicationDiagnostics.increment(PublicationDiagnostics.COORDINATE_ATTEMPT, target);
+ 		NativeResultCoordinates producer = coordinateSource;
+ 		if (rowSequence == 0L || rowSequence != coordinateSequence || producer == null || coordinateRow == null
+ 				|| coordinateScratch == null) {
+@@ -476,12 +486,15 @@
+ 			return false;
+ 		}
+ 		coordinateScratchSlot = slot;
++		publicationDiagnostics.increment(PublicationDiagnostics.COORDINATE_SUCCESS, target);
+ 		return true;
+ 	}
+ 
+ 	private Value findFactor(int target, long id, long rowSequence) {
++		publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_LOOKUP, target);
+ 		if (factorPages == null || !captureCoordinate(target, id, rowSequence) || factorOwner == null
+ 				|| factorOwner.get() != coordinateSource || factorActivation != coordinateActivation) {
++			publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_INITIAL_MISS, target);
+ 			return null;
+ 		}
+ 		long position = coordinateScratch[NativeResultCoordinates.POSITION];
+@@ -492,6 +505,7 @@
+ 			page = factorPage(canonical, pageIndex);
+ 		}
+ 		if (page == null) {
++			publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_PAGE_MISS, target);
+ 			return null;
+ 		}
+ 		if (factorMemo != null) {
+@@ -499,15 +513,18 @@
+ 		}
+ 		int cell = (int) (position & (PAGE_SIZE - 1));
+ 		if (page.values[cell] == null || page.ids[cell] != id) {
++			publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_CELL_MISS, target);
+ 			return null;
+ 		}
+ 		Value value = dereference(page.values[cell]);
+ 		if (value == null) {
++			publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_WEAK_MISS, target);
+ 			weakMisses++;
+ 			page.clear(cell);
+ 			return null;
+ 		}
+ 		if (!matches(page.versions[cell], page.revisionIds[cell], page.revisionOwners[cell], id, value)) {
++			publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_WITNESS_MISS, target);
+ 			page.clear(cell);
+ 			return null;
+ 		}
+@@ -516,16 +533,20 @@
+ 		revisionIds[target] = page.revisionIds[cell];
+ 		revisionOwners[target] = page.revisionOwners[cell];
+ 		values[target] = page.values[cell];
++		publicationDiagnostics.increment(PublicationDiagnostics.FACTOR_HIT, target);
+ 		return value;
+ 	}
+ 
+ 	private void rememberFactor(int target, long id, long rowSequence) {
++		publicationDiagnostics.increment(PublicationDiagnostics.PUBLICATION_CALL, target);
+ 		if (values[target] == null || factorAdmissionRefused && factorPages == null
+ 				|| !captureCoordinate(target, id, rowSequence)) {
++			publicationDiagnostics.increment(PublicationDiagnostics.PUBLICATION_INITIAL_MISS, target);
+ 			return;
+ 		}
+ 		if (factorPages != null && (factorOwner == null || factorOwner.get() != coordinateSource
+ 				|| factorActivation != coordinateActivation)) {
++			publicationDiagnostics.increment(PublicationDiagnostics.PUBLICATION_OWNER_MISS, target);
+ 			return;
+ 		}
+ 		long position = coordinateScratch[NativeResultCoordinates.POSITION];
+@@ -539,18 +560,21 @@
+ 			page = admitFactorPage(canonical, pageIndex);
+ 		}
+ 		if (page == null) {
++			publicationDiagnostics.increment(PublicationDiagnostics.PUBLICATION_PAGE_MISS, target);
+ 			return;
+ 		}
+ 		int cell = (int) (position & (PAGE_SIZE - 1));
+ 		if (page.ids[cell] != id || page.versions[cell] != versions[target]
+ 				|| page.revisionIds[cell] != revisionIds[target] || page.revisionOwners[cell] != revisionOwners[target]
+ 				|| page.values[cell] != values[target]) {
++			publicationDiagnostics.increment(PublicationDiagnostics.PUBLICATION_WRITE, target);
+ 			page.ids[cell] = id;
+ 			page.versions[cell] = versions[target];
+ 			page.revisionIds[cell] = revisionIds[target];
+ 			page.revisionOwners[cell] = revisionOwners[target];
+ 			page.values[cell] = values[target];
+ 		}
++		publicationDiagnostics.increment(PublicationDiagnostics.PUBLICATION_COMPLETE, target);
+ 		FactorMemo memo = factorMemo;
+ 		if (memo == null && !factorMemoRefused) {
+ 			memo = allocateFactorMemo();
+@@ -600,16 +624,19 @@
+ 	}
+ 
+ 	private FactorPage admitFactorPage(int target, long pageIndex) {
++		publicationDiagnostics.increment(PublicationDiagnostics.PAGE_ATTEMPT, target);
+ 		if (factorOwner == null) {
+ 			factorOwner = new WeakReference<>(coordinateSource);
+ 			factorActivation = coordinateActivation;
+ 		}
+ 		if (factorPages == null && !resizeFactorDirectory(8)) {
++			publicationDiagnostics.increment(PublicationDiagnostics.PAGE_REFUSED, target);
+ 			return null;
+ 		}
+ 		if (((long) factorPageCount + 1L) * 4L >= (long) factorPages.length * 3L) {
+ 			if (factorPages.length > Integer.MAX_VALUE / 2 || !resizeFactorDirectory(factorPages.length * 2)) {
+ 				factorAdmissionRefused = true;
++				publicationDiagnostics.increment(PublicationDiagnostics.PAGE_REFUSED, target);
+ 				return null;
+ 			}
+ 		}
+@@ -621,6 +648,7 @@
+ 				factorDirectoryReservation = null;
+ 			}
+ 			factorAdmissionRefused = true;
++			publicationDiagnostics.increment(PublicationDiagnostics.PAGE_REFUSED, target);
+ 			return null;
+ 		}
+ 		try {
+@@ -631,6 +659,7 @@
+ 					pageIndex, claim);
+ 			insertFactorPage(factorPages, page);
+ 			factorPageCount++;
++			publicationDiagnostics.admitted(target, claim.bytes());
+ 			return page;
+ 		} catch (RuntimeException | Error failure) {
+ 			claim.close();
+@@ -706,6 +735,7 @@
+ 			if (recentFactorPage == page) {
+ 				recentFactorPage = null;
+ 			}
++			publicationDiagnostics.releasing(page.target, page.reservation.bytes());
+ 			page.close();
+ 			factorPageCount--;
+ 			removed = true;
+@@ -750,6 +780,7 @@
+ 		if (old != null) {
+ 			for (FactorPage page : old) {
+ 				if (page != null) {
++					publicationDiagnostics.releasing(page.target, page.reservation.bytes());
+ 					page.close();
+ 				}
+ 			}
+@@ -950,32 +981,51 @@
+ 		revisionOwners[index] = null;
+ 	}
+ 
++	private void capturePublicationDiagnosticTable() {
++		publicationDiagnostics.beginClose(factorPageCount, reservation == null ? 0L : reservation.bytes(),
++				factorDirectoryReservation == null ? 0L : factorDirectoryReservation.bytes(),
++				factorMemo == null ? 0L : factorMemo.reservation.bytes(), ledger.usedBytes(), ledger.maxBytes());
++		if (factorPages != null) {
++			for (FactorPage page : factorPages) {
++				if (page != null) {
++					publicationDiagnostics.snapshot(page.target, page.namespace, page.group, page.parent, page.column,
++							page.pageIndex, page.reservation.bytes(), page.values);
++				}
++			}
++		}
++	}
++
+ 	@Override
+ 	public synchronized void close() {
+ 		if (!closed) {
+-			clearEntries();
+-			clearFactorPages();
+-			closed = true;
+-			coordinateSource = null;
+-			coordinateRow = null;
+-			view = null;
+-			exposure = null;
+-			if (source != null) {
+-				source.clear();
+-			}
+-			if (reservation != null) {
+-				reservation.close();
+-			}
+-			source = null;
+-			reservation = null;
+-			values = null;
+-			ids = null;
+-			versions = null;
+-			revisionIds = null;
+-			revisionOwners = null;
+-			coordinateScratch = null;
+-			hitMasks = null;
+-			hitMasksInUse = false;
++			try {
++				capturePublicationDiagnosticTable();
++			} finally {
++				clearEntries();
++				clearFactorPages();
++				closed = true;
++				coordinateSource = null;
++				coordinateRow = null;
++				view = null;
++				exposure = null;
++				if (source != null) {
++					source.clear();
++				}
++				if (reservation != null) {
++					reservation.close();
++				}
++				source = null;
++				reservation = null;
++				values = null;
++				ids = null;
++				versions = null;
++				revisionIds = null;
++				revisionOwners = null;
++				coordinateScratch = null;
++				hitMasks = null;
++				hitMasksInUse = false;
++			}
++			publicationDiagnostics.publish(ledger.usedBytes());
+ 		}
+ 	}
+ }
+--- /dev/null
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/PublicationDiagnostics.java
+@@ -0,0 +1,189 @@
++/*******************************************************************************
++ * Copyright (c) 2026 Eclipse RDF4J contributors.
++ *
++ * All rights reserved. This program and the accompanying materials
++ * are made available under the terms of the Eclipse Distribution License v1.0
++ * which accompanies this distribution, and is available at
++ * http://www.eclipse.org/org/documents/edl-v10.php.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ *******************************************************************************/
++// Some portions generated by Codex
++package org.eclipse.rdf4j.sail.lmdb.evaluation;
++
++import java.io.BufferedWriter;
++import java.io.IOException;
++import java.io.UncheckedIOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.StandardOpenOption;
++import java.util.concurrent.atomic.AtomicLong;
++
++/** Diagnostic only. Never dereferences a value or retains a Value/source/coordinate owner. */
++final class PublicationDiagnostics {
++
++	static final String OUTPUT_PROPERTY = "rdf4j.lmdb.publicationDiagnostic.output";
++	static final int FIND = 0;
++	static final int ORDINARY_ID_MISS = 1;
++	static final int ORDINARY_HIT = 2;
++	static final int ORDINARY_WEAK_MISS = 3;
++	static final int ORDINARY_WITNESS_MISS = 4;
++	static final int FACTOR_LOOKUP = 5;
++	static final int FACTOR_INITIAL_MISS = 6;
++	static final int FACTOR_PAGE_MISS = 7;
++	static final int FACTOR_CELL_MISS = 8;
++	static final int FACTOR_WEAK_MISS = 9;
++	static final int FACTOR_WITNESS_MISS = 10;
++	static final int FACTOR_HIT = 11;
++	static final int PUBLICATION_CALL = 12;
++	static final int PUBLICATION_INITIAL_MISS = 13;
++	static final int PUBLICATION_OWNER_MISS = 14;
++	static final int PUBLICATION_PAGE_MISS = 15;
++	static final int PUBLICATION_COMPLETE = 16;
++	static final int PUBLICATION_WRITE = 17;
++	static final int PAGE_ATTEMPT = 18;
++	static final int PAGE_ADMITTED = 19;
++	static final int PAGE_REFUSED = 20;
++	static final int COORDINATE_ATTEMPT = 21;
++	static final int COORDINATE_SUCCESS = 22;
++	static final int PUBLICATION_SKIPPED = 23;
++	static final int REMEMBER_CALL = 24;
++	private static final String[] COUNTER_NAMES = {
++			"find", "ordinaryIdMiss", "ordinaryHit", "ordinaryWeakMiss", "ordinaryWitnessMiss",
++			"factorLookup", "factorInitialMiss", "factorPageMiss", "factorCellMiss", "factorWeakMiss",
++			"factorWitnessMiss", "factorHit", "publicationCall", "publicationInitialMiss", "publicationOwnerMiss",
++			"publicationPageMiss", "publicationComplete", "publicationWrite", "pageAttempt", "pageAdmitted",
++			"pageRefused", "coordinateAttempt", "coordinateSuccess", "publicationSkipped", "rememberCall" };
++	private static final AtomicLong NEXT_OWNER = new AtomicLong();
++	private static final int PAGE_WORDS = 9;
++	private final long owner = NEXT_OWNER.incrementAndGet();
++	private final String[] names;
++	private final int[] aliases;
++	private final int[] definiteSlots;
++	private final byte[] cacheBanks;
++	private final long[][] counters;
++	private final long[] pageGranted;
++	private final long[] pageReleased;
++	private final long[] pagesReleased;
++	private long[] pages;
++	private int pageCount;
++	private int expectedPages;
++	private long ledgerBeforeClose;
++	private long ledgerAfterClose;
++	private long ordinaryClaim;
++	private long directoryClaim;
++	private long memoClaim;
++	private long queryLimit;
++
++	PublicationDiagnostics(NativeResultMaterializerPlan plan) {
++		names = plan.projection.names.clone();
++		aliases = plan.aliases.clone();
++		definiteSlots = plan.definiteSlots.clone();
++		cacheBanks = plan.cacheBanks.clone();
++		counters = new long[COUNTER_NAMES.length][names.length];
++		pageGranted = new long[names.length];
++		pageReleased = new long[names.length];
++		pagesReleased = new long[names.length];
++	}
++
++	void increment(int counter, int target) {
++		counters[counter][target]++;
++	}
++
++	void admitted(int target, long bytes) {
++		increment(PAGE_ADMITTED, target);
++		pageGranted[target] += bytes;
++	}
++
++	void releasing(int target, long bytes) {
++		pagesReleased[target]++;
++		pageReleased[target] += bytes;
++	}
++
++	void beginClose(int expected, long ordinary, long directory, long memo, long ledger, long limit) {
++		expectedPages = expected;
++		ordinaryClaim = ordinary;
++		directoryClaim = directory;
++		memoClaim = memo;
++		ledgerBeforeClose = ledger;
++		queryLimit = limit;
++		pages = new long[Math.multiplyExact(expected, PAGE_WORDS)];
++	}
++
++	void snapshot(int target, long namespace, long group, long parent, long column, long pageIndex, long claim,
++			Object[] values) {
++		int occupied = 0;
++		long mask = 0L;
++		for (int cell = 0; cell < values.length; cell++) {
++			if (values[cell] != null) {
++				occupied++;
++				mask |= 1L << cell;
++			}
++		}
++		int offset = pageCount++ * PAGE_WORDS;
++		pages[offset] = target;
++		pages[offset + 1] = namespace;
++		pages[offset + 2] = group;
++		pages[offset + 3] = parent;
++		pages[offset + 4] = column;
++		pages[offset + 5] = pageIndex;
++		pages[offset + 6] = claim;
++		pages[offset + 7] = occupied;
++		pages[offset + 8] = mask;
++	}
++
++	void publish(long ledger) {
++		ledgerAfterClose = ledger;
++		String directory = System.getProperty(OUTPUT_PROPERTY);
++		if (directory == null || pageCount != expectedPages) {
++			throw new IllegalStateException("Publication diagnostic output or page count missing");
++		}
++		try (BufferedWriter out = Files.newBufferedWriter(Path.of(directory, "owner-" + owner + ".jsonl"),
++				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
++			out.write("{\"type\":\"owner\",\"owner\":" + owner + ",\"pageCount\":" + pageCount
++					+ ",\"ordinaryClaim\":" + ordinaryClaim + ",\"directoryClaim\":" + directoryClaim
++					+ ",\"memoClaim\":" + memoClaim + ",\"ledgerBeforeClose\":" + ledgerBeforeClose
++					+ ",\"ledgerAfterClose\":" + ledgerAfterClose + ",\"queryLimit\":" + queryLimit
++					+ ",\"extraWeakDereferences\":0}");
++			out.newLine();
++			for (int target = 0; target < names.length; target++) {
++				out.write("{\"type\":\"target\",\"target\":" + target + ",\"name\":" + quote(names[target])
++						+ ",\"canonical\":" + aliases[target] + ",\"definiteSlot\":" + definiteSlots[target]
++						+ ",\"cacheBank\":" + cacheBanks[target]);
++				for (int counter = 0; counter < COUNTER_NAMES.length; counter++) {
++					out.write("," + quote(COUNTER_NAMES[counter]) + ":" + counters[counter][target]);
++				}
++				out.write(",\"pageBytesGranted\":" + pageGranted[target] + ",\"pageBytesReleased\":"
++						+ pageReleased[target] + ",\"pagesReleased\":" + pagesReleased[target] + "}");
++				out.newLine();
++			}
++			for (int page = 0; page < pageCount; page++) {
++				int offset = page * PAGE_WORDS;
++				out.write("{\"type\":\"page\",\"target\":" + pages[offset] + ",\"namespace\":"
++						+ pages[offset + 1] + ",\"group\":" + pages[offset + 2] + ",\"parent\":" + pages[offset + 3]
++						+ ",\"column\":" + pages[offset + 4] + ",\"pageIndex\":" + pages[offset + 5]
++						+ ",\"claim\":" + pages[offset + 6] + ",\"occupied\":" + pages[offset + 7]
++						+ ",\"occupiedMask\":\"" + Long.toUnsignedString(pages[offset + 8]) + "\"}");
++				out.newLine();
++			}
++		} catch (IOException failure) {
++			throw new UncheckedIOException(failure);
++		}
++	}
++
++	private static String quote(String value) {
++		StringBuilder result = new StringBuilder("\"");
++		for (int i = 0; i < value.length(); i++) {
++			char character = value.charAt(i);
++			if (character == '"' || character == '\\') {
++				result.append('\\');
++			}
++			if (character < 32) {
++				result.append(String.format("\\u%04x", (int) character));
++			} else {
++				result.append(character);
++			}
++		}
++		return result.append('"').toString();
++	}
++}

@@ -67,7 +67,8 @@ public class BoundedOrderKernelContractTest {
 
 	static KernelContext context(Plan plan, KernelHooks hooks) {
 		return new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0], new long[0], new long[0][],
-				new int[0], new int[0], hooks, null, new KernelPlan[] { plan }, 16, null, null);
+				new int[0], new int[0], hooks, null, new KernelPlan[] { plan }, 16, null, null)
+						.withStandaloneFusedRuntime();
 	}
 
 	static JaninoKernel create(Kernel ir, boolean compiled) throws Exception {

@@ -94,7 +94,7 @@ public class CompiledCountSpecializationTest {
 	private static Bound compiled(Kernel k, long[] constants) throws Exception {
 		JaninoKernel result = KernelCompilationTestSupport.compile(k);
 		result.bind(new KernelContext(null, constants, new long[0], null, null, null,
-				new KernelPlan[] { new Rows(new long[0][], new long[0]) }, 16));
+				new KernelPlan[] { new Rows(new long[0][], new long[0]) }, 16).withStandaloneFusedRuntime());
 		return new Bound(result);
 	}
 
@@ -360,7 +360,7 @@ public class CompiledCountSpecializationTest {
 					try {
 						exec.bind(new KernelContext(null, new long[] { Long.MIN_VALUE, -1 }, new long[] { entry }, null,
 								null, null,
-								new KernelPlan[] { source }, 16));
+								new KernelPlan[] { source }, 16).withStandaloneFusedRuntime());
 						if (generated)
 							assertEquals(expected, ((KernelFactorPredicate) exec).sum(3, new long[][] { values },
 									new long[1], weights, new long[4], 4));

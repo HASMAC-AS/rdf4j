@@ -1,0 +1,75 @@
+--- original/org/eclipse/rdf4j/sail/lmdb/benchmark/SharedSelectionExperiment.java
++++ compact-page/org/eclipse/rdf4j/sail/lmdb/benchmark/SharedSelectionExperiment.java
+@@ -34,6 +34,8 @@
+ import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
+ import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager;
+ import org.eclipse.rdf4j.sail.lmdb.LmdbStore;
++import org.eclipse.rdf4j.sail.lmdb.LmdbTestUtil;
++import org.eclipse.rdf4j.sail.lmdb.NamespaceAdjacencyObservation;
+ import org.eclipse.rdf4j.sail.lmdb.config.DirectAdjacencyMode;
+ import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+ import org.eclipse.rdf4j.sail.lmdb.evaluation.OptionalFanoutRouteAccess;
+@@ -76,6 +78,7 @@
+ 						StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))) {
+ 			try {
+ 				repository.init();
++				LmdbTestUtil.awaitBackgroundMaintenance(lmdb, 30L, TimeUnit.SECONDS);
+ 				SharedSelectionExperimentFixture.Dataset dataset;
+ 				try (SailRepositoryConnection connection = repository.getConnection()) {
+ 					dataset = fixture.populate(connection);
+@@ -83,9 +86,13 @@
+ 				if (!lmdb.awaitDirectAdjacencyReady(60L, TimeUnit.SECONDS)) {
+ 					throw new IllegalStateException(lmdb.getDirectAdjacencyReadinessDescription());
+ 				}
+-				emit(output, metadata(options, fixture, dataset, config, store));
++				Map<String, Object> metadata = metadata(options, fixture, dataset, config, store);
++				metadata.put("namespaceExperimentHarness", "native-and-direct-adjacency-v1");
++				metadata.put("compactPageSharedTailHarness", "adjacency-observation-v1");
++				metadata.put("adjacencySetup", NamespaceAdjacencyObservation.snapshot(lmdb).setup());
++				emit(output, metadata);
+ 				for (int i = -options.warmup; i < options.measurementsToRun; i++) {
+-					Map<String, Object> sample = run(repository, fixture, options, allocation, i);
++					Map<String, Object> sample = run(repository, lmdb, fixture, options, allocation, i);
+ 					emit(output, sample);
+ 					if (!Boolean.TRUE.equals(sample.get("valid"))) {
+ 						throw new IllegalStateException("Experiment validation failed; inspect the preceding sample");
+@@ -101,12 +108,13 @@
+ 		}
+ 	}
+ 
+-	private static Map<String, Object> run(SailRepository repository, SharedSelectionExperimentFixture fixture,
++	private static Map<String, Object> run(SailRepository repository, LmdbStore lmdb, SharedSelectionExperimentFixture fixture,
+ 			Options options, AllocationCounter allocation, int iteration) {
+ 		LmdbQueryMemoryManager memory = LmdbQueryMemoryManager.process();
+ 		long ledgerBefore = memory.usedBytes();
+ 		memory.resetPeakUsedBytesForTesting();
+ 		Counters countersBefore = OptionalFanoutRouteAccess.counters();
++		var adjacencyBefore = NamespaceAdjacencyObservation.snapshot(lmdb);
+ 		long toRetain = options.retain == 0 ? fixture.expectedRows : Math.min(options.retain, fixture.expectedRows);
+ 		List<BindingSet> retained = options.consumption == Consumption.RETAINED
+ 				? new ArrayList<>(Math.toIntExact(toRetain))
+@@ -180,6 +188,7 @@
+ 		}
+ 		long allocatedBytes = allocation.total() - totalAllocatedBefore;
+ 		long callerAllocatedBytes = allocation.caller() - callerAllocatedBefore;
++		var adjacencyAfter = NamespaceAdjacencyObservation.snapshot(lmdb);
+ 		long ledgerAfter = memory.usedBytes();
+ 		long ledgerPeak = memory.peakUsedBytes();
+ 		Counters counters = OptionalFanoutRouteAccess.counters().minus(countersBefore);
+@@ -224,6 +233,7 @@
+ 				"routeEvidence", routeEvidence, "successfulSelectionCount",
+ 				selections.stream().mapToLong(SelectedRoute::count).sum(), "valid", valid);
+ 		record.put("counters", counterFields(counters));
++		record.put("adjacency", adjacencyAfter.minus(adjacencyBefore));
+ 		record.put("successfulSelections", selections.stream()
+ 				.map(route -> fields("point", route.decisionPoint(),
+ 						"label", route.label(), "strategy", route.strategy(), "mode", route.mode(), "count",
+@@ -285,7 +295,7 @@
+ 				"ledgerScope", "process authority in a dedicated serial fork; includes all its query ledgers",
+ 				"allocationScope", "all JVM Java threads; includes workers and asynchronous preparation",
+ 				"routeObservation", "bounded successful-open observer plus existing execution counters",
+-				"comparisonScope", "new shared-selection fixture with unchanged frozen production; distinct from prior fanout timings",
++				"comparisonScope", "new compact-page comparison with exact oracle and common adjacency observation; no pooling with older timings",
+ 				"consumption", options.consumption.name().toLowerCase(Locale.ROOT), "earlyLimit", options.limit,
+ 				"retainLimit", options.retain, "warmup", options.warmup, "measurementsToRun", options.measurementsToRun,
+ 				"javaVersion", System.getProperty("java.runtime.version"), "javaVendor",

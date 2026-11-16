@@ -299,9 +299,20 @@ class NativePositionConsumerTest {
 		GenericEvalPlan plan = new GenericEvalPlan(GenericSubplanDescriptor.create(new SingletonSet(), strategy),
 				"SingletonSet", new int[0], new String[0], Set.of("x"), strategy,
 				new QueryEvaluationContext.Minimal(null, VF));
-		try (RowCursor cursor = plan.open(row)) {
-			assertThat(cursor.next()).isTrue();
-			assertThat(delegate.masks).containsExactly(5);
+		source.executionContext().initializeQueryBase(row.base);
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, strategy, row.base,
+				System.identityHashCode(row), null)) {
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			row.setInvocationStrategy(
+					strategy.forInvocation(source, invocation.session(), invocation.executionContext()));
+			try (RowCursor cursor = plan.open(row)) {
+				assertThat(cursor.next()).isTrue();
+				assertThat(delegate.masks).containsExactly(5);
+			} finally {
+				row.closeDecodedInputs();
+			}
 		} finally {
 			source.executionContext().close();
 		}
@@ -358,6 +369,12 @@ class NativePositionConsumerTest {
 	private static final class RecordingSource implements NativeLmdbQuerySource {
 		final LmdbNativeValueCodec codec = new LmdbNativeValueCodec(null);
 		final List<Integer> masks = new ArrayList<>();
+		private final Object resultScope = new Object();
+
+		@Override
+		public Object resultValueScope() {
+			return resultScope;
+		}
 
 		@Override
 		public Value lazyValue(long id) {

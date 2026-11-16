@@ -205,7 +205,7 @@ public class FactorMarginalKernelTest {
 				: LmdbNativeKernelInterpreter.forAggregate(ir);
 		KernelContext context = new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0],
 				new long[0], new long[0][], new int[0], new int[0], hooks, null, new KernelPlan[] { plan }, 16, null,
-				null);
+				null).withStandaloneFusedRuntime();
 		try {
 			k.bind(context);
 			List<long[]> result = new ArrayList<>();

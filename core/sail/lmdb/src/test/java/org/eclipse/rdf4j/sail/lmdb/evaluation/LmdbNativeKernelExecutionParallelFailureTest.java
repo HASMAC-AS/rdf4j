@@ -13,8 +13,6 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -69,6 +67,7 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 	private static final AggregateSpec[] AGGREGATES = { AggregateSpec.star("count") };
 
 	private final Map<String, String> previousProperties = new HashMap<>();
+	private final List<Scenario> scenarios = new ArrayList<>();
 
 	@BeforeEach
 	void enableInterpretedParallelAggregate() {
@@ -84,6 +83,11 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 
 	@AfterEach
 	void restoreProperties() {
+		Throwable failure = null;
+		for (int index = scenarios.size() - 1; index >= 0; index--) {
+			failure = KernelRuntime.closeResource(scenarios.get(index), failure);
+		}
+		scenarios.clear();
 		for (Map.Entry<String, String> entry : previousProperties.entrySet()) {
 			if (entry.getValue() == null) {
 				System.clearProperty(entry.getKey());
@@ -91,6 +95,7 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 				System.setProperty(entry.getKey(), entry.getValue());
 			}
 		}
+		KernelRuntime.rethrowCloseFailure(failure);
 	}
 
 	@Test
@@ -1180,8 +1185,7 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 				return plan.producedMask();
 			}
 		};
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
 		NativeRowsStep step = new NativeRowsStep(source, input, layout, new int[0], new String[0], false,
 				new int[0], new boolean[0], 0L, -1L, false, strategy, null, null, Set.of(), null, null);
 		NativeRowsIteration iteration = new NativeRowsIteration(step, source, EmptyBindingSet.getInstance());
@@ -1398,10 +1402,16 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 		PatternPlan plan = aggregatePlan();
 		NativeGroupIteration emitter = new NativeGroupIteration(source, plan, layout, new int[0], AGGREGATES,
 				false, EmptyBindingSet.getInstance(), null, null, false, null);
+		NativeInvocationCarrier invocation = emitter.invocationCarrier();
 		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance(), (TupleExpr) null,
 				emitter.cancellation);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		Scenario scenario = new Scenario(plan, row, emitter);
+		scenarios.add(scenario);
 		assertThat(emitter.initialize(row)).isTrue();
-		return new Scenario(plan, row, emitter);
+		return scenario;
 	}
 
 	private static PatternPlan aggregatePlan() {
@@ -1435,7 +1445,7 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 		System.setProperty(name, value);
 	}
 
-	private static final class Scenario {
+	private static final class Scenario implements AutoCloseable {
 		private final PatternPlan plan;
 		private final RowState row;
 		private final NativeGroupIteration emitter;
@@ -1444,6 +1454,13 @@ class LmdbNativeKernelExecutionParallelFailureTest {
 			this.plan = plan;
 			this.row = row;
 			this.emitter = emitter;
+		}
+
+		@Override
+		public void close() {
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(emitter, failure);
+			KernelRuntime.rethrowCloseFailure(failure);
 		}
 	}
 

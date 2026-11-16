@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -220,6 +221,12 @@ class NativeBoundedReducerTest {
 		NativeLmdbQuerySource dictionary = source();
 		when(dictionary.hasCanonicalIds()).thenReturn(true);
 		when(dictionary.idOf(any(Value.class))).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		when(dictionary.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(call -> {
+			NativeLmdbQuerySource.IdLookup lookup = call.getArgument(2);
+			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
+			return null;
+		}).when(dictionary).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(dictionary);
 		NativeSlotLayout layout = layout();
 		AggregateSpec[] specs = IntStream.range(0, channelCount)

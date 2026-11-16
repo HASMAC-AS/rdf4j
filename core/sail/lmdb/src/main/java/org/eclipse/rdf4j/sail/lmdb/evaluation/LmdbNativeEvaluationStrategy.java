@@ -193,9 +193,14 @@ public final class LmdbNativeEvaluationStrategy extends StrictEvaluationStrategy
 				trackResultSize);
 		NativeLmdbQuerySource extracted = invocationSource == null ? extractNativeSource(tripleSource)
 				: invocationSource;
-		// legacy stores without canonical language tags can hold two ids for one RDF term, so every id-keyed
-		// native path could diverge from the generic engine there — decline them entirely
-		this.nativeSource = extracted != null && extracted.hasCanonicalIds() ? extracted : null;
+		// The backing statement dictionary must be canonical. Invocation wrappers deliberately decline that
+		// claim for their combined stored/plan/runtime ID space; their term authority handles synthetic equality.
+		// Keep the wrapper as the actual source, otherwise a nested scalar loses its explicit invocation.
+		NativeLmdbQuerySource backing = extracted;
+		while (backing instanceof SyntheticValueSource synthetic) {
+			backing = synthetic.delegate;
+		}
+		this.nativeSource = backing != null && backing.hasCanonicalIds() ? extracted : null;
 		this.invocationSource = invocationSource;
 		this.nativeEnabled = nativeEnabled;
 		this.forceRootGeneric = preserveForcing ? capturedForceRootGeneric

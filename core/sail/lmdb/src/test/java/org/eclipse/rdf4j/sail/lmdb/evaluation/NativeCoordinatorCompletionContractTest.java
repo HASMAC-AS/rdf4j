@@ -723,6 +723,7 @@ class NativeCoordinatorCompletionContractTest {
 		final SyntheticValueSource source;
 		final NativeGroupIteration emitter;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan multi;
 		final SlotPlan plan;
 
@@ -740,6 +741,9 @@ class NativeCoordinatorCompletionContractTest {
 					new AggregateSpec[] { AggregateSpec.star("count") }, true, EmptyBindingSet.getInstance(),
 					null, null, false, null);
 			row = new RowState(source, layout, EmptyBindingSet.getInstance(), null, null, emitter.cancellation);
+			invocation = NativeTestStrategies.invocation(row);
+			emitter.invocationStrategy = row.invocationStrategyOrNull();
+			emitter.borrowInvocation(invocation);
 			assertThat(emitter.initialize(row)).isTrue();
 		}
 
@@ -752,6 +756,8 @@ class NativeCoordinatorCompletionContractTest {
 		@Override
 		public void close() {
 			emitter.close();
+			row.closeDecodedInputs();
+			invocation.close();
 			source.executionContext().close();
 		}
 	}

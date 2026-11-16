@@ -239,7 +239,7 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 		MultiJoinPlan adaptivePlan = new MultiJoinPlan(
 				new SlotPlan[] { values(0, 4_096), values(1, 25), values(2, 1) },
 				new MaskedFilter[] { new MaskedFilter(row -> (row.slots[0] & 1L) == 0L, 1L, metadata, 1) });
-		NativeRowsStep step = new NativeRowsStep(null, adaptivePlan, layout, new int[] { 0, 1, 2 },
+		NativeRowsStep step = new NativeRowsStep(new NoopParallelSource(), adaptivePlan, layout, new int[] { 0, 1, 2 },
 				new String[] { "v0", "v1", "v2" }, false, new int[0], new boolean[0], 0L, 256L, false, null,
 				null, null, Set.of(), null, null);
 		RowState adaptiveRow = row(layout);
@@ -388,6 +388,8 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 				new String[] { "v0", "v1", "v2" }, false, new int[0], new boolean[0], 0L, -1L, false, null,
 				telemetry, null, Set.of(), null, null);
 		RowState consumerRow = new RowState(sources[0], layout, EmptyBindingSet.getInstance());
+		NativeExecutionContext execution = new NativeExecutionContext();
+		consumerRow.setExecutionContext(execution);
 		LmdbFusedSipFactorizedRuntime.Session fused = LmdbFusedSipFactorizedRuntime.create(0L, false);
 		consumerRow.fusedSession = fused;
 		LmdbNativeParallelPipelines.ParallelRowCursor cursor = new LmdbNativeParallelPipelines.ParallelRowCursor(
@@ -429,6 +431,7 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 			executor.shutdownNow();
 			cursor.close();
 			fused.close();
+			execution.close();
 			LmdbNativeParallelPipelines.closePlanFilters(ownerPlan, null);
 			restoreAdaptiveProperty(previousAdaptive);
 			restoreProperty("rdf4j.lmdb.chunkPipeline.externalRoot.experimental", previousChunk);
@@ -558,8 +561,12 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 		String adaptive = System.getProperty(LmdbNativeAdaptiveFilterPlacement.ENABLED_PROPERTY);
 		String batch = System.getProperty(NativeBatch.ENABLED_PROPERTY);
 		String parallel = System.getProperty("rdf4j.lmdb.parallel.enabled");
+		String generated = System.getProperty("rdf4j.lmdb.janinoCodegen.enabled");
+		String interpreted = System.getProperty("rdf4j.lmdb.kernelInterpreter.enabled");
 		System.setProperty(NativeBatch.ENABLED_PROPERTY, "true");
 		System.setProperty("rdf4j.lmdb.parallel.enabled", "false");
+		System.setProperty("rdf4j.lmdb.janinoCodegen.enabled", "false");
+		System.setProperty("rdf4j.lmdb.kernelInterpreter.enabled", "false");
 		try {
 			System.setProperty(LmdbNativeAdaptiveFilterPlacement.ENABLED_PROPERTY, "true");
 			NativeRowsIteration enabled = new NativeRowsIteration(step, step.evaluationSource(),
@@ -579,6 +586,8 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 			restoreProperty(LmdbNativeAdaptiveFilterPlacement.ENABLED_PROPERTY, adaptive);
 			restoreProperty(NativeBatch.ENABLED_PROPERTY, batch);
 			restoreProperty("rdf4j.lmdb.parallel.enabled", parallel);
+			restoreProperty("rdf4j.lmdb.janinoCodegen.enabled", generated);
+			restoreProperty("rdf4j.lmdb.kernelInterpreter.enabled", interpreted);
 		}
 	}
 
@@ -887,7 +896,7 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 		for (int i = 0; i < sourceSlots.length; i++) {
 			sourceSlots[i] = i;
 		}
-		return new NativeRowsStep(null, plan, layout, sourceSlots, names, false,
+		return new NativeRowsStep(new NoopParallelSource(), plan, layout, sourceSlots, names, false,
 				new int[0], new boolean[0], 0L, limit, false, null, telemetry, null, Set.of(), null, null);
 	}
 
@@ -970,7 +979,7 @@ class LmdbNativeAdaptiveFilterPlacementTest {
 	}
 
 	private static RowState row(NativeSlotLayout layout) {
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(new NoopParallelSource(), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 		row.recomputeBoundMask();
 		return row;

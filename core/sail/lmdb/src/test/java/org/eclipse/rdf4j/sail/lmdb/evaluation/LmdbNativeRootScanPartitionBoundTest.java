@@ -303,6 +303,16 @@ class LmdbNativeRootScanPartitionBoundTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			result.set(U, IdOrigin.ABSENT);
+		}
+
+		@Override
 		public Value lazyValue(long id) {
 			return SimpleValueFactory.getInstance().createIRI("urn:metadata:" + id);
 		}

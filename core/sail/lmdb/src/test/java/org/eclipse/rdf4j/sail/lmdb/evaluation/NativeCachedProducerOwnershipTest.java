@@ -14,7 +14,9 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
@@ -40,9 +43,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class NativeCachedProducerOwnershipTest {
+	private static final Object FIXTURE_SESSION = new Object();
+
 	@Test
 	void producerOpeningRetainsOwnerUntilPreparedStepReturns() throws Exception {
-		NativeLmdbQuerySource delegate = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
+		NativeLmdbQuerySource delegate = emptyDictionary();
 		when(delegate.idSpace()).thenReturn(delegate);
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(delegate);
 		NativeExecutionContext root = source.executionContext();
@@ -90,7 +95,7 @@ class NativeCachedProducerOwnershipTest {
 
 	@Test
 	void failedProducerOpeningRestoresExternalLeaseOwnership() throws Exception {
-		NativeLmdbQuerySource delegate = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
+		NativeLmdbQuerySource delegate = emptyDictionary();
 		when(delegate.idSpace()).thenReturn(delegate);
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(delegate);
 		NativeExecutionContext root = source.executionContext();
@@ -118,7 +123,7 @@ class NativeCachedProducerOwnershipTest {
 	@ParameterizedTest
 	@CsvSource({ "false,false", "true,false", "false,true", "true,true" })
 	void unfinishedCachedProducerCannotRetainItsOwnAncestor(boolean shareTerms, boolean worker) throws Exception {
-		NativeLmdbQuerySource delegate = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
+		NativeLmdbQuerySource delegate = emptyDictionary();
 		when(delegate.idSpace()).thenReturn(delegate);
 		when(delegate.idOf(any())).thenReturn(LmdbNativeAggregateCompiler.UNKNOWN);
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(delegate);
@@ -187,10 +192,29 @@ class NativeCachedProducerOwnershipTest {
 
 	private static RowState seededRow(SyntheticValueSource source, NativeSlotLayout layout) {
 		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+		row.fusedSession = source.executionContext()
+				.nativeState(FIXTURE_SESSION,
+						() -> LmdbFusedSipFactorizedRuntime.create(79L, false));
+		source.executionContext().nativeState(row, () -> (AutoCloseable) row::closeDecodedInputs);
 		assertThat(NativeRowSeeder.seed(row.slots, layout, row.base, source)).isTrue();
 		assertThat(row.boundMask()).isZero();
 		assertThat(row.id(0)).isEqualTo(LmdbNativeAggregateCompiler.UNKNOWN);
 		return row;
+	}
+
+	private static NativeLmdbQuerySource emptyDictionary() {
+		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
+		when(source.idOf(any(Value.class))).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
+			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+		Object generation = new Object();
+		when(source.valueLookupScope()).thenReturn(generation);
+		when(source.resultValueScope()).thenReturn(generation);
+		return source;
 	}
 
 	private static final class NestedProducer implements CloseableIteration<BindingSet> {

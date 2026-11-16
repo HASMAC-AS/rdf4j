@@ -214,7 +214,8 @@ public class KernelTierParityContractTest {
 	private static KernelContext context(Scan scan, Plan plan, KernelHooks hooks) {
 		return new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[] { 7, 9 }, new long[] { 10 },
 				new long[][] { { 10, 20 } }, new int[] { 0 }, new int[] { 2 }, hooks, scan,
-				plan == null ? new KernelPlan[0] : new KernelPlan[] { plan }, 16, null, null);
+				plan == null ? new KernelPlan[0] : new KernelPlan[] { plan }, 16, null, null)
+						.withStandaloneFusedRuntime();
 	}
 
 	private static Scan sample() {
@@ -522,7 +523,7 @@ public class KernelTierParityContractTest {
 			RuntimeException failure = boom("first owner");
 			first.ownerFailure = failure;
 			KernelContext ctx = new KernelContext(null, new long[0], new long[0], null, new Hooks(), null,
-					new KernelPlan[] { first, second }, 16);
+					new KernelPlan[] { first, second }, 16).withStandaloneFusedRuntime();
 			JaninoKernel k = compiled ? KernelCompilationTestSupport.compile(ir) : interpreted(ir);
 			k.bind(ctx);
 			try {

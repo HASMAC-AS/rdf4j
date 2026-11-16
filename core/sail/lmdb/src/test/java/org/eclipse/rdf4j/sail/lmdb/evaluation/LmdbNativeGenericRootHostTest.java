@@ -50,6 +50,7 @@ import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sail.SailRepositoryConnection;
 import org.eclipse.rdf4j.sail.lmdb.LmdbStore;
+import org.eclipse.rdf4j.sail.lmdb.LmdbTestUtil;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -377,10 +378,13 @@ public class LmdbNativeGenericRootHostTest {
 	}
 
 	@BeforeEach
-	public void setUp() {
+	public void setUp() throws Exception {
 		store = new LmdbStore(dataDir, new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true));
 		repository = new SailRepository(store);
 		repository.init();
+		// Startup term-index cleanup briefly owns a dictionary writer, which correctly declines native certification.
+		LmdbTestUtil.awaitPostReadyInitialization(store, 10L, TimeUnit.SECONDS);
+		assertThat(store.awaitIndexRebuild(10L, TimeUnit.SECONDS)).as("startup index maintenance completed").isTrue();
 	}
 
 	@AfterEach

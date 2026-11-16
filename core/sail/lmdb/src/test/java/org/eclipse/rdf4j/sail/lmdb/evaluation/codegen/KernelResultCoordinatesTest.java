@@ -19,6 +19,8 @@ import java.util.List;
 
 import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class KernelResultCoordinatesTest {
 
@@ -262,6 +264,317 @@ class KernelResultCoordinatesTest {
 			coordinates.releaseBatch(batch, 1);
 			coordinates.drainRetiredNamespaces(retired::add);
 			assertThat(retired).containsExactly(namespace);
+		}
+		assertThat(manager.usedBytes()).isZero();
+	}
+
+	@Test
+	void repeatedBatchNamespacesKeepExactPinsAcrossSentinelsUnboundCellsAndFrameReplacement() {
+		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
+		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery();
+				KernelResultCoordinates coordinates = KernelResultCoordinates.open(ledger, 2,
+						new int[] { 0, 1 }, new int[] { 0, 1 }, 3L, 1, 1)) {
+			assertThat(coordinates).isNotNull();
+			long namespaceA = coordinates.newNamespace();
+			long namespaceB = coordinates.newNamespace();
+			long[] batch = {
+					3L, 4L, 0L, 0L, namespaceA,
+					3L, 4L, 1L, 1L, namespaceA,
+					3L, 4L, -1L, 2L, Long.MAX_VALUE,
+					3L, 4L, 3L, 3L, 0L,
+					3L, 4L, 4L, 4L, 1L,
+					3L, 4L, 5L, 5L, -1L,
+					3L, 4L, 6L, 6L, namespaceA,
+					3L, 4L, 7L, 7L, namespaceB,
+					3L, 4L, 8L, 8L, namespaceB,
+					3L, 4L, 9L, 9L, namespaceA,
+					3L, 4L, 10L, 10L, Long.MAX_VALUE
+			};
+			long[] oneA = { 3L, 4L, 0L, 0L, namespaceA };
+			long[] oneB = { 3L, 4L, 7L, 7L, namespaceB };
+			long admittedBytes = ledger.usedBytes();
+			coordinates.retainBatch(batch, 10);
+			assertThat(coordinates.enabled()).as("unbound cells and the unused tail cannot validate namespaces")
+					.isTrue();
+			coordinates.set(0, 3L, 4L, 0L, 0L, namespaceA);
+			coordinates.set(1, 3L, 4L, 1L, 1L, namespaceA);
+			int frame = coordinates.newFrame();
+			coordinates.save(frame);
+			coordinates.save(frame);
+			coordinates.clear(0);
+			coordinates.clear(1);
+			coordinates.requestRetirement(namespaceA);
+			coordinates.requestRetirement(namespaceB);
+
+			List<Long> retired = new ArrayList<>();
+			coordinates.releaseBatch(batch, 3);
+			coordinates.releaseBatch(oneB, 1);
+			coordinates.releaseBatch(oneA, 1);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).as("the final source references and saved frame still own both namespaces").isEmpty();
+			coordinates.releaseBatch(oneB, 1);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).containsExactly(namespaceB);
+			coordinates.releaseBatch(oneA, 1);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).as("the replaced frame retains exactly its two A references")
+					.containsExactly(namespaceB);
+			coordinates.releaseFrame(frame);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).containsExactly(namespaceB, namespaceA);
+			assertThat(coordinates.enabled()).isTrue();
+			assertThat(ledger.usedBytes()).isEqualTo(admittedBytes);
+		}
+		assertThat(manager.usedBytes()).isZero();
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void unknownNamespaceAfterRepeatedBatchTokensWithdrawsTransport(boolean retaining) {
+		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
+		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery();
+				KernelResultCoordinates coordinates = KernelResultCoordinates.open(ledger, 1,
+						new int[] { 0 }, new int[] { 0 }, 1L, 1, 0)) {
+			assertThat(coordinates).isNotNull();
+			long namespaceA = coordinates.newNamespace();
+			long namespaceB = coordinates.newNamespace();
+			long[] invalid = {
+					3L, 4L, 0L, 0L, namespaceA,
+					3L, 4L, 1L, 1L, namespaceA,
+					3L, 4L, 2L, 2L, Long.MAX_VALUE,
+					3L, 4L, 3L, 3L, namespaceA,
+					3L, 4L, 4L, 4L, namespaceB
+			};
+			if (retaining) {
+				coordinates.retainBatch(invalid, 5);
+			} else {
+				long[] valid = {
+						3L, 4L, 0L, 0L, namespaceA,
+						3L, 4L, 1L, 1L, namespaceA,
+						3L, 4L, 4L, 4L, namespaceB
+				};
+				coordinates.retainBatch(valid, 3);
+				coordinates.requestRetirement(namespaceA);
+				coordinates.requestRetirement(namespaceB);
+				coordinates.releaseBatch(invalid, 5);
+			}
+			assertThat(coordinates.enabled()).as("a cached valid namespace cannot hide a later unknown token")
+					.isFalse();
+			List<Long> retired = new ArrayList<>();
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).containsExactlyInAnyOrder(namespaceA, namespaceB);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).as("withdrawal drains known namespaces exactly once")
+					.containsExactlyInAnyOrder(namespaceA, namespaceB);
+		}
+		assertThat(manager.usedBytes()).isZero();
+	}
+
+	@Test
+	void repeatedBatchPinsSurviveCollisionDeletionAndGrowthBetweenCalls() {
+		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
+		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery();
+				KernelResultCoordinates coordinates = KernelResultCoordinates.open(ledger, 1,
+						new int[] { 0 }, new int[] { 0 }, 1L, 1, 1)) {
+			assertThat(coordinates).isNotNull();
+			long predecessor = coordinates.newNamespace();
+			long namespace = 0L;
+			List<Long> retired = new ArrayList<>();
+			for (int attempts = 0; attempts < 10_000; attempts++) {
+				long candidate = coordinates.newNamespace();
+				assertThat(candidate).isPositive();
+				if (namespaceBucket(candidate) == namespaceBucket(predecessor)) {
+					namespace = candidate;
+					break;
+				}
+				coordinates.requestRetirement(candidate);
+				coordinates.drainRetiredNamespaces(retired::add);
+			}
+			assertThat(namespace).isGreaterThan(predecessor);
+			long[] batch = {
+					3L, 4L, 0L, 0L, namespace,
+					3L, 4L, 1L, 1L, namespace,
+					3L, 4L, 2L, 2L, namespace
+			};
+			coordinates.retainBatch(batch, 3);
+			coordinates.set(0, 3L, 4L, 0L, 0L, namespace);
+			int frame = coordinates.newFrame();
+			coordinates.save(frame);
+			coordinates.clear(0);
+			coordinates.requestRetirement(namespace);
+			coordinates.requestRetirement(predecessor);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).contains(predecessor).doesNotContain(namespace);
+
+			List<Long> unrelated = new ArrayList<>();
+			for (int i = 0; i < 32; i++) {
+				long next = coordinates.newNamespace();
+				assertThat(next).isPositive();
+				unrelated.add(next);
+			}
+			for (long next : unrelated) {
+				coordinates.requestRetirement(next);
+			}
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).containsAll(unrelated).doesNotContain(namespace);
+			coordinates.releaseBatch(batch, 3);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).as("the frame owns the remapped namespace after its source batch releases")
+					.doesNotContain(namespace);
+			int previousRetirements = retired.size();
+			coordinates.releaseFrame(frame);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).hasSize(previousRetirements + 1);
+			assertThat(retired.get(previousRetirements)).isEqualTo(namespace);
+			assertThat(coordinates.enabled()).isTrue();
+		}
+		assertThat(manager.usedBytes()).isZero();
+	}
+
+	@Test
+	void unmanagedFramesPreserveReplacementPartialRestoreAliasesAndRelease() {
+		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
+		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery();
+				KernelResultCoordinates coordinates = KernelResultCoordinates.open(ledger, 2,
+						new int[] { 0, 1 }, new int[] { 0, 1 }, 3L, 4, 1)) {
+			assertThat(coordinates).isNotNull();
+			long admittedBytes = ledger.usedBytes();
+			int frame = coordinates.newFrame();
+			coordinates.set(0, 10L, 11L, 12L, 13L, 1L);
+			coordinates.set(1, 20L, 21L, 22L, 23L, 1L);
+			coordinates.save(frame);
+			coordinates.set(0, 30L, 31L, 32L, 33L, 1L);
+			coordinates.copy(1, 0);
+			coordinates.save(frame);
+			coordinates.clear(0);
+			coordinates.clear(1);
+
+			coordinates.restore(frame, 1L);
+			coordinates.emit();
+			long[] copied = new long[KernelResultCoordinates.WIDTH];
+			assertThat(coordinates.coordinate(0, 0, copied)).isTrue();
+			assertThat(copied).containsExactly(30L, 31L, 32L, 33L, 1L);
+			assertThat(coordinates.hasCoordinate(0, 1)).isFalse();
+			coordinates.restore(frame, 2L);
+			coordinates.emit();
+			assertThat(coordinates.coordinate(1, 1, copied)).isTrue();
+			assertThat(copied).containsExactly(30L, 31L, 32L, 33L, 1L);
+
+			coordinates.set(0, 40L, 41L, -1L, 43L, 1L);
+			coordinates.copy(1, 0);
+			coordinates.emit();
+			assertThat(coordinates.hasCoordinate(2, 0)).isFalse();
+			assertThat(coordinates.hasCoordinate(2, 1)).isFalse();
+			coordinates.releaseFrame(frame);
+			coordinates.releaseFrame(frame);
+			coordinates.restore(frame);
+			coordinates.emit();
+			assertThat(coordinates.hasCoordinate(3, 0)).isFalse();
+			assertThat(coordinates.hasCoordinate(3, 1)).isFalse();
+			for (int row = 0; row < 4; row++) {
+				coordinates.releaseRow(row);
+			}
+			List<Long> retired = new ArrayList<>();
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).isEmpty();
+			assertThat(coordinates.enabled()).isTrue();
+			assertThat(ledger.usedBytes()).as("unmanaged frame operations allocate no namespace directory")
+					.isEqualTo(admittedBytes);
+		}
+		assertThat(manager.usedBytes()).isZero();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "set", "retainBatch", "releaseBatch" })
+	void unknownManagedTokenWithoutDirectoryDisablesFrameOperations(String operation) {
+		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
+		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery();
+				KernelResultCoordinates coordinates = KernelResultCoordinates.open(ledger, 1,
+						new int[] { 0 }, new int[] { 0 }, 1L, 1, 1)) {
+			assertThat(coordinates).isNotNull();
+			long admittedBytes = ledger.usedBytes();
+			int frame = coordinates.newFrame();
+			coordinates.set(0, 3L, 4L, 5L, 6L, 1L);
+			coordinates.save(frame);
+			long[] unknown = { 3L, 4L, 5L, 6L, Long.MAX_VALUE };
+			switch (operation) {
+			case "set" -> coordinates.set(0, 3L, 4L, 5L, 6L, Long.MAX_VALUE);
+			case "retainBatch" -> coordinates.retainBatch(unknown, 1);
+			case "releaseBatch" -> coordinates.releaseBatch(unknown, 1);
+			default -> throw new IllegalArgumentException(operation);
+			}
+			assertThat(coordinates.enabled())
+					.as("an unknown managed token must fail closed before any directory exists")
+					.isFalse();
+			coordinates.save(frame);
+			coordinates.restore(frame);
+			coordinates.releaseFrame(frame);
+			coordinates.emit();
+			assertThat(coordinates.hasCoordinate(0, 0)).isFalse();
+			assertThat(coordinates.newNamespace()).isZero();
+			List<Long> retired = new ArrayList<>();
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).isEmpty();
+			assertThat(coordinates.enabled()).isFalse();
+			assertThat(ledger.usedBytes()).isEqualTo(admittedBytes);
+		}
+		assertThat(manager.usedBytes()).isZero();
+	}
+
+	@Test
+	void frameCreatedBeforeFirstManagedNamespaceKeepsItsLaterManagedPins() {
+		LmdbQueryMemoryManager manager = LmdbQueryMemoryManager.createForTesting(100_000L, 100_000L);
+		try (LmdbQueryMemoryManager.QueryLedger ledger = manager.openQuery();
+				KernelResultCoordinates coordinates = KernelResultCoordinates.open(ledger, 2,
+						new int[] { 0, 1 }, new int[] { 0, 1 }, 3L, 2, 1)) {
+			assertThat(coordinates).isNotNull();
+			int frame = coordinates.newFrame();
+			coordinates.set(0, 10L, 11L, 12L, 13L, 1L);
+			coordinates.save(frame);
+			long namespace = coordinates.newNamespace();
+			assertThat(namespace).isGreaterThan(1L);
+			coordinates.set(1, 20L, 21L, 22L, 23L, namespace);
+			coordinates.save(frame);
+			coordinates.requestRetirement(namespace);
+			coordinates.clear(0);
+			coordinates.clear(1);
+			List<Long> retired = new ArrayList<>();
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).as("the overwritten frame retains its managed origin").isEmpty();
+
+			coordinates.restore(frame);
+			coordinates.emit();
+			long[] copied = new long[KernelResultCoordinates.WIDTH];
+			assertThat(coordinates.coordinate(0, 1, copied)).isTrue();
+			assertThat(copied).containsExactly(20L, 21L, 22L, 23L, namespace);
+			coordinates.clear(0);
+			coordinates.clear(1);
+			coordinates.releaseRow(0);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).isEmpty();
+			coordinates.releaseFrame(frame);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).containsExactly(namespace);
+
+			coordinates.set(0, 30L, 31L, 32L, 33L, 1L);
+			coordinates.save(frame);
+			coordinates.copy(1, 0);
+			coordinates.save(frame);
+			coordinates.clear(0);
+			coordinates.clear(1);
+			coordinates.restore(frame);
+			coordinates.emit();
+			assertThat(coordinates.coordinate(1, 0, copied)).isTrue();
+			assertThat(copied).containsExactly(30L, 31L, 32L, 33L, 1L);
+			assertThat(coordinates.coordinate(1, 1, copied)).isTrue();
+			assertThat(copied).containsExactly(30L, 31L, 32L, 33L, 1L);
+			coordinates.clear(0);
+			coordinates.clear(1);
+			coordinates.releaseFrame(frame);
+			coordinates.releaseRow(1);
+			coordinates.drainRetiredNamespaces(retired::add);
+			assertThat(retired).containsExactly(namespace);
+			assertThat(coordinates.enabled()).isTrue();
 		}
 		assertThat(manager.usedBytes()).isZero();
 	}

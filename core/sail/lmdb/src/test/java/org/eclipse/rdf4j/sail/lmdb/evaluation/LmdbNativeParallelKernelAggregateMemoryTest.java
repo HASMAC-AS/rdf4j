@@ -460,76 +460,93 @@ class LmdbNativeParallelKernelAggregateMemoryTest {
 			AggregateSpec sumSpec = AggregateSpec.slot("sum", 0, false, AggKind.SUM);
 			NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout,
 					new int[] { 0 }, new AggregateSpec[] { sumSpec }, false, base, null, null, false, null);
+			source.executionContext().initializeQueryBase(base);
+			NativeInvocationCarrier ownerInvocation = emitter.invocationCarrier();
 			RowState row = new RowState(source, layout, base);
-			assertThat(emitter.initialize(row)).isTrue();
+			row.fusedSession = ownerInvocation.session();
+			row.setExecutionContext(ownerInvocation.executionContext());
+			row.swapPreparationAttempt(ownerInvocation.preparationAttempt());
+			try (emitter) {
+				try {
+					assertThat(emitter.initialize(row)).isTrue();
 
-			Aggregate terminal = new Aggregate(new int[] { 0 },
-					new AggregateOutput[] { AggregateOutput.sum(0) }, null, OutputMods.none());
-			Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
-			KernelGroupLayout groupLayout = new KernelGroupLayout(new int[] { 0 },
-					new AggOut[] { new AggOut(sumSpec, LmdbNativeKernelBindings.ENC_EXACT_NUMERIC) });
-			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-					new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-					new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
-					new int[0], List.of(), groupLayout, true);
-			LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-			BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 }, new int[] { ids.length });
-			Function<Kernel, JaninoKernel> factory = requested -> {
-				int invocation = factoryCalls.computeIfAbsent(Thread.currentThread(), ignored -> new AtomicInteger())
-						.incrementAndGet();
-				if (invocation == 2) {
-					try {
-						secondSegment.await(10, TimeUnit.SECONDS);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						throw new AssertionError("interrupted at the second-segment retention checkpoint", e);
-					} catch (BrokenBarrierException | TimeoutException e) {
-						throw new AssertionError("workers did not reach the second-segment retention checkpoint", e);
+					Aggregate terminal = new Aggregate(new int[] { 0 },
+							new AggregateOutput[] { AggregateOutput.sum(0) }, null, OutputMods.none());
+					Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
+					KernelGroupLayout groupLayout = new KernelGroupLayout(new int[] { 0 },
+							new AggOut[] { new AggOut(sumSpec, LmdbNativeKernelBindings.ENC_EXACT_NUMERIC) });
+					LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+							new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+							new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+							new int[0], List.of(), groupLayout, true);
+					LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+					BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 },
+							new int[] { ids.length });
+					Function<Kernel, JaninoKernel> factory = requested -> {
+						int invocation = factoryCalls
+								.computeIfAbsent(Thread.currentThread(), ignored -> new AtomicInteger())
+								.incrementAndGet();
+						if (invocation == 2) {
+							try {
+								secondSegment.await(10, TimeUnit.SECONDS);
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+								throw new AssertionError("interrupted at the second-segment retention checkpoint", e);
+							} catch (BrokenBarrierException | TimeoutException e) {
+								throw new AssertionError(
+										"workers did not reach the second-segment retention checkpoint", e);
+							}
+						}
+						return LmdbNativeKernelInterpreter.forAggregate(requested);
+					};
+
+					List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+							new NativeLmdbQuerySource.NativeAdjacency[0],
+							LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains,
+							SlotPlan.singleton(),
+							row,
+							emitter, null, factory, workers);
+					try (AutoCloseable ownedResult = result instanceof AutoCloseable closeable ? closeable : null) {
+						assertThat(result).as("published worker rows retain their bounded replay owner")
+								.isInstanceOf(NativeReplayBindingList.class);
+						assertThat(manager.usedBytes())
+								.as("the returned bounded result remains charged until its owner closes")
+								.isPositive();
+
+						List<BindingSet> expected = new ArrayList<>(terms.size());
+						for (Value term : terms) {
+							MapBindingSet expectedRow = new MapBindingSet();
+							expectedRow.addBinding("g", term);
+							expectedRow.addBinding("sum", term);
+							expected.add(expectedRow);
+						}
+						assertThat(result).containsExactlyInAnyOrderElementsOf(expected);
+						int workersAtSecondSegment = 0;
+						for (AtomicInteger calls : factoryCalls.values()) {
+							if (calls.get() >= 2) {
+								workersAtSecondSegment++;
+							}
+						}
+						assertThat(workersAtSecondSegment)
+								.as("both source-bound workers must start a second segment")
+								.isEqualTo(2);
+						// Each worker has completed one non-empty root window before its second factory call. Charge
+						// only one
+						// UTF-16 lexical payload per worker here; this deliberately independent lower bound remains
+						// valid if
+						// the
+						// scheduler changes its window sizing.
+						long minimumRetainedPayload = terms.stream()
+								.mapToLong(value -> value.stringValue().length())
+								.min()
+								.orElseThrow() * 2L * Character.BYTES;
+						assertThat(retainedAtSecondSegment.get())
+								.as("worker Partial numeric values must remain budget-owned after first hooks close")
+								.isGreaterThan(minimumRetainedPayload);
 					}
+				} finally {
+					row.closeDecodedInputs();
 				}
-				return LmdbNativeKernelInterpreter.forAggregate(requested);
-			};
-
-			List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-					new NativeLmdbQuerySource.NativeAdjacency[0],
-					LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains, SlotPlan.singleton(),
-					row,
-					emitter, null, factory, workers);
-			try (AutoCloseable ownedResult = result instanceof AutoCloseable closeable ? closeable : null) {
-				assertThat(result).as("published worker rows retain their bounded replay owner")
-						.isInstanceOf(NativeReplayBindingList.class);
-				assertThat(manager.usedBytes())
-						.as("the returned bounded result remains charged until its owner closes")
-						.isPositive();
-
-				List<BindingSet> expected = new ArrayList<>(terms.size());
-				for (Value term : terms) {
-					MapBindingSet expectedRow = new MapBindingSet();
-					expectedRow.addBinding("g", term);
-					expectedRow.addBinding("sum", term);
-					expected.add(expectedRow);
-				}
-				assertThat(result).containsExactlyInAnyOrderElementsOf(expected);
-				int workersAtSecondSegment = 0;
-				for (AtomicInteger calls : factoryCalls.values()) {
-					if (calls.get() >= 2) {
-						workersAtSecondSegment++;
-					}
-				}
-				assertThat(workersAtSecondSegment)
-						.as("both source-bound workers must start a second segment")
-						.isEqualTo(2);
-				// Each worker has completed one non-empty root window before its second factory call. Charge only one
-				// UTF-16 lexical payload per worker here; this deliberately independent lower bound remains valid if
-				// the
-				// scheduler changes its window sizing.
-				long minimumRetainedPayload = terms.stream()
-						.mapToLong(value -> value.stringValue().length())
-						.min()
-						.orElseThrow() * 2L * Character.BYTES;
-				assertThat(retainedAtSecondSegment.get())
-						.as("worker Partial numeric values must remain budget-owned after first hooks close")
-						.isGreaterThan(minimumRetainedPayload);
 			}
 		} finally {
 			workers.shutdownNow();
@@ -575,27 +592,43 @@ class LmdbNativeParallelKernelAggregateMemoryTest {
 			AggregateSpec countSpec = AggregateSpec.slot("count", 1, distinct, AggKind.COUNT);
 			NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, new int[0],
 					new AggregateSpec[] { countSpec }, false, base, null, null, false, null);
+			source.executionContext().initializeQueryBase(base);
+			NativeInvocationCarrier ownerInvocation = emitter.invocationCarrier();
 			RowState row = new RowState(source, layout, base);
-			assertThat(emitter.initialize(row)).isTrue();
+			row.fusedSession = ownerInvocation.session();
+			row.setExecutionContext(ownerInvocation.executionContext());
+			row.swapPreparationAttempt(ownerInvocation.preparationAttempt());
+			try (emitter) {
+				try {
+					assertThat(emitter.initialize(row)).isTrue();
 
-			Aggregate terminal = new Aggregate(new int[0],
-					new AggregateOutput[] { distinct ? AggregateOutput.countDistinct(1) : AggregateOutput.count(1) },
-					null, OutputMods.none());
-			Kernel kernel = new Kernel(2, List.of(new EnumerateDomain(0, 0), new EnumerateDomain(1, 1)), terminal);
-			KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0],
-					new AggOut[] { new AggOut(countSpec, LmdbNativeKernelBindings.ENC_LONG_COUNT) });
-			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-					new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-					new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
-					new int[0], List.of(), groupLayout, true, distinctExpected);
-			LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-			BoundDomains domains = new BoundDomains(new long[][] { roots, { sharedValue } }, new int[] { 0, 0 },
-					new int[] { roots.length, 1 });
-			return LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-					new NativeLmdbQuerySource.NativeAdjacency[0],
-					LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains, SlotPlan.singleton(),
-					row,
-					emitter, null, LmdbNativeKernelInterpreter::forAggregate, workers);
+					Aggregate terminal = new Aggregate(new int[0],
+							new AggregateOutput[] {
+									distinct ? AggregateOutput.countDistinct(1) : AggregateOutput.count(1) },
+							null, OutputMods.none());
+					Kernel kernel = new Kernel(2, List.of(new EnumerateDomain(0, 0), new EnumerateDomain(1, 1)),
+							terminal);
+					KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0],
+							new AggOut[] { new AggOut(countSpec, LmdbNativeKernelBindings.ENC_LONG_COUNT) });
+					LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+							new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+							new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+							new int[0], List.of(), groupLayout, true, distinctExpected);
+					LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+					BoundDomains domains = new BoundDomains(new long[][] { roots, { sharedValue } }, new int[] { 0, 0 },
+							new int[] { roots.length, 1 });
+					List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+							new NativeLmdbQuerySource.NativeAdjacency[0],
+							LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains,
+							SlotPlan.singleton(),
+							row,
+							emitter, null, LmdbNativeKernelInterpreter::forAggregate, workers);
+					// This fixture returns scalar counts after releasing every execution and replay reservation.
+					return result == null ? null : List.copyOf(result);
+				} finally {
+					row.closeDecodedInputs();
+				}
+			}
 		} finally {
 			source.executionContext().close();
 		}
@@ -665,6 +698,16 @@ class LmdbNativeParallelKernelAggregateMemoryTest {
 		@Override
 		public long idOf(Value value) {
 			return values.idOf(value);
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			values.idOfWithOrigin(value, positionMask, result);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return values.certifiesIdOrigins();
 		}
 
 		@Override

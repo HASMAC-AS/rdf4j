@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -130,7 +131,7 @@ class LmdbNativeComparisonCompilerTest {
 	private static RowState rowWith(long a, long b) {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("a", 0, "b", 1), null);
 		layout.freeze(List.of("a", "b"));
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(mock(NativeLmdbQuerySource.class), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, LmdbNativeAggregateCompiler.UNKNOWN);
 		row.slots[0] = a;
 		row.slots[1] = b;
@@ -248,11 +249,9 @@ class LmdbNativeComparisonCompilerTest {
 
 	@Test
 	void cachedComparisonDoesNotReuseRuntimeIdVerdictAcrossEvaluations() {
-		NativeLmdbQuerySource store = mock(NativeLmdbQuerySource.class);
+		NativeLmdbQuerySource store = emptyStore();
 		LmdbNativeValueCodec codec = new LmdbNativeValueCodec(mock(ValueStore.class));
 		when(store.nativeValueCodec()).thenReturn(codec);
-		when(store.idOf(any(Value.class))).thenReturn(LmdbNativeAggregateCompiler.UNKNOWN);
-		when(store.idOf(any(Value.class), anyInt())).thenAnswer(invocation -> store.idOf(invocation.getArgument(0)));
 		SyntheticValueSource compiledSource = new SyntheticValueSource(store, PlanValueCatalog.EMPTY);
 		long seven = LmdbNativeValueCodec.packInline(
 				LmdbNativeValueCodec.fromValue(SimpleValueFactory.getInstance().createLiteral(7)), false);
@@ -284,11 +283,9 @@ class LmdbNativeComparisonCompilerTest {
 
 	@Test
 	void runtimeIdThatMimicsOrderedIntegerUsesAuthoritativeValue() {
-		NativeLmdbQuerySource store = mock(NativeLmdbQuerySource.class);
+		NativeLmdbQuerySource store = emptyStore();
 		LmdbNativeValueCodec codec = new LmdbNativeValueCodec(mock(ValueStore.class));
 		when(store.nativeValueCodec()).thenReturn(codec);
-		when(store.idOf(any(Value.class))).thenReturn(LmdbNativeAggregateCompiler.UNKNOWN);
-		when(store.idOf(any(Value.class), anyInt())).thenAnswer(invocation -> store.idOf(invocation.getArgument(0)));
 		SyntheticValueSource evaluation = new SyntheticValueSource(store, PlanValueCatalog.EMPTY).forEvaluation();
 		long seven = LmdbNativeValueCodec.packInline(
 				LmdbNativeValueCodec.fromValue(SimpleValueFactory.getInstance().createLiteral(7)), false);
@@ -320,9 +317,7 @@ class LmdbNativeComparisonCompilerTest {
 
 	@Test
 	void valueSetDoesNotReuseRuntimeIdVerdictAcrossEvaluations() {
-		NativeLmdbQuerySource store = mock(NativeLmdbQuerySource.class);
-		when(store.idOf(any(Value.class))).thenReturn(LmdbNativeAggregateCompiler.UNKNOWN);
-		when(store.idOf(any(Value.class), anyInt())).thenAnswer(invocation -> store.idOf(invocation.getArgument(0)));
+		NativeLmdbQuerySource store = emptyStore();
 		SyntheticValueSource compiledSource = new SyntheticValueSource(store, PlanValueCatalog.EMPTY);
 		Value seven = SimpleValueFactory.getInstance().createLiteral(7);
 		ValueSetFilter filter = new ValueSetFilter(compiledSource, 0,
@@ -343,6 +338,19 @@ class LmdbNativeComparisonCompilerTest {
 			firstEvaluation.executionContext().close();
 			secondEvaluation.executionContext().close();
 		}
+	}
+
+	private static NativeLmdbQuerySource emptyStore() {
+		NativeLmdbQuerySource store = mock(NativeLmdbQuerySource.class);
+		when(store.idOf(any(Value.class))).thenReturn(LmdbNativeAggregateCompiler.UNKNOWN);
+		when(store.idOf(any(Value.class), anyInt())).thenReturn(LmdbNativeAggregateCompiler.UNKNOWN);
+		when(store.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			NativeLmdbQuerySource.IdLookup result = invocation.getArgument(2);
+			result.set(LmdbNativeAggregateCompiler.UNKNOWN, NativeLmdbQuerySource.IdOrigin.ABSENT);
+			return null;
+		}).when(store).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+		return store;
 	}
 
 	private static RowState runtimeRow(SyntheticValueSource source, Value value) {

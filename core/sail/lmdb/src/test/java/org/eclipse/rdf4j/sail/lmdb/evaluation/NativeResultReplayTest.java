@@ -109,10 +109,15 @@ class NativeResultReplayTest {
 				EmptyBindingSet.getInstance(), null, null, false, null);
 		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance(), (ExactValuesRuntimeMetrics) null,
 				owner.cancellation);
-		assertTrue(owner.initialize(row), "bounded FULL fixture must admit its real native input");
 		long binds = LmdbNativeKernelExecution.AGG_INTERPRETED_BINDS.get();
 		Path recordingPath = directory.resolve("full-result-spill.jfr");
 		try (Recording recording = new Recording()) {
+			NativeInvocationCarrier invocation = owner.invocationCarrier();
+			row.setExecutionContext(invocation.executionContext());
+			row.fusedSession = invocation.session();
+			row.bindInvocationStrategy(NativeTestStrategies.forced(null));
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			assertTrue(owner.initialize(row), "bounded FULL fixture must admit its real native input");
 			recording.enable("org.eclipse.rdf4j.lmdb.NativeExecutionPhase")
 					.withThreshold(Duration.ZERO)
 					.withStackTrace();
@@ -247,8 +252,7 @@ class NativeResultReplayTest {
 		NativeLmdbQuerySource delegate = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
 		when(delegate.idSpace()).thenReturn(delegate);
 		SyntheticValueSource source = SyntheticValueSource.forEvaluation(delegate);
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeCensusAggregate.PATH);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativeCensusAggregate.PATH);
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("input", 0), null);
 		layout.freeze(List.of("input"));
 		NativeGroupStep step = new NativeGroupStep(source,

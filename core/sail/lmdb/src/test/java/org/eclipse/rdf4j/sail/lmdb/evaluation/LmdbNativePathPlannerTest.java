@@ -13,6 +13,8 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -106,6 +108,12 @@ class LmdbNativePathPlannerTest {
 		when(strategy.precompile(any(ValueExpr.class), any(QueryEvaluationContext.class))).thenReturn(generic);
 		when(source.nativeValueCodec()).thenReturn(codec);
 		when(source.idOf(any(Value.class))).thenReturn(PREDICATE);
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
+			lookup.set(PREDICATE, NativeLmdbQuerySource.IdOrigin.STORED);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 		return new LmdbNativeAggregatePlanner(context, strategy, source);
 	}
 

@@ -14,6 +14,8 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation.codegen;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
 import org.eclipse.rdf4j.common.annotation.Experimental;
@@ -33,6 +35,49 @@ import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager;
 @Experimental
 @InternalUseOnly
 public final class KernelResultCoordinates implements AutoCloseable {
+
+	/** Experimental representation choice; it does not change query planning or value ownership. */
+	public enum Transport {
+		DENSE,
+		CHANGES,
+		SELECTION,
+		ROWS,
+		OFF
+	}
+
+	public static final String TRANSPORT_PROPERTY = "rdf4j.lmdb.resultCoordinateTransport";
+	private static final Transport CONFIGURED_TRANSPORT = Transport.valueOf(
+			System.getProperty(TRANSPORT_PROPERTY, "dense").toUpperCase(Locale.ROOT));
+	private static final AtomicLong OPENED = new AtomicLong();
+	private static final AtomicLong INITIAL_ADMISSION_REFUSED = new AtomicLong();
+	private static final AtomicLong GROWTH_ADMISSION_REFUSED = new AtomicLong();
+	private static final AtomicLong ROW_SELECTION_OWNERS = new AtomicLong();
+	private static final AtomicLong ROW_SELECTION_WINDOWS = new AtomicLong();
+	private static final AtomicLong ROW_SELECTION_ROWS = new AtomicLong();
+	private static final AtomicLong ROW_SELECTION_COLUMNS = new AtomicLong();
+	private static final AtomicLong ROW_SELECTION_GROUPS = new AtomicLong();
+	private static final AtomicLong ROW_SELECTION_INVARIANT_REFUSED = new AtomicLong();
+
+	/**
+	 * Process observations for isolated diagnostic runs; no source, row, or query owner is retained. ROWS observations
+	 * are published once per closed owner. Columns and groups are summed once per valid encoded window; rows count its
+	 * emitted rows, including any buffered rows not consumed before close. A withdrawn window contributes none of these
+	 * participation counts.
+	 */
+	public record Diagnostics(long opened, long initialAdmissionRefused, long growthAdmissionRefused,
+			long rowSelectionOwners, long rowSelectionWindows, long rowSelectionRows, long rowSelectionColumns,
+			long rowSelectionGroups, long rowSelectionInvariantRefused) {
+	}
+
+	public static Diagnostics diagnostics() {
+		return new Diagnostics(OPENED.get(), INITIAL_ADMISSION_REFUSED.get(), GROWTH_ADMISSION_REFUSED.get(),
+				ROW_SELECTION_OWNERS.get(), ROW_SELECTION_WINDOWS.get(), ROW_SELECTION_ROWS.get(),
+				ROW_SELECTION_COLUMNS.get(), ROW_SELECTION_GROUPS.get(), ROW_SELECTION_INVARIANT_REFUSED.get());
+	}
+
+	public static boolean transportEnabled() {
+		return CONFIGURED_TRANSPORT != Transport.OFF;
+	}
 
 	public static final int GROUP = 0;
 	public static final int PARENT = 1;
@@ -61,6 +106,17 @@ public final class KernelResultCoordinates implements AutoCloseable {
 	private long[] registers;
 	private long[] frames;
 	private long[] rows;
+	private final Transport transport;
+	private final int emittedColumns;
+	private int[] rowRecordStarts;
+	private long[] rowRecordChanges;
+	private long[] decodedCoordinates;
+	private int decodedRow = -1;
+	private int[] rowSelections;
+	private int[] lastSelections;
+	private RowSelectionWindow rowSelection;
+	private int recordWords;
+	private LmdbQueryMemoryManager.Reservation rowRecordReservation;
 	private long[] rowChanges;
 	private boolean[] activeFrames;
 	private boolean[] activeRows;
@@ -93,7 +149,16 @@ public final class KernelResultCoordinates implements AutoCloseable {
 	 */
 	public static KernelResultCoordinates open(LmdbQueryMemoryManager.QueryLedger ledger, int columnCount,
 			int[] outputColumns, int[] outputSlots, long trackedColumns, int maxRows, int maxFrames) {
-		if (ledger == null || columnCount < 0 || columnCount > Long.SIZE || outputColumns.length != outputSlots.length
+		return open(ledger, columnCount, outputColumns, outputSlots, trackedColumns, maxRows, maxFrames,
+				CONFIGURED_TRANSPORT);
+	}
+
+	/** Explicit representation for parity tests; ordinary execution uses the JVM's frozen choice. */
+	public static KernelResultCoordinates open(LmdbQueryMemoryManager.QueryLedger ledger, int columnCount,
+			int[] outputColumns, int[] outputSlots, long trackedColumns, int maxRows, int maxFrames,
+			Transport transport) {
+		if (transport == null || transport == Transport.OFF || ledger == null
+				|| columnCount < 0 || columnCount > Long.SIZE || outputColumns.length != outputSlots.length
 				|| maxRows <= 0 || maxFrames < 0 || trackedColumns == 0L
 				|| columnCount < Long.SIZE && (trackedColumns >>> columnCount) != 0L) {
 			return null;
@@ -112,15 +177,35 @@ public final class KernelResultCoordinates implements AutoCloseable {
 		try {
 			long words = Math.multiplyExact((long) tracked, WIDTH);
 			words = Math.addExact(words, Math.multiplyExact(words, maxFrames));
-			words = Math.addExact(words, Math.multiplyExact(Math.multiplyExact((long) emitted, WIDTH), maxRows));
+			long outputWords = Math.multiplyExact(Math.multiplyExact((long) emitted, WIDTH), maxRows);
+			if (outputWords > Integer.MAX_VALUE) {
+				return null;
+			}
+			words = Math.addExact(words, transport == Transport.DENSE ? outputWords
+					: transport == Transport.ROWS ? 0L
+							: Math.multiplyExact((long) emitted * WIDTH, Math.min(8, maxRows)));
 			words = Math.addExact(words, maxRows);
 			words = Math.addExact(words, outputColumns.length);
+			long integers = (long) columnCount + 3L * outputColumns.length;
+			if (transport == Transport.CHANGES) {
+				words = Math.addExact(words, (long) maxRows + (long) emitted * WIDTH);
+				integers = Math.addExact(integers, maxRows);
+			} else if (transport == Transport.SELECTION) {
+				integers = Math.addExact(integers,
+						Math.addExact(Math.multiplyExact((long) emitted, maxRows), outputColumns.length));
+			} else if (transport == Transport.ROWS) {
+				words = Math.addExact(words, outputColumns.length);
+				integers = Math.addExact(integers, outputColumns.length + 2L * emitted);
+			}
 			// The fixed allowance covers array headers/alignment, this carrier, its reservation, and the consuming
-			// row cursor's 64-entry slot-to-output mapping even with uncompressed references. The additional 56
-			// bytes account for the output shortcut array header and the window bookkeeping fields.
-			bytes = Math.addExact(1208L, Math.addExact(Math.multiplyExact(words, Long.BYTES),
-					Math.addExact(Math.multiplyExact((long) columnCount + 3L * outputColumns.length, Integer.BYTES),
-							(long) maxFrames + maxRows)));
+			// row cursor's 64-entry slot-to-output mapping even with uncompressed references. Compact modes
+			// also allow for their additional arrays and replacement-buffer reservation.
+			long fixedBytes = transport == Transport.DENSE ? 1216L : transport == Transport.ROWS ? 1792L : 1408L;
+			long booleans = (long) maxFrames + maxRows
+					+ (transport == Transport.ROWS ? outputColumns.length : 0L);
+			bytes = Math.addExact(fixedBytes, Math.addExact(Math.multiplyExact(words, Long.BYTES),
+					Math.addExact(Math.multiplyExact(integers, Integer.BYTES),
+							booleans)));
 			if (words > Integer.MAX_VALUE) {
 				return null;
 			}
@@ -129,11 +214,15 @@ public final class KernelResultCoordinates implements AutoCloseable {
 		}
 		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
 		if (claim == null) {
+			INITIAL_ADMISSION_REFUSED.incrementAndGet();
 			return null;
 		}
 		try {
-			return new KernelResultCoordinates(ledger, claim, columnCount, outputColumns, outputSlots, trackedColumns,
-					tracked, emitted, maxRows, maxFrames);
+			KernelResultCoordinates coordinates = new KernelResultCoordinates(ledger, claim, columnCount, outputColumns,
+					outputSlots, trackedColumns,
+					tracked, emitted, maxRows, maxFrames, transport);
+			OPENED.incrementAndGet();
+			return coordinates;
 		} catch (RuntimeException | Error failure) {
 			claim.close();
 			throw failure;
@@ -143,9 +232,11 @@ public final class KernelResultCoordinates implements AutoCloseable {
 	private KernelResultCoordinates(LmdbQueryMemoryManager.QueryLedger ledger,
 			LmdbQueryMemoryManager.Reservation reservation, int columnCount,
 			int[] outputColumns, int[] outputSlots, long trackedColumns, int tracked, int emitted, int maxRows,
-			int maxFrames) {
+			int maxFrames, Transport transport) {
 		this.reservation = reservation;
 		this.ledger = ledger;
+		this.transport = transport;
+		this.emittedColumns = emitted;
 		this.registerWidth = Math.multiplyExact(tracked, WIDTH);
 		this.outputWidth = Math.multiplyExact(emitted, WIDTH);
 		this.frameCapacity = maxFrames;
@@ -175,7 +266,18 @@ public final class KernelResultCoordinates implements AutoCloseable {
 			registers[at] = -1L;
 		}
 		frames = new long[Math.multiplyExact(registerWidth, maxFrames)];
-		rows = new long[Math.multiplyExact(outputWidth, maxRows)];
+		rows = new long[Math.multiplyExact(outputWidth,
+				transport == Transport.DENSE ? maxRows : transport == Transport.ROWS ? 0 : Math.min(8, maxRows))];
+		if (transport == Transport.CHANGES) {
+			rowRecordStarts = new int[maxRows];
+			rowRecordChanges = new long[maxRows];
+			decodedCoordinates = new long[outputWidth];
+		} else if (transport == Transport.SELECTION) {
+			rowSelections = new int[Math.multiplyExact(emitted, maxRows)];
+			lastSelections = new int[outputColumns.length];
+		} else if (transport == Transport.ROWS) {
+			rowSelection = new RowSelectionWindow(outputColumns.length, emitted);
+		}
 		rowChanges = new long[maxRows];
 		activeFrames = new boolean[maxFrames];
 		activeRows = new boolean[maxRows];
@@ -422,7 +524,12 @@ public final class KernelResultCoordinates implements AutoCloseable {
 			if (activeRowCount != 0) {
 				throw new IllegalStateException("coordinate batch still has unconsumed rows");
 			}
+			if (rowSelection != null) {
+				rowSelection.finishWindow(this);
+			}
 			rowCount = 0;
+			recordWords = 0;
+			decodedRow = -1;
 		}
 	}
 
@@ -435,6 +542,26 @@ public final class KernelResultCoordinates implements AutoCloseable {
 			throw new IllegalStateException("invalid coordinate output window");
 		}
 		int base = rowCount * outputWidth;
+		long recordedColumns = rowCount == 0 ? -1L : changedColumns;
+		if (rowSelection != null) {
+			if (!rowSelection.emit(this)) {
+				return;
+			}
+		} else if (transport != Transport.DENSE) {
+			int additionalWords = 0;
+			for (int i = 0; i < outputOffsets.length; i++) {
+				if (outputOffsets[i] >= 0 && (recordedColumns & (1L << outputColumns[i])) != 0L) {
+					additionalWords += WIDTH;
+				}
+			}
+			if (!ensureRecordCapacity(Math.addExact(recordWords, additionalWords))) {
+				return;
+			}
+			if (transport == Transport.CHANGES) {
+				rowRecordStarts[rowCount] = recordWords;
+				rowRecordChanges[rowCount] = recordedColumns;
+			}
+		}
 		long changedSlots = 0L;
 		for (int i = 0; i < outputOffsets.length; i++) {
 			int output = outputOffsets[i];
@@ -442,9 +569,31 @@ public final class KernelResultCoordinates implements AutoCloseable {
 				continue;
 			}
 			int column = outputColumns[i];
-			System.arraycopy(registers, registerOffsets[column], rows, base + output, WIDTH);
-			long namespace = rows[base + output + NAMESPACE];
-			if (rows[base + output + POSITION] < 0L || namespace <= 1L) {
+			int from = registerOffsets[column];
+			if (rowSelection != null) {
+				if ((recordedColumns & (1L << column)) == 0L) {
+					continue;
+				}
+			} else if (transport == Transport.DENSE) {
+				System.arraycopy(registers, from, rows, base + output, WIDTH);
+			} else {
+				boolean record = (recordedColumns & (1L << column)) != 0L;
+				if (record) {
+					System.arraycopy(registers, from, rows, recordWords, WIDTH);
+					if (transport == Transport.SELECTION) {
+						lastSelections[i] = recordWords;
+					}
+					recordWords += WIDTH;
+				}
+				if (transport == Transport.SELECTION) {
+					rowSelections[rowCount * emittedColumns + output / WIDTH] = lastSelections[i];
+				}
+				if (!record) {
+					continue;
+				}
+			}
+			long namespace = registers[from + NAMESPACE];
+			if (registers[from + POSITION] < 0L || namespace <= 1L) {
 				lastOutputNamespaces[i] = 0L;
 			} else if (lastOutputNamespaces[i] != namespace) {
 				pinWindowNamespace(namespace);
@@ -459,6 +608,79 @@ public final class KernelResultCoordinates implements AutoCloseable {
 		activeRows[rowCount++] = true;
 		activeRowCount++;
 		changedColumns = 0L;
+	}
+
+	/** Compact buffers grow under the same ledger, charging both old and replacement storage during copying. */
+	private boolean ensureRecordCapacity(int required) {
+		if (required <= rows.length) {
+			return true;
+		}
+		int maximum = Math.multiplyExact(rowSelection == null ? outputWidth
+				: emittedColumns * RowSelectionWindow.WIDTH, rowChanges.length);
+		long initial = rowSelection != null && rows.length == 0
+				? (long) rowSelection.groupCount * RowSelectionWindow.WIDTH * Math.min(8, rowChanges.length)
+				: rows.length + (long) rows.length / 2L;
+		int capacity = (int) Math.min(maximum,
+				Math.max((long) required, initial));
+		if (capacity < required) {
+			throw new IllegalStateException("coordinate records exceed their bounded output window");
+		}
+		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(128L + 8L * capacity);
+		if (claim == null) {
+			GROWTH_ADMISSION_REFUSED.incrementAndGet();
+			disabled = true;
+			return false;
+		}
+		try {
+			long[] replacement = new long[capacity];
+			System.arraycopy(rows, 0, replacement, 0, recordWords);
+			long previousBytes = 8L * rows.length;
+			rows = replacement;
+			LmdbQueryMemoryManager.Reservation previous = rowRecordReservation;
+			rowRecordReservation = claim;
+			if (previous == null) {
+				reservation.release(previousBytes);
+			} else {
+				previous.close();
+			}
+			return true;
+		} catch (RuntimeException | Error failure) {
+			claim.close();
+			throw failure;
+		}
+	}
+
+	/** Changes are reconstructed once per selected row; backwards reads restart at the window's full first record. */
+	private long[] coordinateStorage(int row) {
+		if (transport != Transport.CHANGES) {
+			return rows;
+		}
+		if (row < decodedRow) {
+			decodedRow = -1;
+		}
+		while (decodedRow < row) {
+			int next = ++decodedRow;
+			int at = rowRecordStarts[next];
+			long changed = rowRecordChanges[next];
+			for (int i = 0; i < outputOffsets.length; i++) {
+				int output = outputOffsets[i];
+				if (output >= 0 && (changed & (1L << outputColumns[i])) != 0L) {
+					System.arraycopy(rows, at, decodedCoordinates, output, WIDTH);
+					at += WIDTH;
+				}
+			}
+		}
+		return decodedCoordinates;
+	}
+
+	private int coordinateOffset(int row, int output) {
+		if (transport == Transport.CHANGES) {
+			return output;
+		}
+		if (transport == Transport.SELECTION) {
+			return rowSelections[row * emittedColumns + output / WIDTH];
+		}
+		return row * outputWidth + output;
 	}
 
 	/** Drops a buffered row; the window's namespace pins end after its last active row. */
@@ -539,8 +761,12 @@ public final class KernelResultCoordinates implements AutoCloseable {
 		if (!activeRows[checked]) {
 			return false;
 		}
-		int at = checked * outputWidth + output;
-		return rows[at + POSITION] >= 0L && rows[at + NAMESPACE] > 0L;
+		if (rowSelection != null) {
+			return rowSelection.hasCoordinate(this, checked, outputColumn);
+		}
+		long[] storage = coordinateStorage(checked);
+		int at = coordinateOffset(checked, output);
+		return storage[at + POSITION] >= 0L && storage[at + NAMESPACE] > 0L;
 	}
 
 	/** Copies one buffered cell's primitive coordinate, or returns false if that cell was unavailable. */
@@ -556,11 +782,15 @@ public final class KernelResultCoordinates implements AutoCloseable {
 		if (!activeRows[checked]) {
 			return false;
 		}
-		int at = checked * outputWidth + output;
-		if (rows[at + POSITION] < 0L || rows[at + NAMESPACE] <= 0L) {
+		if (rowSelection != null) {
+			return rowSelection.coordinate(this, checked, outputColumn, target);
+		}
+		long[] storage = coordinateStorage(checked);
+		int at = coordinateOffset(checked, output);
+		if (storage[at + POSITION] < 0L || storage[at + NAMESPACE] <= 0L) {
 			return false;
 		}
-		System.arraycopy(rows, at, target, 0, WIDTH);
+		System.arraycopy(storage, at, target, 0, WIDTH);
 		return true;
 	}
 
@@ -774,13 +1004,228 @@ public final class KernelResultCoordinates implements AutoCloseable {
 		return true;
 	}
 
+	/**
+	 * Output-window prototype: one primitive row selection is shared by columns with the same source row. Producer
+	 * registers, saved frames, and source sidecars retain their original five-word representation. The first emitted
+	 * row establishes groups by exact four-field equality; unknown cells each get their own group. Every later emit
+	 * verifies the shared row and each bound output's fixed tuple column before publishing anything. Divergence
+	 * withdraws this optional transport rather than interpreting a different row as the recorded source.
+	 */
+	private static final class RowSelectionWindow {
+		private static final int WIDTH = 4;
+		private static final int NAMESPACE = 3;
+
+		private final int[] outputGroups;
+		private final int[] representatives;
+		private final long[] tupleColumns;
+		private final boolean[] knownColumns;
+		private final int[] lastRecords;
+		private int[] selections = new int[0];
+		private LmdbQueryMemoryManager.Reservation selectionReservation;
+		private int groupCount;
+		private long windows;
+		private long emittedRows;
+		private long columns;
+		private long groups;
+		private boolean invariantRefused;
+
+		RowSelectionWindow(int outputs, int emitted) {
+			outputGroups = new int[outputs];
+			Arrays.fill(outputGroups, -1);
+			representatives = new int[emitted];
+			tupleColumns = new long[outputs];
+			knownColumns = new boolean[outputs];
+			lastRecords = new int[emitted];
+		}
+
+		private void groupFirstRow(KernelResultCoordinates owner) {
+			groupCount = 0;
+			for (int output = 0; output < outputGroups.length; output++) {
+				if (owner.outputOffsets[output] < 0) {
+					continue;
+				}
+				int from = owner.registerOffsets[owner.outputColumns[output]];
+				boolean bound = bound(owner.registers, from);
+				knownColumns[output] = bound;
+				tupleColumns[output] = owner.registers[from + COLUMN];
+				int group = groupCount;
+				if (bound) {
+					for (int candidate = 0; candidate < groupCount; candidate++) {
+						int representative = representatives[candidate];
+						int other = owner.registerOffsets[owner.outputColumns[representative]];
+						if (bound(owner.registers, other) && sameRow(owner.registers, from, other)) {
+							group = candidate;
+							break;
+						}
+					}
+				}
+				if (group == groupCount) {
+					representatives[groupCount] = output;
+					lastRecords[groupCount++] = -1;
+				}
+				outputGroups[output] = group;
+			}
+		}
+
+		boolean emit(KernelResultCoordinates owner) {
+			if (owner.rowCount == 0) {
+				groupFirstRow(owner);
+				if (!ensureSelectionCapacity(owner)) {
+					return false;
+				}
+			}
+			for (int output = 0; output < outputGroups.length; output++) {
+				int group = outputGroups[output];
+				if (group < 0) {
+					continue;
+				}
+				int from = owner.registerOffsets[owner.outputColumns[output]];
+				int representative = owner.registerOffsets[owner.outputColumns[representatives[group]]];
+				if (!sameRow(owner.registers, from, representative)
+						|| bound(owner.registers, from) && knownColumns[output]
+								&& tupleColumns[output] != owner.registers[from + COLUMN]) {
+					invariantRefused = true;
+					owner.disabled = true;
+					return false;
+				}
+				if (bound(owner.registers, from) && !knownColumns[output]) {
+					tupleColumns[output] = owner.registers[from + COLUMN];
+					knownColumns[output] = true;
+				}
+			}
+			int additionalWords = 0;
+			for (int group = 0; group < groupCount; group++) {
+				int from = owner.registerOffsets[owner.outputColumns[representatives[group]]];
+				if (!sameRecord(owner, from, lastRecords[group])) {
+					additionalWords += WIDTH;
+				}
+			}
+			if (!owner.ensureRecordCapacity(Math.addExact(owner.recordWords, additionalWords))) {
+				return false;
+			}
+			int selection = owner.rowCount * groupCount;
+			for (int group = 0; group < groupCount; group++) {
+				int from = owner.registerOffsets[owner.outputColumns[representatives[group]]];
+				if (!sameRecord(owner, from, lastRecords[group])) {
+					int record = owner.recordWords;
+					owner.rows[record + GROUP] = owner.registers[from + GROUP];
+					owner.rows[record + PARENT] = owner.registers[from + PARENT];
+					owner.rows[record + POSITION] = owner.registers[from + POSITION];
+					owner.rows[record + NAMESPACE] = owner.registers[from + KernelResultCoordinates.NAMESPACE];
+					lastRecords[group] = record;
+					owner.recordWords += WIDTH;
+				}
+				selections[selection + group] = lastRecords[group];
+			}
+			return true;
+		}
+
+		private boolean ensureSelectionCapacity(KernelResultCoordinates owner) {
+			int required = Math.multiplyExact(groupCount, owner.rowChanges.length);
+			if (required <= selections.length) {
+				return true;
+			}
+			LmdbQueryMemoryManager.Reservation claim = owner.ledger
+					.tryReserveWithoutReclamation(128L + (long) Integer.BYTES * required);
+			if (claim == null) {
+				GROWTH_ADMISSION_REFUSED.incrementAndGet();
+				owner.disabled = true;
+				return false;
+			}
+			try {
+				int[] replacement = new int[required];
+				LmdbQueryMemoryManager.Reservation previous = selectionReservation;
+				selections = replacement;
+				selectionReservation = claim;
+				if (previous != null) {
+					previous.close();
+				}
+				return true;
+			} catch (RuntimeException | Error failure) {
+				claim.close();
+				throw failure;
+			}
+		}
+
+		private static boolean bound(long[] registers, int from) {
+			return registers[from + POSITION] >= 0L && registers[from + KernelResultCoordinates.NAMESPACE] > 0L;
+		}
+
+		private static boolean sameRow(long[] registers, int first, int second) {
+			return registers[first + GROUP] == registers[second + GROUP]
+					&& registers[first + PARENT] == registers[second + PARENT]
+					&& registers[first + POSITION] == registers[second + POSITION]
+					&& registers[first + KernelResultCoordinates.NAMESPACE] == registers[second
+							+ KernelResultCoordinates.NAMESPACE];
+		}
+
+		private static boolean sameRecord(KernelResultCoordinates owner, int from, int record) {
+			return record >= 0 && owner.rows[record + GROUP] == owner.registers[from + GROUP]
+					&& owner.rows[record + PARENT] == owner.registers[from + PARENT]
+					&& owner.rows[record + POSITION] == owner.registers[from + POSITION]
+					&& owner.rows[record + NAMESPACE] == owner.registers[from + KernelResultCoordinates.NAMESPACE];
+		}
+
+		boolean hasCoordinate(KernelResultCoordinates owner, int row, int output) {
+			int record = selections[row * groupCount + outputGroups[output]];
+			return owner.rows[record + POSITION] >= 0L && owner.rows[record + NAMESPACE] > 0L;
+		}
+
+		boolean coordinate(KernelResultCoordinates owner, int row, int output, long[] target) {
+			int record = selections[row * groupCount + outputGroups[output]];
+			if (owner.rows[record + POSITION] < 0L || owner.rows[record + NAMESPACE] <= 0L) {
+				return false;
+			}
+			target[GROUP] = owner.rows[record + GROUP];
+			target[PARENT] = owner.rows[record + PARENT];
+			target[POSITION] = owner.rows[record + POSITION];
+			target[COLUMN] = tupleColumns[output];
+			target[KernelResultCoordinates.NAMESPACE] = owner.rows[record + NAMESPACE];
+			return true;
+		}
+
+		void finishWindow(KernelResultCoordinates owner) {
+			if (!owner.disabled && owner.rowCount > 0) {
+				windows++;
+				emittedRows += owner.rowCount;
+				columns += owner.emittedColumns;
+				groups += groupCount;
+			}
+		}
+
+		void close(KernelResultCoordinates owner) {
+			finishWindow(owner);
+			if (selectionReservation != null) {
+				selectionReservation.close();
+				selectionReservation = null;
+			}
+			ROW_SELECTION_OWNERS.incrementAndGet();
+			ROW_SELECTION_WINDOWS.addAndGet(windows);
+			ROW_SELECTION_ROWS.addAndGet(emittedRows);
+			ROW_SELECTION_COLUMNS.addAndGet(columns);
+			ROW_SELECTION_GROUPS.addAndGet(groups);
+			if (invariantRefused) {
+				ROW_SELECTION_INVARIANT_REFUSED.incrementAndGet();
+			}
+		}
+	}
+
 	@Override
 	public void close() {
 		if (!closed) {
 			closed = true;
+			if (rowSelection != null) {
+				rowSelection.close(this);
+				rowSelection = null;
+			}
 			registers = null;
 			frames = null;
 			rows = null;
+			rowRecordStarts = null;
+			rowRecordChanges = null;
+			decodedCoordinates = null;
+			rowSelections = null;
+			lastSelections = null;
 			rowChanges = null;
 			activeFrames = null;
 			activeRows = null;
@@ -799,6 +1244,10 @@ public final class KernelResultCoordinates implements AutoCloseable {
 			if (namespaceReservation != null) {
 				namespaceReservation.close();
 				namespaceReservation = null;
+			}
+			if (rowRecordReservation != null) {
+				rowRecordReservation.close();
+				rowRecordReservation = null;
 			}
 			reservation.close();
 		}

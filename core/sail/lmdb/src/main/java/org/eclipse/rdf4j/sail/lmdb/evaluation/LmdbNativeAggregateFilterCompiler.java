@@ -437,8 +437,16 @@ abstract class LmdbNativeAggregateFilterCompiler extends LmdbNativeAggregateValu
 		if (left == null || right == null || condition == null) {
 			return null;
 		}
-		return SlotPlan.filter(left,
-				new ExistsFilter(SlotPlan.filter(right, condition, placeableFilterMask(filter.getCondition()))));
+		SlotPlan witness = SlotPlan.filter(right, condition, placeableFilterMask(filter.getCondition()));
+		if (LmdbNativeAggregateCompiler.memoReadMask(witness) >= 0L) {
+			return SlotPlan.filter(left, new ExistsFilter(witness));
+		}
+		ValueExpr semanticCondition = filter.getCondition().clone();
+		if (leftJoin.hasCondition()) {
+			semanticCondition = new And(leftJoin.getCondition().clone(), semanticCondition);
+		}
+		TupleExpr semanticQuery = new Filter(leftJoin.getRightArg().clone(), semanticCondition);
+		return SlotPlan.filter(left, ExistsFilter.compiled(witness, null, semanticQuery, strategy, context));
 	}
 
 	Set<String> rightOnlyBindingNames(LeftJoin leftJoin) {
@@ -541,7 +549,8 @@ abstract class LmdbNativeAggregateFilterCompiler extends LmdbNativeAggregateValu
 							+ " worker=" + NativeWorkerPlanBinder.canBind(subPlan) + " plan="
 							+ LmdbNativeExplain.describe(subPlan, slotNames.toArray(String[]::new), 0L));
 				}
-				return subPlan == null ? null : new ExistsFilter(subPlan);
+				return subPlan == null ? null
+						: ExistsFilter.compiled(subPlan, null, exists.getSubQuery(), strategy, context);
 			} finally {
 				valueGuardsSupported = previousValueGuardsSupported;
 			}
@@ -720,8 +729,9 @@ abstract class LmdbNativeAggregateFilterCompiler extends LmdbNativeAggregateValu
 			try {
 				SlotPlan subPlan = compileTuple(exists.getSubQuery(), false);
 				return subPlan != null && projectedNativeFrameSupported(subPlan)
-						? new ExistsFilter(subPlan,
-								bindingScope.retainsAllBindings() ? null : bindingScope.bindingNames())
+						? ExistsFilter.compiled(subPlan,
+								bindingScope.retainsAllBindings() ? null : bindingScope.bindingNames(),
+								exists.getSubQuery(), strategy, context)
 						: null;
 			} finally {
 				valueGuardsSupported = previousValueGuardsSupported;

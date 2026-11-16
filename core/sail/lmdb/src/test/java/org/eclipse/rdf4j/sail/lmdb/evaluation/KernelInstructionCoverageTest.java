@@ -488,7 +488,7 @@ public class KernelInstructionCoverageTest {
 				new Hooks(), scanner(), new KernelPlan[] { plan() }, 16,
 				new NativeLmdbQuerySource.NodePredicates[] { graph.predicates() },
 				new NativeLmdbQuerySource.DynamicAdjacency[] { graph.dynamic() },
-				new NativeLmdbQuerySource.WildcardAdjacency[] { graph.wildcard() });
+				new NativeLmdbQuerySource.WildcardAdjacency[] { graph.wildcard() }).withStandaloneFusedRuntime();
 		ctx.withNodeDomainIntersections(new NativeLmdbQuerySource.NodeDomainIntersection[] {
 				new NativeLmdbQuerySource.NodeDomainIntersection() {
 					@Override
@@ -710,7 +710,7 @@ public class KernelInstructionCoverageTest {
 						}
 					};
 					return new KernelContext(null, new long[0], new long[0], null, new Hooks(), null,
-							new KernelPlan[] { groups }, 16);
+							new KernelPlan[] { groups }, 16).withStandaloneFusedRuntime();
 				}, tuples(row(6))));
 		return a;
 	}

@@ -1,0 +1,139 @@
+{
+  "acceptedTimingComparison": false,
+  "branch": "GH-0000-lmdb-lazy-result-coordinates",
+  "committed": false,
+  "decision": "Retain the selected original dense-page implementation and existing ownership code; experimental target omission is not promoted",
+  "experimentalMasks": {
+    "fanout": [
+      "measurement",
+      "reading"
+    ],
+    "shared-tail": [
+      "l0",
+      "l1"
+    ]
+  },
+  "experimentalMaterializerSha256": "25a321a3f9cb590492dc9d4efe0a2022ae4f731b6d90db38c5137a4ee1c21fb1",
+  "format": 1,
+  "head": "15fe7d5011d27d31d76436238363ee3f34b3ba50",
+  "independentEvidence": {
+    "benchmark/independent-partial-v1/independent-partial-audit.json": "971f50672d890b68c8af86d8df19ae1cc3cb64c0a26e837315dc00326d6c3acd",
+    "benchmark/independent-publication-controls.json": "d4e1d67b40d4a1e8c3641f6c1afdfc8e1821eda02411fee0ef3c85acbeaa46df",
+    "benchmark/independent-resolver-probe-v1/independent-resolver-probe.json": "bc2fea320073a09d1fb1ec5c7833fee4637c4e94fc0e3791fb3aa854a13d77eb"
+  },
+  "initialDiagnostics": {
+    "allValid": true,
+    "jvms": 8,
+    "queries": 32,
+    "sharedTail256MiB": {
+      "extraFactorHits": 32512,
+      "extraUsefulRightPages": 130,
+      "resolverCallsAll": 65345,
+      "resolverCallsOmit": 32833
+    },
+    "sufficientMemoryEffects": {
+      "fanout": {
+        "ledgerPeakAll": 2264968,
+        "ledgerPeakOmit": 592008,
+        "queryBytes": 536870912,
+        "resolverCallsBoth": 1147,
+        "skippedPublicationCalls": 2304000
+      },
+      "shared-tail": {
+        "ledgerPeakAll": 272948260,
+        "ledgerPeakOmit": 136502308,
+        "queryBytes": 536870912,
+        "resolverCallsBoth": 32833,
+        "skippedPublicationCalls": 2097152
+      }
+    }
+  },
+  "nextWork": [
+    "Predeclare a fresh publication-ablation timing protocol that qualifies weak-cache variation using lightweight mutually exclusive miss accounting, without relaxing the stopped protocol",
+    "Attribute selected target coordinates to concrete producer sites before designing a generic admission rule",
+    "Preserve useful ordinary-hit publication and prove or measure behavior across aliases, frames, namespaces, both IR tiers and varied consumption before production selection"
+  ],
+  "primaryStudy": {
+    "acceptedComparisons": [],
+    "complete": false,
+    "completedJvms": 9,
+    "measuredQueries": 45,
+    "mismatch": {
+      "allResolverCalls": 32833,
+      "fixture": "shared-tail",
+      "iteration": -7,
+      "omitResolverCalls": 32834,
+      "roundZeroBased": 1
+    },
+    "performanceScreenEvaluated": false,
+    "plannedJvms": 36,
+    "protocolSha256": "2a94e81f10d63ec177cb998d3270fb9cb48adee569ca1808370f6fc81465107b",
+    "qualification": "failed: exact same-iteration DENSE resolver equality",
+    "rawQueries": 117,
+    "replacementForks": 0
+  },
+  "pushed": false,
+  "resolverDiagnostic": {
+    "allValid": true,
+    "baselineResolverQueries": 50,
+    "compiledBinds": 48,
+    "extraResolverEvents": 2,
+    "extraResolverQueries": 2,
+    "factorWitnessMisses": 0,
+    "interpretedBinds": 4,
+    "jvms": 4,
+    "naturalMissRateEstimated": false,
+    "observedMechanism": "One r1 terminal factor weak-reference miss per affected omit warmup -7; exact per-target and global reconciliation",
+    "order": [
+      "all",
+      "omit",
+      "omit",
+      "all"
+    ],
+    "ordinaryWeakMisses": 0,
+    "ordinaryWitnessMisses": 0,
+    "originalTimingEventCauseEstablished": false,
+    "pageRefusals": 0,
+    "performanceInference": false,
+    "protocolSha256": "0ba7dd6c7bce031e8c7495e6be958c13444a670ada1b966dde2fdfcb1f54ac5d",
+    "queries": 52
+  },
+  "scope": {
+    "experimentJvms": 21,
+    "fullStrategyAndConsumptionSweepCompletedThisPhase": false,
+    "historicalStage2Artifacts": "Unavailable in preserved fanout metadata; current fixture is a reconstruction",
+    "performanceDataPooled": false,
+    "rawQueries": 201
+  },
+  "selectedCorePhaseDeltaEmpty": true,
+  "selectedMaterializerSha256": "cb0749719313b85c8cd134b6c03085f712915188f0e53333cbd46e19e2f0f96e",
+  "sourceVerification": {
+    "file": "selected-source-verification.json",
+    "moduleSources": 2055,
+    "realIndexAndHeadUnchanged": true,
+    "sha256": "7a2dc62d64ce76e7913d909aeccfe619be0b9fd5b2bdc192c329cf558cba2717",
+    "unchanged": true
+  },
+  "validation": {
+    "correctedBaselineCases": 106,
+    "correctedBaselineErrors": 0,
+    "correctedBaselineFailures": 0,
+    "correctedBaselineSkips": 0,
+    "initialHarnessCases": 106,
+    "initialHarnessSetupErrors": 27,
+    "moduleFormattingPassed": true,
+    "newContractsBeforeOverlay": {
+      "cases": 6,
+      "errors": 0,
+      "expectedAssertionFailures": 5,
+      "skips": 0
+    },
+    "overlayErrors": 0,
+    "overlayExistingCases": 106,
+    "overlayFailures": 0,
+    "overlayNewCases": 6,
+    "overlaySkips": 0,
+    "rootQuickCleanInstallPassed": true,
+    "scope": "Focused existing selection plus direct materializer contracts; not a new full SPARQL strategy matrix"
+  }
+}

@@ -192,7 +192,7 @@ class LmdbNativeProducerScheduleTest {
 		assertNotNull(execution);
 		try {
 			execution.bind(new KernelContext(new NativeAdjacency[] { source }, new long[] { 10 }, new long[0],
-					new long[0][], hooks));
+					new long[0][], hooks).withStandaloneFusedRuntime());
 			long[] row = new long[ir.stride()];
 			assertEquals(1, execution.fill(row, 1));
 			return List.of(Arrays.toString(row));
@@ -220,7 +220,8 @@ class LmdbNativeProducerScheduleTest {
 		try {
 			execution.bind(
 					new KernelContext(new NativeAdjacency[0], new long[] { 10 }, new long[0], new long[0][], hooks,
-							null, null, 16, null, null, new WildcardAdjacency[] { source }));
+							null, null, 16, null, null, new WildcardAdjacency[] { source })
+									.withStandaloneFusedRuntime());
 			List<String> rows = fillRows(execution, ir.stride());
 			assertEquals(expectedRows, rows.size());
 			if (expected != null) {
@@ -480,7 +481,7 @@ class LmdbNativeProducerScheduleTest {
 		assertNotNull(execution);
 		try {
 			execution.bind(new KernelContext(new NativeAdjacency[] { fixture() }, lowered.bindings.constants,
-					new long[0], new long[0][], hooks));
+					new long[0], new long[0][], hooks).withStandaloneFusedRuntime());
 			assertEquals(5, fillRows(execution, lowered.kernel.stride()).size());
 			assertEquals(effect == EffectClass.PURE ? 2 : 5, calls.get(),
 					"repeatable worker rebinding cannot turn ROW_STABLE or VOLATILE work into root reuse");
@@ -598,7 +599,7 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				execution.bind(new KernelContext(new NativeAdjacency[] { source }, new long[] { 10 }, new long[0],
-						new long[0][], new CountingHooks()).withMemoryLedger(ledger));
+						new long[0][], new CountingHooks()).withStandaloneFusedRuntime().withMemoryLedger(ledger));
 				long[] buffer = new long[ir.stride()];
 				assertEquals(1, execution.fill(buffer, 1));
 				blocker.close();
@@ -660,7 +661,7 @@ class LmdbNativeProducerScheduleTest {
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { source }, new long[] { 100L },
 						new long[0],
-						new long[][] { domain }, new CountingHooks());
+						new long[][] { domain }, new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 
@@ -724,12 +725,14 @@ class LmdbNativeProducerScheduleTest {
 		try (LmdbQueryMemoryManager.QueryLedger firstLedger = firstManager.openQuery();
 				LmdbQueryMemoryManager.QueryLedger secondLedger = secondManager.openQuery()) {
 			execution.bind(new KernelContext(new NativeAdjacency[] { first }, new long[] { 7L, 101L }, new long[0],
-					new long[][] { { 10L } }, new CountingHooks()).withMemoryLedger(firstLedger));
+					new long[][] { { 10L } }, new CountingHooks()).withStandaloneFusedRuntime()
+							.withMemoryLedger(firstLedger));
 			assertEquals(List.of("[10, 100, 7, 100]"), fillRows(execution, ir.stride()));
 			assertTrue(firstLedger.usedBytes() > 0L, "the first owner keeps its admission after activation close");
 
 			execution.bind(new KernelContext(new NativeAdjacency[] { second }, new long[] { 9L, 201L }, new long[0],
-					new long[][] { { 20L } }, new CountingHooks()).withMemoryLedger(secondLedger));
+					new long[][] { { 20L } }, new CountingHooks()).withStandaloneFusedRuntime()
+							.withMemoryLedger(secondLedger));
 			assertEquals(0L, firstLedger.usedBytes(), "rebind must release the previous ledger reservation");
 			assertEquals(List.of("[20, 200, 9, 200]"), fillRows(execution, ir.stride()));
 			assertTrue(secondLedger.usedBytes() > 0L, "the new owner must charge the new ledger");
@@ -805,7 +808,7 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { first, second }, new long[0],
-						new long[0], new long[][] { domain }, new CountingHooks());
+						new long[0], new long[][] { domain }, new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 
@@ -883,7 +886,7 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { source }, new long[] { 100L },
-						new long[0], new long[][] { { 10L } }, new CountingHooks());
+						new long[0], new long[][] { { 10L } }, new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 				long[] row = new long[ir.stride()];
@@ -942,7 +945,7 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { source }, new long[] { 7L, 100L },
-						new long[0], new long[][] { { 10L } }, new CountingHooks());
+						new long[0], new long[][] { { 10L } }, new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 				long[] row = new long[ir.stride()];
@@ -994,7 +997,8 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { source },
-						new long[] { 7L, 100L }, new long[0], new long[][] { { 10L } }, new CountingHooks());
+						new long[] { 7L, 100L }, new long[0], new long[][] { { 10L } }, new CountingHooks())
+								.withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 				long[] row = new long[ir.stride()];
@@ -1051,7 +1055,7 @@ class LmdbNativeProducerScheduleTest {
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { source }, new long[] { 100L },
 						new long[0],
-						new long[][] { { 10L } }, new CountingHooks());
+						new long[][] { { 10L } }, new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 				long[] row = new long[ir.stride()];
@@ -1092,7 +1096,7 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { source }, new long[0], new long[0],
-						new long[][] { { 10L, 99L } }, new CountingHooks());
+						new long[][] { { 10L, 99L } }, new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 				List<String> rows = fillRows(execution, ir.stride());
@@ -1128,7 +1132,7 @@ class LmdbNativeProducerScheduleTest {
 			assertNotNull(execution);
 			try {
 				KernelContext context = new KernelContext(new NativeAdjacency[] { pageSource }, new long[0],
-						new long[0], new long[0][], new CountingHooks());
+						new long[0], new long[0][], new CountingHooks()).withStandaloneFusedRuntime();
 				context.resultCoordinates = coordinates;
 				execution.bind(context);
 				long[] row = new long[ir.stride()];
@@ -1327,7 +1331,8 @@ class LmdbNativeProducerScheduleTest {
 		try {
 			execution.bind(new KernelContext(source == null ? new NativeAdjacency[0] : new NativeAdjacency[] { source },
 					new long[] { 10L }, new long[0], new long[0][], hooks, null, null, 16, null, null,
-					wildcard == null ? new WildcardAdjacency[0] : new WildcardAdjacency[] { wildcard }));
+					wildcard == null ? new WildcardAdjacency[0] : new WildcardAdjacency[] { wildcard })
+							.withStandaloneFusedRuntime());
 			return fillRows(execution, ir.stride());
 		} finally {
 			execution.close();
@@ -1346,7 +1351,8 @@ class LmdbNativeProducerScheduleTest {
 						: LmdbNativeKernelInterpreter.forRows(ir);
 		assertNotNull(execution);
 		try {
-			execution.bind(new KernelContext(sources, new long[] { 10 }, new long[0], new long[0][], hooks));
+			execution.bind(new KernelContext(sources, new long[] { 10 }, new long[0], new long[0][], hooks)
+					.withStandaloneFusedRuntime());
 			List<String> rows = new ArrayList<>();
 			long[] buffer = new long[ir.stride()];
 			while (execution.fill(buffer, 1) > 0) {
@@ -1367,7 +1373,7 @@ class LmdbNativeProducerScheduleTest {
 		assertNotNull(execution);
 		try {
 			execution.bind(new KernelContext(sources, constants, new long[0], new long[][] { domain },
-					new CountingHooks()));
+					new CountingHooks()).withStandaloneFusedRuntime());
 			List<String> rows = new ArrayList<>();
 			long[] buffer = new long[ir.stride()];
 			while (execution.fill(buffer, 1) > 0) {

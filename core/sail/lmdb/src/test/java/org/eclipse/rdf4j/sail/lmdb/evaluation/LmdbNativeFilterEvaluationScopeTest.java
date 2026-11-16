@@ -54,6 +54,7 @@ class LmdbNativeFilterEvaluationScopeTest {
 	private static final long SUBJECT = 11L;
 	private static final long PREDICATE = 12L;
 	private static final long OBJECT = 13L;
+	private static final Object FIXTURE_INVOCATION = new Object();
 
 	@Test
 	void existsPredicatesBindIndependentWorkersWithoutSharingSnapshotMemo() throws Exception {
@@ -254,7 +255,7 @@ class LmdbNativeFilterEvaluationScopeTest {
 		NativeSlotLayout layout = singleSlotLayout("x");
 		source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
 		MutableIri mutable = new MutableIri("urn:mutable:before");
-		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+		RowState row = row(source, layout, EmptyBindingSet.getInstance());
 		row.slots[0] = source.internComputedValue(mutable, layout.positionMask("x"));
 		assertThat(source.synthetic(row.slots[0])).isTrue();
 		mutable.change("urn:mutable:after");
@@ -280,6 +281,53 @@ class LmdbNativeFilterEvaluationScopeTest {
 		} finally {
 			source.executionContext().close();
 		}
+	}
+
+	@Test
+	void uncertifiableSubqueryEntryChecksOutputsAndClosesAtFirstCompatibleSolution() throws Exception {
+		SyntheticValueSource source = emptyEvaluationSourceWithCertifiedAbsence();
+		var ledger = source.executionContext().memoryLedger();
+		NativeSlotLayout layout = singleSlotLayout("x");
+		source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
+		MutableIri mutable = new MutableIri("urn:mutable:before");
+		RowState row = row(source, layout, EmptyBindingSet.getInstance());
+		row.slots[0] = source.internComputedValue(mutable, layout.positionMask("x"));
+		mutable.change("urn:mutable:after");
+		row.recomputeBoundMask();
+		Value expected = SimpleValueFactory.getInstance().createIRI("urn:mutable:after");
+		QueryBindingSet incompatible = new QueryBindingSet();
+		incompatible.setBinding("x", SimpleValueFactory.getInstance().createIRI("urn:other"));
+		QueryBindingSet compatible = new QueryBindingSet();
+		compatible.setBinding("x", expected);
+		AtomicInteger advances = new AtomicInteger();
+		AtomicInteger closes = new AtomicInteger();
+		QueryEvaluationStep step = bindings -> {
+			assertThat(bindings.getValue("x")).isEqualTo(expected);
+			return new CloseableIteratorIteration<BindingSet>(
+					List.of(incompatible, compatible, compatible).iterator()) {
+				@Override
+				public BindingSet next() {
+					advances.incrementAndGet();
+					return super.next();
+				}
+
+				@Override
+				protected void handleClose() {
+					closes.incrementAndGet();
+				}
+			};
+		};
+		NativeSubqueryPlan subquery = new NativeSubqueryPlan(step, new int[] { 0 }, new String[] { "x" }, new int[0],
+				new String[0]);
+		try {
+			assertThat(new ExistsFilter(subquery).accept(row)).isTrue();
+			assertThat(advances).hasValue(2);
+			assertThat(closes).hasValue(1);
+			assertThat(row.view.getValue("x")).isEqualTo(expected);
+		} finally {
+			source.executionContext().close();
+		}
+		assertThat(ledger.usedBytes()).isZero();
 	}
 
 	@Test
@@ -443,7 +491,7 @@ class LmdbNativeFilterEvaluationScopeTest {
 		assertThat(source.executionContext().queryBase().getValue("x")).isEqualTo(languageTagged);
 		assertThat(GraphFrameBindings.isSupplied(source.executionContext().queryBase(), "graph")).isTrue();
 		NativeSlotLayout outerLayout = singleSlotLayout("sibling");
-		RowState row = new RowState(source, outerLayout, capturedEntry);
+		RowState row = row(source, outerLayout, capturedEntry);
 		row.slots[0] = source.internComputedValue(SimpleValueFactory.getInstance().createLiteral("outer"),
 				outerLayout.positionMask("sibling"));
 		row.recomputeBoundMask();
@@ -657,6 +705,18 @@ class LmdbNativeFilterEvaluationScopeTest {
 		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
 		when(source.idOf(any(Value.class))).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
 		when(source.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		when(source.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
+			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
+			return null;
+		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+		Object generation = new Object();
+		when(source.idSpace()).thenReturn(generation);
+		when(source.valueLookupScope()).thenReturn(generation);
+		when(source.resultValueScope()).thenReturn(generation);
+		when(source.detachedDomainStamp()).thenReturn(new NativeLmdbQuerySource.DomainStamp(generation, generation,
+				generation, generation, NativeLmdbQuerySource.DomainStamp.EXPLICIT, null, null));
 		when(source.nativeValueCodec()).thenReturn(new LmdbNativeValueCodec(mock(ValueStore.class)));
 		when(source.has(SUBJECT, PREDICATE, OBJECT, LmdbNativeAggregateCompiler.NULL_CONTEXT_ID)).thenReturn(match);
 		return new SyntheticValueSource(source, PlanValueCatalog.EMPTY);
@@ -674,21 +734,13 @@ class LmdbNativeFilterEvaluationScopeTest {
 	}
 
 	private static SyntheticValueSource evaluationSource(boolean match) throws Exception {
-		return compileSource(match).forEvaluation();
+		SyntheticValueSource source = compileSource(match).forEvaluation();
+		source.anchorEntryDomain();
+		return source;
 	}
 
 	private static SyntheticValueSource emptyEvaluationSourceWithCertifiedAbsence() throws Exception {
-		NativeLmdbQuerySource source = mock(NativeLmdbQuerySource.class);
-		when(source.idOf(any(Value.class))).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
-		when(source.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
-		when(source.certifiesIdOrigins()).thenReturn(true);
-		doAnswer(invocation -> {
-			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
-			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
-			return null;
-		}).when(source).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
-		when(source.nativeValueCodec()).thenReturn(new LmdbNativeValueCodec(mock(ValueStore.class)));
-		return new SyntheticValueSource(source, PlanValueCatalog.EMPTY).forEvaluation();
+		return evaluationSource(false);
 	}
 
 	private static final class MutableIri extends SimpleIRI {
@@ -706,7 +758,31 @@ class LmdbNativeFilterEvaluationScopeTest {
 	private static RowState row(NativeLmdbQuerySource source) {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of(), null);
 		layout.freeze(List.of());
-		return new RowState(source, layout, EmptyBindingSet.getInstance());
+		return row((SyntheticValueSource) source, layout, EmptyBindingSet.getInstance());
+	}
+
+	private static RowState row(SyntheticValueSource source, NativeSlotLayout layout, BindingSet base) {
+		RowState row = new RowState(source, layout, base);
+		FixtureInvocation invocation = source.executionContext()
+				.nativeState(FIXTURE_INVOCATION,
+						FixtureInvocation::new);
+		row.fusedSession = invocation.session;
+		invocation.rows.add(row);
+		return row;
+	}
+
+	private static final class FixtureInvocation implements AutoCloseable {
+		final LmdbFusedSipFactorizedRuntime.Session session = LmdbFusedSipFactorizedRuntime.create(71L, false);
+		final List<RowState> rows = new ArrayList<>();
+
+		@Override
+		public void close() {
+			try {
+				rows.forEach(RowState::closeDecodedInputs);
+			} finally {
+				session.close();
+			}
+		}
 	}
 
 	private static NativeSlotLayout scopedLayout() {
@@ -723,7 +799,7 @@ class LmdbNativeFilterEvaluationScopeTest {
 	}
 
 	private static RowState nullContextRow(SyntheticValueSource source, NativeSlotLayout layout, BindingSet base) {
-		RowState row = new RowState(source, layout, base);
+		RowState row = row(source, layout, base);
 		Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 		row.slots[layout.slot("x")] = LmdbNativeAggregateCompiler.NULL_CONTEXT_ID;
 		row.recomputeBoundMask();
@@ -732,7 +808,7 @@ class LmdbNativeFilterEvaluationScopeTest {
 
 	private static RowState scopedRow(SyntheticValueSource source, NativeSlotLayout layout,
 			BindingSet base, Literal value) {
-		RowState row = new RowState(source, layout, base);
+		RowState row = row(source, layout, base);
 		Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 		row.slots[layout.slot("x")] = source.internComputedValue(value, layout.positionMask("x"));
 		bindSlot(row, source, layout, "sibling", SimpleValueFactory.getInstance().createLiteral("sibling"));

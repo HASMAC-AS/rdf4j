@@ -30,6 +30,7 @@ import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -42,6 +43,21 @@ public class LmdbNativeIdAuthorityTest {
 
 	private static final SimpleValueFactory VF = SimpleValueFactory.getInstance();
 	private static final long UNKNOWN = LmdbNativeAggregateCompiler.UNKNOWN;
+	private final List<NativeExecutionContext> executions = new ArrayList<>();
+
+	private NativeExecutionContext newExecution() {
+		NativeExecutionContext execution = new NativeExecutionContext();
+		executions.add(execution);
+		return execution;
+	}
+
+	@AfterEach
+	void closeExecutions() {
+		for (int i = executions.size() - 1; i >= 0; i--) {
+			executions.get(i).close();
+		}
+		executions.clear();
+	}
 
 	/** Byte-exact fake store: values keyed by exact spelling, ids resolve back to the stored value. */
 	private static final class ExactSpellingSource implements NativeLmdbQuerySource {
@@ -69,6 +85,17 @@ public class LmdbNativeIdAuthorityTest {
 		public long idOf(Value value) {
 			Long id = idsBySpelling.get(spelling(value));
 			return id != null ? id : UNKNOWN;
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN ? IdOrigin.ABSENT : IdOrigin.STORED);
 		}
 
 		@Override
@@ -117,8 +144,8 @@ public class LmdbNativeIdAuthorityTest {
 		}
 	}
 
-	private static LmdbNativeTermAuthority authority(ExactSpellingSource store, PlanValueCatalog catalog) {
-		return new LmdbNativeTermAuthority(store, catalog, new NativeExecutionContext());
+	private LmdbNativeTermAuthority authority(ExactSpellingSource store, PlanValueCatalog catalog) {
+		return new LmdbNativeTermAuthority(store, catalog, newExecution());
 	}
 
 	@Test
@@ -321,8 +348,8 @@ public class LmdbNativeIdAuthorityTest {
 	@Test
 	public void importsAcrossEvaluationAndCatalogCollisionsStillResolveSourceValues() {
 		ExactSpellingSource sharedStore = new ExactSpellingSource();
-		NativeExecutionContext firstContext = new NativeExecutionContext();
-		NativeExecutionContext secondContext = new NativeExecutionContext();
+		NativeExecutionContext firstContext = newExecution();
+		NativeExecutionContext secondContext = newExecution();
 		try {
 			LmdbNativeTermAuthority first = new LmdbNativeTermAuthority(sharedStore, PlanValueCatalog.EMPTY,
 					firstContext);
@@ -349,8 +376,8 @@ public class LmdbNativeIdAuthorityTest {
 		long secondPlanId = secondBuilder.internConstant(collidingCatalogValue);
 		assertThat(firstPlanId).isEqualTo(secondPlanId);
 		Object claimedSharedSpace = new Object();
-		NativeExecutionContext catalogFirstContext = new NativeExecutionContext();
-		NativeExecutionContext catalogSecondContext = new NativeExecutionContext();
+		NativeExecutionContext catalogFirstContext = newExecution();
+		NativeExecutionContext catalogSecondContext = newExecution();
 		try {
 			LmdbNativeTermAuthority first = new LmdbNativeTermAuthority(sharedStore, firstBuilder.build(),
 					catalogFirstContext, claimedSharedSpace);
@@ -371,8 +398,8 @@ public class LmdbNativeIdAuthorityTest {
 		long firstStoreId = firstStore.add(VF.createLiteral("first store spelling"));
 		long secondStoreId = secondStore.add(VF.createLiteral("second store spelling"));
 		assertThat(firstStoreId).isEqualTo(secondStoreId);
-		try (NativeExecutionContext storeFirstContext = new NativeExecutionContext();
-				NativeExecutionContext storeSecondContext = new NativeExecutionContext()) {
+		try (NativeExecutionContext storeFirstContext = newExecution();
+				NativeExecutionContext storeSecondContext = newExecution()) {
 			LmdbNativeTermAuthority first = new LmdbNativeTermAuthority(firstStore, PlanValueCatalog.EMPTY,
 					storeFirstContext);
 			LmdbNativeTermAuthority second = new LmdbNativeTermAuthority(secondStore, PlanValueCatalog.EMPTY,
@@ -387,8 +414,8 @@ public class LmdbNativeIdAuthorityTest {
 		ExactSpellingSource upperTagStore = new ExactSpellingSource();
 		long lowerTagId = lowerTagStore.add(VF.createLiteral("shared language value", "en"));
 		long upperTagId = upperTagStore.add(VF.createLiteral("shared language value", "EN"));
-		try (NativeExecutionContext lowerContext = new NativeExecutionContext();
-				NativeExecutionContext upperContext = new NativeExecutionContext()) {
+		try (NativeExecutionContext lowerContext = newExecution();
+				NativeExecutionContext upperContext = newExecution()) {
 			LmdbNativeTermAuthority lowerAuthority = new LmdbNativeTermAuthority(lowerTagStore, PlanValueCatalog.EMPTY,
 					lowerContext);
 			LmdbNativeTermAuthority upperAuthority = new LmdbNativeTermAuthority(upperTagStore, PlanValueCatalog.EMPTY,
@@ -420,7 +447,7 @@ public class LmdbNativeIdAuthorityTest {
 
 	@Test
 	public void closedContextReleasesStateAndRefusesNewInterning() {
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = newExecution();
 		long id = context.internValue(VF.createLiteral("ephemeral"));
 		assertThat(context.contains(id)).isTrue();
 		context.close();
@@ -432,7 +459,7 @@ public class LmdbNativeIdAuthorityTest {
 
 	@Test
 	public void emptyContextTransitionsToRuntimeAndQueryScopedValues() {
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = newExecution();
 		long ordinaryStoreId = 123L;
 
 		assertThat(context.contains(ordinaryStoreId)).isFalse();
@@ -452,7 +479,7 @@ public class LmdbNativeIdAuthorityTest {
 
 	@Test
 	public void closedContextClosesEvaluationOwnedNativeState() {
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = newExecution();
 		AtomicInteger closeCalls = new AtomicInteger();
 		AutoCloseable ownedState = closeCalls::incrementAndGet;
 		Object owner = new Object();
@@ -465,7 +492,7 @@ public class LmdbNativeIdAuthorityTest {
 
 	@Test
 	public void concurrentInterningOfEqualValuesYieldsOneId() throws Exception {
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = newExecution();
 		Value value = VF.createLiteral("contended");
 		ExecutorService pool = Executors.newFixedThreadPool(8);
 		try {
@@ -514,7 +541,7 @@ public class LmdbNativeIdAuthorityTest {
 		assertThat(catalog.valueOf(lowerPlanId).toString()).endsWith("@en");
 		assertThat(catalog.valueOf(upperPlanId).toString()).endsWith("@EN");
 
-		NativeExecutionContext context = new NativeExecutionContext();
+		NativeExecutionContext context = newExecution();
 		long lowerRuntimeId = context.internValue(lowerValue);
 		long upperRuntimeId = context.internValue(upperValue);
 		assertThat(upperRuntimeId).isNotEqualTo(lowerRuntimeId);
@@ -562,6 +589,17 @@ public class LmdbNativeIdAuthorityTest {
 		public long idOf(Value value) {
 			state.idOfCalls.incrementAndGet();
 			return state.idsBySpelling.getOrDefault(ExactSpellingSource.spelling(value), UNKNOWN);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN ? IdOrigin.ABSENT : IdOrigin.STORED);
 		}
 
 		@Override

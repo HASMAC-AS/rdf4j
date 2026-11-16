@@ -127,16 +127,27 @@ class LmdbNativeParallelAggregationPreflightFailureTest {
 		NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0],
 				new AggregateSpec[] { AggregateSpec.slot("sum", 0, false, AggKind.SUM) }, false,
 				EmptyBindingSet.getInstance(), null, null, false, null);
-		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
-		assertThat(iteration.initialize(row)).isTrue();
+		NativeInvocationCarrier invocation = iteration.invocationCarrier();
+		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance(), null, null, iteration.cancellation);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		try (iteration) {
+			try {
+				assertThat(iteration.initialize(row)).isTrue();
 
-		Throwable problem = catchThrowable(() -> LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row));
+				Throwable problem = catchThrowable(
+						() -> LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row));
 
-		assertThat(problem).isInstanceOf(EncounterOrderFallback.class);
-		assertThat(source.producerProbeCreationAttempts).isZero();
-		assertThat(source.producerProbesCreated).isZero();
-		assertThat(source.exactExistenceChecks).isOne();
-		assertOuterResourcesClosed(source);
+				assertThat(problem).isInstanceOf(EncounterOrderFallback.class);
+				assertThat(source.producerProbeCreationAttempts).isZero();
+				assertThat(source.producerProbesCreated).isZero();
+				assertThat(source.exactExistenceChecks).isOne();
+				assertOuterResourcesClosed(source);
+			} finally {
+				row.closeDecodedInputs();
+			}
+		}
 	}
 
 	private static void evaluateParallelPreflight(PreflightFailureSource source) {
@@ -155,9 +166,19 @@ class LmdbNativeParallelAggregationPreflightFailureTest {
 						AggregateSpec.slot("distinctMin", 0, true, AggKind.MIN) },
 				false,
 				EmptyBindingSet.getInstance(), null, null, false, null);
-		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
-		assertThat(iteration.initialize(row)).isTrue();
-		LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row);
+		NativeInvocationCarrier invocation = iteration.invocationCarrier();
+		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance(), null, null, iteration.cancellation);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		try (iteration) {
+			try {
+				assertThat(iteration.initialize(row)).isTrue();
+				LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row);
+			} finally {
+				row.closeDecodedInputs();
+			}
+		}
 	}
 
 	private static void assertOuterResourcesClosed(PreflightFailureSource source) {

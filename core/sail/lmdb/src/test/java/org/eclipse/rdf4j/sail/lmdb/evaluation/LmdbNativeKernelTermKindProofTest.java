@@ -145,7 +145,8 @@ class LmdbNativeKernelTermKindProofTest {
 	}
 
 	private static RowState row(BindingSet base) {
-		return new RowState(null, NativeSlotLayout.empty(), base);
+		// These guards inspect lexical entry bindings only; the source supplies no dictionary or invocation state.
+		return new RowState(mock(NativeLmdbQuerySource.class), NativeSlotLayout.empty(), base);
 	}
 
 	private static final class TrackingFilter implements NativeBooleanFilter {
@@ -195,7 +196,7 @@ class LmdbNativeKernelTermKindProofTest {
 		assertNotNull(kernel);
 		try {
 			kernel.bind(new KernelContext(new NativeAdjacency[] { source }, new long[] { LITERAL_BITS },
-					new long[0], new long[0][], hooks));
+					new long[0], new long[0][], hooks).withStandaloneFusedRuntime());
 			int rows = 0;
 			long[] buffer = new long[ir.stride()];
 			while (kernel.fill(buffer, 1) > 0) {

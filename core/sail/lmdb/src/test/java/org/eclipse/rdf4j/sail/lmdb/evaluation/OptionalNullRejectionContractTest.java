@@ -96,7 +96,7 @@ public final class OptionalNullRejectionContractTest {
 			}
 		};
 		return new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[] { a }, new long[0], new long[0],
-				new long[][] { new long[] { 10, 20 } }, new Hooks(predicate));
+				new long[][] { new long[] { 10, 20 } }, new Hooks(predicate)).withStandaloneFusedRuntime();
 	}
 
 	static Kernel shape(boolean optimize) {
@@ -223,7 +223,8 @@ public final class OptionalNullRejectionContractTest {
 			for (boolean compiled : new boolean[] { false, true }) {
 				KernelContext base = context("bound-control");
 				KernelContext ctx = new KernelContext(base.adjacencies, new long[] { -1 }, new long[0], base.keyDomains,
-						base.hooks);
+						base.hooks).withStandaloneFusedRuntime();
+				base.releaseOwnedFusedRuntime();
 				JaninoKernel kernel = compiled ? KernelCompilationTestSupport.compile(ir)
 						: LmdbNativeKernelInterpreter.forAggregate(ir);
 				try {

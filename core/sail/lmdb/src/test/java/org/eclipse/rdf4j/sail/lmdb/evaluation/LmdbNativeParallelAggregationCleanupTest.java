@@ -59,6 +59,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 class LmdbNativeParallelAggregationCleanupTest {
 
 	private String previousParallelEnabled;
+	private final List<AutoCloseable> executionOwners = new ArrayList<>();
 
 	@BeforeEach
 	void enableParallelAggregation() {
@@ -68,7 +69,40 @@ class LmdbNativeParallelAggregationCleanupTest {
 
 	@AfterEach
 	void restoreParallelAggregation() {
+		Throwable failure = null;
+		for (int index = executionOwners.size() - 1; index >= 0; index--) {
+			failure = KernelRuntime.closeResource(executionOwners.get(index), failure);
+		}
+		executionOwners.clear();
 		restoreProperty("rdf4j.lmdb.parallel.enabled", previousParallelEnabled);
+		KernelRuntime.rethrowCloseFailure(failure);
+	}
+
+	private RowState groupRow(NativeGroupIteration iteration) {
+		NativeInvocationCarrier invocation = iteration.invocationCarrier();
+		RowState row = new RowState(iteration.source, iteration.layout, iteration.base, null, null,
+				iteration.cancellation);
+		return ownExecution(row, invocation, iteration);
+	}
+
+	private RowState ownRow(RowState row) {
+		NativeInvocationCarrier invocation = NativeInvocationCarrier.open(row.source, null, row.base,
+				System.identityHashCode(row), row.telemetryTarget);
+		return ownExecution(row, invocation, invocation);
+	}
+
+	private RowState ownExecution(RowState row, NativeInvocationCarrier invocation, AutoCloseable owner) {
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		synchronized (executionOwners) {
+			executionOwners.add(() -> {
+				Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+				failure = KernelRuntime.closeResource(owner, failure);
+				KernelRuntime.rethrowCloseFailure(failure);
+			});
+		}
+		return row;
 	}
 
 	@Test
@@ -106,7 +140,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			NativeRowsStep step = new NativeRowsStep(source, filtered, unfiltered.layout, unfiltered.sourceSlots,
 					unfiltered.targetNames, false, new int[0], new boolean[0], 0L, -1L, false, null, null, null,
 					Set.of(), null, null);
-			RowState row = new RowState(source, step.layout, EmptyBindingSet.getInstance());
+			RowState row = ownRow(new RowState(source, step.layout, EmptyBindingSet.getInstance()));
 			Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 
 			assertThat(LmdbNativeParallelPipelines.tryOpen(step, row)).isNull();
@@ -142,7 +176,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			};
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThatThrownBy(() -> LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -181,7 +215,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThat(LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row)).isNull();
@@ -217,7 +251,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThatThrownBy(() -> LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row, null))
@@ -255,7 +289,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThatThrownBy(() -> LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -292,7 +326,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThat(LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -334,7 +368,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThat(LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -375,7 +409,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThat(LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -414,7 +448,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThat(LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -454,7 +488,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThatThrownBy(() -> LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -506,7 +540,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 0, false, AggKind.SUM) };
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			assertThat(LmdbNativeParallelAggregation.tryEvaluate(iteration, plan, row))
@@ -554,7 +588,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			};
 			NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates,
 					false, EmptyBindingSet.getInstance(), null, null, false, null);
-			RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 
 			List<org.eclipse.rdf4j.query.BindingSet> results = LmdbNativeParallelAggregation.tryEvaluate(iteration,
@@ -621,6 +655,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 				new FallbackThenCloseFailurePlan(closeFailure), layout, new int[0],
 				new AggregateSpec[] { AggregateSpec.star("count") }, false, EmptyBindingSet.getInstance(), null, null,
 				false, null);
+		executionOwners.add(iteration);
 
 		assertThatThrownBy(iteration::evaluateAll).isSameAs(closeFailure);
 	}
@@ -662,7 +697,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 					new AggregateSpec[] { AggregateSpec.star("count") }, false, EmptyBindingSet.getInstance(), null,
 					null,
 					false, null);
-			RowState row = new RowState(owner, layout, EmptyBindingSet.getInstance());
+			RowState row = groupRow(iteration);
 			assertThat(iteration.initialize(row)).isTrue();
 			SuccessfulAttemptCounters before = SuccessfulAttemptCounters.snapshot();
 
@@ -1028,7 +1063,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 			System.setProperty("rdf4j.lmdb.parallel.minWorkEstimate", "0");
 			ParallelSourceOwner owner = new ParallelSourceOwner(siblings);
 			NativeRowsStep step = twoPatternStep(owner);
-			RowState row = new RowState(owner, step.layout, EmptyBindingSet.getInstance());
+			RowState row = ownRow(new RowState(owner, step.layout, EmptyBindingSet.getInstance()));
 			Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 
 			assertThatThrownBy(() -> LmdbNativeParallelPipelines.tryOpen(step, row))
@@ -1074,7 +1109,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 					new MultiJoinPlan(original.children,
 							new MaskedFilter[] { new MaskedFilter(secondFilter.recording, 0L) })
 			};
-			RowState consumerRow = new RowState(sources[0], step.layout, EmptyBindingSet.getInstance());
+			RowState consumerRow = ownRow(new RowState(sources[0], step.layout, EmptyBindingSet.getInstance()));
 			LmdbNativeParallelPipelines.ParallelRowCursor cursor = new LmdbNativeParallelPipelines.ParallelRowCursor(
 					step, consumerRow, (PatternPlan) original.children[0], workerPlans, sources,
 					new LmdbNativeParallelPipelines.TaskReservation(0), false);
@@ -1106,7 +1141,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 				new MaskedFilter[] { new MaskedFilter(filter.recording, 0L) });
 		QueryBindingSet base = new QueryBindingSet();
 		base.addBinding("subject", SimpleValueFactory.getInstance().createIRI("urn:bound-subject"));
-		RowState consumerRow = new RowState(worker, step.layout, base);
+		RowState consumerRow = ownRow(new RowState(worker, step.layout, base));
 		LmdbNativeParallelPipelines.ParallelRowCursor cursor = new LmdbNativeParallelPipelines.ParallelRowCursor(step,
 				consumerRow, (PatternPlan) original.children[0], new MultiJoinPlan[] { workerPlan },
 				new NativeLmdbQuerySource.ParallelSource[] { worker, producer },
@@ -1133,7 +1168,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 		SetupParallelSource producer = new SetupParallelSource(null, null);
 		NativeRowsStep step = twoPatternStep(worker);
 		MultiJoinPlan plan = (MultiJoinPlan) step.arg;
-		RowState consumerRow = new RowState(worker, step.layout, EmptyBindingSet.getInstance());
+		RowState consumerRow = ownRow(new RowState(worker, step.layout, EmptyBindingSet.getInstance()));
 		LmdbNativeParallelPipelines.ParallelRowCursor cursor = new LmdbNativeParallelPipelines.ParallelRowCursor(step,
 				consumerRow, (PatternPlan) plan.children[0], new MultiJoinPlan[] { plan },
 				new NativeLmdbQuerySource.ParallelSource[] { worker, producer },
@@ -1478,6 +1513,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 		AggregateSpec[] aggregates = { AggregateSpec.slot("sum", 1, false, AggKind.SUM) };
 		NativeGroupIteration iteration = new NativeGroupIteration(source, plan, layout, new int[0], aggregates, false,
 				EmptyBindingSet.getInstance(), null, null, false, null);
+		executionOwners.add(iteration);
 		ArrayBlockingQueue<LmdbNativeExchange.Morsel> queue = new ArrayBlockingQueue<>(2);
 		queue.add(new LmdbNativeExchange.Morsel(new long[] { 1L, 7L, 8L, 0L }, 1));
 		queue.add(LmdbNativeExchange.Morsel.POISON);
@@ -1518,7 +1554,7 @@ class LmdbNativeParallelAggregationCleanupTest {
 		return row;
 	}
 
-	private static LmdbNativeParallelPipelines.ParallelRowCursor parallelRowCursor(
+	private LmdbNativeParallelPipelines.ParallelRowCursor parallelRowCursor(
 			ParallelPipelineSource worker, ParallelPipelineSource producer) {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("subject", 0), null);
 		layout.freeze(List.of("subject"));
@@ -1527,19 +1563,19 @@ class LmdbNativeParallelAggregationCleanupTest {
 		MultiJoinPlan plan = new MultiJoinPlan(new SlotPlan[] { root }, new MaskedFilter[0]);
 		NativeRowsStep step = new NativeRowsStep(worker, plan, layout, new int[] { 0 }, new String[] { "subject" },
 				false, new int[0], new boolean[0], 0L, -1L, false, null, null, null, Set.of(), null, null);
-		RowState consumerRow = new RowState(worker, layout, EmptyBindingSet.getInstance());
+		RowState consumerRow = ownRow(new RowState(worker, layout, EmptyBindingSet.getInstance()));
 		return new LmdbNativeParallelPipelines.ParallelRowCursor(step, consumerRow, root,
 				new MultiJoinPlan[] { plan },
 				new NativeLmdbQuerySource.ParallelSource[] { worker, producer },
 				new LmdbNativeParallelPipelines.TaskReservation(0));
 	}
 
-	private static LmdbNativeParallelPipelines.ParallelRowCursor parallelTwoPatternRowCursor(
+	private LmdbNativeParallelPipelines.ParallelRowCursor parallelTwoPatternRowCursor(
 			ParallelPipelineSource worker, ParallelPipelineSource producer) {
 		NativeRowsStep step = twoPatternStep(worker);
 		MultiJoinPlan plan = (MultiJoinPlan) step.arg;
 		PatternPlan root = (PatternPlan) plan.children[0];
-		RowState consumerRow = new RowState(worker, step.layout, EmptyBindingSet.getInstance());
+		RowState consumerRow = ownRow(new RowState(worker, step.layout, EmptyBindingSet.getInstance()));
 		return new LmdbNativeParallelPipelines.ParallelRowCursor(step, consumerRow, root,
 				new MultiJoinPlan[] { plan },
 				new NativeLmdbQuerySource.ParallelSource[] { worker, producer },
@@ -2398,6 +2434,26 @@ class LmdbNativeParallelAggregationCleanupTest {
 		private SetupParallelSource(RuntimeException idFailure, Throwable closeFailure) {
 			super(closeFailure);
 			this.idFailure = idFailure;
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return !((CloseTrackingSource) this).closed;
+		}
+
+		@Override
+		public Object valueLookupScope() {
+			return certifiesIdOrigins() ? this : null;
+		}
+
+		@Override
+		public Object resultValueScope() {
+			return certifiesIdOrigins() ? this : null;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			result.set(idOf(value), IdOrigin.STORED);
 		}
 
 		@Override

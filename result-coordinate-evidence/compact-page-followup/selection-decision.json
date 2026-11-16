@@ -1,0 +1,94 @@
+{
+  "format": 1,
+  "selectedProduction": "original",
+  "candidateSelected": false,
+  "decision": "Restore this phase production preimage; retain only representation-independent regression tests. Preserve the complete compact candidate as experimental evidence.",
+  "reason": "Failed two prospectively frozen latency gates despite passing both shared-tail memory gates.",
+  "frozenProtocolSha256": "8ef50b935b83cd22c525616438949f730042ed09c179eff332e39c5601f9b374",
+  "summaryFile": "comparison-v1/summary.json",
+  "summarySha256": "3ee9b3eb437b8dbb08b563c0fe2c47722120f117d271287f4ac7d11663f4e3ef",
+  "independentResultsFile": "independent-results/independent-results.json",
+  "independentResultsSha256": "c0a8a3ba9e6a9b529b4d627d0bb59029be01b80b25bdf929ca3f016e771eac22",
+  "acceptance": {
+    "evaluated": true,
+    "prospectiveScreen": {
+      "sharedTailLedgerMaximumRatioEveryPair": 0.25,
+      "sharedTailAllocationMaximumExclusiveRatioEveryPair": 1.0,
+      "medianLatencyMaximumRatioEachFixture": 1.0,
+      "individualLatencyMaximumRatioEitherFixture": 1.1,
+      "interpretation": "Prospective engineering acceptance screen for a memory optimization; not statistical noninferiority.",
+      "consistentLatencyWinRequiresAllSixRatiosBelowOne": true
+    },
+    "gates": [
+      {
+        "name": "shared-tail peak ledger <=25% in every pair",
+        "passed": true,
+        "ratios": [
+          0.04806314863154455,
+          0.04806314863154455,
+          0.04806314863154455,
+          0.04806314863154455,
+          0.04806314863154455,
+          0.04806314863154455
+        ]
+      },
+      {
+        "name": "shared-tail all-thread allocation lower in every pair",
+        "passed": true,
+        "ratios": [
+          0.9684187217929032,
+          0.9684182085391098,
+          0.9684439439873851,
+          0.9684740025591595,
+          0.9684456985794424,
+          0.9684457155391037
+        ]
+      },
+      {
+        "name": "fanout median paired total latency <=1",
+        "passed": true,
+        "medianRatio": 0.9978669262977821
+      },
+      {
+        "name": "fanout every total latency ratio <=1.10",
+        "passed": false,
+        "ratios": [
+          1.0580695129868658,
+          0.9398359500450061,
+          1.115602799518016,
+          1.0284235403960869,
+          0.9673103121994773,
+          0.8722558736396588
+        ]
+      },
+      {
+        "name": "shared-tail median paired total latency <=1",
+        "passed": false,
+        "medianRatio": 1.0125792492611074
+      },
+      {
+        "name": "shared-tail every total latency ratio <=1.10",
+        "passed": true,
+        "ratios": [
+          1.0008066302205079,
+          0.9309659490814716,
+          1.0547799548518981,
+          0.9993722645995359,
+          1.0342527497474763,
+          1.024351868301707
+        ]
+      }
+    ],
+    "passed": false,
+    "interpretation": "Engineering acceptance screen only; no statistical noninferiority claim. Root owns promotion or source-only restoration."
+  },
+  "preservedCandidate": "experimental-candidate/preservation.json",
+  "productionRestoredSha256": "cb0749719313b85c8cd134b6c03085f712915188f0e53333cbd46e19e2f0f96e",
+  "selectedCoreDeltaPaths": [
+    "core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializerTest.java"
+  ],
+  "selectedSourceValidation": "passed:106 tests,0 failures,0 errors,0 skips",
+  "recordedUtc": "2026-11-16T07:23:07.473215+00:00",
+  "selectedSourceVerificationFile": "selected-source-verification.json",
+  "selectedSourceVerificationSha256": "4ad42ad1d0ea395a7fb2a871b6212961a112f052e96897a42f4e9f5c3670611a"
+}

@@ -327,7 +327,7 @@ public class LmdbNativeKernelScanPartitionTest {
 				scanner.restrictRootScan(0, partition);
 			}
 			kernel.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], constants, new long[0],
-					new long[0][], null, scanner));
+					new long[0][], null, scanner).withStandaloneFusedRuntime());
 			int stride = ir.stride();
 			int maxRows = 256;
 			long[] buffer = new long[stride * maxRows];

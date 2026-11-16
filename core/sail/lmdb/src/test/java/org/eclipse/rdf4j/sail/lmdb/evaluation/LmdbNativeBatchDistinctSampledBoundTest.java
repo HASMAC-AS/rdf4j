@@ -14,10 +14,8 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTest.coveringProfile;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTest.row;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -185,8 +183,7 @@ class LmdbNativeBatchDistinctSampledBoundTest {
 		}
 
 		NativeRowsStep step() {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(BATCH);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(BATCH);
 			return new NativeRowsStep(evaluation, join, row.layout, new int[] { 1 }, new String[] { "city" }, true,
 					new int[0], new boolean[0], 0L, -1L, false, strategy, null, null, Set.of(), null, null);
 		}

@@ -67,7 +67,7 @@ public class LmdbNativeJoinOrderCrossProductTest {
 	}
 
 	private static RowState emptyRow() {
-		return emptyRow(null);
+		return emptyRow(new RecordingNativeSource());
 	}
 
 	private static RowState emptyRow(NativeLmdbQuerySource source) {
@@ -358,6 +358,15 @@ public class LmdbNativeJoinOrderCrossProductTest {
 	}
 
 	private static final class RecordingNativeSource implements NativeLmdbQuerySource {
+		private static final Map<Value, Long> DICTIONARY = Map.of(
+				EDGE_IRI, EDGE,
+				VF.createIRI("urn:test:id:11"), 11L,
+				VF.createIRI("urn:test:id:12"), 12L,
+				VF.createIRI("urn:test:id:13"), 13L,
+				VF.createIRI("urn:test:id:17"), 17L,
+				VF.createIRI("urn:test:id:100"), 100L,
+				VF.createIRI("urn:test:id:101"), 101L,
+				VF.createIRI("urn:test:id:" + KNOWS), KNOWS);
 		final List<PatternCall> calls = new ArrayList<>();
 		final double subjectFanOut;
 		int fanOutQueries;
@@ -372,16 +381,37 @@ public class LmdbNativeJoinOrderCrossProductTest {
 
 		@Override
 		public long idOf(Value value) {
-			return EDGE_IRI.equals(value) ? EDGE : UNKNOWN_ID;
+			return DICTIONARY.getOrDefault(value, UNKNOWN_ID);
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN_ID ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
 		}
 
 		@Override
 		public Value lazyValue(long id) {
-			return VF.createIRI("urn:test:id:" + id);
+			return id == EDGE ? EDGE_IRI : VF.createIRI("urn:test:id:" + id);
 		}
 
 		@Override
 		public Object idSpace() {
+			return this;
+		}
+
+		@Override
+		public Object valueLookupScope() {
+			return this;
+		}
+
+		@Override
+		public Object resultValueScope() {
 			return this;
 		}
 

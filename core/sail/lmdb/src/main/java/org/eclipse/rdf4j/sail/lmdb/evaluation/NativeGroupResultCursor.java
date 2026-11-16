@@ -71,7 +71,8 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 		this.fixedPlan = fixedPlan;
 		this.iteration = iteration;
 		this.context = context;
-		this.invocation = iteration.invocationCarrier();
+		this.invocation = context != null && !closeContext ? iteration.borrowedInvocationCarrier(context)
+				: iteration.invocationCarrier();
 		this.closeInvocation = fixedPlan == null || closeAggregateContext;
 		this.closeContext = closeContext;
 		this.closeAggregateContext = closeAggregateContext;
@@ -710,8 +711,10 @@ final class NativeGroupResultCursor implements NativeResultCursor {
 			quotes.attach(proposal, tag);
 			String actualTag = tag;
 			return proposal.map(rows -> {
+				// The full-value table's representation belongs to this selected physical candidate, not a
+				// second independent decision on the same logical group.
+				metrics.deferStrategy(iteration.explainTarget, actualTag);
 				metrics.commitToParent();
-				LmdbNativeExplain.recordExecutionPath(iteration.explainTarget, actualTag);
 				NativeResultCursor cursor = cursor(rows);
 				selected = true;
 				return cursor;

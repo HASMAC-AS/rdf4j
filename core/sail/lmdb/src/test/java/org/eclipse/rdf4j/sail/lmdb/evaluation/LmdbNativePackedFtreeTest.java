@@ -185,26 +185,35 @@ class LmdbNativePackedFtreeTest {
 		RowState row = row(graph.source(), "a", "b", "c", "d", "e");
 		MultiJoinPlan join = join(pattern(0, P1, 1), pattern(1, P2, 2), pattern(2, P3, 3), pattern(3, P4, 4));
 		LmdbNativePackedFtree.Plan plan = LmdbNativePackedFtree.Planner.plan(join, row, new int[] { 0, 1, 2, 3, 4 });
-		long expanded = 0L;
-		try (FactorizedRowCursor cursor = LmdbNativePackedFtree.PackedRowCursor.open(plan, row)) {
-			while (cursor.next())
-				expanded = Math.addExact(expanded, cursor.multiplicity());
-		}
-		assertEquals(15, expanded);
-		try (FactorizedRowCursor cursor = join.openProjected(row, new int[] { 2 })) {
-			assertNotNull(cursor);
-			assertTrue(cursor.next());
-			assertEquals(20L, row.slots[2]);
-			assertEquals(-1L, row.slots[0], "hidden group must not be advertised as a scalar binding");
-			assertEquals(-1L, row.slots[4]);
-			assertEquals(15L, cursor.multiplicity());
-			assertFalse(cursor.next());
-		}
-		try (FactorizedRowCursor cursor = join.openProjected(row, new int[0])) {
-			assertNotNull(cursor);
-			assertTrue(cursor.next());
-			assertEquals(15L, cursor.multiplicity(), "empty projection still carries the complete bag");
-			assertFalse(cursor.next());
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(row.source, null, row.base, 1L, null)) {
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			try {
+				long expanded = 0L;
+				try (FactorizedRowCursor cursor = LmdbNativePackedFtree.PackedRowCursor.open(plan, row)) {
+					while (cursor.next())
+						expanded = Math.addExact(expanded, cursor.multiplicity());
+				}
+				assertEquals(15, expanded);
+				try (FactorizedRowCursor cursor = join.openProjected(row, new int[] { 2 })) {
+					assertNotNull(cursor);
+					assertTrue(cursor.next());
+					assertEquals(20L, row.slots[2]);
+					assertEquals(-1L, row.slots[0], "hidden group must not be advertised as a scalar binding");
+					assertEquals(-1L, row.slots[4]);
+					assertEquals(15L, cursor.multiplicity());
+					assertFalse(cursor.next());
+				}
+				try (FactorizedRowCursor cursor = join.openProjected(row, new int[0])) {
+					assertNotNull(cursor);
+					assertTrue(cursor.next());
+					assertEquals(15L, cursor.multiplicity(), "empty projection still carries the complete bag");
+					assertFalse(cursor.next());
+				}
+			} finally {
+				row.closeDecodedInputs();
+			}
 		}
 	}
 
@@ -236,8 +245,7 @@ class LmdbNativePackedFtreeTest {
 		layout.patternPosition("b", ValuePosition.OBJECT);
 		layout.freeze(List.of("s", "a", "b"));
 		MultiJoinPlan join = join(pattern(0, P1, 1), pattern(0, P2, 2));
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativePackedFtree.ROWS_SERIAL);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativePackedFtree.ROWS_SERIAL);
 		NativeRowsStep step = new NativeRowsStep(source, join, layout, new int[] { 0, 1, 2 },
 				new String[] { "s", "a", "b" }, false, new int[0], new boolean[0], 0L, -1L, false, strategy,
 				null, null, Set.of(), null, null);
@@ -375,8 +383,7 @@ class LmdbNativePackedFtreeTest {
 		layout.patternPosition("b", ValuePosition.OBJECT);
 		layout.freeze(List.of("root", "a", "b"));
 		MultiJoinPlan join = join(pattern(0, P1, 1), pattern(0, P2, 2));
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativePackedFtree.ROWS_SERIAL);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativePackedFtree.ROWS_SERIAL);
 		NativeRowsStep step = new NativeRowsStep(source, join, layout, new int[] { 0, 1, 2 },
 				new String[] { "root", "a", "b" }, false, new int[0], new boolean[0], 0L, -1L, false,
 				strategy, null, null, Set.of(), null, null);
@@ -426,8 +433,7 @@ class LmdbNativePackedFtreeTest {
 		layout.patternPosition("b", ValuePosition.OBJECT);
 		layout.freeze(List.of("root", "a", "b"));
 		MultiJoinPlan join = join(pattern(0, P1, 1), pattern(0, P2, 2));
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativePackedFtree.ROWS_SERIAL);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativePackedFtree.ROWS_SERIAL);
 		NativeRowsStep step = new NativeRowsStep(source, join, layout, new int[] { 0, 1, 2 },
 				new String[] { "root", "a", "b" }, false, new int[0], new boolean[0], 0L, -1L, false,
 				strategy, null, null, Set.of(), null, null);
@@ -510,8 +516,7 @@ class LmdbNativePackedFtreeTest {
 		assertEquals(0, packedPlan.root.slot, "the root's cardinality is lower than both child domains");
 		int replayedChildSlot = packedPlan.nodes[packedPlan.nodes.length - 1].slot;
 		assertTrue(replayedChildSlot == 1 || replayedChildSlot == 2);
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativePackedFtree.ROWS_SERIAL);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativePackedFtree.ROWS_SERIAL);
 		NativeRowsStep step = new NativeRowsStep(source, join, layout, new int[] { 0, 1, 2 },
 				new String[] { "root", "a", "b" }, false, new int[0], new boolean[0], 0L, -1L, false, strategy,
 				null, null, Set.of(), null, null);
@@ -623,8 +628,7 @@ class LmdbNativePackedFtreeTest {
 		SlotPlan left = join(pattern(0, P1, 1), pattern(2, P2, 3));
 		SlotPlan right = join(pattern(0, P3, 1), pattern(2, P4, 3));
 		SlotPlan union = new UnionPlan(left, right);
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativePackedFtree.ROWS_SERIAL);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativePackedFtree.ROWS_SERIAL);
 		NativeRowsStep step = new NativeRowsStep(source, union, layout, new int[] { 0, 1, 2, 3 },
 				new String[] { "leftSubject", "leftObject", "rightSubject", "rightObject" }, false,
 				new int[0], new boolean[0], 0L, -1L, false, strategy, null, null, Set.of(), null, null);
@@ -687,8 +691,7 @@ class LmdbNativePackedFtreeTest {
 		layout.patternPosition("b", ValuePosition.OBJECT);
 		layout.freeze(List.of("s", "a", "b"));
 		MultiJoinPlan join = join(pattern(0, P1, 1), pattern(0, P2, 2));
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativePackedFtree.ROWS_SERIAL);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativePackedFtree.ROWS_SERIAL);
 		NativeRowsStep step = new NativeRowsStep(source, join, layout, new int[] { 0, 1, 2 },
 				new String[] { "s", "a", "b" }, false, new int[0], new boolean[0], 0L, -1L, false, strategy,
 				null, null, Set.of(), null, null);
@@ -1183,13 +1186,18 @@ class LmdbNativePackedFtreeTest {
 				.getDeclaredConstructor()
 				.newInstance();
 		PackedFtreeContext packed = generated.packedContext();
-		kernel.bind(new KernelContext(new NativeAdjacency[0], new long[0], new long[0], new long[0][])
-				.withPackedFtree(packed));
-		assertEquals(0, kernel.fill(new long[0], 0));
-		assertEquals(15L, packed.totalRows);
-		for (int i = 0; i < plan.nodes.length; i++) {
-			assertArrayEquals(expectedSubtree[i], Arrays.copyOf(packed.subtreeCounts[i], generated.data[i].size));
-			assertArrayEquals(expectedOutside[i], Arrays.copyOf(packed.outsideCounts[i], generated.data[i].size));
+		try {
+			kernel.bind(new KernelContext(new NativeAdjacency[0], new long[0], new long[0], new long[0][])
+					.withStandaloneFusedRuntime()
+					.withPackedFtree(packed));
+			assertEquals(0, kernel.fill(new long[0], 0));
+			assertEquals(15L, packed.totalRows);
+			for (int i = 0; i < plan.nodes.length; i++) {
+				assertArrayEquals(expectedSubtree[i], Arrays.copyOf(packed.subtreeCounts[i], generated.data[i].size));
+				assertArrayEquals(expectedOutside[i], Arrays.copyOf(packed.outsideCounts[i], generated.data[i].size));
+			}
+		} finally {
+			kernel.close();
 		}
 	}
 
@@ -1234,10 +1242,15 @@ class LmdbNativePackedFtreeTest {
 		}
 		generated.prepareCountArrays();
 		PackedFtreeContext packed = generated.packedContext();
-		kernel.bind(new KernelContext(new NativeAdjacency[0], new long[0], new long[0], new long[0][])
-				.withPackedFtree(packed));
-		assertEquals(0, kernel.fill(new long[0], 0));
-		assertEquals(1L, packed.totalRows);
+		try {
+			kernel.bind(new KernelContext(new NativeAdjacency[0], new long[0], new long[0], new long[0][])
+					.withStandaloneFusedRuntime()
+					.withPackedFtree(packed));
+			assertEquals(0, kernel.fill(new long[0], 0));
+			assertEquals(1L, packed.totalRows);
+		} finally {
+			kernel.close();
+		}
 	}
 
 	@Test

@@ -1,0 +1,20 @@
+{
+  "status": "prespecified-before-confirmation",
+  "cases": {
+    "small": "The screen includes interpreted/compiled transitions and one mismatched pair histogram; apparent latency crossover requires confirmation.",
+    "early-1024": "Both screen pairs have OFF I,I,I versus DENSE I,I,C measured tiers.",
+    "retained-small-all": "Matching pair histograms do not establish settled execution: one pair is interpreted and the other mixes I,I,C."
+  },
+  "modes": [
+    "off",
+    "dense"
+  ],
+  "forksPerArm": 4,
+  "warmupQueriesPerFork": 32,
+  "measuredQueriesPerFork": 7,
+  "heap": "1024m",
+  "collector": "G1",
+  "selection": "normal AUTO, no tier override",
+  "source": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+  "acceptance": "Require result checks, zero before/after ledger, matched metadata, actual route/tier histograms, and transport participation. Stable matching tiers permit a settled-route cost comparison. Keep the original screen as observed AUTO behavior; do not replace its raw records."
+}

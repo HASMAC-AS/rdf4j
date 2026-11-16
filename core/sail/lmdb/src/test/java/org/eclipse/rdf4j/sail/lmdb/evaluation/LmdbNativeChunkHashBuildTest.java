@@ -67,7 +67,7 @@ class LmdbNativeChunkHashBuildTest {
 	void externalRootBatchRefillCopiesOnlySeedAndCurrentRootSlots() throws Exception {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("root", 0, "downstream", 1, "seed", 2), null);
 		layout.freeze(List.of("root", "downstream", "seed"));
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance());
+		RowState row = new RowState(new CountingSource(0), layout, EmptyBindingSet.getInstance());
 		Arrays.fill(row.slots, UNKNOWN);
 		row.slots[2] = 7L;
 		row.recomputeBoundMask();
@@ -311,7 +311,8 @@ class LmdbNativeChunkHashBuildTest {
 		List<String> expected = expectedEnumRows(source, 100L, 200L);
 		List<String> actual = new ArrayList<>();
 
-		try (FactorizedRowCursor cursor = fixture.factorized.open(fixture.row)) {
+		try (LmdbFusedSipFactorizedRuntime.Session invocation = openFusedInvocation(fixture.row);
+				FactorizedRowCursor cursor = fixture.factorized.open(fixture.row)) {
 			for (int i = 0; i < expected.size(); i++) {
 				assertThat(cursor.next()).as("expected result row %s", i).isTrue();
 				actual.add(enumRow(fixture.row));
@@ -486,7 +487,8 @@ class LmdbNativeChunkHashBuildTest {
 		assertThat(factorized.branches)
 				.allSatisfy(branch -> assertThat(branch.role).isEqualTo(LmdbNativeFactorizedRows.ROLE_ENUM));
 
-		try (FactorizedRowCursor cursor = factorized.open(row)) {
+		try (LmdbFusedSipFactorizedRuntime.Session invocation = openFusedInvocation(row);
+				FactorizedRowCursor cursor = factorized.open(row)) {
 			NativeResultCoordinates coordinates = (NativeResultCoordinates) cursor;
 			assertThat(coordinates.takeChangedSlots()).isEqualTo(-1L);
 			assertThat(cursor.next()).isTrue();
@@ -2080,12 +2082,20 @@ class LmdbNativeChunkHashBuildTest {
 
 	private static List<String> readFactorizedRows(EnumMaterializationFixture fixture) throws Exception {
 		List<String> rows = new ArrayList<>();
-		try (FactorizedRowCursor cursor = fixture.factorized.open(fixture.row)) {
+		try (LmdbFusedSipFactorizedRuntime.Session invocation = openFusedInvocation(fixture.row);
+				FactorizedRowCursor cursor = fixture.factorized.open(fixture.row)) {
 			while (cursor.next()) {
 				rows.add(enumRow(fixture.row));
 			}
 		}
 		return rows;
+	}
+
+	private static LmdbFusedSipFactorizedRuntime.Session openFusedInvocation(RowState row) {
+		LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime
+				.create(System.identityHashCode(row), false);
+		row.fusedSession = invocation;
+		return invocation;
 	}
 
 	private static List<String> expectedEnumRows(EnumMaterializationSource source, long... subjects) {

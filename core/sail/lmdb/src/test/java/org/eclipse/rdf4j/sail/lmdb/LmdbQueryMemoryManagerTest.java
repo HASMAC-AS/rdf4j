@@ -26,6 +26,26 @@ import org.junit.jupiter.api.Test;
 class LmdbQueryMemoryManagerTest {
 
 	@Test
+	void peakObservationResetPreservesLiveReservationsAndAdmissionLimits() {
+		LmdbQueryMemoryManager manager = new LmdbQueryMemoryManager(512L, 384L);
+		try (LmdbQueryMemoryManager.QueryLedger query = manager.openQuery();
+				LmdbQueryMemoryManager.Reservation claim = query.reserve(320L, null)) {
+			claim.release(192L);
+			assertThat(manager.peakUsedBytes()).isEqualTo(320L);
+			manager.resetPeakUsedBytesForTesting();
+			assertThat(manager.usedBytes()).isEqualTo(128L);
+			assertThat(query.usedBytes()).isEqualTo(128L);
+			assertThat(manager.peakUsedBytes()).isEqualTo(128L);
+			assertThat(claim.tryGrow(256L)).isTrue();
+			assertThat(claim.tryGrow(1L)).isFalse();
+			assertThat(manager.peakUsedBytes()).isEqualTo(384L);
+		}
+		manager.resetPeakUsedBytesForTesting();
+		assertThat(manager.usedBytes()).isZero();
+		assertThat(manager.peakUsedBytes()).isZero();
+	}
+
+	@Test
 	void reservationsAreAccountedPerQueryAndReleasedOnCursorClose() {
 		LmdbQueryMemoryManager manager = new LmdbQueryMemoryManager(1_024L, 512L);
 

@@ -273,8 +273,7 @@ class LmdbNativeOrdinaryFusedDistinctQuoteTest {
 	@CsvSource({ "false,-1", "true,-1", "false,1", "true,1" })
 	void aDirectPatternBatchPricesTheDistinctTrackerItLeavesToTheRoot(boolean distinct, long limit) throws Exception {
 		try (Fixture fixture = new Fixture(Route.NESTED)) {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeAttemptMetrics.PATH_BATCH);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativeAttemptMetrics.PATH_BATCH);
 			NativeRowsStep step = spy(new NativeRowsStep(fixture.evaluation, fixture.join.children[0],
 					fixture.row.layout, new int[] { 1 }, new String[] { "a" }, distinct,
 					new int[0], new boolean[0], 0L, limit, false, strategy, null, null, Set.of(), null, null));
@@ -435,6 +434,7 @@ class LmdbNativeOrdinaryFusedDistinctQuoteTest {
 		final Route route;
 		final SyntheticValueSource evaluation;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan join;
 
 		Fixture(Route route) {
@@ -456,6 +456,7 @@ class LmdbNativeOrdinaryFusedDistinctQuoteTest {
 			set(NativeBatch.ENABLED_PROPERTY, "true");
 			evaluation = SyntheticValueSource.forEvaluation(source);
 			row = row(evaluation);
+			invocation = NativeTestStrategies.invocation(row);
 			join = new MultiJoinPlan(new SlotPlan[] { pattern(1L, 1, ROWS), pattern(2L, 2, ROWS) },
 					new MaskedFilter[0]);
 			assertThat(LmdbNativeWork.rowsOut(join, row, 0L)).isEqualTo(ROWS);
@@ -466,8 +467,7 @@ class LmdbNativeOrdinaryFusedDistinctQuoteTest {
 		}
 
 		NativeRowsStep step(boolean distinct, long offset, long limit) {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(route.tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(route.tag);
 			return new NativeRowsStep(evaluation, join, row.layout, new int[] { 1 },
 					new String[] { "a" }, distinct, new int[0], new boolean[0], offset, limit, false,
 					strategy, null, null, Set.of(), null, null);
@@ -485,6 +485,8 @@ class LmdbNativeOrdinaryFusedDistinctQuoteTest {
 
 		@Override
 		public void close() {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			evaluation.executionContext().close();
 			previous.forEach((key, value) -> {

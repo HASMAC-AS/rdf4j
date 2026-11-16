@@ -72,7 +72,7 @@ class NativeKernelExpansionCancellationTest {
 			int rows = -1;
 			try {
 				execution.bind(new KernelContext(new NativeAdjacency[0], new long[0], new long[0], null, hooks,
-						oneQuadScanner(closes)).withCancellation(owner(stopped, probe)));
+						oneQuadScanner(closes)).withStandaloneFusedRuntime().withCancellation(owner(stopped, probe)));
 				rows = execution.fill(result, 1);
 			} catch (Throwable problem) {
 				failure = problem;

@@ -170,41 +170,52 @@ class LmdbNativeFactorizedRangeParityTest {
 					.filter(pattern -> pattern.range != null)
 					.toList();
 			assertThat(ranges).hasSize(ranged ? 1 : 0);
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance());
+			SyntheticValueSource evaluation = SyntheticValueSource.forInvocation(step.source,
+					EmptyBindingSet.getInstance());
 			Map<Value, Integer> producerBag = new LinkedHashMap<>();
 			List<String> selected = observe();
 			boolean usedKeys;
-			try {
-				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
-				try (NativeUnorderedInput input = step.openUnorderedInput(row)) {
-					LmdbNativeFactorizedRows factorized = input.factorizedAttempt;
-					assertThat(factorized).as("the forced producer really opened factorized rows").isNotNull();
-					assertThat(factorized.flatCount).isEqualTo(1);
-					assertThat(factorized.derived.order[0]).isInstanceOf(PatternPlan.class);
-					if (ranged) {
-						assertThat(factorized.derived.order[0])
-								.as("the range-bearing pattern is the actual prefix root")
-								.isSameAs(ranges.getFirst());
+			try (NativeExecutionContext execution = evaluation.executionContext();
+					NativeInvocationCarrier invocation = NativeInvocationCarrier.open(evaluation, strategy,
+							EmptyBindingSet.getInstance(), System.identityHashCode(step), null)) {
+				RowState row = new RowState(evaluation, step.layout, EmptyBindingSet.getInstance());
+				row.fusedSession = invocation.session();
+				row.setExecutionContext(invocation.executionContext());
+				row.swapPreparationAttempt(invocation.preparationAttempt());
+				row.bindInvocationStrategy(strategy);
+				try {
+					assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout))
+							.isTrue();
+					try (NativeUnorderedInput input = step.openUnorderedInput(row)) {
+						LmdbNativeFactorizedRows factorized = input.factorizedAttempt;
+						assertThat(factorized).as("the forced producer really opened factorized rows").isNotNull();
+						assertThat(factorized.flatCount).isEqualTo(1);
+						assertThat(factorized.derived.order[0]).isInstanceOf(PatternPlan.class);
+						if (ranged) {
+							assertThat(factorized.derived.order[0])
+									.as("the range-bearing pattern is the actual prefix root")
+									.isSameAs(ranges.getFirst());
+						}
+						usedKeys = "keysOnlyRoot".equals(factorized.prefixStrategy);
+						if (!ranged) {
+							assertThat(factorized.keysOnlyRoot).isNotNull();
+							assertThat(usedKeys).as("the legal plain-key optimization remains active").isTrue();
+							assertThat(factorized.keysOnlyRoot.pattern).isSameAs(factorized.derived.order[0]);
+						} else {
+							assertThat(usedKeys).as("range-bearing roots must not bypass their accepted-edge test")
+									.isFalse();
+							assertThat(factorized.keysOnlyRoot).as("a guarded range uses the ordinary exact prefix")
+									.isNull();
+						}
+						while (input.advance()) {
+							producerBag.merge(row.source.lazyValue(row.slots[step.sourceSlots[0]]), 1, Integer::sum);
+						}
+						input.markExhausted();
 					}
-					usedKeys = "keysOnlyRoot".equals(factorized.prefixStrategy);
-					if (!ranged) {
-						assertThat(factorized.keysOnlyRoot).isNotNull();
-						assertThat(usedKeys).as("the legal plain-key optimization remains active").isTrue();
-						assertThat(factorized.keysOnlyRoot.pattern).isSameAs(factorized.derived.order[0]);
-					} else {
-						assertThat(usedKeys).as("range-bearing roots must not bypass their accepted-edge test")
-								.isFalse();
-						assertThat(factorized.keysOnlyRoot).as("a guarded range uses the ordinary exact prefix")
-								.isNull();
-					}
-					while (input.advance()) {
-						producerBag.merge(row.source.lazyValue(row.slots[step.sourceSlots[0]]), 1, Integer::sum);
-					}
-					input.markExhausted();
+				} finally {
+					LmdbNativeDispatchLoop.observeSelections(null);
+					row.closeDecodedInputs();
 				}
-			} finally {
-				LmdbNativeDispatchLoop.observeSelections(null);
-				row.memoryScope.close();
 			}
 			assertThat(selected).containsExactly(ROUTE);
 			selected = observe();

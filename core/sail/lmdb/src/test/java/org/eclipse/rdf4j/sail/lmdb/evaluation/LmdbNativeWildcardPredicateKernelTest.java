@@ -822,7 +822,8 @@ class LmdbNativeWildcardPredicateKernelTest {
 					new NativeLmdbQuerySource.NodePredicates[0], dynamics == null
 							? new NativeLmdbQuerySource.DynamicAdjacency[0]
 							: dynamics,
-					wildcards == null ? new NativeLmdbQuerySource.WildcardAdjacency[0] : wildcards);
+					wildcards == null ? new NativeLmdbQuerySource.WildcardAdjacency[0] : wildcards)
+							.withStandaloneFusedRuntime();
 			if (cancellation != null) {
 				context.withCancellation(cancellation);
 			}
@@ -849,7 +850,7 @@ class LmdbNativeWildcardPredicateKernelTest {
 					new long[0][], ID_HOOKS, null, new KernelPlan[0], 16,
 					new NativeLmdbQuerySource.NodePredicates[0],
 					new NativeLmdbQuerySource.DynamicAdjacency[0],
-					new NativeLmdbQuerySource.WildcardAdjacency[] { wildcard }));
+					new NativeLmdbQuerySource.WildcardAdjacency[] { wildcard }).withStandaloneFusedRuntime());
 			long[] first = new long[ir.stride()];
 			assertEquals(1, kernel.fill(first, 1));
 			assertEquals("[1, 10, 2, 0]", Arrays.toString(first));

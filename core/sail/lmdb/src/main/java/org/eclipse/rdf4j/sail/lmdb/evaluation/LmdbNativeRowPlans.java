@@ -1059,6 +1059,14 @@ final class ValuesTable {
 		return compiled ? this : null;
 	}
 
+	long recipeMetadataBytes() {
+		long bytes = 160L + 16L * slots.length;
+		for (int row = 0; row < slots.length; row++) {
+			bytes = Math.addExact(bytes, 48L + 4L * slots[row].length + 8L * values[row].length);
+		}
+		return bytes;
+	}
+
 	int rowSize(int row) {
 		return slots[row].length;
 	}
@@ -1124,6 +1132,10 @@ final class ValuesPlan implements SlotPlan {
 
 	int rowCount() {
 		return table.rowCount();
+	}
+
+	long recipeMetadataBytes() {
+		return table.recipeMetadataBytes();
 	}
 
 	int rowSize(int row) {

@@ -1,0 +1,61 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -31,6 +31,8 @@
+ 	final int[] aliases;
+ 	final int[] definiteSlots;
+ 	final byte[] cacheBanks;
++	// Experimental only: identical membership branch and array layout in every timed arm.
++	final boolean[] omittedFactorTargets;
+ 
+ 	NativeResultMaterializerPlan(NativeProjectedBindingSet.ProjectionLayout projection) {
+ 		this.projection = projection;
+@@ -63,6 +65,39 @@
+ 				}
+ 			}
+ 		}
++		omittedFactorTargets = experimentalOmissions(projection.names, aliases);
++	}
++
++	private static boolean[] experimentalOmissions(String[] names, int[] aliases) {
++		boolean[] omitted = new boolean[names.length];
++		String configured = System.getProperty("rdf4j.lmdb.resultCoordinates.experiment.omitFactorTargets", "");
++		if (configured.isEmpty()) {
++			return omitted;
++		}
++		for (String entry : configured.split(",", -1)) {
++			String name = entry.trim();
++			if (name.isEmpty()) {
++				throw new IllegalArgumentException("Empty experimental factor target");
++			}
++			int target = -1;
++			for (int candidate = 0; candidate < names.length; candidate++) {
++				if (names[candidate].equals(name)) {
++					target = candidate;
++					break;
++				}
++			}
++			if (target < 0) {
++				throw new IllegalArgumentException("Unknown experimental factor target: " + name);
++			}
++			if (aliases[target] != target) {
++				throw new IllegalArgumentException("Experimental factor target must be canonical: " + name);
++			}
++			if (omitted[target]) {
++				throw new IllegalArgumentException("Duplicate experimental factor target: " + name);
++			}
++			omitted[target] = true;
++		}
++		return omitted;
+ 	}
+ 
+ 	NativeResultMaterializer open(LmdbQueryMemoryManager.QueryLedger ledger) {
+@@ -520,6 +555,9 @@
+ 	}
+ 
+ 	private void rememberFactor(int target, long id, long rowSequence) {
++		if (plan.omittedFactorTargets[plan.aliases[target]]) {
++			return;
++		}
+ 		if (values[target] == null || factorAdmissionRefused && factorPages == null
+ 				|| !captureCoordinate(target, id, rowSequence)) {
+ 			return;

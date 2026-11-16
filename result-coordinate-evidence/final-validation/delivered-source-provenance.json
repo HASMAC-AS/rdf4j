@@ -1,0 +1,66 @@
+{
+  "artifactAuditCompletedAtUtc": "2026-11-15T15:20:35.171974+00:00",
+  "benchmarkManifest": "benchmark-source-hashes.json",
+  "benchmarkManifestSha256": "34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+  "benchmarkManifestsUnmodified": true,
+  "benchmarkSource": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+  "benchmarkSourceReconstruction": "Extract the delivered complete source, apply benchmark-to-delivery-tests.patch in reverse at the repository root, then verify every path in benchmark-source-hashes.json. This reconstructs source, not compiler output. Exact measured runtime artifacts remain in frozen-current and fresh-parent-e7c6ca/frozen; the separate runtime bundle has its own verification records under runtime-delivery/.",
+  "benchmarkToDeliveryPatch": "benchmark-to-delivery-tests.patch",
+  "changedSinceBenchmark": [
+    {
+      "benchmarkPreimage": "generic-root-diagnostic/LmdbNativeGenericRootHostTest.benchmark.java",
+      "benchmarkSha256": "dd41f01710531a315ff177d113bcffa8dad5a2352f05fb63cde864bc83c14df1",
+      "category": "test-only deterministic startup readiness before steady-state route assertions",
+      "deliveredSha256": "cdd98b4a23e22784c69e7fe05dcb036337496379750d057104fcf60980af2440",
+      "path": "core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeGenericRootHostTest.java"
+    },
+    {
+      "benchmarkPreimage": "node-predicate-fixture/LmdbNodePredicateRouteTest.benchmark.java",
+      "benchmarkSha256": "25596e6698892a38a40d5fc622e11bb20e37c43e6c0f031e3b3d1b3f84ba38b1",
+      "category": "test-only explicit invocation ownership fixture repair",
+      "deliveredSha256": "ddb9a24773615225b49f761a08cb8a6781b33b3a5d4702aebf833414e29d37e5",
+      "path": "core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNodePredicateRouteTest.java"
+    }
+  ],
+  "createdAtUtc": "2026-11-15T15:19:12.211809+00:00",
+  "exactBenchmarkFileSetPreserved": true,
+  "files": 2057,
+  "finalFixtureEvidence": [
+    "node-predicate-fixture/",
+    "generic-root-diagnostic/"
+  ],
+  "frozenRuntimeAndTimingMetadataFilesVerifiedUnmodified": 13,
+  "frozenRuntimeManifests": "../frozen-current/provenance.json and ../fresh-parent-e7c6ca/frozen/provenance.json remain unchanged; performance records retain the original benchmark identity.",
+  "hashMethod": "SHA-256 of UTF-8 JSON sorted-key, indent=2 file with final newline",
+  "manifest": "delivered-source-hashes.json",
+  "manifestSha256": "8c59454811c9927d79739c1780fa88238c4d613bc0c111cf8d4cde8feeb49059",
+  "originalBenchmarkDriversByteIdentical": true,
+  "patchForwardAndReverseByteEqualityVerified": true,
+  "patchSha256": "bba60c76acf6f87453ffe34befd26b87957b7f69fde899148f829e9b23d081ee",
+  "previousDeliveredSnapshot": {
+    "directory": "delivery-history/node-predicate-only-a7ab4a",
+    "gate": "normal-heap-final/results.json",
+    "preservationRecord": "delivery-history/node-predicate-only-a7ab4a/preservation.json",
+    "source": "15fe7d5011+worktree-sha256-a7ab4a02189e1b5d185550de45827de99136bf65880dfda749ae85bd3ea42fea"
+  },
+  "productionArtifactAudit": {
+    "evidence": "delivered-bytecode-comparison.json",
+    "mainArtifactByteIdentical": true,
+    "mainArtifactSha256": "f822ad378729e2ebdd5c7e91d2420e9dbf1eb92aab382e76c35fba00989eab8c",
+    "mainFilesCompared": 2780,
+    "status": "complete",
+    "testArtifactByteIdentical": false,
+    "testArtifactChanges": {
+      "added": 0,
+      "changed": 11,
+      "changedBytecode": 11,
+      "changedResources": 0,
+      "removed": 0
+    }
+  },
+  "productionSourceAndResourceFiles": 634,
+  "productionSourcesAndResourcesByteIdentical": true,
+  "scope": "All files beneath core/sail/lmdb/src plus freeze-experiment-classpath.py and run-coordinate-experiments.py; identical file set to the benchmark manifest. This identity is not a hash of every repository or evidence file.",
+  "source": "15fe7d5011+worktree-sha256-8c59454811c9927d79739c1780fa88238c4d613bc0c111cf8d4cde8feeb49059",
+  "testSourceAndResourceFiles": 1421
+}

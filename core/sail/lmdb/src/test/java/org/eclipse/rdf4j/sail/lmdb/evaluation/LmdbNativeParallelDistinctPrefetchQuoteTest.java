@@ -30,6 +30,7 @@ import java.util.Set;
 
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeCostVector.Feature;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedParallelQuoteOwnershipTest.SnapshotSource;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -146,8 +147,7 @@ class LmdbNativeParallelDistinctPrefetchQuoteTest {
 	private static Measured execute(long demand) throws Exception {
 		try (Fixture fixture = new Fixture()) {
 			String tag = LmdbNativeAttemptMetrics.PATH_IR_KERNEL_DISTINCT_PARALLEL_INTERPRETED;
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tag);
 			NativeRowsStep step = new NativeRowsStep(fixture.evaluation, fixture.join, fixture.row.layout,
 					new int[] { 0, 1, 2 }, new String[] { "s", "a", "b" }, true,
 					new int[0], new boolean[0], 0L, demand, false, strategy, null, null, Set.of(), null, null);
@@ -191,10 +191,16 @@ class LmdbNativeParallelDistinctPrefetchQuoteTest {
 		final SnapshotSource source = new SnapshotSource();
 		final SyntheticValueSource evaluation = SyntheticValueSource.forEvaluation(source);
 		final RowState row = row(evaluation);
+		final NativeInvocationCarrier invocation = NativeInvocationCarrier.open(evaluation, null, row.base,
+				System.identityHashCode(this), null);
 		final MultiJoinPlan join = new MultiJoinPlan(
 				new SlotPlan[] { edge(0, 1L, 1, 16D), edge(0, 2L, 2, 16D) }, new MaskedFilter[0]);
 
 		Fixture() {
+			evaluation.executionContext().initializeQueryBase(row.base);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			set("rdf4j.lmdb.parallel.enabled", "true");
 			set("rdf4j.lmdb.parallel.threads", "2");
 			set("rdf4j.lmdb.parallel.maxTasks", "2");
@@ -214,8 +220,9 @@ class LmdbNativeParallelDistinctPrefetchQuoteTest {
 
 		@Override
 		public void close() {
-			row.memoryScope.close();
-			evaluation.executionContext().close();
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(evaluation.executionContext(), failure);
 			previous.forEach((key, value) -> {
 				if (value == null) {
 					System.clearProperty(key);
@@ -223,6 +230,9 @@ class LmdbNativeParallelDistinctPrefetchQuoteTest {
 					System.setProperty(key, value);
 				}
 			});
+			if (failure != null) {
+				NativeContextClosingIteration.throwFailure(failure);
+			}
 		}
 	}
 }

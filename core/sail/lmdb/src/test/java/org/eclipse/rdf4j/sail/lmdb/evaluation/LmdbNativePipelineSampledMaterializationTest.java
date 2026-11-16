@@ -163,8 +163,7 @@ class LmdbNativePipelineSampledMaterializationTest {
 		}
 
 		NativeRowsStep step() {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(ROUTE);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(ROUTE);
 			return new NativeRowsStep(evaluation, join, row.layout, new int[] { 0, 1, 2 },
 					new String[] { "s", "a", "b" }, false, new int[0], new boolean[0], 0L, -1L, false,
 					strategy, null, null, Set.of(), null, null);

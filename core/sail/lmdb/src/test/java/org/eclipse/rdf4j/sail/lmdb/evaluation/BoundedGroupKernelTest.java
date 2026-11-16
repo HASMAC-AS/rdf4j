@@ -93,7 +93,9 @@ public class BoundedGroupKernelTest {
 
 	static KernelContext context(Plan p, KernelHooks hooks, LmdbQueryMemoryManager.QueryLedger ledger) {
 		return new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], new long[0], new long[0], new long[0][],
-				new int[0], new int[0], hooks, null, new KernelPlan[] { p }, 16, null, null).withMemoryLedger(ledger);
+				new int[0], new int[0], hooks, null, new KernelPlan[] { p }, 16, null, null)
+						.withStandaloneFusedRuntime()
+						.withMemoryLedger(ledger);
 	}
 
 	static JaninoKernel create(Kernel k, boolean compiled) throws Exception {

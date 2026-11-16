@@ -262,26 +262,39 @@ class LmdbNativeParallelTypeMatrixDrainTest {
 		BindingSet base = EmptyBindingSet.getInstance();
 		NativeGroupIteration emitter = new NativeGroupIteration(owner, SlotPlan.singleton(), layout, new int[0],
 				new AggregateSpec[] { AggregateSpec.star("count") }, false, base, null, null, false, null);
-		RowState row = new RowState(owner, layout, base);
+		NativeInvocationCarrier invocation = emitter.invocationCarrier();
+		RowState row = new RowState(owner, layout, base, null, null, invocation.executionContext().cancellation());
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
 		owner.rowCancellation = row.cancellation;
-		assertThat(emitter.initialize(row)).isTrue();
+		try (emitter) {
+			try {
+				assertThat(emitter.initialize(row)).isTrue();
 
-		TypeMatrixAggregate terminal = new TypeMatrixAggregate(0, false, 0, 1);
-		Kernel kernel = new Kernel(0, List.of(), terminal);
-		LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-				new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-				new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0], new int[0],
-				List.of())
-						.withTypeMatrixRequests(new LmdbNativeKernelBindings.TypeMatrixRequest[] {
-								new LmdbNativeKernelBindings.TypeMatrixRequest(1L, 2L, new MaskedFilter[0], -1) });
-		LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-		LmdbNativeKernelBindings.BoundDomains domains = new LmdbNativeKernelBindings.BoundDomains(new long[0][],
-				new int[0], new int[0]);
-		TypeMatrixContext matrix = new TypeMatrixContext(adjacency, null, null,
-				new NativeLmdbQuerySource.NativeAdjacency[0], new long[0]);
-		return LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-				new NativeLmdbQuerySource.NativeAdjacency[0], null, null,
-				new TypeMatrixContext[] { matrix }, domains, SlotPlan.singleton(), row, emitter, target, kernelFactory);
+				TypeMatrixAggregate terminal = new TypeMatrixAggregate(0, false, 0, 1);
+				Kernel kernel = new Kernel(0, List.of(), terminal);
+				LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+						new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+						new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+						new int[0],
+						List.of())
+								.withTypeMatrixRequests(new LmdbNativeKernelBindings.TypeMatrixRequest[] {
+										new LmdbNativeKernelBindings.TypeMatrixRequest(1L, 2L, new MaskedFilter[0],
+												-1) });
+				LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+				LmdbNativeKernelBindings.BoundDomains domains = new LmdbNativeKernelBindings.BoundDomains(new long[0][],
+						new int[0], new int[0]);
+				TypeMatrixContext matrix = new TypeMatrixContext(adjacency, null, null,
+						new NativeLmdbQuerySource.NativeAdjacency[0], new long[0]);
+				return LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+						new NativeLmdbQuerySource.NativeAdjacency[0], null, null,
+						new TypeMatrixContext[] { matrix }, domains, SlotPlan.singleton(), row, emitter, target,
+						kernelFactory);
+			} finally {
+				row.closeDecodedInputs();
+			}
+		}
 	}
 
 	private static void assertQueryOwnedCancellation(Throwable failure, NativeCancellationToken token) {

@@ -32,7 +32,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Value;
+import org.eclipse.rdf4j.model.impl.SimpleLiteral;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.query.Dataset;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.query.impl.ListBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
@@ -94,10 +97,26 @@ public class NativeValueResolutionContractTest {
 		}
 
 		@Override
+		public Object resultValueScope() {
+			return scope;
+		}
+
+		@Override
 		public long idOf(Value v) {
 			calls.incrementAndGet();
 			duringLookup.run();
 			return ids.getOrDefault(RdfTermKey.of(v), UNKNOWN);
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
 		}
 
 		@Override
@@ -146,6 +165,28 @@ public class NativeValueResolutionContractTest {
 
 	static SyntheticValueSource eval(Source s) {
 		return new SyntheticValueSource(s, PlanValueCatalog.EMPTY).forEvaluation();
+	}
+
+	@Test
+	public void uncertifiedDictionarySourceCannotAllocateRuntimeValues() {
+		Source source = new Source() {
+			@Override
+			public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+				result.set(idOf(value, positionMask), IdOrigin.UNCERTIFIED);
+			}
+
+			@Override
+			public boolean certifiesIdOrigins() {
+				return false;
+			}
+		};
+		SyntheticValueSource evaluation = eval(source);
+		try {
+			fails(IllegalStateException.class, () -> evaluation.internComputedValue(VF.createIRI("urn:uncertified")));
+			equal(0L, evaluation.executionContext().runtimeValueAccountedBytes());
+		} finally {
+			evaluation.executionContext().close();
+		}
 	}
 
 	@Test
@@ -316,8 +357,9 @@ public class NativeValueResolutionContractTest {
 		layout.positionMasks(Map.of("input", 4, "result", 9), Map.of("input", 4, "result", 9));
 		layout.freeze(List.of("input", "result"));
 		SyntheticValueSource evaluation = eval(source);
-		try {
+		try (LmdbFusedSipFactorizedRuntime.Session session = LmdbFusedSipFactorizedRuntime.create(93L, false)) {
 			RowState row = new RowState(evaluation, layout, EmptyBindingSet.getInstance());
+			row.fusedSession = session;
 			CopyBinding assignment = CopyBinding.semanticValue(1,
 					bindings -> NativeValueOutcome.bound(computed), true);
 			equal(123L, assignment.value(row));
@@ -831,6 +873,42 @@ public class NativeValueResolutionContractTest {
 	}
 
 	@Test
+	public void closingDuringQueryScalarCapturePreventsPublication() throws Exception {
+		NativeExecutionContext execution = new NativeExecutionContext();
+		CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+		Literal value = new SimpleLiteral("query-scalar-closing-during-capture") {
+			@Override
+			public String getLabel() {
+				entered.countDown();
+				try {
+					if (!release.await(10, TimeUnit.SECONDS)) {
+						throw new AssertionError("scalar capture was not released");
+					}
+				} catch (InterruptedException failure) {
+					Thread.currentThread().interrupt();
+					throw new AssertionError(failure);
+				}
+				return super.getLabel();
+			}
+		};
+		ExecutorService pool = Executors.newSingleThreadExecutor();
+		try {
+			Future<?> capture = pool.submit(() -> fails(IllegalStateException.class,
+					() -> execution.retainQueryScopedValue(value, 47L)));
+			check(entered.await(10, TimeUnit.SECONDS));
+			execution.close();
+			release.countDown();
+			capture.get(10, TimeUnit.SECONDS);
+			check(!execution.hasQueryScopedValues());
+			equal(0, execution.internedCount());
+		} finally {
+			release.countDown();
+			pool.shutdownNow();
+			execution.close();
+		}
+	}
+
+	@Test
 	public void closingDuringAMissPreventsPublication() throws Exception {
 		Source s = new Source();
 		SyntheticValueSource q = eval(s);
@@ -1041,6 +1119,101 @@ public class NativeValueResolutionContractTest {
 		check(q.lazyValue(31) == v);
 		equal(1, s.calls.get());
 		q.executionContext().close();
+	}
+
+	@Test
+	public void genericQueryScalarRegistrationUsesNoSourceAndBindsStoredIdentityWhenReached() {
+		Source source = new Source();
+		SyntheticValueSource evaluation = eval(source);
+		try {
+			source.duringLookup = () -> {
+				throw new AssertionError("query scalar registration must not use a child dictionary");
+			};
+			Literal now = evaluation.executionContext().queryNow(new QueryEvaluationContext.Minimal((Dataset) null));
+			equal(0L, source.calls.get());
+			source.duringLookup = () -> {
+			};
+			source.put(now, 37L);
+			equal(37L, evaluation.authority().idOfOrIntern(now));
+			check(evaluation.lazyValue(37L) == now);
+			equal(1L, source.calls.get());
+		} finally {
+			evaluation.executionContext().close();
+		}
+	}
+
+	@Test
+	public void queryScalarBindsAlreadyCachedStoredIdWithoutAnotherLookup() {
+		Source source = new Source();
+		SyntheticValueSource evaluation = eval(source);
+		try {
+			QueryEvaluationContext structural = new QueryEvaluationContext.Minimal((Dataset) null);
+			Literal now = structural.getNow();
+			source.put(now, 39L);
+			equal(39L, evaluation.idOf(now));
+			evaluation.executionContext().adoptPreparedScalarScope(structural);
+			check(evaluation.executionContext().queryNow(structural) == now);
+			equal(39L, evaluation.authority().idOfOrIntern(now));
+			check(evaluation.lazyValue(39L) == now);
+			equal(1L, source.calls.get());
+		} finally {
+			evaluation.executionContext().close();
+		}
+	}
+
+	@Test
+	public void uncachedQueryScalarPreservesStoredRepresentative() {
+		Source source = new Source() {
+			@Override
+			public Object valueLookupScope() {
+				return null;
+			}
+		};
+		SyntheticValueSource evaluation = eval(source);
+		try {
+			Literal now = evaluation.executionContext().queryNow(new QueryEvaluationContext.Minimal((Dataset) null));
+			source.put(now, 41L);
+			equal(41L, evaluation.authority().idOfOrIntern(now));
+			check(evaluation.lazyValue(41L) == now);
+			equal(1L, source.calls.get());
+		} finally {
+			evaluation.executionContext().close();
+		}
+	}
+
+	@Test
+	public void registeredQueryScalarDoesNotMaterializeUnrelatedColdDictionaryHit() {
+		ValueStoreRevision revision = new ValueStoreRevision() {
+			@Override
+			public long getRevisionId() {
+				return 1L;
+			}
+
+			@Override
+			public ValueStore getValueStore() {
+				return null;
+			}
+
+			@Override
+			public boolean resolveValue(long id, LmdbValue value) {
+				throw new AssertionError("scalar registration materialized an unrelated cold value");
+			}
+		};
+		LmdbIRI cold = new LmdbIRI(revision, 43L);
+		Source source = new Source() {
+			@Override
+			public long idOf(Value value) {
+				return value == cold ? 43L : super.idOf(value);
+			}
+		};
+		SyntheticValueSource evaluation = eval(source);
+		try {
+			evaluation.executionContext().queryNow(new QueryEvaluationContext.Minimal((Dataset) null));
+			equal(43L, evaluation.idOf(cold));
+			check(!cold.isInitialized());
+		} finally {
+			evaluation.executionContext().close();
+		}
 	}
 
 	@Test

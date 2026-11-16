@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeCostVector.Feature;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -482,6 +483,7 @@ class LmdbNativeDistinctWitnessQuoteTest {
 		final FanoutSource source;
 		final SyntheticValueSource evaluation;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan join;
 
 		Fixture(int fanout, boolean sharedValue, int spineCopies) {
@@ -501,6 +503,11 @@ class LmdbNativeDistinctWitnessQuoteTest {
 			source.scanOnly = scanOnly;
 			evaluation = SyntheticValueSource.forEvaluation(source);
 			row = row(evaluation);
+			evaluation.executionContext().initializeQueryBase(row.base);
+			invocation = NativeInvocationCarrier.open(evaluation, null, row.base, System.identityHashCode(this), null);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			join = new MultiJoinPlan(new SlotPlan[] { pattern(SPINE, 0, 1, ROOTS * spineCopies),
 					pattern(WITNESS, sharedValue ? 1 : 0, 2, (sharedValue ? 1 : ROOTS) * fanout) },
 					new MaskedFilter[0]);
@@ -522,8 +529,10 @@ class LmdbNativeDistinctWitnessQuoteTest {
 
 		@Override
 		public void close() {
-			row.memoryScope.close();
-			evaluation.executionContext().close();
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(row.memoryScope::close, failure);
+			failure = KernelRuntime.closeResource(evaluation.executionContext(), failure);
 			previous.forEach((key, value) -> {
 				if (value == null) {
 					System.clearProperty(key);
@@ -531,6 +540,7 @@ class LmdbNativeDistinctWitnessQuoteTest {
 					System.setProperty(key, value);
 				}
 			});
+			KernelRuntime.rethrowCloseFailure(failure);
 		}
 	}
 

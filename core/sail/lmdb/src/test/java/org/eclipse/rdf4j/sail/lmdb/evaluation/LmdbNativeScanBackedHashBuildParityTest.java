@@ -424,9 +424,8 @@ class LmdbNativeScanBackedHashBuildParityTest {
 				}
 			};
 			SlotPlan filtered = new FilterPlan(step.arg, filter, -1L);
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance(), optimized.expression(),
-					new NativeCancellationToken());
-			try {
+			try (KernelRow execution = kernelRow(step, optimized.expression(), new NativeCancellationToken())) {
+				RowState row = execution.row();
 				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
 				LmdbNativeKernelLowering.Lowered scan = LmdbNativeKernelLowering
 						.lowerRows(filtered, row, optimized.expression(), true);
@@ -440,8 +439,6 @@ class LmdbNativeScanBackedHashBuildParityTest {
 					assertThat(calls).hasValue(2);
 					assertThat(row.fusedSession).isSameAs(previous);
 				}
-			} finally {
-				row.memoryScope.close();
 			}
 		}
 	}
@@ -462,9 +459,8 @@ class LmdbNativeScanBackedHashBuildParityTest {
 		try (SailDataset dataset = NativeQuerySourceAccess.openExplicitDataset(store)) {
 			CountedSource counted = new CountedSource((NativeLmdbQuerySource) dataset);
 			NativeRowsStep step = compileCountedStep(optimized, route, dataset, counted);
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance(), optimized.expression(),
-					new NativeCancellationToken());
-			try {
+			try (KernelRow execution = kernelRow(step, optimized.expression(), new NativeCancellationToken())) {
+				RowState row = execution.row();
 				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
 				int slot = row.layout.slot("probe");
 				long bound = row.source.idOf(boundProbe);
@@ -479,8 +475,6 @@ class LmdbNativeScanBackedHashBuildParityTest {
 					assertThat(actual).as("incompatible buffered rows must be skipped").isEqualTo(expected);
 					assertThat(row.slots[slot]).as("the incoming binding survives exhaustion").isEqualTo(bound);
 				}
-			} finally {
-				row.memoryScope.close();
 			}
 		}
 	}
@@ -493,9 +487,8 @@ class LmdbNativeScanBackedHashBuildParityTest {
 		try (SailDataset dataset = NativeQuerySourceAccess.openExplicitDataset(store)) {
 			CountedSource counted = new CountedSource((NativeLmdbQuerySource) dataset);
 			NativeRowsStep step = compileCountedStep(optimized, route, dataset, counted);
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance(), optimized.expression(),
-					new NativeCancellationToken());
-			try {
+			try (KernelRow execution = kernelRow(step, optimized.expression(), new NativeCancellationToken())) {
+				RowState row = execution.row();
 				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
 				LmdbNativeKernelLowering.Lowered adjacency = LmdbNativeKernelLowering
 						.lowerRows(step.arg, row, optimized.expression(), false);
@@ -526,8 +519,6 @@ class LmdbNativeScanBackedHashBuildParityTest {
 					assertThat(thrown).as("a nested parallel refusal must not become a clean decline")
 							.isSameAs(refusal);
 				}
-			} finally {
-				row.memoryScope.close();
 			}
 			assertThat(counted.probeOpens).as("the missing adjacency caused a nested scan retry").isGreaterThan(1);
 			assertThat(counted.probeCloses).as("both attempt owners released their probes")
@@ -1081,9 +1072,8 @@ class LmdbNativeScanBackedHashBuildParityTest {
 			LmdbQueryMemoryManager previousManager = LmdbNativeHashJoin.queryMemoryOverride;
 			LmdbNativeHashJoin.queryMemoryOverride = memory;
 			NativeCancellationToken cancellation = new NativeCancellationToken();
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance(), optimized.expression(),
-					cancellation);
-			try {
+			try (KernelRow execution = kernelRow(step, optimized.expression(), cancellation)) {
+				RowState row = execution.row();
 				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
 				counted.trackPreferredBuild(step, row);
 				try (LmdbNativeStrategyProposal<RowCursor> proposal = LmdbNativeKernelExecution
@@ -1099,7 +1089,6 @@ class LmdbNativeScanBackedHashBuildParityTest {
 					assertThat(thrown).as("a real scan failure must not be converted into retry").isSameAs(scanFailure);
 				}
 			} finally {
-				row.memoryScope.close();
 				LmdbNativeHashJoin.queryMemoryOverride = previousManager;
 			}
 			assertThat(counted.buildScanOpens).isPositive();
@@ -1125,9 +1114,8 @@ class LmdbNativeScanBackedHashBuildParityTest {
 			LmdbNativeHashJoin.queryMemoryOverride = memory;
 			NativeCancellationToken cancellation = new NativeCancellationToken();
 			counted.cancelDuringBuild = cancellation;
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance(), optimized.expression(),
-					cancellation);
-			try {
+			try (KernelRow execution = kernelRow(step, optimized.expression(), cancellation)) {
+				RowState row = execution.row();
 				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
 				counted.trackPreferredBuild(step, row);
 				try (LmdbNativeStrategyProposal<RowCursor> proposal = LmdbNativeKernelExecution
@@ -1136,7 +1124,6 @@ class LmdbNativeScanBackedHashBuildParityTest {
 					assertThatThrownBy(proposal::open).isInstanceOf(KernelQueryCancelledException.class);
 				}
 			} finally {
-				row.memoryScope.close();
 				LmdbNativeHashJoin.queryMemoryOverride = previousManager;
 			}
 			assertThat(cancellation.explicitCancellationPublished())
@@ -1169,9 +1156,8 @@ class LmdbNativeScanBackedHashBuildParityTest {
 			LmdbQueryMemoryManager previousManager = LmdbNativeHashJoin.queryMemoryOverride;
 			LmdbNativeHashJoin.queryMemoryOverride = memory;
 			NativeCancellationToken cancellation = new NativeCancellationToken();
-			RowState row = new RowState(step.source, step.layout, EmptyBindingSet.getInstance(), optimized.expression(),
-					cancellation);
-			try {
+			try (KernelRow execution = kernelRow(step, optimized.expression(), cancellation)) {
+				RowState row = execution.row();
 				assertThat(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout)).isTrue();
 				counted.trackPreferredBuild(step, row);
 				try (LmdbNativeStrategyProposal<RowCursor> proposal = LmdbNativeKernelExecution
@@ -1188,7 +1174,6 @@ class LmdbNativeScanBackedHashBuildParityTest {
 							.isSameAs(closeFailure);
 				}
 			} finally {
-				row.memoryScope.close();
 				LmdbNativeHashJoin.queryMemoryOverride = previousManager;
 			}
 			assertThat(counted.buildScanOpens).isPositive();
@@ -1328,6 +1313,42 @@ class LmdbNativeScanBackedHashBuildParityTest {
 			}
 		}
 		return -1;
+	}
+
+	/** Direct kernel tests own the same per-evaluation source, scalar scope and fused invocation as a result step. */
+	private static KernelRow kernelRow(NativeRowsStep step, TupleExpr target, NativeCancellationToken cancellation) {
+		BindingSet base = EmptyBindingSet.getInstance();
+		SyntheticValueSource source = SyntheticValueSource.forInvocation(step.source,
+				step.strategy.getQueryExecutionPolicy(), base);
+		NativeInvocationCarrier invocation = null;
+		RowState row = null;
+		try {
+			invocation = NativeInvocationCarrier.open(source, step.strategy, base, 0L, target);
+			row = new RowState(source, step.layout, base, target, cancellation);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			row.bindInvocationStrategy(step.strategy);
+			return new KernelRow(row, invocation, source.executionContext());
+		} catch (RuntimeException | Error failure) {
+			if (row != null) {
+				KernelRuntime.closeResource(row::closeDecodedInputs, failure);
+			}
+			KernelRuntime.closeResource(invocation, failure);
+			KernelRuntime.closeResource(source.executionContext(), failure);
+			throw failure;
+		}
+	}
+
+	private record KernelRow(RowState row, NativeInvocationCarrier invocation, NativeExecutionContext execution)
+			implements AutoCloseable {
+		@Override
+		public void close() {
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(execution, failure);
+			KernelRuntime.rethrowCloseFailure(failure);
+		}
 	}
 
 	private static Map<List<Value>, Integer> evaluate(NativeRowsStep step, String route, String... bindingNames) {

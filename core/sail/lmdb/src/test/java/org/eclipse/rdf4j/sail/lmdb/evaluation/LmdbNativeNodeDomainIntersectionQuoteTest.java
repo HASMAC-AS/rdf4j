@@ -66,6 +66,10 @@ class LmdbNativeNodeDomainIntersectionQuoteTest {
 			NativeGroupIteration owner = new NativeGroupIteration(fixture.source, fixture.input, fixture.row.layout,
 					new int[0], aggregates, false, fixture.row.base, null, null, false, false,
 					null, null, 0L, fixture.intersection, null, null, null, route);
+			NativeInvocationCarrier invocation = owner.invocationCarrier();
+			fixture.row.fusedSession = invocation.session();
+			fixture.row.setExecutionContext(invocation.executionContext());
+			fixture.row.swapPreparationAttempt(invocation.preparationAttempt());
 			List<LmdbNativeDecisionRecord.Entry> selected = new ArrayList<>();
 			LmdbNativeDispatchLoop.observeSelections((target, label, id, record) -> {
 				assertThat(id).isEqualTo(route);
@@ -79,6 +83,7 @@ class LmdbNativeNodeDomainIntersectionQuoteTest {
 				assertThat(((Literal) results.getFirst().getValue("n")).longValue()).isEqualTo(3L);
 			} finally {
 				LmdbNativeDispatchLoop.observeSelections(null);
+				fixture.row.closeDecodedInputs();
 				owner.aggContext.close();
 			}
 			assertThat(selected).as("the quote belongs to the actual successfully selected serial tier").hasSize(1);

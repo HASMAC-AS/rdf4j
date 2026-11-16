@@ -208,11 +208,16 @@ class LmdbNodePredicateRouteTest {
 		PatternPlan pattern = new PatternPlan(Term.constant(CancellingRouteSource.ROOT), Term.slot(0), Term.slot(1),
 				Term.unbound(), ContextConstraint.UNRESTRICTED, false, 4D);
 
-		try (BatchCursor cursor = LmdbWildcardPredicateBatch.tryOpenPayload(pattern, row, 4)) {
-			assertThat(cursor).isNotNull();
-			NativeBatch target = new NativeBatch(2, 4);
-			assertThat(cursor.fill(target)).isZero();
-			assertThat(target.selectedCount).isZero();
+		try (LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(0L, false)) {
+			row.fusedSession = invocation;
+			try (BatchCursor cursor = LmdbWildcardPredicateBatch.tryOpenPayload(pattern, row, 4)) {
+				assertThat(cursor).isNotNull();
+				NativeBatch target = new NativeBatch(2, 4);
+				assertThat(cursor.fill(target)).isZero();
+				assertThat(target.selectedCount).isZero();
+			} finally {
+				row.closeDecodedInputs();
+			}
 		}
 	}
 
@@ -229,11 +234,16 @@ class LmdbNodePredicateRouteTest {
 		PatternPlan right = new PatternPlan(Term.slot(0), Term.slot(1), Term.slot(2), Term.unbound(),
 				ContextConstraint.UNRESTRICTED, false, 4D);
 
-		try (BatchCursor cursor = LmdbWildcardPredicateBatch.tryOpenOptional(left, right, row, 4)) {
-			assertThat(cursor).isNotNull();
-			NativeBatch target = new NativeBatch(3, 4);
-			assertThat(cursor.fill(target)).isZero();
-			assertThat(target.selectedCount).isZero();
+		try (LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(0L, false)) {
+			row.fusedSession = invocation;
+			try (BatchCursor cursor = LmdbWildcardPredicateBatch.tryOpenOptional(left, right, row, 4)) {
+				assertThat(cursor).isNotNull();
+				NativeBatch target = new NativeBatch(3, 4);
+				assertThat(cursor.fill(target)).isZero();
+				assertThat(target.selectedCount).isZero();
+			} finally {
+				row.closeDecodedInputs();
+			}
 		}
 	}
 

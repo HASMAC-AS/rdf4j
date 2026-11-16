@@ -394,53 +394,63 @@ public class LmdbNativeKernelScanQuadTest {
 				"the witness scan execution row must be seeded from its empty input binding set");
 		row.recomputeBoundMask();
 
-		try (NativeLmdbQuerySource.NativeProbe probe = source.newProbe()) {
-			NativeLmdbQuerySource.NativeAdjacency[] views = null;
-			try {
-				views = lowered.bindings.requestAdjacenciesPartial(probe);
-				LmdbNativeKernelBindings.VariablePredicateViews variableViews = LmdbNativeKernelBindings
-						.requestVariablePredicateViews(lowered.bindings, probe);
-				assertNotNull(variableViews);
-				LmdbNativeKernelBindings.BoundDomains domains = lowered.bindings.bindDomains(probe, row,
-						"fully-bound-witness-scan-test");
-				try (LmdbNativeKernelScanner scanner = new LmdbNativeKernelScanner(row, lowered.bindings.scanSites)) {
-					JaninoKernel execution = null;
-					LmdbNativeKernelHooks hooks = null;
-					try {
-						execution = compiled
-								? KernelCompilationTestSupport.compile(lowered.kernel)
-								: LmdbNativeKernelInterpreter.forRows(lowered.kernel);
-						assertNotNull(execution, "the lowered witness must be supported by " + tierName(compiled));
-						hooks = new LmdbNativeKernelHooks(row, lowered.bindings);
-						execution.bind(lowered.bindings.context(views, domains, row, hooks, scanner, variableViews));
-						int stride = lowered.kernel.stride();
-						long[] buffer = new long[stride];
-						List<String> rows = new ArrayList<>();
-						while (true) {
-							int filled = execution.fill(buffer, 1);
-							if (filled == 0) {
-								break;
-							}
-							String subject = source.lazyValue(buffer[0]).stringValue().substring(EX.length());
-							String object = source.lazyValue(buffer[1]).stringValue().substring(EX.length());
-							rows.add(subject + "|" + object);
-						}
-						rows.sort(String::compareTo);
-						return rows;
-					} finally {
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null, row.base,
+				System.identityHashCode(lowered.kernel), null)) {
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
+			try (NativeLmdbQuerySource.NativeProbe probe = source.newProbe()) {
+				NativeLmdbQuerySource.NativeAdjacency[] views = null;
+				try {
+					views = lowered.bindings.requestAdjacenciesPartial(probe);
+					LmdbNativeKernelBindings.VariablePredicateViews variableViews = LmdbNativeKernelBindings
+							.requestVariablePredicateViews(lowered.bindings, probe);
+					assertNotNull(variableViews);
+					LmdbNativeKernelBindings.BoundDomains domains = lowered.bindings.bindDomains(probe, row,
+							"fully-bound-witness-scan-test");
+					try (LmdbNativeKernelScanner scanner = new LmdbNativeKernelScanner(row,
+							lowered.bindings.scanSites)) {
+						JaninoKernel execution = null;
+						LmdbNativeKernelHooks hooks = null;
 						try {
-							if (execution != null) {
-								execution.close();
+							execution = compiled
+									? KernelCompilationTestSupport.compile(lowered.kernel)
+									: LmdbNativeKernelInterpreter.forRows(lowered.kernel);
+							assertNotNull(execution, "the lowered witness must be supported by " + tierName(compiled));
+							hooks = new LmdbNativeKernelHooks(row, lowered.bindings);
+							execution
+									.bind(lowered.bindings.context(views, domains, row, hooks, scanner, variableViews));
+							int stride = lowered.kernel.stride();
+							long[] buffer = new long[stride];
+							List<String> rows = new ArrayList<>();
+							while (true) {
+								int filled = execution.fill(buffer, 1);
+								if (filled == 0) {
+									break;
+								}
+								String subject = source.lazyValue(buffer[0]).stringValue().substring(EX.length());
+								String object = source.lazyValue(buffer[1]).stringValue().substring(EX.length());
+								rows.add(subject + "|" + object);
 							}
+							rows.sort(String::compareTo);
+							return rows;
 						} finally {
-							if (hooks != null) {
-								hooks.closeFilters();
+							try {
+								if (execution != null) {
+									execution.close();
+								}
+							} finally {
+								if (hooks != null) {
+									hooks.closeFilters();
+								}
 							}
 						}
 					}
+				} finally {
+					LmdbNativeKernelBindings.closeAdjacencies(views, null);
 				}
 			} finally {
-				LmdbNativeKernelBindings.closeAdjacencies(views, null);
+				row.closeDecodedInputs();
 			}
 		}
 	}
@@ -476,7 +486,7 @@ public class LmdbNativeKernelScanQuadTest {
 		LmdbNativeKernelScanner scanner = new LmdbNativeKernelScanner(source, scanOrders);
 		try {
 			kernel.bind(new KernelContext(new NativeLmdbQuerySource.NativeAdjacency[0], constants, new long[0],
-					new long[0][], null, scanner));
+					new long[0][], null, scanner).withStandaloneFusedRuntime());
 			int stride = ir.stride();
 			long[] buffer = new long[stride * maxRows];
 			List<long[]> rows = new ArrayList<>();

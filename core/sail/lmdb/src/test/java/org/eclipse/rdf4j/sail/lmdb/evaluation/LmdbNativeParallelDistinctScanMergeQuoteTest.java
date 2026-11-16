@@ -39,6 +39,7 @@ import org.eclipse.rdf4j.sail.lmdb.LmdbRootScanPartition;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.Varint;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeCostVector.Feature;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -211,8 +212,7 @@ class LmdbNativeParallelDistinctScanMergeQuoteTest {
 			double speedup = LmdbNativeStaticPrior.parallelSpeedup(
 					LmdbNativeStaticPrior.ParallelShape.rows(fixture.join, fixture.row, fixture.row.boundMask()), 2);
 			String tag = LmdbNativeAttemptMetrics.PATH_IR_KERNEL_DISTINCT_PARALLEL_INTERPRETED;
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tag);
 			NativeRowsStep step = new NativeRowsStep(fixture.evaluation, fixture.join, fixture.row.layout, retained,
 					names, true, new int[0], new boolean[0], 0L, -1L, false, strategy, null, null, Set.of(), null,
 					null);
@@ -267,6 +267,7 @@ class LmdbNativeParallelDistinctScanMergeQuoteTest {
 		final ScanSource source;
 		final SyntheticValueSource evaluation;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan join;
 
 		Fixture(int partitions) {
@@ -281,6 +282,11 @@ class LmdbNativeParallelDistinctScanMergeQuoteTest {
 			source = new ScanSource(partitions, certifiedCap, directScanRoot);
 			evaluation = SyntheticValueSource.forEvaluation(source);
 			row = row(evaluation);
+			evaluation.executionContext().initializeQueryBase(row.base);
+			invocation = NativeInvocationCarrier.open(evaluation, null, row.base, System.identityHashCode(this), null);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			join = new MultiJoinPlan(new SlotPlan[] {
 					edge(0, ScanSource.P1, directScanRoot ? 0 : 1, 32D),
 					edge(0, ScanSource.P2, directScanRoot ? 1 : 2, 32D)
@@ -307,8 +313,9 @@ class LmdbNativeParallelDistinctScanMergeQuoteTest {
 
 		@Override
 		public void close() {
-			row.memoryScope.close();
-			evaluation.executionContext().close();
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(invocation, failure);
+			failure = KernelRuntime.closeResource(evaluation.executionContext(), failure);
 			previous.forEach((key, value) -> {
 				if (value == null) {
 					System.clearProperty(key);
@@ -316,6 +323,9 @@ class LmdbNativeParallelDistinctScanMergeQuoteTest {
 					System.setProperty(key, value);
 				}
 			});
+			if (failure != null) {
+				NativeContextClosingIteration.throwFailure(failure);
+			}
 		}
 	}
 

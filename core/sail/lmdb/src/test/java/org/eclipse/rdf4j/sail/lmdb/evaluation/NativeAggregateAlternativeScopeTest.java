@@ -15,6 +15,7 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,11 +52,16 @@ class NativeAggregateAlternativeScopeTest {
 				when(dictionary.hasCanonicalIds()).thenReturn(true);
 				when(dictionary.idOf(any(Value.class))).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
 				when(dictionary.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+				when(dictionary.certifiesIdOrigins()).thenReturn(true);
+				doAnswer(invocation -> {
+					invocation.getArgument(2, NativeLmdbQuerySource.IdLookup.class)
+							.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
+					return null;
+				}).when(dictionary)
+						.idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 
 				outer = SyntheticValueSource.forEvaluation(dictionary);
 				outer.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
-				SyntheticValueSource compileScopedCarrier = new SyntheticValueSource(dictionary,
-						PlanValueCatalog.EMPTY);
 				Value sharedValue = SimpleValueFactory.getInstance()
 						.createIRI("urn:aggregate-scope:outer-runtime-value");
 				long sharedId = outer.internComputedValue(sharedValue);
@@ -87,12 +93,23 @@ class NativeAggregateAlternativeScopeTest {
 					@Override
 					public CloseableIteration<BindingSet> evaluate(BindingSet bindings,
 							NativeCancellationToken owner) {
+						throw new AssertionError("aggregate alternative must bind its explicit invocation row");
+					}
+
+					@Override
+					public Prepared prepare(RowState row) {
+						return NativeAggregateAlternative.unpriced(row, LmdbNativeWork.ZERO, null,
+								LmdbNativeCensusAggregate.PATH,
+								(bindings, owner) -> evaluateInSource(bindings, owner, row.source));
+					}
+
+					private CloseableIteration<BindingSet> evaluateInSource(BindingSet bindings,
+							NativeCancellationToken owner, NativeLmdbQuerySource source) {
 						if (owner != null) {
 							owner.check();
 						}
 						opens.incrementAndGet();
-						SyntheticValueSource invocation = SyntheticValueSource.forInvocation(compileScopedCarrier,
-								bindings);
+						SyntheticValueSource invocation = SyntheticValueSource.forInvocation(source, bindings);
 						capturedInvocation.set(invocation);
 						NativeExecutionContext invocationContext = invocation.executionContext();
 						capturedMemoryScope.set(invocationContext.memoryScope());

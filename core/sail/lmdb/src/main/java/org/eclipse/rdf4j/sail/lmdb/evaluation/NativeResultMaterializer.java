@@ -21,6 +21,7 @@ import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager;
 import org.eclipse.rdf4j.sail.lmdb.ValuePosition;
 import org.eclipse.rdf4j.sail.lmdb.ValueStore;
 import org.eclipse.rdf4j.sail.lmdb.ValueStoreRevision;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinates;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 
 /** Immutable, query-specific facts about the values emitted by a native projection. */
@@ -177,46 +178,56 @@ final class NativeResultMaterializer implements AutoCloseable {
 	}
 
 	/** Invalidated before the producer may advance or retire its current coordinates. */
-	synchronized void invalidateCoordinates() {
-		if (closed) {
+	void invalidateCoordinates() {
+		if (!KernelResultCoordinates.transportEnabled()) {
 			return;
 		}
-		coordinateSource = null;
-		coordinateRow = null;
-		advanceCoordinateSequence();
+		synchronized (this) {
+			if (closed) {
+				return;
+			}
+			coordinateSource = null;
+			coordinateRow = null;
+			advanceCoordinateSequence();
+		}
 	}
 
 	/** Publishes only a live producer position; no factor cache entry is admitted here. */
-	synchronized long position(NativeResultCoordinates producer, long[] row) {
-		if (closed || coordinateSequenceExhausted) {
+	long position(NativeResultCoordinates producer, long[] row) {
+		if (!KernelResultCoordinates.transportEnabled()) {
 			return 0L;
 		}
-		if (producer == null) {
-			clearFactorPages();
-			return 0L;
+		synchronized (this) {
+			if (closed || coordinateSequenceExhausted) {
+				return 0L;
+			}
+			if (producer == null) {
+				clearFactorPages();
+				return 0L;
+			}
+			producer.drainRetiredNamespaces(retireNamespace);
+			long activation = producer.coordinateActivation();
+			if (activation <= 0L) {
+				coordinateSource = null;
+				coordinateRow = null;
+				clearFactorPages();
+				return 0L;
+			}
+			if (factorOwner != null && (factorOwner.get() != producer || factorActivation != activation)) {
+				clearFactorPages();
+			}
+			long changedSlots = producer.takeChangedSlots();
+			if (!advanceCoordinateSequence()) {
+				return 0L;
+			}
+			if (factorMemo != null) {
+				factorMemo.changed(changedSlots, coordinateSequence);
+			}
+			coordinateSource = producer;
+			coordinateRow = row;
+			coordinateActivation = activation;
+			return coordinateSequence;
 		}
-		producer.drainRetiredNamespaces(retireNamespace);
-		long activation = producer.coordinateActivation();
-		if (activation <= 0L) {
-			coordinateSource = null;
-			coordinateRow = null;
-			clearFactorPages();
-			return 0L;
-		}
-		if (factorOwner != null && (factorOwner.get() != producer || factorActivation != activation)) {
-			clearFactorPages();
-		}
-		long changedSlots = producer.takeChangedSlots();
-		if (!advanceCoordinateSequence()) {
-			return 0L;
-		}
-		if (factorMemo != null) {
-			factorMemo.changed(changedSlots, coordinateSequence);
-		}
-		coordinateSource = producer;
-		coordinateRow = row;
-		coordinateActivation = activation;
-		return coordinateSequence;
 	}
 
 	private boolean advanceCoordinateSequence() {

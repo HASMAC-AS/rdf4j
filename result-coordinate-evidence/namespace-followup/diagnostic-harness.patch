@@ -1,0 +1,21 @@
+--- a/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/benchmark/OptionalFanoutExperiment.java
++++ b/core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/benchmark/OptionalFanoutExperiment.java
+@@ -113,6 +113,7 @@
+ 		memory.resetPeakUsedBytesForTesting();
+ 		Counters countersBefore = OptionalFanoutRouteAccess.counters();
+ 		var adjacencyBefore = NamespaceAdjacencyObservation.snapshot(nativeStore);
++		var namespacesBefore = org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinates.namespaceDiagnostics();
+ 		long toRetain = options.retain == 0 ? fixture.expectedRows : Math.min(options.retain, fixture.expectedRows);
+ 		List<BindingSet> retained = options.consumption == Consumption.RETAINED
+ 				? new ArrayList<>(Math.toIntExact(toRetain))
+@@ -249,6 +250,10 @@
+ 						route.count()))
+ 				.toList());
+ 		record.put("omittedSelections", capture.omittedSelections());
++		Map<String, Long> namespaces = new java.util.LinkedHashMap<>();
++		org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinates.namespaceDiagnostics()
++				.forEach((name, count) -> namespaces.put(name, count - namespacesBefore.get(name)));
++		record.put("namespaceDiagnostics", namespaces);
+ 		return record;
+ 	}
+ 

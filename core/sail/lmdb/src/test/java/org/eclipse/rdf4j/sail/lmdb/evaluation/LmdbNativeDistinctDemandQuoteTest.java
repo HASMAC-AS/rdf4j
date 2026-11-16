@@ -12,8 +12,6 @@
 package org.eclipse.rdf4j.sail.lmdb.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -288,8 +286,7 @@ class LmdbNativeDistinctDemandQuoteTest {
 			inputRows.incrementAndGet();
 			return true;
 		}, -1L);
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(LmdbNativeAttemptMetrics.PATH_NESTED_LOOP);
 		NativeRowsStep step = new NativeRowsStep(source, plan, layout, new int[] { 0 }, new String[] { "key" },
 				distinct, new int[0], new boolean[0], offset, limit, false, strategy, null, null, Set.of(), null, null);
 		LmdbNativeCostQuote fullQuote;

@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "baseSelection": "result-coordinate-evidence/delivery-selection.json",
+  "evidenceRoots": [
+    "result-coordinate-evidence"
+  ],
+  "derivedExpansionsToOmit": [
+    "result-coordinate-evidence/materializer-followup/frozen-off/events.jsonl",
+    "result-coordinate-evidence/materializer-followup/frozen-dense/events.jsonl",
+    "result-coordinate-evidence/materializer-followup/frozen-off/events-first-extraction-partial.jsonl",
+    "result-coordinate-evidence/materializer-followup/frozen-dense/events-first-extraction-partial.jsonl"
+  ],
+  "omissionReason": "Derived expanded JFR analysis data (including a historical failed partial extraction). Preserve all originals on disk and hash each present omission. Deliver sanitized JFR copies with original/sanitized hash linkage, retained-performance equivalence and disclosure receipt, plus exact ExtractJfr.java/analyze-profiles.py, configuration, compact analysis, samples, arrival traces and root audits. Original raw JFR files remain private.",
+  "topLevelSourceJson": [
+    "result-coordinate-evidence/materializer-followup/protocol.json",
+    "result-coordinate-evidence/materializer-followup/optimization-comparison-protocol.json",
+    "result-coordinate-evidence/materializer-followup/selection-policy.json"
+  ],
+  "sourceOutput": "result-coordinate-materializer-deliverables",
+  "deltaOutput": "result-coordinate-materializer-deltas",
+  "runtimeOutput": "../coordinate-materializer-runtime-delivery",
+  "archivePrefix": "rdf4j",
+  "executionPhase": "Only after timings, final reports, runtime receipts and all evidence writers have finished. The preparation helper writes a closed explicit evidence inventory; the unchanged old packager then verifies and archives it."
+}

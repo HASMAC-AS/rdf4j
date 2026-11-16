@@ -21,7 +21,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -48,6 +50,7 @@ import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.QueryExecutionPolicy;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Bound;
 import org.eclipse.rdf4j.query.algebra.Compare;
@@ -732,6 +735,16 @@ class LmdbNativeAggregateValuesCompilerTest {
 			}
 
 			@Override
+			public Object valueLookupScope() {
+				return sameDomain ? idSpace : null;
+			}
+
+			@Override
+			public Object resultValueScope() {
+				return sameDomain ? idSpace : null;
+			}
+
+			@Override
 			public RecordIterator statements(long subject, long predicate, long object, long context) {
 				return new SingleRecordIterator(null);
 			}
@@ -896,16 +909,19 @@ class LmdbNativeAggregateValuesCompilerTest {
 			SlotPlan compiled = planner.compileTuple(nested, false);
 			assertThat(compiled).isInstanceOf(NativeSubqueryPlan.class);
 			planner.layout.freeze(planner.slotNames);
-			firstRow = new RowState(first, planner.layout, empty);
+			firstRow = new RowState(first, planner.layout, empty, nested);
 			firstRow.fusedSession = firstSession;
+			firstRow.bindInvocationStrategy(strategy);
 			assertThat(NativeRowSeeder.seed(firstRow.slots, firstRow.layout, empty, first)).isTrue();
 			assertThat(firstRow.bind(outerSlot, firstId)).isTrue();
-			siblingRow = new RowState(sibling, planner.layout, empty);
+			siblingRow = new RowState(sibling, planner.layout, empty, nested);
 			siblingRow.fusedSession = worker;
+			siblingRow.bindInvocationStrategy(strategy);
 			assertThat(NativeRowSeeder.seed(siblingRow.slots, siblingRow.layout, empty, sibling)).isTrue();
 			assertThat(siblingRow.bind(outerSlot, siblingId)).isTrue();
 			NativeSubqueryPlan workerPlan = ((NativeSubqueryPlan) compiled).forWorker(
-					NativeScalarPlan.WorkerContext.forSource(sibling, context, worker, sibling.executionContext()));
+					NativeScalarPlan.WorkerContext.forSource(sibling, context, worker, sibling.executionContext(),
+							siblingRow.invocationStrategyOrNull(), nested));
 			try (RowCursor left = compiled.open(firstRow); RowCursor right = workerPlan.open(siblingRow)) {
 				assertThat(left.next()).isTrue();
 				assertThat(right.next()).isTrue();
@@ -1059,13 +1075,18 @@ class LmdbNativeAggregateValuesCompilerTest {
 
 	@Test
 	void semanticConditionCompilerPropagatesQueryFatalPreparationErrors() {
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.precompile(any(ValueExpr.class), any(QueryEvaluationContext.class)))
-				.thenThrow(new QueryEvaluationException("fatal-condition-preparation"));
-		assertThatThrownBy(() -> LmdbNativeAggregateFilterCompiler.compileSemanticValue(strategy,
-				new ValueConstant(VF.createLiteral(true)), new QueryEvaluationContext.Minimal((Dataset) null)))
-						.isInstanceOf(QueryEvaluationException.class)
-						.hasMessage("fatal-condition-preparation");
+		SyntheticValueSource source = SyntheticValueSource.forEvaluation(new SingleStatementSource());
+		try (NativeExecutionContext execution = source.executionContext();
+				LmdbFusedSipFactorizedRuntime.Session session = LmdbFusedSipFactorizedRuntime.create(121L, false)) {
+			LmdbNativeEvaluationStrategy strategy = spy(NativeTestStrategies.forced(null)
+					.forInvocation(source, session, execution));
+			doThrow(new QueryEvaluationException("fatal-condition-preparation")).when(strategy)
+					.precompile(any(ValueExpr.class), any(QueryEvaluationContext.class));
+			NativeBindingSetValueEvaluator evaluator = LmdbNativeAggregateFilterCompiler.compileSemanticValue(strategy,
+					new ValueConstant(VF.createLiteral(true)), new QueryEvaluationContext.Minimal((Dataset) null));
+			assertThatThrownBy(() -> evaluator.evaluateInInvocation(EmptyBindingSet.getInstance(), execution, source,
+					session)).isInstanceOf(QueryEvaluationException.class).hasMessage("fatal-condition-preparation");
+		}
 	}
 
 	@Test
@@ -1269,10 +1290,22 @@ class LmdbNativeAggregateValuesCompilerTest {
 			row.slots[planner.slot("subject")] = SUBJECT_ID;
 			row.slots[planner.slot("hidden")] = NAME_2_ID;
 			row.recomputeBoundMask();
-			assertThat(predicate.accept(row))
-					.as("hidden caller value cannot constrain the witness, negated=%s", negated)
-					.isEqualTo(!negated);
-			assertThat(row.view.getValue("hidden")).as("projection applies only to the condition").isEqualTo(NAME_2);
+			try (NativeInvocationCarrier invocation = NativeInvocationCarrier.openStandalone(planner.source, api,
+					122L, filter, QueryExecutionPolicy.DEFAULT, planner.context)) {
+				row.setExecutionContext(invocation.executionContext());
+				row.fusedSession = invocation.session();
+				row.bindInvocationStrategy(strategy);
+				row.swapPreparationAttempt(invocation.preparationAttempt());
+				try {
+					assertThat(predicate.accept(row))
+							.as("hidden caller value cannot constrain the witness, negated=%s", negated)
+							.isEqualTo(!negated);
+					assertThat(row.view.getValue("hidden")).as("projection applies only to the condition")
+							.isEqualTo(NAME_2);
+				} finally {
+					row.closeDecodedInputs();
+				}
+			}
 		}
 	}
 
@@ -1625,6 +1658,16 @@ class LmdbNativeAggregateValuesCompilerTest {
 
 		@Override
 		public Object idSpace() {
+			return this;
+		}
+
+		@Override
+		public Object valueLookupScope() {
+			return this;
+		}
+
+		@Override
+		public Object resultValueScope() {
 			return this;
 		}
 

@@ -95,17 +95,22 @@ final class NativeBindingSetExtensionStep implements NativeResultStep, LmdbNativ
 	}
 
 	@Override
-	public NativeCompiledResultRecipe compiledRecipe() {
+	public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+		capture.reserve(128L);
 		NativeCompiledResultRecipe child = arg instanceof NativeCompiledRecipeProvider provider
-				? provider.compiledRecipe()
+				? provider.compiledRecipe(capture)
 				: null;
 		if (child == null) {
 			return null;
 		}
+		capture.reserve(24L + 64L * assignments.length);
 		AssignmentRecipe[] recipes = new AssignmentRecipe[assignments.length];
 		for (int i = 0; i < assignments.length; i++) {
 			Assignment assignment = assignments[i];
-			NativeCompiledBindingSetValue expression = NativeCompiledBindingSetValue.capture(assignment.expression());
+			capture.string(assignment.name());
+			capture.retain(assignment.definition(), 32L);
+			NativeCompiledBindingSetValue expression = NativeCompiledBindingSetValue.capture(assignment.expression(),
+					capture);
 			if (expression == null) {
 				return null;
 			}
@@ -554,11 +559,21 @@ interface NativeCompiledBindingSetValue {
 	}
 
 	static NativeCompiledBindingSetValue capture(ValueExpr expression) {
+		try (NativeRecipeMemory.Capture capture = new NativeRecipeMemory.Capture(null)) {
+			return capture(expression, capture);
+		} catch (NativeRecipeMemory.AdmissionRefused refusal) {
+			return null;
+		}
+	}
+
+	static NativeCompiledBindingSetValue capture(ValueExpr expression, NativeRecipeMemory.Capture capture) {
 		if (expression == null) {
 			return null;
 		}
+		capture.reserve(160L);
 		if (expression.getClass() == Var.class) {
 			Var variable = (Var) expression;
+			capture.string(variable.getName());
 			Value value = variable.getValue();
 			PrimitiveSnapshot snapshot = primitiveConstant(value);
 			if (value != null && snapshot == null) {
@@ -574,8 +589,8 @@ interface NativeCompiledBindingSetValue {
 		}
 		if (expression.getClass() == MathExpr.class) {
 			MathExpr math = (MathExpr) expression;
-			NativeCompiledBindingSetValue left = capture(math.getLeftArg());
-			NativeCompiledBindingSetValue right = capture(math.getRightArg());
+			NativeCompiledBindingSetValue left = capture(math.getLeftArg(), capture);
+			NativeCompiledBindingSetValue right = capture(math.getRightArg(), capture);
 			return left == null || right == null || math.getOperator() == null ? null
 					: new Arithmetic(left, right, math.getOperator());
 		}
@@ -691,8 +706,24 @@ final class NativeBindingSetValueCompiler {
 		if (strategy.enclosingFusedInvocation() == null) {
 			return new EvaluationScopedValueEvaluator(descriptor, strategy, context);
 		}
-		QueryValueEvaluationStep valueStep = descriptor.precompileValue(strategy, context);
 		return new NativeBindingSetValueEvaluator() {
+			private volatile QueryValueEvaluationStep valueStep;
+
+			private QueryValueEvaluationStep valueStep() {
+				QueryValueEvaluationStep prepared = valueStep;
+				if (prepared == null) {
+					synchronized (this) {
+						prepared = valueStep;
+						if (prepared == null) {
+							// Generic preparation may inspect composite constants while reserving blank nodes.
+							// An unopened wrapper must keep those values cold; prepare only when a row reaches it.
+							valueStep = prepared = descriptor.precompileValue(strategy, context);
+						}
+					}
+				}
+				return prepared;
+			}
+
 			@Override
 			public NativeValueOutcome evaluate(BindingSet bindings) {
 				return evaluate(bindings, null);
@@ -709,7 +740,7 @@ final class NativeBindingSetValueCompiler {
 					NativeLmdbQuerySource source, LmdbFusedSipFactorizedRuntime.Session invocation) {
 				try (SyntheticValueSource.EvaluationScope ignored = SyntheticValueSource.attachEvaluation(source)) {
 					try {
-						return NativeValueOutcome.bound(valueStep.evaluate(bindings));
+						return NativeValueOutcome.bound(valueStep().evaluate(bindings));
 					} catch (ValueExprEvaluationException e) {
 						return NativeValueOutcome.ERROR;
 					}

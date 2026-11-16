@@ -690,24 +690,34 @@ public class LmdbNativeParallelPipelinesTest {
 		NativeRowsStep step = new NativeRowsStep(source, plan, layout, new int[] { 0, 1 },
 				new String[] { "subject", "value" }, false, new int[0], new boolean[0], 0L, -1L, false, null,
 				null, null, Set.of(), null, null);
-		RowState parallelRow = emptyNativeRow(source, layout);
-		long parallelBefore = LmdbNativeParallelPipelines.PARALLEL_ROW_RUNS.get();
-		long chunkBefore = LmdbNativeChunkPipeline.ENGAGED.get();
-		long factorizedBefore = LmdbNativeFactorizedRows.ENGAGED.get();
-		RowCursor parallelCursor = LmdbNativeParallelPipelines.tryOpen(step, parallelRow);
-		assertThat(parallelCursor)
-				.as("parallel rejection: %s", LmdbNativeParallelPipelines.LAST_REJECTION.get())
-				.isNotNull();
-		List<String> parallel = readNativeRows(parallelCursor, parallelRow);
+		try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null,
+				EmptyBindingSet.getInstance(), 0L, null)) {
+			RowState parallelRow = emptyNativeRow(source, layout);
+			parallelRow.fusedSession = invocation.session();
+			parallelRow.setExecutionContext(invocation.executionContext());
+			parallelRow.swapPreparationAttempt(invocation.preparationAttempt());
+			try {
+				long parallelBefore = LmdbNativeParallelPipelines.PARALLEL_ROW_RUNS.get();
+				long chunkBefore = LmdbNativeChunkPipeline.ENGAGED.get();
+				long factorizedBefore = LmdbNativeFactorizedRows.ENGAGED.get();
+				RowCursor parallelCursor = LmdbNativeParallelPipelines.tryOpen(step, parallelRow);
+				assertThat(parallelCursor)
+						.as("parallel rejection: %s", LmdbNativeParallelPipelines.LAST_REJECTION.get())
+						.isNotNull();
+				List<String> parallel = readNativeRows(parallelCursor, parallelRow);
 
-		assertThat(parallel).containsExactlyElementsOf(sequential).containsExactly("1|101", "2|202");
-		assertThat(LmdbNativeParallelPipelines.PARALLEL_ROW_RUNS.get()).isEqualTo(parallelBefore + 1L);
-		assertThat(LmdbNativeChunkPipeline.ENGAGED.get())
-				.as("workers must try the external-root chunk chain after row-factorization refusal")
-				.isGreaterThan(chunkBefore);
-		assertThat(LmdbNativeFactorizedRows.ENGAGED.get())
-				.as("the repeated-slot suffix must not be reported as a factorized-row attempt")
-				.isEqualTo(factorizedBefore);
+				assertThat(parallel).containsExactlyElementsOf(sequential).containsExactly("1|101", "2|202");
+				assertThat(LmdbNativeParallelPipelines.PARALLEL_ROW_RUNS.get()).isEqualTo(parallelBefore + 1L);
+				assertThat(LmdbNativeChunkPipeline.ENGAGED.get())
+						.as("workers must try the external-root chunk chain after row-factorization refusal")
+						.isGreaterThan(chunkBefore);
+				assertThat(LmdbNativeFactorizedRows.ENGAGED.get())
+						.as("the repeated-slot suffix must not be reported as a factorized-row attempt")
+						.isEqualTo(factorizedBefore);
+			} finally {
+				parallelRow.closeDecodedInputs();
+			}
+		}
 	}
 
 	@Test

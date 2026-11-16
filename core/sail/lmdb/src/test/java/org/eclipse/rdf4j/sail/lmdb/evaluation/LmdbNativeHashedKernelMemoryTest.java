@@ -94,7 +94,7 @@ class LmdbNativeHashedKernelMemoryTest {
 				KernelCancellation cancellation = KernelCancellation.forOrdinaryExecution(
 						probe ? hooks.signalled::get : null, probe ? null : hooks.signalled::get, null);
 				KernelContext context = new KernelContext(new NativeAdjacency[0], new long[0], new long[0],
-						new long[][] { values(COMPLETION_ROWS, 1) }, hooks, null, 8_192)
+						new long[][] { values(COMPLETION_ROWS, 1) }, hooks, null, 8_192).withStandaloneFusedRuntime()
 								.withMemoryLedger(ledger)
 								.withCancellation(cancellation);
 				try {
@@ -397,6 +397,7 @@ class LmdbNativeHashedKernelMemoryTest {
 		long[][] domains = groupWidth == 1 ? new long[][] { values(64, 1) }
 				: new long[][] { values(20, 1), values(20, 100) };
 		return new KernelContext(new NativeAdjacency[0], new long[0], new long[0], domains, new AggregateHooks())
+				.withStandaloneFusedRuntime()
 				.withMemoryLedger(ledger);
 	}
 

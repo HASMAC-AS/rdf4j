@@ -55,6 +55,34 @@ class LmdbNativeGroupCancellationTest {
 		AtomicInteger opens = new AtomicInteger(), reads = new AtomicInteger(), closes = new AtomicInteger();
 		AtomicInteger expressions = new AtomicInteger();
 		NativeLmdbQuerySource dictionary = new StubSource() {
+			private final Object resultScope = new Object();
+
+			@Override
+			public Object resultValueScope() {
+				return resultScope;
+			}
+
+			@Override
+			public long idOf(Value value) {
+				for (long id : new long[] { 1L, 2L, 3L, 7L, 9L }) {
+					if (lazyValue(id).equals(value)) {
+						return id;
+					}
+				}
+				return UNKNOWN_ID;
+			}
+
+			@Override
+			public boolean certifiesIdOrigins() {
+				return true;
+			}
+
+			@Override
+			public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+				long id = idOf(value, positionMask);
+				result.set(id, id == UNKNOWN_ID ? IdOrigin.ABSENT : IdOrigin.STORED);
+			}
+
 			@Override
 			public boolean hasStatementsInSource() {
 				return true;

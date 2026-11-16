@@ -115,7 +115,11 @@ class LmdbNativeResidualPatternExistsBoundTest {
 						.isEqualTo(hit.equals("NONE") ? 0L : 1L);
 				CountingSource source = new CountingSource(actual);
 				RowState row = row(source);
-				try {
+				try (NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null, row.base,
+						System.identityHashCode(source), null)) {
+					row.fusedSession = invocation.session();
+					row.setExecutionContext(invocation.executionContext());
+					row.swapPreparationAttempt(invocation.preparationAttempt());
 					PatternPlan pattern = new PatternPlan(Term.slot(0), Term.constant(predicate), Term.slot(1),
 							Term.unbound(), ContextConstraint.UNRESTRICTED, false, null, "", null,
 							actual.indexAccessProfile().entries(), actual.indexAccessProfile());

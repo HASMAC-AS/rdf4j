@@ -14,8 +14,6 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.IOException;
@@ -215,8 +213,7 @@ class LmdbNativeUnorderedWildcardRouteQuoteTest {
 				assertThat(fallback.kernel.requirements.wildcardViews).isZero();
 				assertThat(fallback.kernel.requirements.scans).isPositive();
 				assertThat(tracker.opened).as("lowering is storage-free").isZero();
-				LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-				when(strategy.forcedExecutionStrategyName()).thenReturn(WILDCARD + "," + ORDINARY);
+				LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(WILDCARD + "," + ORDINARY);
 				NativeRowsStep step = new NativeRowsStep(evaluation, join, layout, new int[] { 0, 1, 2, 3 },
 						new String[] { "s", "a", "p", "b" }, false, new int[0], new boolean[0], 0L, -1L,
 						false, strategy, null, null, Set.of(), null, null);

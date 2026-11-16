@@ -222,8 +222,7 @@ class LmdbNativeWitnessHiddenIslandQuoteTest {
 
 	private static List<String> directRows(SyntheticValueSource source, NativeSlotLayout layout, SlotPlan input,
 			String forcing, Boolean nativeWitness, List<String> expected) throws Exception {
-		LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-		when(strategy.forcedExecutionStrategyName()).thenReturn(forcing);
+		LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(forcing);
 		NativeRowsStep step = new NativeRowsStep(source, input, layout, new int[] { 0 },
 				new String[] { "row" }, false, new int[0], new boolean[0], 0L, -1L, false,
 				strategy, null, null, Set.of(), null, null);

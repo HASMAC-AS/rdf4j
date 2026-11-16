@@ -109,22 +109,46 @@ final class NativePhysicalInputRecipe {
 interface NativeCompiledInputRecipe {
 	SlotPlan bind(NativeResultBinding binding);
 
-	static NativeCompiledInputRecipe capture(SlotPlan input) {
-		if (input instanceof PatternPlan || input instanceof SingletonPlan || input instanceof EmptyPlan) {
+	static NativeCompiledInputRecipe capture(SlotPlan input, NativeRecipeMemory.Capture capture) {
+		capture.reserve(64L);
+		if (input instanceof PatternPlan pattern) {
+			capture.requireSourceAuthority();
+			capture.retain(pattern, 512L + 8L * pattern.contexts.size());
+			capture.string(pattern.indexName);
+			if (pattern.range != null) {
+				capture.retain(pattern.range, 256L + Math.max(0, pattern.range.lowKeyLength())
+						+ Math.max(0, pattern.range.highKeyExclusiveLength()));
+				capture.string(pattern.range.indexFieldSeq());
+			}
+			if (pattern.accessProfile != null) {
+				capture.retain(pattern.accessProfile, 1024L);
+			}
+			return new ImmutableLeaf(pattern);
+		}
+		if (input instanceof SingletonPlan || input instanceof EmptyPlan) {
 			return new ImmutableLeaf(input);
 		}
 		if (input instanceof ValuesPlan values) {
-			return values.compiledReceipt() == null ? null : new ImmutableLeaf(values);
+			if (values.compiledReceipt() == null) {
+				return null;
+			}
+			capture.retain(values.compiledReceipt(), values.recipeMetadataBytes());
+			capture.valuesDomains(values.idDomains());
+			return new ImmutableLeaf(values);
 		}
 		if (input instanceof ExtensionPlan extension) {
-			NativeCompiledInputRecipe child = capture(extension.arg);
+			NativeCompiledInputRecipe child = capture(extension.arg, capture);
 			if (child == null) {
 				return null;
 			}
+			capture.reserve(64L + 64L * extension.copies.length);
 			List<PrimitiveCopy> copies = new ArrayList<>(extension.copies.length);
 			for (CopyBinding copy : extension.copies) {
 				if (copy.computed != null || copy.computedValue != null || copy.semanticValue != null) {
 					return null;
+				}
+				if (copy.sourceSlot < 0 && copy.constant != NativeLmdbQuerySource.UNKNOWN_ID && copy.constant != 0L) {
+					capture.requireSourceAuthority();
 				}
 				copies.add(new PrimitiveCopy(copy.targetSlot, copy.sourceSlot, copy.constant, copy.termChecked,
 						copy.setNullOnError));
@@ -132,36 +156,40 @@ interface NativeCompiledInputRecipe {
 			return new PrimitiveExtension(child, List.copyOf(copies));
 		}
 		if (input instanceof JoinPlan join) {
-			return binary(BinaryKind.JOIN, join.left, join.right, 0L, null, null, false);
+			return binary(capture, BinaryKind.JOIN, join.left, join.right, 0L, null, null, false);
 		}
 		if (input instanceof LeftJoinPlan optional) {
-			return binary(BinaryKind.LEFT_JOIN, optional.left, optional.right, 0L, optional.lexicalSharedSlots,
+			return binary(capture, BinaryKind.LEFT_JOIN, optional.left, optional.right, 0L, optional.lexicalSharedSlots,
 					optional.lexicalProblemSlots, optional.lexicalHashKeys);
 		}
 		if (input instanceof UnionPlan union) {
-			return binary(BinaryKind.UNION, union.left, union.right, 0L, null, null, false);
+			return binary(capture, BinaryKind.UNION, union.left, union.right, 0L, null, null, false);
 		}
 		if (input instanceof OrderedUnionPlan union) {
-			return binary(BinaryKind.ORDERED_UNION, union.left, union.right, 0L, union.orderSlots, null, false);
+			return binary(capture, BinaryKind.ORDERED_UNION, union.left, union.right, 0L, union.orderSlots, null,
+					false);
 		}
 		if (input instanceof MinusPlan minus) {
-			return binary(BinaryKind.MINUS, minus.left, minus.right, minus.sharedMask, null, null, false);
+			return binary(capture, BinaryKind.MINUS, minus.left, minus.right, minus.sharedMask, null, null, false);
 		}
 		if (input instanceof LateralPlan lateral) {
-			return binary(BinaryKind.LATERAL, lateral.left, lateral.right, lateral.rightInputMask, null, null, false);
+			return binary(capture, BinaryKind.LATERAL, lateral.left, lateral.right, lateral.rightInputMask, null, null,
+					false);
 		}
 		if (input instanceof DrainGuardPlan guard) {
-			return binary(BinaryKind.DRAIN, guard.delegate, guard.drained, 0L, null, null,
+			return binary(capture, BinaryKind.DRAIN, guard.delegate, guard.drained, 0L, null, null,
 					guard.drainBeforeDelegate);
 		}
 		if (input instanceof RowDistinctPlan distinct) {
-			NativeCompiledInputRecipe child = capture(distinct.arg);
+			NativeCompiledInputRecipe child = capture(distinct.arg, capture);
+			capture.reserve(64L + 4L * distinct.slots.length);
 			return child == null ? null : new DistinctInput(child, distinct.slots);
 		}
 		if (input instanceof MultiJoinPlan multi && multi.filters.length == 0) {
+			capture.reserve(64L + 16L * multi.children.length);
 			List<NativeCompiledInputRecipe> children = new ArrayList<>(multi.children.length);
 			for (SlotPlan child : multi.children) {
-				NativeCompiledInputRecipe recipe = capture(child);
+				NativeCompiledInputRecipe recipe = capture(child, capture);
 				if (recipe == null) {
 					return null;
 				}
@@ -172,10 +200,13 @@ interface NativeCompiledInputRecipe {
 		return null;
 	}
 
-	private static NativeCompiledInputRecipe binary(BinaryKind kind, SlotPlan left, SlotPlan right, long mask,
+	private static NativeCompiledInputRecipe binary(NativeRecipeMemory.Capture capture, BinaryKind kind, SlotPlan left,
+			SlotPlan right, long mask,
 			int[] first, int[] second, boolean flag) {
-		NativeCompiledInputRecipe leftRecipe = capture(left);
-		NativeCompiledInputRecipe rightRecipe = capture(right);
+		capture.reserve(160L + 4L * (first == null ? 0 : first.length)
+				+ 4L * (second == null ? 0 : second.length));
+		NativeCompiledInputRecipe leftRecipe = capture(left, capture);
+		NativeCompiledInputRecipe rightRecipe = capture(right, capture);
 		return leftRecipe == null || rightRecipe == null ? null
 				: new BinaryInput(kind, leftRecipe, rightRecipe, mask, first, second, flag);
 	}

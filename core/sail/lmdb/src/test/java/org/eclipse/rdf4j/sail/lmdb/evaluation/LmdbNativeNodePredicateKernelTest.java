@@ -244,7 +244,7 @@ class LmdbNativeNodePredicateKernelTest {
 					nodePredicates == null ? new NativeLmdbQuerySource.NodePredicates[0]
 							: new NativeLmdbQuerySource.NodePredicates[] { nodePredicates },
 					dynamic == null ? new NativeLmdbQuerySource.DynamicAdjacency[0]
-							: new NativeLmdbQuerySource.DynamicAdjacency[] { dynamic }));
+							: new NativeLmdbQuerySource.DynamicAdjacency[] { dynamic }).withStandaloneFusedRuntime());
 			int stride = ir.stride();
 			long[] buffer = new long[stride * 64];
 			List<long[]> rows = new ArrayList<>();

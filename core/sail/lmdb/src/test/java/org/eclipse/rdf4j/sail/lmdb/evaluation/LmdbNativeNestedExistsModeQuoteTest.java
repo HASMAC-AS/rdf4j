@@ -70,6 +70,11 @@ class LmdbNativeNestedExistsModeQuoteTest {
 	void aNativeWitnessBodyCannotPriceItsInnerExistsAsADirectKernelProbe(boolean extension, int acceptedOrdinal) {
 		CountingSource source = new CountingSource(acceptedOrdinal);
 		RowState row = row(source);
+		NativeInvocationCarrier invocation = NativeInvocationCarrier.open(source, null, row.base,
+				System.identityHashCode(row), null);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
 		try {
 			PatternPlan edge = pattern(source, 0, EDGE, 1, INPUT_ROWS);
 			StatementPatternExistsFilter inner = new StatementPatternExistsFilter(source, Term.slot(1),
@@ -120,7 +125,11 @@ class LmdbNativeNestedExistsModeQuoteTest {
 					.as("a native outer hook cannot make its inner native membership work disappear")
 					.isGreaterThanOrEqualTo(source.flagTests);
 		} finally {
-			row.memoryScope.close();
+			try {
+				row.closeDecodedInputs();
+			} finally {
+				invocation.close();
+			}
 		}
 	}
 

@@ -99,8 +99,7 @@ class LmdbNativeOrdinaryParallelDistinctQuoteTest {
 			assertThat(LmdbNativeWork.rowsOut(fixture.join, fixture.row, fixture.row.boundMask())).isEqualTo(8D);
 			assertThat(fixture.source.probeOpens.get()).as("lowering remains storage-free").isZero();
 			String tag = tier.tag;
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tag);
 			NativeRowsStep step = spy(new NativeRowsStep(fixture.evaluation, fixture.join, fixture.row.layout,
 					new int[] { 0, 2 }, new String[] { "s", "a" }, distinct, new int[0], new boolean[0],
 					0L, -1L, false, strategy, null, null, Set.of(), null, null));
@@ -266,8 +265,7 @@ class LmdbNativeOrdinaryParallelDistinctQuoteTest {
 			double speedup = LmdbNativeStaticPrior.parallelSpeedup(
 					LmdbNativeStaticPrior.ParallelShape.rows(fixture.join, fixture.row, fixture.row.boundMask()), 2);
 			String tag = LmdbNativeAttemptMetrics.PATH_IR_KERNEL_DISTINCT_PARALLEL_INTERPRETED;
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tag);
 			NativeRowsStep step = new NativeRowsStep(fixture.evaluation, fixture.join, fixture.row.layout, retained,
 					names, true, new int[0], new boolean[0], 0L, -1L, false, strategy, null, null, Set.of(), null,
 					null);
@@ -314,6 +312,7 @@ class LmdbNativeOrdinaryParallelDistinctQuoteTest {
 		final PathSource source = new PathSource();
 		final SyntheticValueSource evaluation = SyntheticValueSource.forEvaluation(source);
 		final RowState row = row(evaluation);
+		final NativeInvocationCarrier invocation = NativeTestStrategies.invocation(row);
 		final MultiJoinPlan join = new MultiJoinPlan(
 				new SlotPlan[] { edge(0, 1L, 1, 8D), edge(1, 2L, 2, 8D) }, new MaskedFilter[0]);
 
@@ -344,6 +343,8 @@ class LmdbNativeOrdinaryParallelDistinctQuoteTest {
 
 		@Override
 		public void close() {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			evaluation.executionContext().close();
 			previous.forEach((key, value) -> {

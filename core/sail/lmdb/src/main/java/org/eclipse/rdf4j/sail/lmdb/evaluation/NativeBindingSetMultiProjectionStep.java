@@ -45,15 +45,19 @@ final class NativeBindingSetMultiProjectionStep
 	}
 
 	@Override
-	public NativeCompiledResultRecipe compiledRecipe() {
+	public NativeCompiledResultRecipe compiledRecipe(NativeRecipeMemory.Capture capture) {
+		capture.reserve(128L);
 		NativeCompiledResultRecipe child = arg instanceof NativeCompiledRecipeProvider provider
-				? provider.compiledRecipe()
+				? provider.compiledRecipe(capture)
 				: null;
 		if (child == null || child.requiresPhysicalResults()) {
 			return null;
 		}
+		capture.reserve(24L + 40L * projections.length);
 		ProjectionSpec[] snapshot = new ProjectionSpec[projections.length];
 		for (int i = 0; i < snapshot.length; i++) {
+			capture.strings(projections[i].sourceNames());
+			capture.strings(projections[i].targetNames());
 			snapshot[i] = new ProjectionSpec(projections[i].sourceNames().clone(),
 					projections[i].targetNames().clone());
 		}
@@ -221,6 +225,11 @@ final class NativeBindingSetMultiProjectionStep
 		@Override
 		public NativeExecutionContext executionContext() {
 			return executionContext;
+		}
+
+		@Override
+		public NativeInvocationCarrier invocationCarrier() {
+			return NativeExecutionContextCarrier.invocationOf(delegate);
 		}
 	}
 }

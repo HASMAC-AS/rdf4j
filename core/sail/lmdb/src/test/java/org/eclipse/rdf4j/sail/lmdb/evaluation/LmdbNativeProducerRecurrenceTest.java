@@ -82,7 +82,7 @@ class LmdbNativeProducerRecurrenceTest {
 				: LmdbNativeKernelInterpreter.forAggregate(ir);
 		try {
 			kernel.bind(new KernelContext(new NativeAdjacency[] { source }, new long[] { 0L }, new long[0],
-					new long[0][], hooks));
+					new long[0][], hooks).withStandaloneFusedRuntime());
 			long[] buffer = new long[1];
 			assertEquals(1, kernel.fill(buffer, 1));
 			long distinct = buffer[0];

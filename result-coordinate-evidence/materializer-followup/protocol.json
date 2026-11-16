@@ -1,0 +1,60 @@
+{
+  "name": "Frozen materializer diagnostic JFR pair",
+  "routine": "C: no production changes",
+  "createdEpochNs": 1794760288810966343,
+  "source": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+  "modeOrder": [
+    "off",
+    "dense"
+  ],
+  "warmup": 5,
+  "iterations": 5,
+  "fixture": "unchanged default full-consumption fixture",
+  "strategy": "normal AUTO",
+  "heap": "1024m",
+  "gc": "G1",
+  "recordingWindow": "entire JVM from startup",
+  "analysisWindow": "measured queries only, bounded by sample JSONL FileWrite events where available; external file-arrival trace retained as a second, conservative observation",
+  "eventOverrides": {
+    "jdk.ExecutionSample": {
+      "enabled": "true",
+      "period": "5 ms"
+    },
+    "jdk.NativeMethodSample": {
+      "enabled": "true",
+      "period": "10 ms"
+    },
+    "jdk.CPUTimeSample": {
+      "enabled": "true",
+      "throttle": "10 ms",
+      "stackTrace": "true"
+    },
+    "jdk.CPUTimeSamplesLost": {
+      "enabled": "true"
+    },
+    "jdk.ObjectAllocationSample": {
+      "enabled": "true",
+      "throttle": "300/s",
+      "stackTrace": "true"
+    },
+    "jdk.Compilation": {
+      "enabled": "true",
+      "threshold": "0 ms"
+    },
+    "jdk.FileWrite": {
+      "enabled": "true",
+      "threshold": "0 ms",
+      "throttle": "off",
+      "stackTrace": "true"
+    }
+  },
+  "stackDepth": 256,
+  "baseJfcSha256": "3e2c847608b1e7d182337f56bbf75b6a026ba4e9634b398bd92aec865e9ea8a7",
+  "profileJfcSha256": "605cf4e93259681bc6f13075d433bd3aba4588aa9ce1ec1a8fe309a3aef3e6a4",
+  "runnerSha256": "aa55c1c6ae2ea13a639eb5cb39d421be4c43f42339595f0fb16f892a3a258cae",
+  "performanceClaim": "None. Sampling and extra JFR events perturb execution; this diagnostic is not an additional timing protocol.",
+  "failurePolicy": "Preserve and stop on invalid result, ledger leak, nonzero root host, incomplete records or changed frozen classpath.",
+  "phaseCaveat": "JSONL emission follows per-query validation and counter snapshots; write boundaries bracket execution but do not mark exact preparation/consumption transitions.",
+  "rootAudit": "Existing immutable launcher; absolute HOSTED_GENERIC read only after original main. Zero substantive; UNHOSTED_HARD_DECLINES is inert.",
+  "noOtherJvmLoads": "Parent reserved quiet serial period; no build/test/other JVM while each profile runs."
+}

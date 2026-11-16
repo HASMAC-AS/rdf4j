@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +44,18 @@ class NativeSubqueryWorkerScopeTest {
 	void workersPrepareIndependentOriginalDomainsAndGraphFramesBeforeLazyExistsReplay() throws Exception {
 		NativeLmdbQuerySource store = mock(NativeLmdbQuerySource.class);
 		when(store.idOf(any(Value.class), anyInt())).thenReturn(NativeLmdbQuerySource.UNKNOWN_ID);
+		when(store.certifiesIdOrigins()).thenReturn(true);
+		doAnswer(invocation -> {
+			NativeLmdbQuerySource.IdLookup lookup = invocation.getArgument(2);
+			lookup.set(NativeLmdbQuerySource.UNKNOWN_ID, NativeLmdbQuerySource.IdOrigin.ABSENT);
+			return null;
+		}).when(store).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
+		Object generation = new Object();
+		when(store.idSpace()).thenReturn(generation);
+		when(store.valueLookupScope()).thenReturn(generation);
+		when(store.resultValueScope()).thenReturn(generation);
+		when(store.detachedDomainStamp()).thenReturn(new NativeLmdbQuerySource.DomainStamp(generation, generation,
+				generation, generation, NativeLmdbQuerySource.DomainStamp.EXPLICIT, null, null));
 		SyntheticValueSource root = SyntheticValueSource.forEvaluation(store);
 		root.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
 		AtomicInteger bindings = new AtomicInteger(), fallbackCalls = new AtomicInteger();
@@ -147,9 +160,12 @@ class NativeSubqueryWorkerScopeTest {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("graph", 0), null);
 		layout.freeze(List.of("graph"));
 		Value graph = SimpleValueFactory.getInstance().createIRI("urn:worker-graph:" + name);
-		try {
-			NativeSubqueryPlan bound = original.forWorker(new NativeScalarPlan.WorkerContext(source, null, null));
+		try (LmdbFusedSipFactorizedRuntime.Session session = LmdbFusedSipFactorizedRuntime.create(name.hashCode(),
+				false)) {
+			NativeSubqueryPlan bound = original.forWorker(NativeScalarPlan.WorkerContext.forSource(source, null,
+					session, source.executionContext()));
 			RowState row = new RowState(source, layout, base);
+			row.fusedSession = session;
 			assertThat(NativeRowSeeder.seed(row.slots, layout, base, source)).isTrue();
 			row.recomputeBoundMask();
 			long graphId = source.internComputedValue(graph);

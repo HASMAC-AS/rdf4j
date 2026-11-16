@@ -206,8 +206,7 @@ class LmdbNativeSampledCardinalityQuoteBoundTest {
 			assertThat(rootEstimate).isLessThanOrEqualTo(SOURCE_ENTRIES);
 			assertThat(fixture.row.keyAuthority()).isNotNull();
 
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(route.tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(route.tag);
 			NativeRowsStep step = spy(new NativeRowsStep(fixture.evaluation, input, fixture.row.layout,
 					new int[] { 0, 1 }, new String[] { "s", "a" }, route.distinct, new int[0], new boolean[0], 0L, -1L,
 					false, strategy, null, null, Set.of(), null, null));

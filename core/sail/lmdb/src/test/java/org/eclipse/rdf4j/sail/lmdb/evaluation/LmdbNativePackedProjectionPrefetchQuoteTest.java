@@ -314,8 +314,7 @@ class LmdbNativePackedProjectionPrefetchQuoteTest {
 	private static Measured execute(int pageRows, int morselRows, long demand) throws Exception {
 		try (Fixture fixture = new Fixture(pageRows, morselRows)) {
 			String tag = LmdbNativePackedFtree.ROWS_PARALLEL;
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(tag);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(tag);
 			NativeRowsStep step = new NativeRowsStep(fixture.source, fixture.join, fixture.row.layout,
 					new int[] { 0, 1 }, new String[] { "s", "a" }, false,
 					new int[0], new boolean[0], 0L, demand, false, strategy, null, null, Set.of(), null, null);
@@ -374,6 +373,7 @@ class LmdbNativePackedProjectionPrefetchQuoteTest {
 		final AtomicLong keyDirectoryReads = new AtomicLong();
 		final ParallelSource source;
 		final RowState row;
+		final NativeInvocationCarrier invocation;
 		final MultiJoinPlan join = new MultiJoinPlan(
 				new SlotPlan[] { edge(0, 1L, 1, 16D), edge(0, 2L, 2, 16D) }, new MaskedFilter[0]);
 
@@ -396,6 +396,7 @@ class LmdbNativePackedProjectionPrefetchQuoteTest {
 			doReturn(OptionalLong.of(16L)).when(source).exactPredicateCount(1L);
 			doReturn(OptionalLong.of(16L)).when(source).exactPredicateCount(2L);
 			row = row(source);
+			invocation = NativeTestStrategies.invocation(row);
 		}
 
 		private void set(String key, String value) {
@@ -407,6 +408,8 @@ class LmdbNativePackedProjectionPrefetchQuoteTest {
 
 		@Override
 		public void close() {
+			row.closeDecodedInputs();
+			invocation.close();
 			row.memoryScope.close();
 			previous.forEach((key, value) -> {
 				if (value == null) {

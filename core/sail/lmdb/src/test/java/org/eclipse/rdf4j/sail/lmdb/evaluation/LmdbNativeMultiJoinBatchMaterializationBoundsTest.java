@@ -296,8 +296,7 @@ class LmdbNativeMultiJoinBatchMaterializationBoundsTest {
 		}
 
 		NativeRowsStep step(long offset, long limit) {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(ROUTE);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(ROUTE);
 			return new NativeRowsStep(evaluation, join, row.layout, new int[] { 0, 2 }, new String[] { "a", "c" },
 					false, new int[0], new boolean[0], offset, limit, false, strategy, null, null, Set.of(), null,
 					null);

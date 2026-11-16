@@ -14,7 +14,6 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTest.coveringProfile;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -146,7 +145,7 @@ class LmdbNativeFiniteHighRankingTest {
 			assertThat(LmdbNativeWork.rowsOut(join, fixture.row, 0L)).isEqualTo(ROWS);
 			assertThat(LmdbNativeCostVectors.rowBounds(join, fixture.row, 0L).high())
 					.isEqualTo((double) entries * entries * entries);
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(null);
 			assertThat(strategy.forcedExecutionStrategyName()).as("no force-only admission or execution").isNull();
 			NativeRowsStep step = new NativeRowsStep(fixture.evaluation, join, fixture.row.layout,
 					new int[] { 0, 1 }, new String[] { "s", "a" }, true, new int[0], new boolean[0], 0L, -1L, false,

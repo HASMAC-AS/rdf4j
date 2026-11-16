@@ -43,6 +43,8 @@ import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.ValuePosition;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.NativeLmdbQuerySource.NativeAdjacency;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -55,6 +57,17 @@ class LmdbNativePackedFtreeStructuredGroupsTest {
 	private static final long P1 = 201L;
 	private static final long P2 = 202L;
 	private static final long P3 = 203L;
+	private final List<AutoCloseable> invocationOwners = new ArrayList<>();
+
+	@AfterEach
+	void closeInvocations() {
+		Throwable failure = null;
+		for (int i = invocationOwners.size() - 1; i >= 0; i--) {
+			failure = KernelRuntime.closeResource(invocationOwners.get(i), failure);
+		}
+		invocationOwners.clear();
+		KernelRuntime.rethrowCloseFailure(failure);
+	}
 
 	@Test
 	void gateShapeGroupByRootCountsDistinctChildrenWithPopcount() throws Exception {
@@ -683,7 +696,7 @@ class LmdbNativePackedFtreeStructuredGroupsTest {
 		}
 	}
 
-	private static Map<String, String> collectParallel(TestGraph graph, MultiJoinPlan join, String[] names,
+	private Map<String, String> collectParallel(TestGraph graph, MultiJoinPlan join, String[] names,
 			int[] groupSlots, AggregateSpec[] aggregates, SinkObservation observation) throws Exception {
 		String previousThreads = System.getProperty("rdf4j.lmdb.parallel.threads");
 		String previousFloor = System.getProperty("rdf4j.lmdb.packedFtree.parallel.minRootsPerPartition");
@@ -755,12 +768,12 @@ class LmdbNativePackedFtreeStructuredGroupsTest {
 		boolean sawChannelFreeState;
 	}
 
-	private static Map<String, String> collect(TestGraph graph, int[] groupSlots, AggregateSpec[] aggregates,
+	private Map<String, String> collect(TestGraph graph, int[] groupSlots, AggregateSpec[] aggregates,
 			boolean structured, SinkObservation observation) throws Exception {
 		return collect(graph, groupSlots, aggregates, structured, observation, null);
 	}
 
-	private static Map<String, String> collect(TestGraph graph, int[] groupSlots, AggregateSpec[] aggregates,
+	private Map<String, String> collect(TestGraph graph, int[] groupSlots, AggregateSpec[] aggregates,
 			boolean structured, SinkObservation observation, MaskedFilter filter) throws Exception {
 		String[] names = graph.chain ? new String[] { "a", "b", "c" } : new String[] { "a", "b", "w" };
 		MaskedFilter[] filters = filter == null ? new MaskedFilter[0] : new MaskedFilter[] { filter };
@@ -770,7 +783,7 @@ class LmdbNativePackedFtreeStructuredGroupsTest {
 		return collectJoin(graph, join, names, groupSlots, aggregates, structured, observation);
 	}
 
-	private static Map<String, String> collectJoin(TestGraph graph, MultiJoinPlan join, String[] names,
+	private Map<String, String> collectJoin(TestGraph graph, MultiJoinPlan join, String[] names,
 			int[] groupSlots, AggregateSpec[] aggregates, boolean structured, SinkObservation observation)
 			throws Exception {
 		String previous = System.getProperty(FLAG);
@@ -863,7 +876,7 @@ class LmdbNativePackedFtreeStructuredGroupsTest {
 				ContextConstraint.UNRESTRICTED, false, 2D);
 	}
 
-	private static RowState row(NativeLmdbQuerySource source, String... names) {
+	private RowState row(NativeLmdbQuerySource source, String... names) {
 		Map<String, Integer> slots = new LinkedHashMap<>();
 		for (int i = 0; i < names.length; i++) {
 			slots.put(names[i], i);
@@ -871,6 +884,8 @@ class LmdbNativePackedFtreeStructuredGroupsTest {
 		NativeSlotLayout layout = new NativeSlotLayout(slots, null);
 		layout.freeze(List.of(names));
 		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
+		invocationOwners.add(NativeTestStrategies.invocation(row));
+		invocationOwners.add(row::closeDecodedInputs);
 		// The production seeder marks unbound slots explicitly; a raw RowState leaves them 0, which is a real id.
 		Arrays.fill(row.slots, NativeLmdbQuerySource.UNKNOWN_ID);
 		return row;

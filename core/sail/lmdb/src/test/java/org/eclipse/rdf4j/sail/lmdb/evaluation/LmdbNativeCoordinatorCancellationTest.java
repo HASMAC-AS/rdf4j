@@ -51,6 +51,7 @@ import org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeKernelIr.TypeMatrixAggre
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.JaninoKernel;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelContext;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelQueryCancelledException;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelWorkCounters;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.TypeMatrixContext;
 import org.junit.jupiter.api.AfterEach;
@@ -798,6 +799,7 @@ class LmdbNativeCoordinatorCancellationTest {
 			NativeSlotLayout layout = new NativeSlotLayout(Map.of("group", 0, "value", 1), null);
 			layout.freeze(List.of("group", "value"));
 			source = SyntheticValueSource.forEvaluation(new Source(this, true));
+			source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
 			AggregateSpec[] specs = { AggregateSpec.groupConcat("text", 1, false, "|"),
 					AggregateSpec.groupConcat("distinct", 1, true, "|"),
 					AggregateSpec.slot("sum", 1, false, AggKind.SUM),
@@ -810,7 +812,11 @@ class LmdbNativeCoordinatorCancellationTest {
 			groupLayout = new KernelGroupLayout(new int[] { 0 }, outs);
 			emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, new int[] { 0 }, specs, false,
 					EmptyBindingSet.getInstance(), null, null, false, null);
+			NativeInvocationCarrier invocation = emitter.invocationCarrier();
 			row = new RowState(source, layout, EmptyBindingSet.getInstance(), null, null, emitter.cancellation);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			assertThat(emitter.initialize(row)).isTrue();
 			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
 					new LmdbNativeKernelBindings.AdjacencyRequest[0],
@@ -857,6 +863,7 @@ class LmdbNativeCoordinatorCancellationTest {
 			NativeSlotLayout layout = new NativeSlotLayout(Map.of("group", 0, "value", 1), null);
 			layout.freeze(List.of("group", "value"));
 			source = SyntheticValueSource.forEvaluation(new Source(this, true));
+			source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
 			AggregateSpec spec = boundary == Boundary.DISTINCT_NUMERIC_FOLD
 					? AggregateSpec.slot("result", 1, true, AggKind.SUM)
 					: AggregateSpec.slot("result", 1, distinct, AggKind.COUNT);
@@ -866,7 +873,11 @@ class LmdbNativeCoordinatorCancellationTest {
 							: LmdbNativeKernelBindings.ENC_LONG_COUNT) });
 			emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, groups,
 					new AggregateSpec[] { spec }, false, EmptyBindingSet.getInstance(), null, null, false, null);
+			NativeInvocationCarrier invocation = emitter.invocationCarrier();
 			row = new RowState(source, layout, EmptyBindingSet.getInstance(), null, null, emitter.cancellation);
+			row.fusedSession = invocation.session();
+			row.setExecutionContext(invocation.executionContext());
+			row.swapPreparationAttempt(invocation.preparationAttempt());
 			assertThat(emitter.initialize(row)).isTrue();
 			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
 					new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
@@ -964,16 +975,21 @@ class LmdbNativeCoordinatorCancellationTest {
 		@Override
 		public void close() {
 			workers.shutdown();
+			Throwable failure = null;
 			try {
 				assertThat(workers.awaitTermination(10L, TimeUnit.SECONDS)).isTrue();
-			} catch (InterruptedException failure) {
+			} catch (InterruptedException interrupted) {
 				Thread.currentThread().interrupt();
-				throw new AssertionError(failure);
+				failure = new AssertionError(interrupted);
+			} catch (RuntimeException | Error problem) {
+				failure = problem;
 			} finally {
-				emitter.close();
-				source.executionContext().close();
+				failure = KernelRuntime.closeResource(row::closeDecodedInputs, failure);
+				failure = KernelRuntime.closeResource(emitter, failure);
+				failure = KernelRuntime.closeResource(source.executionContext(), failure);
 				LmdbNativeHashJoin.queryMemoryOverride = null;
 			}
+			KernelRuntime.rethrowCloseFailure(failure);
 		}
 	}
 

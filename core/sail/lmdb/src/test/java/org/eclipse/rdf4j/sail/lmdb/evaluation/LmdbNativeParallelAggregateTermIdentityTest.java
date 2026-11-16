@@ -182,42 +182,50 @@ class LmdbNativeParallelAggregateTermIdentityTest {
 		layout.freeze(List.of("input"));
 		NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, groups,
 				specs, false, EmptyBindingSet.getInstance(), null, null, false, null);
-		RowState row = new RowState(source, layout, EmptyBindingSet.getInstance());
-		assertThat(emitter.initialize(row)).isTrue();
-		AggregateOutput[] outputs = new AggregateOutput[specs.length];
-		AggOut[] outs = new AggOut[specs.length];
-		for (int index = 0; index < specs.length; index++) {
-			boolean countStar = specs[index].isWildcardCount() && !specs[index].distinct;
-			outputs[index] = countStar ? AggregateOutput.countStar() : AggregateOutput.rowState(new int[] { 0 });
-			outs[index] = new AggOut(specs[index], countStar ? LmdbNativeKernelBindings.ENC_LONG_COUNT
-					: LmdbNativeKernelBindings.ENC_ROW_STATE);
-		}
-		Aggregate terminal = new Aggregate(groups, outputs, having, mods);
-		Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
-		KernelGroupLayout groupLayout = new KernelGroupLayout(groups, outs);
-		LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-				new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-				new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
-				new int[] { 0 }, List.of(), groupLayout, true);
-		LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-		BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 }, new int[] { ids.length });
-		ExecutorService workers = Executors.newFixedThreadPool(2);
-		long before = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
-		try {
-			List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-					new NativeLmdbQuerySource.NativeAdjacency[0], LmdbNativeKernelBindings.VariablePredicateViews.NONE,
-					null, null, domains, SlotPlan.singleton(), row, emitter, null,
-					variant -> variant.terminal instanceof LmdbNativeKernelIr.Emit
-							? LmdbNativeKernelInterpreter.forRows(variant)
-							: LmdbNativeKernelInterpreter.forAggregate(variant),
-					workers);
-			assertThat(result).as("a proved builtin reducer must execute on the actual parallel boundary").isNotNull();
-			assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get()).isGreaterThan(before);
-			return List.copyOf(result);
-		} finally {
-			workers.shutdownNow();
-			emitter.close();
-			source.executionContext().close();
+		try (NativeExecutionContext execution = source.executionContext(); emitter) {
+			RowState row = groupRow(source, emitter);
+			try {
+				assertThat(emitter.initialize(row)).isTrue();
+				AggregateOutput[] outputs = new AggregateOutput[specs.length];
+				AggOut[] outs = new AggOut[specs.length];
+				for (int index = 0; index < specs.length; index++) {
+					boolean countStar = specs[index].isWildcardCount() && !specs[index].distinct;
+					outputs[index] = countStar ? AggregateOutput.countStar()
+							: AggregateOutput.rowState(new int[] { 0 });
+					outs[index] = new AggOut(specs[index], countStar ? LmdbNativeKernelBindings.ENC_LONG_COUNT
+							: LmdbNativeKernelBindings.ENC_ROW_STATE);
+				}
+				Aggregate terminal = new Aggregate(groups, outputs, having, mods);
+				Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
+				KernelGroupLayout groupLayout = new KernelGroupLayout(groups, outs);
+				LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+						new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+						new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+						new int[] { 0 }, List.of(), groupLayout, true);
+				LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+				BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 },
+						new int[] { ids.length });
+				ExecutorService workers = Executors.newFixedThreadPool(2);
+				long before = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
+				try {
+					List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+							new NativeLmdbQuerySource.NativeAdjacency[0],
+							LmdbNativeKernelBindings.VariablePredicateViews.NONE,
+							null, null, domains, SlotPlan.singleton(), row, emitter, null,
+							variant -> variant.terminal instanceof LmdbNativeKernelIr.Emit
+									? LmdbNativeKernelInterpreter.forRows(variant)
+									: LmdbNativeKernelInterpreter.forAggregate(variant),
+							workers);
+					assertThat(result).as("a proved builtin reducer must execute on the actual parallel boundary")
+							.isNotNull();
+					assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get()).isGreaterThan(before);
+					return List.copyOf(result);
+				} finally {
+					workers.shutdownNow();
+				}
+			} finally {
+				row.closeDecodedInputs();
+			}
 		}
 	}
 
@@ -239,47 +247,55 @@ class LmdbNativeParallelAggregateTermIdentityTest {
 			NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, new int[0],
 					new AggregateSpec[] { AggregateSpec.slot("mn", 0, false, AggKind.MIN) }, false, base, null, null,
 					false, null);
-			RowState row = new RowState(source, layout, base);
-			assertThat(emitter.initialize(row)).isTrue();
-			assertThat(firstMinimum).isNotEqualTo(secondMinimum);
-			Value firstValue = values.lazyValue(firstMinimum);
-			Value secondValue = values.lazyValue(secondMinimum);
-			assertThat(firstValue).isEqualTo(secondValue);
-			assertThat(new ValueComparator().compare(firstValue, secondValue))
-					.as("equal RDF terms must compare equally at the merge boundary")
-					.isZero();
-			assertThat(row.keyAuthority().sameRdfTerm(firstMinimum, secondMinimum)).isTrue();
+			try (emitter) {
+				RowState row = groupRow(source, emitter);
+				try {
+					assertThat(emitter.initialize(row)).isTrue();
+					assertThat(firstMinimum).isNotEqualTo(secondMinimum);
+					Value firstValue = values.lazyValue(firstMinimum);
+					Value secondValue = values.lazyValue(secondMinimum);
+					assertThat(firstValue).isEqualTo(secondValue);
+					assertThat(new ValueComparator().compare(firstValue, secondValue))
+							.as("equal RDF terms must compare equally at the merge boundary")
+							.isZero();
+					assertThat(row.keyAuthority().sameRdfTerm(firstMinimum, secondMinimum)).isTrue();
 
-			AggregateOutput output = AggregateOutput.minId(0);
-			Aggregate terminal = new Aggregate(new int[0], new AggregateOutput[] { output }, null, OutputMods.none());
-			Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
-			KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0],
-					new AggOut[] { new AggOut(emitter.aggregates[0], LmdbNativeKernelBindings.ENC_VALUE_ID) });
-			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-					new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-					new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
-					new int[0],
-					List.of(), groupLayout, true);
-			LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-			BoundDomains domains = new BoundDomains(
-					new long[][] { { firstMinimum, secondMinimum, firstLarger, secondLarger } },
-					new int[] { 0 }, new int[] { 4 });
-			long parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
-			ExecutorService workers = Executors.newFixedThreadPool(2);
-			try {
-				List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-						new NativeLmdbQuerySource.NativeAdjacency[0],
-						LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains, SlotPlan.singleton(),
-						row,
-						emitter, null, LmdbNativeKernelInterpreter::forAggregate, workers);
+					AggregateOutput output = AggregateOutput.minId(0);
+					Aggregate terminal = new Aggregate(new int[0], new AggregateOutput[] { output }, null,
+							OutputMods.none());
+					Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
+					KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0],
+							new AggOut[] { new AggOut(emitter.aggregates[0], LmdbNativeKernelBindings.ENC_VALUE_ID) });
+					LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+							new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+							new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+							new int[0],
+							List.of(), groupLayout, true);
+					LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+					BoundDomains domains = new BoundDomains(
+							new long[][] { { firstMinimum, secondMinimum, firstLarger, secondLarger } },
+							new int[] { 0 }, new int[] { 4 });
+					long parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
+					ExecutorService workers = Executors.newFixedThreadPool(2);
+					try {
+						List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+								new NativeLmdbQuerySource.NativeAdjacency[0],
+								LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains,
+								SlotPlan.singleton(),
+								row,
+								emitter, null, LmdbNativeKernelInterpreter::forAggregate, workers);
 
-				MapBindingSet expected = new MapBindingSet();
-				expected.addBinding("mn", equalMinimum);
-				assertThat(result).containsExactly(expected);
-				assertThat(result.get(0).getValue("mn")).isEqualTo(values.lazyValue(firstMinimum));
-				assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get()).isGreaterThan(parallelBefore);
-			} finally {
-				workers.shutdownNow();
+						MapBindingSet expected = new MapBindingSet();
+						expected.addBinding("mn", equalMinimum);
+						assertThat(result).containsExactly(expected);
+						assertThat(result.get(0).getValue("mn")).isEqualTo(values.lazyValue(firstMinimum));
+						assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get()).isGreaterThan(parallelBefore);
+					} finally {
+						workers.shutdownNow();
+					}
+				} finally {
+					row.closeDecodedInputs();
+				}
 			}
 		} finally {
 			source.executionContext().close();
@@ -312,79 +328,92 @@ class LmdbNativeParallelAggregateTermIdentityTest {
 			AggregateSpec countSpec = AggregateSpec.star("count");
 			NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout,
 					new int[] { 0 }, new AggregateSpec[] { countSpec }, false, base, null, null, false, null);
-			RowState row = new RowState(source, layout, base);
-			assertThat(emitter.initialize(row)).isTrue();
+			try (emitter) {
+				RowState row = groupRow(source, emitter);
+				try {
+					assertThat(emitter.initialize(row)).isTrue();
 
-			Aggregate terminal = new Aggregate(new int[] { 0 },
-					new AggregateOutput[] { AggregateOutput.countStar() }, null, OutputMods.none());
-			Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
-			KernelGroupLayout groupLayout = new KernelGroupLayout(new int[] { 0 },
-					new AggOut[] { new AggOut(countSpec, LmdbNativeKernelBindings.ENC_LONG_COUNT) });
-			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-					new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-					new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
-					new int[] { 0 }, List.of(), groupLayout, true);
-			LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-			BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 }, new int[] { ids.length });
-			long parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
-			Function<Kernel, JaninoKernel> factory = requested -> {
-				int invocation = factoryCalls.computeIfAbsent(Thread.currentThread(), ignored -> new AtomicInteger())
-						.incrementAndGet();
-				if (invocation == 2) {
-					try {
-						secondSegment.await(10, TimeUnit.SECONDS);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						throw new AssertionError("interrupted at the second-segment retention checkpoint", e);
-					} catch (BrokenBarrierException | TimeoutException e) {
-						throw new AssertionError("workers did not reach the second-segment retention checkpoint", e);
+					Aggregate terminal = new Aggregate(new int[] { 0 },
+							new AggregateOutput[] { AggregateOutput.countStar() }, null, OutputMods.none());
+					Kernel kernel = new Kernel(1, List.of(new EnumerateDomain(0, 0)), terminal);
+					KernelGroupLayout groupLayout = new KernelGroupLayout(new int[] { 0 },
+							new AggOut[] { new AggOut(countSpec, LmdbNativeKernelBindings.ENC_LONG_COUNT) });
+					LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+							new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+							new LmdbNativeKernelBindings.DomainRequest[0], new LmdbNativeKernelBindings.FilterHook[0],
+							new int[] { 0 }, List.of(), groupLayout, true);
+					LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+					BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 },
+							new int[] { ids.length });
+					long parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
+					Function<Kernel, JaninoKernel> factory = requested -> {
+						int invocation = factoryCalls
+								.computeIfAbsent(Thread.currentThread(), ignored -> new AtomicInteger())
+								.incrementAndGet();
+						if (invocation == 2) {
+							try {
+								secondSegment.await(10, TimeUnit.SECONDS);
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+								throw new AssertionError("interrupted at the second-segment retention checkpoint", e);
+							} catch (BrokenBarrierException | TimeoutException e) {
+								throw new AssertionError(
+										"workers did not reach the second-segment retention checkpoint", e);
+							}
+						}
+						return LmdbNativeKernelInterpreter.forAggregate(requested);
+					};
+
+					List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+							new NativeLmdbQuerySource.NativeAdjacency[0],
+							LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains,
+							SlotPlan.singleton(),
+							row,
+							emitter, null, factory, workers);
+					try (AutoCloseable ownedResult = result instanceof AutoCloseable closeable ? closeable : null) {
+						assertThat(result).as("published grouped rows retain their bounded replay owner")
+								.isInstanceOf(NativeReplayBindingList.class);
+						assertThat(manager.usedBytes())
+								.as("the returned bounded result remains charged until its owner closes")
+								.isPositive();
+
+						List<BindingSet> expected = new ArrayList<>(ids.length);
+						for (Value term : terms) {
+							MapBindingSet expectedRow = new MapBindingSet();
+							expectedRow.addBinding("g", term);
+							expectedRow.addBinding("count",
+									SimpleValueFactory.getInstance().createLiteral(BigInteger.ONE));
+							expected.add(expectedRow);
+						}
+						assertThat(result).containsExactlyInAnyOrderElementsOf(expected);
+						assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get())
+								.as("the noncanonical grouped domain must actually cross the parallel merge")
+								.isGreaterThan(parallelBefore);
+						int workersAtSecondSegment = 0;
+						for (AtomicInteger calls : factoryCalls.values()) {
+							if (calls.get() >= 2) {
+								workersAtSecondSegment++;
+							}
+						}
+						assertThat(workersAtSecondSegment).as("both source-bound workers must start a second segment")
+								.isEqualTo(2);
+						// Each worker has completed one non-empty root window before its second factory call. Charge
+						// only one
+						// UTF-16 lexical payload per worker here; this deliberately independent lower bound remains
+						// valid if
+						// the
+						// scheduler changes its window sizing.
+						long minimumKeyPayload = terms.stream()
+								.mapToLong(value -> value.stringValue().length())
+								.min()
+								.orElseThrow() * 2L * Character.BYTES;
+						assertThat(retainedAtSecondSegment.get())
+								.as("noncanonical group-key Values must remain budget-owned after first hooks close")
+								.isGreaterThan(minimumKeyPayload);
 					}
+				} finally {
+					row.closeDecodedInputs();
 				}
-				return LmdbNativeKernelInterpreter.forAggregate(requested);
-			};
-
-			List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-					new NativeLmdbQuerySource.NativeAdjacency[0],
-					LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains, SlotPlan.singleton(),
-					row,
-					emitter, null, factory, workers);
-			try (AutoCloseable ownedResult = result instanceof AutoCloseable closeable ? closeable : null) {
-				assertThat(result).as("published grouped rows retain their bounded replay owner")
-						.isInstanceOf(NativeReplayBindingList.class);
-				assertThat(manager.usedBytes())
-						.as("the returned bounded result remains charged until its owner closes")
-						.isPositive();
-
-				List<BindingSet> expected = new ArrayList<>(ids.length);
-				for (Value term : terms) {
-					MapBindingSet expectedRow = new MapBindingSet();
-					expectedRow.addBinding("g", term);
-					expectedRow.addBinding("count", SimpleValueFactory.getInstance().createLiteral(BigInteger.ONE));
-					expected.add(expectedRow);
-				}
-				assertThat(result).containsExactlyInAnyOrderElementsOf(expected);
-				assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get())
-						.as("the noncanonical grouped domain must actually cross the parallel merge")
-						.isGreaterThan(parallelBefore);
-				int workersAtSecondSegment = 0;
-				for (AtomicInteger calls : factoryCalls.values()) {
-					if (calls.get() >= 2) {
-						workersAtSecondSegment++;
-					}
-				}
-				assertThat(workersAtSecondSegment).as("both source-bound workers must start a second segment")
-						.isEqualTo(2);
-				// Each worker has completed one non-empty root window before its second factory call. Charge only one
-				// UTF-16 lexical payload per worker here; this deliberately independent lower bound remains valid if
-				// the
-				// scheduler changes its window sizing.
-				long minimumKeyPayload = terms.stream()
-						.mapToLong(value -> value.stringValue().length())
-						.min()
-						.orElseThrow() * 2L * Character.BYTES;
-				assertThat(retainedAtSecondSegment.get())
-						.as("noncanonical group-key Values must remain budget-owned after first hooks close")
-						.isGreaterThan(minimumKeyPayload);
 			}
 		} finally {
 			workers.shutdownNow();
@@ -472,56 +501,78 @@ class LmdbNativeParallelAggregateTermIdentityTest {
 			BindingSet base = EmptyBindingSet.getInstance();
 			NativeGroupIteration emitter = new NativeGroupIteration(source, SlotPlan.singleton(), layout, new int[0],
 					new AggregateSpec[] { AggregateSpec.star("count") }, false, base, null, null, false, null);
-			RowState row = new RowState(source, layout, base);
-			assertThat(emitter.initialize(row)).isTrue();
+			try (emitter) {
+				RowState row = groupRow(source, emitter);
+				try {
+					assertThat(emitter.initialize(row)).isTrue();
 
-			AggregateOutput output = AggregateOutput.countStar();
-			Aggregate terminal = new Aggregate(new int[0], new AggregateOutput[] { output }, null, OutputMods.none());
-			Kernel kernel = new Kernel(1,
-					List.of(new EnumerateDomain(0, 0),
-							new LmdbNativeKernelIr.FilterValue(0,
-									new LmdbNativeKernelIr.Operand[] { LmdbNativeKernelIr.Operand.col(0) }, true)),
-					terminal);
-			KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0],
-					new AggOut[] { new AggOut(emitter.aggregates[0], LmdbNativeKernelBindings.ENC_LONG_COUNT) });
-			LmdbNativeKernelBindings.FilterHook[] filterHooks = {
-					new LmdbNativeKernelBindings.FilterHook(new MaskedFilter(filter, 1L),
-							new int[] { 0 }) };
-			LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
-					new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
-					new LmdbNativeKernelBindings.DomainRequest[0], filterHooks, new int[0], List.of(), groupLayout,
-					true);
-			LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
-			long[] ids = new long[2_048];
-			for (int i = 0; i < ids.length; i++) {
-				ids[i] = 10L + i;
-			}
-			BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 }, new int[] { ids.length });
-			long parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
-			ExecutorService workers = Executors.newFixedThreadPool(2);
-			try {
-				List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
-						new NativeLmdbQuerySource.NativeAdjacency[0],
-						LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains, SlotPlan.singleton(),
-						row,
-						emitter, null, LmdbNativeKernelInterpreter::forAggregate, workers);
+					AggregateOutput output = AggregateOutput.countStar();
+					Aggregate terminal = new Aggregate(new int[0], new AggregateOutput[] { output }, null,
+							OutputMods.none());
+					Kernel kernel = new Kernel(1,
+							List.of(new EnumerateDomain(0, 0),
+									new LmdbNativeKernelIr.FilterValue(0,
+											new LmdbNativeKernelIr.Operand[] { LmdbNativeKernelIr.Operand.col(0) },
+											true)),
+							terminal);
+					KernelGroupLayout groupLayout = new KernelGroupLayout(new int[0],
+							new AggOut[] {
+									new AggOut(emitter.aggregates[0], LmdbNativeKernelBindings.ENC_LONG_COUNT) });
+					LmdbNativeKernelBindings.FilterHook[] filterHooks = {
+							new LmdbNativeKernelBindings.FilterHook(new MaskedFilter(filter, 1L),
+									new int[] { 0 }) };
+					LmdbNativeKernelBindings bindings = new LmdbNativeKernelBindings(
+							new LmdbNativeKernelBindings.AdjacencyRequest[0], new long[0], new int[0],
+							new LmdbNativeKernelBindings.DomainRequest[0], filterHooks, new int[0], List.of(),
+							groupLayout,
+							true);
+					LmdbNativeKernelLowering.Lowered lowered = new LmdbNativeKernelLowering.Lowered(kernel, bindings);
+					long[] ids = new long[2_048];
+					for (int i = 0; i < ids.length; i++) {
+						ids[i] = 10L + i;
+					}
+					BoundDomains domains = new BoundDomains(new long[][] { ids }, new int[] { 0 },
+							new int[] { ids.length });
+					long parallelBefore = LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get();
+					ExecutorService workers = Executors.newFixedThreadPool(2);
+					try {
+						List<BindingSet> result = LmdbNativeParallelKernelAggregate.tryEvaluate(lowered,
+								new NativeLmdbQuerySource.NativeAdjacency[0],
+								LmdbNativeKernelBindings.VariablePredicateViews.NONE, null, null, domains,
+								SlotPlan.singleton(),
+								row,
+								emitter, null, LmdbNativeKernelInterpreter::forAggregate, workers);
 
-				assertThat(result).hasSize(1);
-				assertThat(result.get(0).getValue("count").stringValue()).isEqualTo("2048");
-				assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get()).isGreaterThan(parallelBefore);
-				assertThat(workerFilters).hasSize(2);
-				for (TrackingFilter workerFilter : workerFilters) {
-					assertThat(workerFilter.closeCalls()).as("worker filter close count").isEqualTo(1);
-					assertThat(workerFilter.leaseOpens()).as("worker filter lease open count").isEqualTo(1);
-					assertThat(workerFilter.leaseOpen()).as("worker filter lease released").isFalse();
+						assertThat(result).hasSize(1);
+						assertThat(result.get(0).getValue("count").stringValue()).isEqualTo("2048");
+						assertThat(LmdbNativeParallelKernelAggregate.PARALLEL_RUNS.get()).isGreaterThan(parallelBefore);
+						assertThat(workerFilters).hasSize(2);
+						for (TrackingFilter workerFilter : workerFilters) {
+							assertThat(workerFilter.closeCalls()).as("worker filter close count").isEqualTo(1);
+							assertThat(workerFilter.leaseOpens()).as("worker filter lease open count").isEqualTo(1);
+							assertThat(workerFilter.leaseOpen()).as("worker filter lease released").isFalse();
+						}
+						assertThat(activeLeases).as("all worker filter leases released").hasValue(0);
+					} finally {
+						workers.shutdownNow();
+					}
+				} finally {
+					row.closeDecodedInputs();
 				}
-				assertThat(activeLeases).as("all worker filter leases released").hasValue(0);
-			} finally {
-				workers.shutdownNow();
 			}
 		} finally {
 			source.executionContext().close();
 		}
+	}
+
+	private static RowState groupRow(SyntheticValueSource source, NativeGroupIteration emitter) {
+		source.executionContext().initializeQueryBase(emitter.base);
+		NativeInvocationCarrier invocation = emitter.invocationCarrier();
+		RowState row = new RowState(source, emitter.layout, emitter.base, null, null, emitter.cancellation);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		return row;
 	}
 
 	private static LmdbNativeKernelHooks extremaHooks(RowState row) {
@@ -614,6 +665,16 @@ class LmdbNativeParallelAggregateTermIdentityTest {
 		@Override
 		public long idOf(Value value) {
 			return values.idOf(value);
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			values.idOfWithOrigin(value, positionMask, result);
+		}
+
+		@Override
+		public boolean certifiesIdOrigins() {
+			return values.certifiesIdOrigins();
 		}
 
 		@Override

@@ -16,7 +16,6 @@ import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTe
 import static org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeFactorizedQuoteTest.row;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -135,8 +134,7 @@ class LmdbNativeFactorizedBranchOpenQuoteTest {
 
 	private static Measured execute(long limit, boolean distinct) throws Exception {
 		try (Fixture fixture = new Fixture()) {
-			LmdbNativeEvaluationStrategy strategy = mock(LmdbNativeEvaluationStrategy.class);
-			when(strategy.forcedExecutionStrategyName()).thenReturn(ROUTE);
+			LmdbNativeEvaluationStrategy strategy = NativeTestStrategies.forced(ROUTE);
 			PatternPlan city = fixture.pattern(CITY, 1, KEYS * VALUES);
 			PatternPlan knows = fixture.pattern(KNOWS, 2, (KEYS - 1) * FANOUT);
 			MultiJoinPlan join = new MultiJoinPlan(new SlotPlan[] { city, knows }, new MaskedFilter[0]);

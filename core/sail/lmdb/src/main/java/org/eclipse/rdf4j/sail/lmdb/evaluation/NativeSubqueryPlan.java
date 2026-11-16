@@ -34,6 +34,7 @@ import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.Projection;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryBindingSet;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.BindingSetQueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.GraphFrameBindings;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.evaluationsteps.ProjectionQueryEvaluationStep;
@@ -89,26 +90,39 @@ final class NativeSubqueryPlan implements SlotPlan {
 					|| !before.sameDomain(after)) {
 				return null;
 			}
-			NativeCompiledResultRecipe recipe = provider.compiledRecipe();
-			if (recipe == null) {
+			try (NativeRecipeMemory.Capture capture = new NativeRecipeMemory.Capture(receipts)) {
+				capture.reserve(256L);
+				capture.catalog(catalog);
+				NativeCompiledResultRecipe recipe = provider.compiledRecipe(capture);
+				if (recipe == null) {
+					return null;
+				}
+				LmdbNativeCostVectors.AlgebraEstimate estimate = LmdbNativeCostVectors.captureAlgebraEstimate(
+						projection,
+						receipts, before, capture);
+				return before.sameDomain(source.detachedDomainStamp())
+						? new CompiledResultRecipe(capture.finish(recipe, catalog), before, catalog, estimate)
+						: null;
+			} catch (NativeRecipeMemory.AdmissionRefused refusal) {
 				return null;
 			}
-			LmdbNativeCostVectors.AlgebraEstimate estimate = LmdbNativeCostVectors.captureAlgebraEstimate(projection,
-					receipts, before);
-			return before.sameDomain(source.detachedDomainStamp())
-					? new CompiledResultRecipe(recipe, before, catalog, estimate)
-					: null;
 		}
 
 		boolean compatible(NativeLmdbQuerySource source) {
-			return compatible(source, 0);
+			return compatible(source, recipe.valuesIdDomains());
 		}
 
 		boolean compatible(NativeLmdbQuerySource source, int valuesDomains) {
 			NativeLmdbQuerySource.DomainStamp target = source.detachedDomainStamp();
 			if (!domain.sameBackingView(target) || domain.statementMask() != target.statementMask()
-					|| domain.planCatalog() != null && domain.planCatalog() != target.planCatalog()
-					|| domain.runtimeAuthority() != null && domain.runtimeAuthority() != target.runtimeAuthority()
+					|| recipe.requiresSourceAuthority()
+							&& (domain.planCatalog() != null && domain.planCatalog() != target.planCatalog()
+									|| domain.runtimeAuthority() != null
+											&& domain.runtimeAuthority() != target.runtimeAuthority())
+					|| (valuesDomains & ValuesPlan.ID_DOMAIN_SOURCE_PLAN) != 0
+							&& domain.planCatalog() != target.planCatalog()
+					|| (valuesDomains & ValuesPlan.ID_DOMAIN_SOURCE_RUNTIME) != 0
+							&& domain.runtimeAuthority() != target.runtimeAuthority()
 					|| (valuesDomains & ValuesPlan.ID_DOMAIN_UNKNOWN) != 0
 					|| (valuesDomains & ValuesPlan.ID_DOMAIN_SOURCE_PLAN) != 0 && domain.planCatalog() == null
 					|| (valuesDomains & ValuesPlan.ID_DOMAIN_SOURCE_RUNTIME) != 0
@@ -458,6 +472,11 @@ final class NativeSubqueryPlan implements SlotPlan {
 	/** Every binding has an exact source/session, nested policy, and candidate-owned preparation directory. */
 	private NativeResultBinding compiledBinding(NativeScalarPlan.WorkerContext worker,
 			NativePhysicalPreparation preparation) {
+		return compiledBinding(worker, preparation, true);
+	}
+
+	private NativeResultBinding compiledBinding(NativeScalarPlan.WorkerContext worker,
+			NativePhysicalPreparation preparation, boolean subplan) {
 		LmdbNativeEvaluationStrategy parentStrategy = worker.invocationStrategy();
 		if (preparation == null || parentStrategy == null || worker.fusedSession() == null
 				|| worker.nativeExecutionContext() == null || !parentStrategy.isBoundTo(worker)) {
@@ -471,8 +490,10 @@ final class NativeSubqueryPlan implements SlotPlan {
 		if (structural == null) {
 			return null;
 		}
-		LmdbNativeEvaluationStrategy nested = parentStrategy.forSubplanInvocation(worker.source(),
-				worker.requireFusedSession(), execution, parentStrategy.valuePositionSnapshot());
+		LmdbNativeEvaluationStrategy nested = subplan
+				? parentStrategy.forSubplanInvocation(worker.source(), worker.requireFusedSession(), execution,
+						parentStrategy.valuePositionSnapshot())
+				: parentStrategy.forInvocation(worker.source(), worker.requireFusedSession(), execution);
 		NativeScalarPlan.WorkerContext scopedWorker = NativeScalarPlan.WorkerContext.forSource(worker.source(),
 				structural, worker.requireFusedSession(), execution, nested, worker.diagnosticRoot());
 		LmdbFusedSipFactorizedRuntime.PreparationAttempt attempt = preparation.newBindingAttempt();
@@ -480,8 +501,52 @@ final class NativeSubqueryPlan implements SlotPlan {
 			return null;
 		}
 		QueryEvaluationContext scoped = execution.genericInvocationContext(structural, nested);
+		if (!subplan) {
+			scoped = new BindingSetQueryEvaluationContext(scoped);
+		}
 		return new NativeResultBinding(scopedWorker, nested, scoped, attempt, preparation,
 				NativeDiagnosticTargets.forRoot(worker.diagnosticRoot()));
+	}
+
+	/** Ordinary replay and worker construction use the same admitted, source-free descriptors as physical quotes. */
+	private BoundExecution bindCompiled(NativeScalarPlan.WorkerContext worker,
+			NativePhysicalPreparation preparationOwner,
+			LmdbFusedSipFactorizedRuntime.PreparationAttempt attemptOwner) {
+		if (compiledResultRecipe == null || lateralStepFactory != null
+				|| !compiledResultRecipe.compatible(worker.source())) {
+			return null;
+		}
+		NativePhysicalPreparation preparation = NativePhysicalPreparation.tryCreate(worker.requireFusedSession());
+		if (preparation == null) {
+			return null;
+		}
+		boolean accepted = false;
+		try (NativeExecutionContext.Lease ignored = worker.requireExecutionContext().retainActiveLease()) {
+			NativeResultBinding binding = compiledBinding(worker, preparation, false);
+			QueryEvaluationStep prepared = binding == null ? null : compiledResultRecipe.recipe().bind(binding);
+			if (prepared == null || !compiledResultRecipe.compatible(worker.source())) {
+				return null;
+			}
+			if (preparationOwner != null) {
+				if (!preparationOwner.add(preparation)) {
+					return null;
+				}
+			} else if (attemptOwner != null) {
+				preparation.register(attemptOwner);
+			} else {
+				if (!preparation.reserveBytes(256L)) {
+					return null;
+				}
+				// A directly bound worker has no enclosing preparation; its execution owns the fresh binding.
+				worker.requireExecutionContext().nativeState(new Object(), () -> preparation);
+			}
+			accepted = true;
+			return new BoundExecution(prepared, binding.context(), null, invocationFactory);
+		} finally {
+			if (!accepted) {
+				preparation.close();
+			}
+		}
 	}
 
 	private NativeSubqueryPlan quotePhysicalPlan(NativeResultStep nativeStep, BindingSet body,
@@ -603,7 +668,10 @@ final class NativeSubqueryPlan implements SlotPlan {
 			WORKER_BINDINGS.incrementAndGet();
 			return bound;
 		}
-		BoundExecution bound = workerFactory == null ? null : workerFactory.bind(worker);
+		BoundExecution bound = workerFactory == null ? null : bindCompiled(worker, preparation, null);
+		if (bound == null && workerFactory != null) {
+			bound = workerFactory.bind(worker);
+		}
 		if (bound == null || bound.step() == null) {
 			throw new IllegalStateException("native lexical boundary has no worker construction recipe");
 		}
@@ -684,6 +752,31 @@ final class NativeSubqueryPlan implements SlotPlan {
 			}
 		}
 		return new NativeSubqueryCursor(this, row, state.cursor(row.cancellation), ownsState ? state : null);
+	}
+
+	/** A semantic boundary can consume the current entry even when that mapping cannot seed native slots. */
+	boolean existsWithSemanticInput(RowState row) {
+		try (NativeLazyResultReplay state = evaluateOnce(row, frameBindings(row, row.base));
+				NativeResultCursor solutions = state.cursor(row.cancellation)) {
+			NativeResultRow solution;
+			while ((solution = solutions.next()) != null) {
+				row.cancellation.check();
+				boolean compatible = true;
+				for (int i = 0; i < outSlots.length; i++) {
+					Value incoming = row.base.getValue(row.layout.slotNames()[outSlots[i]]);
+					NativeResultCell cell = solution.cell(outNames[i]);
+					if (incoming != null && cell.kind() == NativeResultCell.Kind.RDF_TERM
+							&& cell.state() == NativeResultCell.State.BOUND && !incoming.equals(cell.value())) {
+						compatible = false;
+						break;
+					}
+				}
+				if (compatible) {
+					return true;
+				}
+			}
+			return false;
+		}
 	}
 
 	/** Whether this boundary's solutions depend on the entry base only, never on the current outer row. */
@@ -938,12 +1031,21 @@ final class NativeSubqueryPlan implements SlotPlan {
 		if (invocationFactory == null) {
 			return new BoundExecution(preparedStep(row), context, null);
 		}
+		NativeExecutionContext execution = row.executionContext();
+		LmdbNativeEvaluationStrategy strategy = row.invocationStrategyOrNull();
+		if (strategy != null && !strategy.isBoundTo(row.source, session, execution)) {
+			strategy = strategy.forInvocation(row.source, session, execution);
+		}
 		NativeScalarPlan.WorkerContext invocation = NativeScalarPlan.WorkerContext.forSource(row.source, context,
-				session, row.executionContext(), row.invocationStrategyOrNull(), row.diagnosticRoot());
+				session, execution, strategy, row.diagnosticRoot());
 		BoundExecution bound = preparation.scope(session, row.source)
 				.prepare(this,
-						() -> Objects.requireNonNull(invocationFactory.bind(invocation),
-								"native invocation preparation"));
+						() -> {
+							BoundExecution compiled = bindCompiled(invocation, null, preparation);
+							return compiled != null ? compiled
+									: Objects.requireNonNull(invocationFactory.bind(invocation),
+											"native invocation preparation");
+						});
 		QueryEvaluationStep selected = bound.step();
 		if (bound.lateralStepFactory() != null) {
 			Set<String> originalDomain = Set.copyOf(row.base.getBindingNames());

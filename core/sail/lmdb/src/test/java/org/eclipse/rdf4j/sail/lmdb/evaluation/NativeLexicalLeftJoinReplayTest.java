@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -632,7 +633,16 @@ class NativeLexicalLeftJoinReplayTest {
 		Fixture(String... names) {
 			delegate = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
 			when(delegate.idSpace()).thenReturn(delegate);
+			Object generation = new Object();
+			when(delegate.valueLookupScope()).thenReturn(generation);
+			when(delegate.resultValueScope()).thenReturn(generation);
 			when(delegate.idOf(any(Value.class), anyInt())).thenReturn(UNKNOWN);
+			when(delegate.certifiesIdOrigins()).thenReturn(true);
+			doAnswer(invocation -> {
+				invocation.getArgument(2, NativeLmdbQuerySource.IdLookup.class)
+						.set(UNKNOWN, NativeLmdbQuerySource.IdOrigin.ABSENT);
+				return null;
+			}).when(delegate).idOfWithOrigin(any(Value.class), anyInt(), any(NativeLmdbQuerySource.IdLookup.class));
 			source = SyntheticValueSource.forEvaluation(delegate);
 			source.executionContext().initializeQueryBase(EmptyBindingSet.getInstance());
 			Map<String, Integer> slots = names.length == 3

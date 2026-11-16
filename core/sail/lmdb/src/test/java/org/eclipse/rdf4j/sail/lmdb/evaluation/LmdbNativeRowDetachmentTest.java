@@ -28,12 +28,14 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * M-A0 gate 7 (public-result detachment) at the row-emission boundary: a row that carries an evaluation-scoped
  * (runtime-interned) id must be readable after the evaluation's {@link NativeExecutionContext} closes — the interner
- * dies with the evaluation while callers may retain returned rows indefinitely. Plan-catalog and store ids may keep
- * their lazy lifecycle: the catalog is compiled-plan state and the store outlives every evaluation.
+ * dies with the evaluation while callers may retain returned rows indefinitely. Fragment snapshots also detach store
+ * and plan values before a native child closes. Projected results retain their separately tested lazy value lifecycle.
  */
 public class LmdbNativeRowDetachmentTest {
 
@@ -73,6 +75,34 @@ public class LmdbNativeRowDetachmentTest {
 				.isEqualTo(COMPUTED);
 	}
 
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void fragmentSnapshotSurvivesOwnerClosureAndSourceGenerationChange(boolean bare) {
+		FakeStoreSource store = new FakeStoreSource();
+		Value stored = VF.createLiteral("stored fragment value");
+		long id = store.add(stored);
+		SyntheticValueSource source = new SyntheticValueSource(store, PlanValueCatalog.EMPTY).forEvaluation();
+		BindingSet snapshot;
+		try {
+			NativeRowsStep step = step(source);
+			long[] slots = { id };
+			if (bare) {
+				NativeBareRowsStep fragment = new NativeBareRowsStep(source, step.arg, step.layout, null, step);
+				snapshot = fragment.snapshot(source, slots, EmptyBindingSet.getInstance());
+			} else {
+				step.snapshotRows = true;
+				snapshot = step.emit(slots, new AggContext(source, false), EmptyBindingSet.getInstance());
+			}
+			slots[0] = UNKNOWN_ID;
+		} finally {
+			source.executionContext().close();
+		}
+		store.resultScope = new Object();
+		assertThat(snapshot.getValue("x"))
+				.as("generic consumers may retain a fragment row after closing its native producer")
+				.isEqualTo(stored);
+	}
+
 	@Test
 	public void planConstantRowStaysLazilyReadableAfterContextClose() {
 		FakeStoreSource store = new FakeStoreSource();
@@ -108,6 +138,7 @@ public class LmdbNativeRowDetachmentTest {
 	static final class FakeStoreSource implements NativeLmdbQuerySource {
 		private final Map<String, Long> idsBySpelling = new LinkedHashMap<>();
 		private final Map<Long, Value> valuesById = new LinkedHashMap<>();
+		private Object resultScope = new Object();
 		private long nextId = 100;
 
 		long add(Value value) {
@@ -132,8 +163,24 @@ public class LmdbNativeRowDetachmentTest {
 		}
 
 		@Override
+		public boolean certifiesIdOrigins() {
+			return true;
+		}
+
+		@Override
+		public void idOfWithOrigin(Value value, int positionMask, IdLookup result) {
+			long id = idOf(value, positionMask);
+			result.set(id, id == UNKNOWN_ID ? IdOrigin.ABSENT : IdOrigin.STORED);
+		}
+
+		@Override
 		public Value lazyValue(long id) {
 			return valuesById.get(id);
+		}
+
+		@Override
+		public Object resultValueScope() {
+			return resultScope;
 		}
 
 		@Override

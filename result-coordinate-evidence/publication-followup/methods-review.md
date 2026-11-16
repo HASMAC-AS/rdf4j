@@ -1,0 +1,37 @@
+# Static review of methods and diagnostic wording
+
+This review reads only the two reports, frozen harness/experimental source and isolated contract source. It does not inspect growing timing samples, compute hashes, execute Java or run packaging. Neither report nor any pinned input was edited. The numerical diagnostic tables agree with the completed counter evidence already reviewed; the suggestions below concern precision and interpretation.
+
+## Recommended wording corrections
+
+In `diagnostic/diagnostic-report.md`, replace “the following uninstrumented timing study” with “the timing study without the added publication diagnostics.” The timing runtime retains the pre-existing hot counters, allocation observations and route observer. Calling it uninstrumented overstates the distinction. The important difference is absence of the new per-target counters and page snapshots.
+
+In the same report, narrow “Every quantity in the omitted 256 MiB arm matches the omitted 512 MiB arm” to “Every compared reuse/publication/page-accounting counter and the ledger peak match.” The query allowance and metadata necessarily differ; raw instrumented duration/allocation fields are not asserted equal and must not be implied equal. The following list already names the intended counter scope, so this is a wording correction rather than a data change.
+
+In `report-methods.md`, the common-runtime paragraph correctly says that all arms contain the mask machinery, but should explicitly distinguish common code from equal executed overhead. A suggested addition is: “The frequency of executing the guard differs across OFF and DENSE, so the OFF comparison includes any such interaction under the experimental runtime. It does not isolate the guard’s overhead.” In `find`, an ordinary hit calls `rememberFactor` only when `rowSequence != 0`; OFF bypasses that call on ordinary hits, whereas `remember` still reaches the method after resolution. The two primary DENSE arms have matched publication-entry counts at 512 MiB, but their guard outcomes differ by design. No equal-cost cancellation should be assumed merely because the compiled classes are shared.
+
+In the first paragraph of `report-methods.md`, “latency lost by coordinate transport” is broader than the causal isolation supports. Prefer “the latency gap of coordinate-enabled execution.” Enabling the coordinate path includes transport plus materializer lookup/publication/cache behavior and its reuse benefit; the prior comparison did not isolate copying or the transport implementation’s self time. The report’s next paragraph already correctly assigns the new measured effect to the complete intervention.
+
+## Useful metric and test-scope clarifications
+
+Define `prepareNs` as the interval around `connection.prepareTupleQuery`, rather than implying it contains every planning or compilation cost. The preserved fanout harness records `prepareDone` immediately after that call and `evaluateDone` after `query.evaluate()`. Plan construction and native compilation can occur during evaluation or lazy first-row work, so these phase counters do not separately isolate all optimizer/preparation cost. Suggested wording: “The reported prepare phase covers the query API’s prepare call. Evaluate and first-row phases include any planning or compilation performed there.” This preserves the actual measurement while making the user’s preparation-cost request easier to interpret.
+
+The six new tests directly exercise the materializer with controlled `CountingSource` and `Coordinates` implementations. Their documented alias, unbound-gap, changed-view, detached-row, ledger-first-close and repeated-close coverage is accurate. It is useful to add that these are materializer contracts, not an additional full SPARQL strategy/alias integration matrix. The two native diagnostics do exercise both normal interpreted and compiled binds, but their actual projection aliases are identities. The existing 106-case selection and the two diagnostic fixtures should remain separately identified rather than being read as exhaustive ownership/strategy validation.
+
+The configuration paragraph can make clear that an entirely empty property means “omit no targets”; empty elements inside a nonempty comma-separated property are rejected. The current “empty entries” wording is defensible, but the explicit distinction prevents a reader from thinking the empty-mask control is invalid. The actual parser first accepts `configured.isEmpty()`, then rejects trimmed-empty split elements.
+
+## Statements that are correctly bounded
+
+The reports correctly distinguish method-entry/publication attempts from actual cell writes. The guard performs an early return after entry, and the added diagnostic skipped counter counts that outcome. It is not a timed production counter. The selected targets' zero factor hits apply to all four discovery queries, and the predeclared rule excludes zero-page targets; no general consecutive-only classification follows from those observations.
+
+The 512 MiB primary control is correctly separated from 256 MiB admission relief. Raising all-target allowance admits 276 pages total, including 146 left pages and 130 right pages; omitting left publication at 256 MiB enables the 130 additional useful right pages while removing 8,174 existing left pages. The 32,512 resolver-call reduction belongs to the normal-budget admission comparison, not to the source-matched primary 512 MiB comparison.
+
+The ledger/physical-memory boundary is correctly stated. Explicit page grants/releases are reconciled. Ordinary, directory and memo claims are close snapshots, with independent final ledger endpoints; they are not full allocation or lifetime traces. Declared charges are not physical heap residency, and the aggregate allocation counter measures bytes allocated in its observation window rather than retained memory.
+
+Canonical alias semantics are also correctly described: the experimental guard checks the requested target’s canonical alias, and the mask parser accepts only canonical names. The two fixtures have identity aliases; the direct contracts cover aliases, including target 64 mapping to source slot 0. A target at index 64 is not evidence of support for 65 distinct coordinate registers, and neither report makes that claim.
+
+The scope and nonpromotion statements are appropriate. This phase supplies a fixture-specific counterfactual, not a general production policy. The report accurately preserves the setup-error/red/green distinctions, and no broader suite success or benchmark conclusion should be inferred before the fixed timing study completes.
+
+## Additional historical-attribution check
+
+The frozen common fanout harness emits `historicalArtifacts` as “unavailable; this is a new reconstruction, not preserved Stage-2 output” in `OptionalFanoutExperiment.java`. The methods sentence “Prior baseline, Stage-2, frame and compact-page artifacts were retained” should therefore qualify what Stage-2 means or omit that unqualified preservation claim. Earlier reconstructed/runtime experiment artifacts may be preserved, but that is not evidence of the original historical Stage-2 snapshot. This review has not inspected old archives during timing; the issue is the direct discrepancy between the report wording and its retained harness metadata. No historical timings are pooled into the current comparison, as the methods already correctly state.

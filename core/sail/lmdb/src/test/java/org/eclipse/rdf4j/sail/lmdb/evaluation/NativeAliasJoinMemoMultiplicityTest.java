@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import org.eclipse.rdf4j.common.order.StatementOrder;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.QueryExecutionPolicy;
 import org.eclipse.rdf4j.query.TupleQuery;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.explanation.Explanation;
@@ -55,6 +56,8 @@ import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelPlan;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelQueryCancelledException;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 import org.eclipse.rdf4j.sail.lmdb.factor.FactorEnvironment;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -71,6 +74,28 @@ class NativeAliasJoinMemoMultiplicityTest {
 
 	@TempDir
 	Path directory;
+	private LmdbQueryMemoryManager previousMemoryManager;
+	private final List<NativeInvocationCarrier> invocationOwners = new ArrayList<>();
+
+	@BeforeEach
+	void rememberMemoryManager() {
+		previousMemoryManager = LmdbNativeHashJoin.queryMemoryOverride;
+	}
+
+	@AfterEach
+	void restoreMemoryManager() {
+		Throwable failure = null;
+		try {
+			for (NativeInvocationCarrier invocation : invocationOwners) {
+				failure = KernelRuntime.closeResource(invocation, failure);
+			}
+		} finally {
+			invocationOwners.clear();
+			// Setup and assertion failures can occur before a case enters its cursor-cleanup finally block.
+			LmdbNativeHashJoin.queryMemoryOverride = previousMemoryManager;
+		}
+		KernelRuntime.rethrowCloseFailure(failure);
+	}
 
 	@ParameterizedTest
 	@ValueSource(booleans = { false, true })
@@ -1747,10 +1772,18 @@ class NativeAliasJoinMemoMultiplicityTest {
 		}
 	}
 
-	private static RowState row(NativeCancellationToken cancellation) {
+	private RowState row(NativeCancellationToken cancellation) {
 		NativeSlotLayout layout = new NativeSlotLayout(Map.of("key", KEY_SLOT, "value", VALUE_SLOT), null);
 		layout.freeze(List.of("key", "value"));
-		RowState row = new RowState(null, layout, EmptyBindingSet.getInstance(), (TupleExpr) null, cancellation);
+		RowState row = new RowState(new LmdbNativeRowDetachmentTest.FakeStoreSource(), layout,
+				EmptyBindingSet.getInstance(), (TupleExpr) null, cancellation);
+		NativeInvocationCarrier invocation = NativeInvocationCarrier.openStandalone(row.source, row.base,
+				System.identityHashCode(row), null, QueryExecutionPolicy.DEFAULT, null);
+		invocationOwners.add(invocation);
+		row.setExecutionContext(invocation.executionContext());
+		row.fusedSession = invocation.session();
+		row.bindInvocationStrategy(NativeTestStrategies.forced(null));
+		row.swapPreparationAttempt(invocation.preparationAttempt());
 		assertTrue(LmdbNativeAggregateCompiler.initializeRow(row, row.base, row.source, row.layout));
 		return row;
 	}
@@ -1909,7 +1942,8 @@ class NativeAliasJoinMemoMultiplicityTest {
 	}
 
 	private static KernelContext planContext(KernelPlan plan) {
-		return new KernelContext(null, new long[0], new long[0], null, null, null, new KernelPlan[] { plan }, 16);
+		return new KernelContext(null, new long[0], new long[0], null, null, null, new KernelPlan[] { plan }, 16)
+				.withStandaloneFusedRuntime();
 	}
 
 	private static KernelContext boundPlanContext(RowState row, SlotPlan plan) {

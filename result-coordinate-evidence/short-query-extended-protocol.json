@@ -1,0 +1,21 @@
+{
+  "status": "prespecified-before-extended-run",
+  "reason": "The 32-warmup/7-measurement confirmation matched compiled routes but showed large cross-fork timing variation, including prepare/evaluate phases. This final extension increases JVM warmup and measurement-block size without changing the frozen implementation or AUTO policy.",
+  "cases": [
+    "small",
+    "early-1024",
+    "retained-small-all"
+  ],
+  "modes": [
+    "off",
+    "dense"
+  ],
+  "forksPerArm": 4,
+  "warmupQueriesPerFork": 512,
+  "measuredQueriesPerFork": 101,
+  "heap": "1024m",
+  "collector": "G1",
+  "source": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac",
+  "stopRule": "This is the last extension. Preserve all earlier protocols and report inconclusive latency if independent fork estimates remain inconsistent. Do not pool protocols or select favorable samples.",
+  "acceptance": "Validate all warmup/measured results and ledger cleanup, input/JVM metadata, measured route/tier frequencies, and actual coordinate participation. Report warmup allocation rather than assuming a particular GC history."
+}

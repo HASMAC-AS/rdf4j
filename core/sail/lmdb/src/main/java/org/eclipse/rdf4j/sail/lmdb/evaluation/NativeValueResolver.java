@@ -120,6 +120,7 @@ final class NativeValueResolver implements AutoCloseable {
 			found = load(bucket, value, scope, hash, positionMask);
 		}
 		ensureOpen();
+		context.retainResolvedQueryScopedValue(value, found.key, found.id);
 		if (mode == 0) {
 			return found.id;
 		}
@@ -139,6 +140,7 @@ final class NativeValueResolver implements AutoCloseable {
 	private long uncached(Value value, int mode, int positionMask) {
 		long id = sourceDictionaryId(value, positionMask);
 		ensureOpen();
+		context.retainResolvedQueryScopedValue(value, null, id);
 		if (mode == 0 || id != UNKNOWN) {
 			return id;
 		}

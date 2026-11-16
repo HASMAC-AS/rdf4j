@@ -158,15 +158,20 @@ final class LmdbNativeKernelHooks implements KernelHooks {
 			this.scratchWritePrevious = new long[8];
 			this.scratch = new RowState(liveRow.source, liveRow.layout, liveRow.base, liveRow.telemetryTarget,
 					liveRow.exactValuesMetrics, liveRow.cancellation);
+			this.scratch.inheritDiagnosticRoot(liveRow);
+			if (liveRow.executionContextOrNull() != null) {
+				this.scratch.setExecutionContext(liveRow.executionContextOrNull());
+			}
 			this.keyHooks = scratch.keyAuthority() instanceof NativeGeneratedKeyAuthority generated
 					? new NativeGeneratedKeyHooks(this, generated)
 					: this;
 			this.scratch.inheritDecodedInputAccounting(liveRow);
 			this.scratch.runtimePlan = liveRow.runtimePlan;
+			this.scratch.fusedSession = liveRow.fusedSession;
 			if (liveRow.fusedSession != null) {
+				this.scratch.bindInvocationStrategy(liveRow.invocationStrategyOrNull());
 				this.scratch.borrowPreparationAttempt(liveRow);
 			}
-			this.scratch.fusedSession = liveRow.fusedSession;
 			this.scratch.lexicalInputMask = liveRow.lexicalInputMask;
 			this.scratch.lexicalScopeDepth = liveRow.lexicalScopeDepth;
 			this.scratch.encounterOrderRequired = liveRow.encounterOrderRequired;

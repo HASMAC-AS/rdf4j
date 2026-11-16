@@ -29,11 +29,16 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.eclipse.rdf4j.common.annotation.Experimental;
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.Compare;
 import org.eclipse.rdf4j.query.algebra.Filter;
+import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics;
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.QueryEvaluationUtil;
 import org.eclipse.rdf4j.query.algebra.evaluation.util.QueryEvaluationUtility;
 import org.eclipse.rdf4j.sail.SailException;
@@ -995,6 +1000,7 @@ final class StatementPatternExistsFilter implements NativeBooleanFilter {
 @Experimental
 final class ExistsFilter implements NativeBooleanFilter {
 	final SlotPlan subPlan;
+	final SemanticFallback semanticFallback;
 	final NativeExistsPatternCursor.Plan existsPlan;
 	private final NativeWorkerPlanBinder workerBinding;
 	/** Null retains the caller's complete row; otherwise this witness owns an exact projected native input frame. */
@@ -1012,11 +1018,25 @@ final class ExistsFilter implements NativeBooleanFilter {
 	}
 
 	ExistsFilter(SlotPlan subPlan, Set<String> retainedBindingNames) {
-		this(subPlan, retainedBindingNames, null);
+		this(subPlan, retainedBindingNames, null, null);
 	}
 
-	private ExistsFilter(SlotPlan subPlan, Set<String> retainedBindingNames, NativeWorkerPlanBinder workerBinding) {
+	ExistsFilter(SlotPlan subPlan, Set<String> retainedBindingNames, SemanticFallback semanticFallback) {
+		this(subPlan, retainedBindingNames, semanticFallback, null);
+	}
+
+	static ExistsFilter compiled(SlotPlan subPlan, Set<String> retainedBindingNames, TupleExpr semanticQuery,
+			LmdbNativeEvaluationStrategy strategy, QueryEvaluationContext context) {
+		SemanticFallback fallback = memoReadMask(subPlan) < 0L
+				? new SemanticFallback(GenericSubplanDescriptor.create(semanticQuery, strategy), context)
+				: null;
+		return new ExistsFilter(subPlan, retainedBindingNames, fallback);
+	}
+
+	private ExistsFilter(SlotPlan subPlan, Set<String> retainedBindingNames, SemanticFallback semanticFallback,
+			NativeWorkerPlanBinder workerBinding) {
 		this.subPlan = subPlan;
+		this.semanticFallback = semanticFallback;
 		this.retainedBindingNames = retainedBindingNames == null ? null : Set.copyOf(retainedBindingNames);
 		this.workerBinding = workerBinding;
 		this.existsPlan = NativeExistsPatternCursor.plan(subPlan);
@@ -1043,7 +1063,7 @@ final class ExistsFilter implements NativeBooleanFilter {
 		}
 		NativeWorkerPlanBinder binder = new NativeWorkerPlanBinder(context);
 		try {
-			return new ExistsFilter(binder.bind(subPlan), retainedBindingNames, binder);
+			return new ExistsFilter(binder.bind(subPlan), retainedBindingNames, semanticFallback, binder);
 		} catch (IOException failure) {
 			SailException problem = new SailException(failure);
 			binder.abort(problem);
@@ -1221,7 +1241,7 @@ final class ExistsFilter implements NativeBooleanFilter {
 					SyntheticValueSource.EvaluationScope ignored = SyntheticValueSource
 							.attachEvaluation(input.source)) {
 				if (!LmdbNativeAggregateCompiler.initializeRow(input, input.base, input.source, input.layout)) {
-					return false;
+					return semanticExists(input);
 				}
 				return existsInScope(input);
 			} finally {
@@ -1229,6 +1249,37 @@ final class ExistsFilter implements NativeBooleanFilter {
 			}
 		}
 		return existsInScope(row);
+	}
+
+	/** An input capability refusal cannot establish that the witness has no solutions. */
+	private boolean semanticExists(RowState input) {
+		if (semanticFallback == null) {
+			if (subPlan instanceof NativeSubqueryPlan subquery) {
+				return subquery.existsWithSemanticInput(input);
+			}
+			throw new QueryEvaluationException("native EXISTS input requires its semantic fallback");
+		}
+		QueryEvaluationStep prepared = input.preparationScope(input.source).prepare(semanticFallback, () -> {
+			LmdbNativeEvaluationStrategy invocation = input.invocationStrategyOrNull();
+			if (invocation == null) {
+				throw new IllegalStateException("semantic EXISTS requires its invocation strategy");
+			}
+			LmdbNativeEvaluationStrategy generic = invocation
+					.forInvocation(input.source, input.fusedSession(), input.executionContext())
+					.genericOnlyView();
+			QueryEvaluationContext context = input.executionContext()
+					.genericInvocationContext(semanticFallback.context(), generic);
+			return semanticFallback.descriptor().genericPrecompile(generic, context);
+		});
+		// invocationInput captured the reached row, including implicit entry reads. Stop after one solution, and
+		// close the ordinary iterator before this input's execution and preparation owners are released.
+		try (CloseableIteration<BindingSet> results = prepared.evaluate(input.base)) {
+			return results.hasNext();
+		}
+	}
+
+	/** Immutable compiled metadata; each worker and entry prepares through its own explicit invocation. */
+	record SemanticFallback(GenericSubplanDescriptor descriptor, QueryEvaluationContext context) {
 	}
 
 	private boolean existsInScope(RowState row) {

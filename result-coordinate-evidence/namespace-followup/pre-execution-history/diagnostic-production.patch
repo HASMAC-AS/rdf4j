@@ -1,0 +1,270 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/codegen/KernelResultCoordinates.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/codegen/KernelResultCoordinates.java
+@@ -35,6 +35,32 @@
+ @Experimental
+ @InternalUseOnly
+ public final class KernelResultCoordinates implements AutoCloseable {
++
++    // Diagnostic shadow binary only: no instrumented class enters the timing protocol.
++    private static final String[] NS_DIAG_SCOPES = { "frameRetain", "frameRelease", "batchRetain", "batchRelease",
++            "directRetain", "directRelease", "otherLookup", "retirementLink" };
++    private static final String[] NS_DIAG_METRICS = { "rangeCalls", "visitedCells", "positionedCells", "managedCells",
++            "managedTransitions", "managedRuns", "singletonManagedRanges", "singletonPhysicalRanges", "emptyManagedRanges",
++            "referenceCalls", "managedReferenceCalls", "directoryLookups", "directoryProbes", "directoryMisses" };
++    private static final int NS_DIAG_WIDTH = 14;
++    private static final int NS_DIAG_SIZE = NS_DIAG_SCOPES.length * NS_DIAG_WIDTH;
++    private static final java.util.concurrent.atomic.AtomicLongArray NS_DIAG_TOTALS =
++            new java.util.concurrent.atomic.AtomicLongArray(NS_DIAG_SIZE + 1);
++    private final long[] namespaceDiagnosticCounters = new long[NS_DIAG_SIZE];
++    private int namespaceDiagnosticScope = 6;
++
++    /** Monotonic counters published once per closed owner; this API exists only in the diagnostic shadow class. */
++    public static java.util.Map<String, Long> namespaceDiagnostics() {
++        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
++        for (int scope = 0; scope < NS_DIAG_SCOPES.length; scope++) {
++            for (int metric = 0; metric < NS_DIAG_WIDTH; metric++) {
++                result.put(NS_DIAG_SCOPES[scope] + "." + NS_DIAG_METRICS[metric],
++                        NS_DIAG_TOTALS.get(scope * NS_DIAG_WIDTH + metric));
++            }
++        }
++        result.put("closedOwners", NS_DIAG_TOTALS.get(NS_DIAG_SIZE));
++        return result;
++    }
+ 
+ 	/** Experimental representation choice; it does not change query planning or value ownership. */
+ 	public enum Transport {
+@@ -423,10 +449,10 @@
+ 		}
+ 		int base = Math.multiplyExact(frame, registerWidth);
+ 		if (activeFrames[frame]) {
+-			releaseRange(frames, base, registerWidth);
++			releaseRange(frames, base, registerWidth, 1);
+ 		}
+ 		System.arraycopy(registers, 0, frames, base, registerWidth);
+-		retainRange(frames, base, registerWidth);
++		retainRange(frames, base, registerWidth, 0);
+ 		activeFrames[frame] = true;
+ 	}
+ 
+@@ -453,7 +479,7 @@
+ 	/** Releases a previously saved frame once its structural scope is no longer active. */
+ 	public void releaseFrame(int frame) {
+ 		if (frame >= 0 && enabled() && activeFrames[frame]) {
+-			releaseRange(frames, frame * registerWidth, registerWidth);
++			releaseRange(frames, frame * registerWidth, registerWidth, 1);
+ 			activeFrames[frame] = false;
+ 		}
+ 	}
+@@ -734,14 +760,14 @@
+ 	/** Pins source namespaces in an inner row-major sidecar until that bounded source window is exhausted. */
+ 	public void retainBatch(long[] coordinates, int count) {
+ 		if (enabled()) {
+-			retainRange(coordinates, 0, Math.multiplyExact(count, WIDTH));
++			retainRange(coordinates, 0, Math.multiplyExact(count, WIDTH), 2);
+ 		}
+ 	}
+ 
+ 	/** Releases a sidecar previously retained by {@link #retainBatch(long[], int)}. */
+ 	public void releaseBatch(long[] coordinates, int count) {
+ 		if (enabled()) {
+-			releaseRange(coordinates, 0, Math.multiplyExact(count, WIDTH));
++			releaseRange(coordinates, 0, Math.multiplyExact(count, WIDTH), 3);
+ 		}
+ 	}
+ 
+@@ -805,20 +831,70 @@
+ 		return !enabled() || column < 0 || column >= registerOffsets.length ? -1 : registerOffsets[column];
+ 	}
+ 
+-	private void retainRange(long[] array, int start, int length) {
+-		for (int at = start; enabled() && at < start + length; at += WIDTH) {
+-			if (array[at + POSITION] >= 0L) {
+-				retain(array[at + NAMESPACE]);
+-			}
+-		}
+-	}
+-
+-	private void releaseRange(long[] array, int start, int length) {
+-		for (int at = start; enabled() && at < start + length; at += WIDTH) {
+-			if (array[at + POSITION] >= 0L) {
+-				release(array[at + NAMESPACE]);
+-			}
+-		}
++	private void retainRange(long[] array, int start, int length, int scope) {
++        int previousScope = namespaceDiagnosticScope;
++        namespaceDiagnosticScope = scope;
++        int metric = scope * NS_DIAG_WIDTH;
++        namespaceDiagnosticCounters[metric]++;
++        if (length == WIDTH) namespaceDiagnosticCounters[metric + 7]++;
++        long managed = 0L;
++        long previousManagedNamespace = 0L;
++        try {
++            for (int at = start; enabled() && at < start + length; at += WIDTH) {
++                namespaceDiagnosticCounters[metric + 1]++;
++                if (array[at + POSITION] >= 0L) {
++                    namespaceDiagnosticCounters[metric + 2]++;
++                    long namespace = array[at + NAMESPACE];
++                    if (namespace > 1L) {
++                        namespaceDiagnosticCounters[metric + 3]++;
++                        managed++;
++                        if (namespace != previousManagedNamespace) {
++                            namespaceDiagnosticCounters[metric + 5]++;
++                            if (previousManagedNamespace != 0L) namespaceDiagnosticCounters[metric + 4]++;
++                            previousManagedNamespace = namespace;
++                        }
++                    }
++                    retain(namespace);
++                }
++            }
++        } finally {
++            if (managed == 1L) namespaceDiagnosticCounters[metric + 6]++;
++            if (managed == 0L) namespaceDiagnosticCounters[metric + 8]++;
++            namespaceDiagnosticScope = previousScope;
++        }
++	}
++
++	private void releaseRange(long[] array, int start, int length, int scope) {
++        int previousScope = namespaceDiagnosticScope;
++        namespaceDiagnosticScope = scope;
++        int metric = scope * NS_DIAG_WIDTH;
++        namespaceDiagnosticCounters[metric]++;
++        if (length == WIDTH) namespaceDiagnosticCounters[metric + 7]++;
++        long managed = 0L;
++        long previousManagedNamespace = 0L;
++        try {
++            for (int at = start; enabled() && at < start + length; at += WIDTH) {
++                namespaceDiagnosticCounters[metric + 1]++;
++                if (array[at + POSITION] >= 0L) {
++                    namespaceDiagnosticCounters[metric + 2]++;
++                    long namespace = array[at + NAMESPACE];
++                    if (namespace > 1L) {
++                        namespaceDiagnosticCounters[metric + 3]++;
++                        managed++;
++                        if (namespace != previousManagedNamespace) {
++                            namespaceDiagnosticCounters[metric + 5]++;
++                            if (previousManagedNamespace != 0L) namespaceDiagnosticCounters[metric + 4]++;
++                            previousManagedNamespace = namespace;
++                        }
++                    }
++                    release(namespace);
++                }
++            }
++        } finally {
++            if (managed == 1L) namespaceDiagnosticCounters[metric + 6]++;
++            if (managed == 0L) namespaceDiagnosticCounters[metric + 8]++;
++            namespaceDiagnosticScope = previousScope;
++        }
+ 	}
+ 
+ 	private void changeReference(long previous, long next) {
+@@ -829,6 +905,12 @@
+ 	}
+ 
+ 	private void retain(long namespace) {
++        int previousScope = namespaceDiagnosticScope;
++        if (previousScope >= 4) namespaceDiagnosticScope = 4;
++        int metric = namespaceDiagnosticScope * NS_DIAG_WIDTH;
++        namespaceDiagnosticCounters[metric + 9]++;
++        if (namespace > 1L) namespaceDiagnosticCounters[metric + 10]++;
++        try {
+ 		int slot = namespaceIndex(namespace);
+ 		if (slot < 0) {
+ 			return;
+@@ -838,14 +920,26 @@
+ 			return;
+ 		}
+ 		namespaceReferences[slot]++;
++        } finally {
++            namespaceDiagnosticScope = previousScope;
++        }
+ 	}
+ 
+ 	private void release(long namespace) {
++        int previousScope = namespaceDiagnosticScope;
++        if (previousScope >= 4) namespaceDiagnosticScope = 5;
++        int metric = namespaceDiagnosticScope * NS_DIAG_WIDTH;
++        namespaceDiagnosticCounters[metric + 9]++;
++        if (namespace > 1L) namespaceDiagnosticCounters[metric + 10]++;
++        try {
+ 		int slot = namespaceIndex(namespace);
+ 		if (slot < 0) {
+ 			return;
+ 		}
+ 		releaseNamespace(slot);
++        } finally {
++            namespaceDiagnosticScope = previousScope;
++        }
+ 	}
+ 
+ 	private void releaseNamespace(int slot) {
+@@ -875,7 +969,7 @@
+ 		if (retiredTail == 0L) {
+ 			retiredHead = id;
+ 		} else {
+-			int tailSlot = findNamespace(namespaceIds, retiredTail);
++			int tailSlot = findRetirementNamespace(namespaceIds, retiredTail);
+ 			if (tailSlot < 0) {
+ 				disabled = true;
+ 				return;
+@@ -940,20 +1034,36 @@
+ 		}
+ 	}
+ 
+-	private static int findNamespace(long[] ids, long id) {
+-		if (ids == null) {
+-			return -1;
+-		}
+-		int mask = ids.length - 1;
+-		int slot = namespaceHash(id) & mask;
+-		while (ids[slot] != 0L) {
+-			if (ids[slot] == id) {
+-				return slot;
+-			}
+-			slot = (slot + 1) & mask;
+-		}
+-		return -1;
+-	}
++	private int findNamespace(long[] ids, long id) {
++        int metric = namespaceDiagnosticScope * NS_DIAG_WIDTH;
++        namespaceDiagnosticCounters[metric + 11]++;
++        if (ids == null || id <= 1L) {
++            namespaceDiagnosticCounters[metric + 13]++;
++            return -1;
++        }
++        int mask = ids.length - 1;
++        int slot = namespaceHash(id) & mask;
++        while (true) {
++            namespaceDiagnosticCounters[metric + 12]++;
++            long candidate = ids[slot];
++            if (candidate == 0L) {
++                namespaceDiagnosticCounters[metric + 13]++;
++                return -1;
++            }
++            if (candidate == id) return slot;
++            slot = (slot + 1) & mask;
++        }
++	}
++
++    private int findRetirementNamespace(long[] ids, long id) {
++        int previousScope = namespaceDiagnosticScope;
++        namespaceDiagnosticScope = 7;
++        try {
++            return findNamespace(ids, id);
++        } finally {
++            namespaceDiagnosticScope = previousScope;
++        }
++    }
+ 
+ 	private static int namespaceInsertionSlot(long[] ids, long id) {
+ 		int mask = ids.length - 1;
+@@ -1214,6 +1324,10 @@
+ 	public void close() {
+ 		if (!closed) {
+ 			closed = true;
++            for (int metric = 0; metric < NS_DIAG_SIZE; metric++) {
++                NS_DIAG_TOTALS.addAndGet(metric, namespaceDiagnosticCounters[metric]);
++            }
++            NS_DIAG_TOTALS.incrementAndGet(NS_DIAG_SIZE);
+ 			if (rowSelection != null) {
+ 				rowSelection.close(this);
+ 				rowSelection = null;

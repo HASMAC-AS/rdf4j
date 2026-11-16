@@ -375,6 +375,8 @@ class LmdbNativeKernelSubplanScopeTest {
 	private static final class EvaluationFixture implements AutoCloseable {
 		private final NativeExecutionContext root;
 		private final RowState row;
+		private final LmdbFusedSipFactorizedRuntime.Session invocation = LmdbFusedSipFactorizedRuntime.create(1L,
+				false);
 
 		private EvaluationFixture() {
 			NativeLmdbQuerySource delegate = mock(NativeLmdbQuerySource.class, CALLS_REAL_METHODS);
@@ -386,6 +388,7 @@ class LmdbNativeKernelSubplanScopeTest {
 			NativeSlotLayout layout = new NativeSlotLayout(Map.of("term", 0), null);
 			layout.freeze(List.of("term"));
 			row = new RowState(source, layout, EmptyBindingSet.getInstance());
+			row.fusedSession = invocation;
 			assertThat(NativeRowSeeder.seed(row.slots, layout, row.base, source)).isTrue();
 			assertThat(row.boundMask()).isZero();
 			assertThat(row.id(0)).isEqualTo(LmdbNativeAggregateCompiler.UNKNOWN);
@@ -393,7 +396,15 @@ class LmdbNativeKernelSubplanScopeTest {
 
 		@Override
 		public void close() {
-			root.close();
+			try {
+				row.closeDecodedInputs();
+			} finally {
+				try {
+					invocation.close();
+				} finally {
+					root.close();
+				}
+			}
 		}
 	}
 }

@@ -1,0 +1,105 @@
+Evidence:
+Command: ../mvn -o -Pquick -DskipTests=false -pl core/sail/lmdb -Dtest=<20 focused classes> -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=2g -DskipITs verify
+Reports: result-coordinate-evidence/initial/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest.xml, result-coordinate-evidence/initial/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.benchmark.OptionalFanoutBenchmarkTest.xml, result-coordinate-evidence/initial/surefire-reports/TEST-org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeAccumulateJoinTest.xml, +37 more
+Summary: tests=282, failures=10, errors=55, skipped=0, time=30.974s
+Failure: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeAccumulateJoinTest.correlatedInnerJoinCollapsesToOneFragmentExecution: error: worker strategy belongs to a different invocation
+Log: result-coordinate-evidence/initial/tests.log
+
+
+Namespace follow-up pre-change evidence (2026-11-15)
+Description: characterize range-local namespace ownership on unchanged production.
+Command: python3 result-coordinate-evidence/namespace-followup/run-focused-validation.py original-characterization
+Report: result-coordinate-evidence/namespace-followup/validation/original-characterization/surefire-reports/org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest.txt
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+-------------------------------------------------------------------------------
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.089 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+
+Combined selection: Tests run: 98, Failures: 0, Errors: 0, Skipped: 0
+Plan: in_progress measure original namespace locality before candidate.
+
+Frame-directory-guard pre-green characterization (2026-11-15)
+Command: python3 result-coordinate-evidence/namespace-followup/run-focused-validation.py original-frame-characterization
+Report: result-coordinate-evidence/namespace-followup/validation/original-frame-characterization/surefire-reports/org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest.txt
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+-------------------------------------------------------------------------------
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.096 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Combined selection: Tests run: 103, Failures: 0, Errors: 0, Skipped: 0
+Hit proof: unmanagedFramesPreserveReplacementPartialRestoreAliasesAndRelease and frameCreatedBeforeFirstManagedNamespaceKeepsItsLaterManagedPins directly call save, restore and releaseFrame. unknownManagedTokenWithoutDirectoryDisablesFrameOperations exercises set/retainBatch/releaseBatch fail-closed paths before any newNamespace call.
+Production preimage SHA256: e079c212761f295e5c37566b6c71888d5b7240b1ac0891fdad521ec423aee4c4
+
+Compact-page follow-up sparse-budget-red
+Command: ../mvn -o -Pquick -DskipTests=false -pl core/sail/lmdb -Dtest=NativeResultMaterializerTest#sparseFactorPagesReuseWithinCompactPageBudget -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/validation/sparse-budget-red/surefire-reports
+Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.174 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+
+Compact-page follow-up compact-correctness
+Command: ../mvn -o -Pquick -DskipTests=false -pl core/sail/lmdb -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/validation/compact-correctness/surefire-reports
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.884 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.948 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.886 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.183 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 42, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.735 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.100 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.055 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.024 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+Compact-page follow-up selected-original
+Command: ../mvn -o -Pquick -DskipTests=false -pl core/sail/lmdb -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/validation/selected-original/surefire-reports
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.280 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.048 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.973 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.226 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.811 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.105 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.064 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.034 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+Publication follow-up baseline
+Command: ../mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/baseline/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/baseline/surefire-reports
+Tests run: 2, Failures: 0, Errors: 2, Skipped: 0, Time elapsed: 0.129 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 10, Skipped: 0, Time elapsed: 0.055 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.632 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 11, Skipped: 0, Time elapsed: 0.192 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 40, Failures: 0, Errors: 3, Skipped: 0, Time elapsed: 0.635 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.136 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.119 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.050 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+Publication follow-up baseline-v2
+Command: ../mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/baseline-v2/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/baseline-v2/surefire-reports
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.279 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 9.423 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.963 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.218 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.055 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.136 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.061 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.035 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+Publication follow-up contracts-before
+Command: ../mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/contracts-before/pom.xml -Dtest=PublicationAblationContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/contracts-before/surefire-reports
+Tests run: 6, Failures: 5, Errors: 0, Skipped: 0, Time elapsed: 0.322 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationAblationContractTest
+
+Publication follow-up overlay-focused
+Command: ../mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/overlay-focused/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/overlay-focused/surefire-reports
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.411 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.355 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.157 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.273 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.540 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.170 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.083 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+Publication follow-up contracts-after
+Command: ../mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/contracts-after/pom.xml -Dtest=PublicationAblationContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/contracts-after/surefire-reports
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.228 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationAblationContractTest

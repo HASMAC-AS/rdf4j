@@ -14,6 +14,7 @@ package org.eclipse.rdf4j.sail.lmdb.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -53,6 +54,8 @@ import org.junit.jupiter.api.parallel.Resources;
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
 class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 
+	private final List<AutoCloseable> invocationOwners = new ArrayList<>();
+
 	private String previousParallel;
 	private String previousThreads;
 	private String previousMaxTasks;
@@ -75,11 +78,17 @@ class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 
 	@AfterEach
 	void restoreProperties() {
+		Throwable failure = null;
+		for (int index = invocationOwners.size() - 1; index >= 0; index--) {
+			failure = KernelRuntime.closeResource(invocationOwners.get(index), failure);
+		}
+		invocationOwners.clear();
 		restore("rdf4j.lmdb.parallel.enabled", previousParallel);
 		restore("rdf4j.lmdb.parallel.threads", previousThreads);
 		restore("rdf4j.lmdb.parallel.maxTasks", previousMaxTasks);
 		restore(LmdbNativeParallelPrefixRuns.PARALLEL_MIN_ESTIMATE_PROPERTY, previousThreshold);
 		restore(LmdbNativeParallelKernelAggregate.ENABLED_PROPERTY, previousAggregateParallel);
+		KernelRuntime.rethrowCloseFailure(failure);
 	}
 
 	@Test
@@ -103,7 +112,7 @@ class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 			BindingSet base = EmptyBindingSet.getInstance();
 			NativeGroupIteration emitter = new NativeGroupIteration(owner, SlotPlan.singleton(), layout, new int[0],
 					new AggregateSpec[] { AggregateSpec.star("count") }, false, base, null, null, false, null);
-			RowState row = new RowState(owner, layout, base);
+			RowState row = groupRow(emitter);
 			assertThat(emitter.initialize(row)).isTrue();
 
 			TypeMatrixAggregate terminal = new TypeMatrixAggregate(0, false, 0, 1);
@@ -214,7 +223,7 @@ class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 			BindingSet base = EmptyBindingSet.getInstance();
 			NativeGroupIteration emitter = new NativeGroupIteration(owner, SlotPlan.singleton(), layout, new int[0],
 					new AggregateSpec[] { AggregateSpec.star("count") }, false, base, null, null, false, null);
-			RowState row = new RowState(owner, layout, base);
+			RowState row = groupRow(emitter);
 			assertThat(emitter.initialize(row)).isTrue();
 
 			TypeMatrixAggregate terminal = new TypeMatrixAggregate(0, false, 0, 1);
@@ -256,12 +265,12 @@ class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 		assertThat(second.workerFinished).isTrue();
 	}
 
-	private static Throwable assertFailurePriorityAndCloseSuppression(RuntimeException sourceCloseFailure)
+	private Throwable assertFailurePriorityAndCloseSuppression(RuntimeException sourceCloseFailure)
 			throws Exception {
 		return assertFailurePriorityAndCloseSuppression(sourceCloseFailure, null);
 	}
 
-	private static Throwable assertFailurePriorityAndCloseSuppression(RuntimeException sourceCloseFailure,
+	private Throwable assertFailurePriorityAndCloseSuppression(RuntimeException sourceCloseFailure,
 			RuntimeException kernelCloseFailure) throws Exception {
 		System.setProperty("rdf4j.lmdb.parallel.threads", "3");
 		System.setProperty("rdf4j.lmdb.parallel.maxTasks", "3");
@@ -286,7 +295,7 @@ class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 			BindingSet base = EmptyBindingSet.getInstance();
 			NativeGroupIteration emitter = new NativeGroupIteration(owner, SlotPlan.singleton(), layout, new int[0],
 					new AggregateSpec[] { AggregateSpec.star("count") }, false, base, null, null, false, null);
-			RowState row = new RowState(owner, layout, base);
+			RowState row = groupRow(emitter);
 			assertThat(emitter.initialize(row)).isTrue();
 
 			TypeMatrixAggregate terminal = new TypeMatrixAggregate(0, false, 0, 1);
@@ -333,6 +342,20 @@ class LmdbNativeParallelKernelAggregateSubmissionDrainTest {
 		assertThat(second.closeCalls).isOne();
 		assertThat(third.closeCalls).isOne();
 		return result;
+	}
+
+	private RowState groupRow(NativeGroupIteration emitter) {
+		NativeInvocationCarrier invocation = emitter.invocationCarrier();
+		RowState row = new RowState(emitter.source, emitter.layout, emitter.base, null, null, emitter.cancellation);
+		row.fusedSession = invocation.session();
+		row.setExecutionContext(invocation.executionContext());
+		row.swapPreparationAttempt(invocation.preparationAttempt());
+		invocationOwners.add(() -> {
+			Throwable failure = KernelRuntime.closeResource(row::closeDecodedInputs, null);
+			failure = KernelRuntime.closeResource(emitter, failure);
+			KernelRuntime.rethrowCloseFailure(failure);
+		});
+		return row;
 	}
 
 	private static NativeLmdbQuerySource.NativeAdjacency markerAdjacency(long keys) {

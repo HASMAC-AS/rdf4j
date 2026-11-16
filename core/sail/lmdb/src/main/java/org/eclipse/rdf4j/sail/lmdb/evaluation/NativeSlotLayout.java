@@ -73,6 +73,27 @@ final class NativeSlotLayout {
 		return copy;
 	}
 
+	/** Admit the complete frozen layout before copying its maps and arrays into an optional recipe. */
+	void accountRecipeSnapshot(NativeRecipeMemory.Capture capture) {
+		capture.reserve(512L + 4L * (slotToQueryIndex.length + queryIndexToSlot.length + slotPositionMasks.length)
+				+ 64L * (slotsByName.size() + positionMasks.size() + inputPositionMasks.size()
+						+ nativeBindingNames.size() + analyzedInputNames.size()));
+		capture.strings(slotNames);
+		for (String name : positionMasks.keySet()) {
+			capture.string(name);
+		}
+		for (String name : inputPositionMasks.keySet()) {
+			capture.string(name);
+		}
+		if (queryLayout != null) {
+			// Include the hash directory's bucket slack, nodes and boxed indexes with uncompressed references.
+			capture.retain(queryLayout, 128L + 128L * queryLayout.size());
+			for (int index = 0; index < queryLayout.size(); index++) {
+				capture.string(queryLayout.nameOf(index));
+			}
+		}
+	}
+
 	void freeze(List<String> slotNames) {
 		if (frozen) {
 			throw new IllegalStateException("slot layout is already frozen");

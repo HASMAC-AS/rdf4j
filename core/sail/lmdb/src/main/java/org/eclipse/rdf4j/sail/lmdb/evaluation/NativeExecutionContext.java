@@ -563,6 +563,11 @@ final class NativeExecutionContext implements AutoCloseable {
 		return other != null && queryScopeOwner == other.queryScopeOwner;
 	}
 
+	/** The explicit lifetime owner shared by this query's child invocations and workers. */
+	NativeExecutionContext queryScopeOwner() {
+		return queryScopeOwner;
+	}
+
 	/** Shares query scalar state while retaining the exact structural context of this compiled subtree. */
 	QueryEvaluationContext genericContext(QueryEvaluationContext structural, LmdbNativeEvaluationStrategy strategy) {
 		if (structural instanceof BindingSetQueryEvaluationContext
@@ -638,8 +643,8 @@ final class NativeExecutionContext implements AutoCloseable {
 	}
 
 	/**
-	 * Installs the first root authority that can map a query-scoped Value to its canonical store id. Nested native
-	 * roots share the owner and must not replace that authority with a different catalog.
+	 * Installs an explicit query-scope registration hook before the scope is created. Native sources use the owner's
+	 * source-free representative retention and associate certified store IDs only through a live resolver.
 	 */
 	void installQueryScopedValueRegistrar(Consumer<Value> registrar) {
 		if (queryScopeOwner != this) {
@@ -698,9 +703,11 @@ final class NativeExecutionContext implements AutoCloseable {
 		if (context instanceof EvaluationScopedQueryEvaluationContext scoped) {
 			scoped.installValueCapturer(valueCapturer);
 			Consumer<Value> registrar = queryScopedValueRegistrar;
-			if (registrar != null) {
-				scoped.installQueryScopedValueRegistrar(registrar);
-			}
+			// Query scalar state outlives individual source frames. Retain the representative here without
+			// capturing the first child's resolver or dictionary. A live resolver associates its stored ID later.
+			scoped.installQueryScopedValueRegistrar(registrar == null
+					? value -> retainQueryScopedValue(value, UNKNOWN)
+					: registrar);
 		}
 	}
 
@@ -1021,10 +1028,48 @@ final class NativeExecutionContext implements AutoCloseable {
 		if (closed) {
 			throw new IllegalStateException("execution context is closed");
 		}
-		Value representative = queryScopedValues.computeIfAbsent(RdfTermKey.of(value), ignored -> value);
-		if (storeId != UNKNOWN) {
-			hasQueryScopedStoreValues = true;
-			queryScopedStoreValuesById.putIfAbsent(storeId, representative);
+		RdfTermKey key = RdfTermKey.of(value);
+		// Scalar callbacks hold their query-scope monitor. Publish against close under this map's monitor, never
+		// the execution monitor that close holds while releasing the query scope.
+		synchronized (queryScopedValues) {
+			if (closed) {
+				throw new IllegalStateException("execution context is closed");
+			}
+			Value representative = queryScopedValues.computeIfAbsent(key, ignored -> value);
+			if (storeId != UNKNOWN) {
+				queryScopedStoreValuesById.putIfAbsent(storeId, representative);
+				hasQueryScopedStoreValues = true;
+			}
+		}
+	}
+
+	/**
+	 * Associates an already retained scalar with a certified dictionary hit in the currently live source. Cached
+	 * lookups supply their detached spelling; uncached lookups use identity only so an unrelated cold value is never
+	 * materialized just because this query has evaluated NOW.
+	 */
+	void retainResolvedQueryScopedValue(Value value, RdfTermKey spelling, long storeId) {
+		NativeExecutionContext owner = queryScopeOwner;
+		if (storeId == UNKNOWN || owner.queryScopedValues.isEmpty()) {
+			return;
+		}
+		Value representative = spelling == null ? null : owner.queryScopedValues.get(spelling);
+		if (spelling == null) {
+			for (Value candidate : owner.queryScopedValues.values()) {
+				if (candidate == value) {
+					representative = candidate;
+					break;
+				}
+			}
+		}
+		if (representative != null) {
+			synchronized (owner.queryScopedValues) {
+				if (owner.closed) {
+					throw new IllegalStateException("execution context is closed");
+				}
+				owner.queryScopedStoreValuesById.putIfAbsent(storeId, representative);
+				owner.hasQueryScopedStoreValues = true;
+			}
 		}
 	}
 
@@ -1330,9 +1375,11 @@ final class NativeExecutionContext implements AutoCloseable {
 		}
 		if (queryScopeOwner == this) {
 			memoryScope.close();
-			queryScopedValues.clear();
-			queryScopedStoreValuesById.clear();
-			hasQueryScopedStoreValues = false;
+			synchronized (queryScopedValues) {
+				queryScopedValues.clear();
+				queryScopedStoreValuesById.clear();
+				hasQueryScopedStoreValues = false;
+			}
 			queryScopedValueRegistrar = null;
 			if (genericContext instanceof EvaluationScopedQueryEvaluationContext scoped) {
 				scoped.clearQueryScopedValueRegistrar();

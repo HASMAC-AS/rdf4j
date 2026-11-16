@@ -50,10 +50,15 @@ final class PlanValueCatalog {
 	/** A receipt may retain this token, but not this catalog's builder or values. */
 	private final Object detachedIdentity = new Object();
 	private final boolean detachedValues;
+	private long recipeMetadataBytes;
 
 	private PlanValueCatalog(Map<RdfTermKey, Long> idsByValue, List<Value> valuesInOrder, boolean detachedValues) {
 		this.contents = new Contents(idsByValue, valuesInOrder);
 		this.detachedValues = detachedValues;
+		this.recipeMetadataBytes = 128L;
+		for (RdfTermKey key : idsByValue.keySet()) {
+			this.recipeMetadataBytes = Math.addExact(this.recipeMetadataBytes, recipeTermBytes(key));
+		}
 	}
 
 	private PlanValueCatalog(Builder preparing) {
@@ -64,6 +69,10 @@ final class PlanValueCatalog {
 	/** Only a fully frozen catalog of detached spellings can certify a shared compiled recipe. */
 	Object detachedIdentity() {
 		return detachedValues && contents != null ? detachedIdentity : null;
+	}
+
+	boolean isFrozen() {
+		return contents != null;
 	}
 
 	private Contents contents() {
@@ -114,6 +123,21 @@ final class PlanValueCatalog {
 		return contents().valuesInOrder().isEmpty();
 	}
 
+	/** Conservative detached key/value, map and list storage, without touching a source-backed Value. */
+	long recipeMetadataBytes() {
+		Builder owner = preparing;
+		return owner == null ? recipeMetadataBytes : owner.recipeMetadataBytes;
+	}
+
+	private static long recipeTermBytes(RdfTermKey key) {
+		long bytes = 256L;
+		if (key.subject() != null) {
+			return Math.addExact(bytes, Math.addExact(recipeTermBytes(key.subject()),
+					Math.addExact(recipeTermBytes(key.predicate()), recipeTermBytes(key.object()))));
+		}
+		return Math.addExact(bytes, Math.multiplyExact(4L, key.lexicalLength()));
+	}
+
 	private static int indexOf(long id) {
 		long index = id - SYNTHETIC_VALUE_BASE;
 		return index >= 0 && index <= Integer.MAX_VALUE ? (int) index : -1;
@@ -135,6 +159,7 @@ final class PlanValueCatalog {
 		private LmdbQueryMemoryManager.QueryLedger compilationLedger;
 		private boolean ownsCompilationLedger;
 		private boolean frozen;
+		private long recipeMetadataBytes = 128L;
 
 		Builder() {
 			this(false);
@@ -177,6 +202,15 @@ final class PlanValueCatalog {
 			} else if (requested != null && requested != compilationLedger
 					|| requested == null && !ownsCompilationLedger) {
 				return null;
+			}
+			return compilationLedger.tryReserveWithoutReclamation(bytes);
+		}
+
+		/** An optional recipe shares the exact compilation ledger already selected by its enclosing planner. */
+		LmdbQueryMemoryManager.Reservation reserveRecipeScratch(long bytes) {
+			checkPreparing();
+			if (compilationLedger == null) {
+				return reserveCompilationScratch(estimateScope == null ? null : estimateScope.execution, bytes);
 			}
 			return compilationLedger.tryReserveWithoutReclamation(bytes);
 		}
@@ -381,6 +415,7 @@ final class PlanValueCatalog {
 			// Value cannot retain a source/revision or mutate the published catalog. Every use of this ID still shares
 			// the one catalog value object. Standalone builders retain their existing caller-owned-value behavior.
 			valuesInOrder.add(treeCatalog == null ? value : key.toValue());
+			recipeMetadataBytes = Math.addExact(recipeMetadataBytes, recipeTermBytes(key));
 			return id;
 		}
 
@@ -420,6 +455,7 @@ final class PlanValueCatalog {
 			Contents frozenContents = new Contents(Map.copyOf(idsByValue), List.copyOf(valuesInOrder));
 			frozen = true;
 			treeCatalog.contents = frozenContents;
+			treeCatalog.recipeMetadataBytes = recipeMetadataBytes;
 			treeCatalog.preparing = null;
 			owner = null;
 			idsByValue.clear();
