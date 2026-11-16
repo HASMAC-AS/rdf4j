@@ -1,0 +1,37 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 1.697 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedInternalIdRejectsTheEntryWithoutAVersionChange -- Time elapsed: 0.340 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: changed ID or revision invalidates the representative] 
+Expecting actual:
+  urn:test:value:42:4
+and:
+  urn:test:replacement
+to refer to the same object
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertReplacementAfterIdentityMutation(NativeDirectValueMemoContractTest.java:389)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedInternalIdRejectsTheEntryWithoutAVersionChange(NativeDirectValueMemoContractTest.java:119)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionOwnerRejectsTheEntryEvenWithTheSameRevisionNumber -- Time elapsed: 1.317 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: changed ID or revision invalidates the representative] 
+Expecting actual:
+  urn:test:value:42:4
+and:
+  urn:test:replacement
+to refer to the same object
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertReplacementAfterIdentityMutation(NativeDirectValueMemoContractTest.java:389)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionOwnerRejectsTheEntryEvenWithTheSameRevisionNumber(NativeDirectValueMemoContractTest.java:144)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionRejectsTheEntryWithoutAVersionChange -- Time elapsed: 0.003 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: changed ID or revision invalidates the representative] 
+Expecting actual:
+  urn:test:value:42:4
+and:
+  urn:test:replacement
+to refer to the same object
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertReplacementAfterIdentityMutation(NativeDirectValueMemoContractTest.java:389)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionRejectsTheEntryWithoutAVersionChange(NativeDirectValueMemoContractTest.java:130)
+

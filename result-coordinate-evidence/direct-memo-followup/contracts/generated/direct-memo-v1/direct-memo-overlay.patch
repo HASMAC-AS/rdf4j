@@ -1,0 +1,623 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -103,6 +103,7 @@
+ 
+ 	private final NativeResultMaterializerPlan plan;
+ 	private final LmdbQueryMemoryManager.QueryLedger ledger;
++	private final NativeDirectValueMemo directMemo;
+ 	private final LongConsumer retireNamespace = this::retireFactorNamespace;
+ 	private WeakReference<NativeLmdbQuerySource> source;
+ 	private LmdbQueryMemoryManager.Reservation reservation;
+@@ -140,21 +141,30 @@
+ 	NativeResultMaterializer(NativeResultMaterializerPlan plan, LmdbQueryMemoryManager.QueryLedger ledger) {
+ 		this.plan = plan;
+ 		this.ledger = ledger;
++		directMemo = Boolean.parseBoolean(System.getProperty("rdf4j.lmdb.nativeValueMemo.enabled", "false"))
++				? new NativeDirectValueMemo(ledger)
++				: null;
+ 	}
+ 
+ 	/** Begin one accepted outward row; null declines reuse for this row. */
+ 	Object begin(NativeLmdbQuerySource currentSource, Object currentExposure) {
+ 		synchronized (this) {
+-			if (closed || admissionRefused || source != null && source.get() != currentSource) {
++			if (closed || admissionRefused || directMemo != null && directMemo.disabled()
++					|| source != null && source.get() != currentSource) {
+ 				return null;
+ 			}
+ 		}
+ 		Object currentView = currentSource.resultValueScope();
+ 		synchronized (this) {
+-			if (closed || admissionRefused || source != null && source.get() != currentSource) {
++			if (closed || admissionRefused || directMemo != null && directMemo.disabled()
++					|| source != null && source.get() != currentSource) {
+ 				return null;
+ 			}
+ 			if (currentView == null) {
++				if (directMemo != null) {
++					directMemo.disable();
++					admissionRefused = true;
++				}
+ 				clearEntries();
+ 				clearFactorPages();
+ 				initializedScope = false;
+@@ -162,8 +172,12 @@
+ 				exposure = null;
+ 				return null;
+ 			}
+-			if (values == null && !allocate(currentSource)) {
+-				return null;
++			if (directMemo == null) {
++				if (values == null && !allocate(currentSource)) {
++					return null;
++				}
++			} else if (source == null) {
++				source = new WeakReference<>(currentSource);
+ 			}
+ 			if (!sameScope(currentView, currentExposure)) {
+ 				clearEntries();
+@@ -179,7 +193,7 @@
+ 
+ 	/** Invalidated before the producer may advance or retire its current coordinates. */
+ 	void invalidateCoordinates() {
+-		if (!KernelResultCoordinates.transportEnabled()) {
++		if (directMemo != null || !KernelResultCoordinates.transportEnabled()) {
+ 			return;
+ 		}
+ 		synchronized (this) {
+@@ -194,7 +208,7 @@
+ 
+ 	/** Publishes only a live producer position; no factor cache entry is admitted here. */
+ 	long position(NativeResultCoordinates producer, long[] row) {
+-		if (!KernelResultCoordinates.transportEnabled()) {
++		if (directMemo != null || !KernelResultCoordinates.transportEnabled()) {
+ 			return 0L;
+ 		}
+ 		synchronized (this) {
+@@ -253,6 +267,9 @@
+ 		synchronized (this) {
+ 			if (closed || source == null || source.get() != currentSource || !sameScope(currentView, currentExposure)) {
+ 				return null;
++			}
++			if (directMemo != null) {
++				return directMemo.find(id, plan.projection.positionMasks[index]);
+ 			}
+ 			if (values[index] != null && ids[index] == id) {
+ 				Value value = dereference(values[index]);
+@@ -275,7 +292,7 @@
+ 
+ 	void remember(int index, long id, Value value, NativeLmdbQuerySource currentSource, Object currentExposure,
+ 			Object currentView, long rowSequence) {
+-		if (currentView == null || value == null) {
++		if (directMemo != null || currentView == null || value == null) {
+ 			return;
+ 		}
+ 		synchronized (this) {
+@@ -339,6 +356,23 @@
+ 		}
+ 	}
+ 
++	boolean usesDirectMemo() {
++		return directMemo != null;
++	}
++
++	/** Direct misses publish immediately, so an earlier column can evict a later column's candidate. */
++	void rememberDirect(int index, long id, Value value, NativeLmdbQuerySource currentSource,
++			Object currentExposure, Object currentView) {
++		if (directMemo == null || currentView == null || value == null) {
++			return;
++		}
++		synchronized (this) {
++			if (!closed && source != null && source.get() == currentSource && sameScope(currentView, currentExposure)) {
++				directMemo.remember(id, plan.projection.positionMasks[index], value);
++			}
++		}
++	}
++
+ 	synchronized void unbound(int index) {
+ 		if (!closed && values != null) {
+ 			clear(index);
+@@ -358,6 +392,9 @@
+ 
+ 	/** Only wide projections need shared scratch; concurrent capture can always fall back to ordinary resolution. */
+ 	synchronized long[][] acquireHitMasks() {
++		if (!closed && directMemo != null && hitMasks == null && !allocateDirectHitMasks()) {
++			return null;
++		}
+ 		if (closed || hitMasks == null || hitMasksInUse) {
+ 			return null;
+ 		}
+@@ -375,6 +412,9 @@
+ 
+ 	synchronized long retainedBytes() {
+ 		long bytes = reservation == null ? 0L : reservation.bytes();
++		if (directMemo != null) {
++			bytes += directMemo.retainedBytes();
++		}
+ 		if (factorMemo != null) {
+ 			bytes += factorMemo.reservation.bytes();
+ 		}
+@@ -937,7 +977,29 @@
+ 		}
+ 	}
+ 
++	private boolean allocateDirectHitMasks() {
++		int words = (int) ((plan.projection.names.length + (long) Long.SIZE - 1L) / Long.SIZE);
++		long bytes = 64L + 16L * words;
++		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
++		if (claim == null) {
++			admissionRefused = true;
++			directMemo.disable();
++			return false;
++		}
++		try {
++			hitMasks = new long[][] { new long[words], new long[words] };
++			reservation = claim;
++			return true;
++		} catch (RuntimeException | Error failure) {
++			claim.close();
++			throw failure;
++		}
++	}
++
+ 	private void clearEntries() {
++		if (directMemo != null) {
++			directMemo.clearEntries();
++		}
+ 		if (values != null) {
+ 			for (int i = 0; i < values.length; i++) {
+ 				clear(i);
+@@ -953,6 +1015,10 @@
+ 	@Override
+ 	public synchronized void close() {
+ 		if (!closed) {
++			if (directMemo != null) {
++				// Export occupancy before shared scope cleanup clears entries.
++				directMemo.close();
++			}
+ 			clearEntries();
+ 			clearFactorPages();
+ 			closed = true;
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeProjectedBindingSet.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeProjectedBindingSet.java
+@@ -244,6 +244,7 @@
+ 	/** Resolves every bound value and removes this result row's dependency on the live LMDB value store. */
+ 	public void materializeAndDetach() {
+ 		if (source == null) {
++			detachAfterMaterialization();
+ 			return;
+ 		}
+ 		collectMaterializationValues(value -> {
+@@ -251,7 +252,7 @@
+ 				lmdbValue.init();
+ 			}
+ 		});
+-		source = null;
++		detachAfterMaterialization();
+ 	}
+ 
+ 	/** Makes every projected value available to the Sail boundary without resolving its lexical form. */
+@@ -270,8 +271,13 @@
+ 				if (value == null) {
+ 					value = findMaterializedDuplicate(i);
+ 					if (value == null) {
+-						value = currentSource.lazyValue(ids[i], positionMasks[i]);
+-						materializedValues++;
++						NativeResultMaterializer current = materializer;
++						if (current != null && current.usesDirectMemo()) {
++							value = directValue(i, currentSource, current);
++						} else {
++							value = currentSource.lazyValue(ids[i], positionMasks[i]);
++							materializedValues++;
++						}
+ 					}
+ 					values[i] = value;
+ 				}
+@@ -282,6 +288,52 @@
+ 				MATERIALIZED_VALUES.addAndGet(materializedValues);
+ 			}
+ 		}
++	}
++
++	/** Individual/collection access preserves ordinary ownership handoff when no exposure token was supplied. */
++	private Value directValue(int index, NativeLmdbQuerySource currentSource, NativeResultMaterializer current) {
++		long id = ids[index];
++		Object view = current.begin(currentSource, null);
++		boolean committed = false;
++		try {
++			Value value = view == null ? null : current.find(index, id, currentSource, null, view, 0L);
++			if (view != null && currentSource.resultValueScope() != view) {
++				current.abandon(view, null);
++				view = null;
++				value = null;
++			}
++			if (value != null && requiresSourceHandoff(value)) {
++				// An internal wrapper can need exposure-dependent promotion even when its ID is unchanged.
++				value = null;
++			}
++			boolean reused = value != null;
++			if (value == null) {
++				value = currentSource.lazyValue(id, positionMasks[index]);
++				MATERIALIZED_VALUES.incrementAndGet();
++				current.rememberDirect(index, id, value, currentSource, null, view);
++			}
++			if (view != null && currentSource.resultValueScope() != view) {
++				current.abandon(view, null);
++				if (reused) {
++					value = currentSource.lazyValue(id, positionMasks[index]);
++					MATERIALIZED_VALUES.incrementAndGet();
++				}
++			}
++			committed = true;
++			return value;
++		} finally {
++			if (view != null && !committed) {
++				current.abandon(view, null);
++			}
++		}
++	}
++
++	private static boolean requiresSourceHandoff(Value value) {
++		if (!(value instanceof LmdbValue nativeValue) || nativeValue.isExternallyOwned()) {
++			return false;
++		}
++		LmdbValue.InternalIdentity identity = nativeValue.getInternalIdentity();
++		return identity == null || identity.revision() == null || identity.revision().getValueStore() != null;
+ 	}
+ 
+ 	/**
+@@ -329,6 +381,9 @@
+ 					if (value == null) {
+ 						value = currentSource.lazyValue(id, positionMasks[i]);
+ 						materializedValues++;
++						if (view != null && current.usesDirectMemo()) {
++							current.rememberDirect(i, id, value, currentSource, exposureScope, view);
++						}
+ 					}
+ 					values[i] = value;
+ 					if (provisional) {
+@@ -347,9 +402,11 @@
+ 				}
+ 			}
+ 			if (view != null) {
+-				for (int i = 0; i < ids.length; i++) {
+-					if (isBound(ids[i]) && !marked(directHits, masks, 1, i)) {
+-						current.remember(i, ids[i], values[i], currentSource, exposureScope, view, coordinateSequence);
++				if (!current.usesDirectMemo()) {
++					for (int i = 0; i < ids.length; i++) {
++						if (isBound(ids[i]) && !marked(directHits, masks, 1, i)) {
++							current.remember(i, ids[i], values[i], currentSource, exposureScope, view, coordinateSequence);
++						}
+ 					}
+ 				}
+ 				if (currentSource.resultValueScope() != view) {
+@@ -402,6 +459,8 @@
+ 	/** Removes the native source after every bound value has been captured independently of that source. */
+ 	public void detachAfterMaterialization() {
+ 		source = null;
++		materializer = null;
++		coordinateSequence = 0L;
+ 	}
+ 
+ 	/** Whether this row can safely serve as a stable snapshot without consulting its native source. */
+@@ -456,9 +515,14 @@
+ 			if (currentSource == null) {
+ 				throw new IllegalStateException("detached native result has an unresolved value");
+ 			}
+-			value = currentSource.lazyValue(id, positionMasks[index]);
++			NativeResultMaterializer current = materializer;
++			if (current != null && current.usesDirectMemo()) {
++				value = directValue(index, currentSource, current);
++			} else {
++				value = currentSource.lazyValue(id, positionMasks[index]);
++				MATERIALIZED_VALUES.incrementAndGet();
++			}
+ 			values[index] = value;
+-			MATERIALIZED_VALUES.incrementAndGet();
+ 		}
+ 		return value;
+ 	}
+--- /dev/null
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
+@@ -0,0 +1,301 @@
++/*******************************************************************************
++ * Copyright (c) 2026 Eclipse RDF4J contributors.
++ *
++ * All rights reserved. This program and the accompanying materials
++ * are made available under the terms of the Eclipse Distribution License v1.0
++ * which accompanies this distribution, and is available at
++ * http://www.eclipse.org/documents/edl-v10.php.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ *******************************************************************************/
++// Some portions generated by Codex
++package org.eclipse.rdf4j.sail.lmdb.evaluation;
++
++import java.util.Arrays;
++import java.util.Objects;
++
++import org.eclipse.rdf4j.model.Value;
++import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.QueryLedger;
++import org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.Reservation;
++import org.eclipse.rdf4j.sail.lmdb.ValueStoreRevision;
++import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
++import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue.InternalIdentity;
++
++/**
++ * Experimental iteration-local strong memo, confined by its materializer's monitor. The materializer must certify the
++ * source, result view, and exposure scope before lookup, and clear or disable this table when those boundaries change.
++ * Five arrays are charged; their strong value and revision references do not establish a retained-payload memory bound.
++ */
++final class NativeDirectValueMemo implements AutoCloseable {
++
++	static final int INITIAL_CAPACITY = 4096;
++	static final int MAX_CAPACITY = 65536;
++	static final int WARMUP_PROBES = 8192;
++
++	private final QueryLedger ledger;
++	private final long statisticsOwner;
++	private long[] ids;
++	private long[] versions;
++	private int[] masks;
++	private Value[] values;
++	private InternalIdentity[] identities;
++	private Reservation reservation;
++	private int entries;
++	private boolean disabled;
++	private boolean closed;
++
++	private long probes;
++	private long hits;
++	private long collisions;
++	private long invalidations;
++	private long unsupportedValues;
++	private long clearCalls;
++	private long resizes;
++	private long rehashDiscards;
++	private long lowHitDisable;
++	private long initialAdmissionRefusals;
++	private long growthAdmissionRefusals;
++	private int peakCapacity;
++	private long peakArrayBytes;
++
++	NativeDirectValueMemo(QueryLedger ledger) {
++		this.ledger = Objects.requireNonNull(ledger);
++		statisticsOwner = NativeDirectValueMemoStatistics.open();
++	}
++
++	Value find(long id, int fullMask) {
++		if (disabled || closed || values == null && !allocate(INITIAL_CAPACITY)) {
++			return null;
++		}
++		long count = ++probes;
++		int at = slot(id, fullMask, values.length);
++		Value value = values[at];
++		if (value != null) {
++			if (ids[at] != id || masks[at] != fullMask) {
++				collisions++;
++				value = null;
++			} else if (matches((LmdbValue) value, id, versions[at], identities[at])) {
++				hits++;
++			} else {
++				invalidations++;
++				clear(at);
++				value = null;
++			}
++		}
++		if ((count & (WARMUP_PROBES - 1L)) == 0L) {
++			adapt(count);
++		}
++		// A boundary may disable the table after this lookup already captured a valid value.
++		return value;
++	}
++
++	void remember(long id, int fullMask, Value value) {
++		if (disabled || closed || values == null) {
++			return;
++		}
++		int at = slot(id, fullMask, values.length);
++		if (!(value instanceof LmdbValue nativeValue)) {
++			decline(at, id, fullMask);
++			return;
++		}
++		long version = nativeValue.getSemanticVersion();
++		if (version < 0L || id == LmdbValue.UNKNOWN_ID) {
++			decline(at, id, fullMask);
++			return;
++		}
++		InternalIdentity identity = nativeValue.getInternalIdentity();
++		if (identity == null || identity.id() != id || identity.revision() == null) {
++			decline(at, id, fullMask);
++			return;
++		}
++		if (values[at] == null) {
++			entries++;
++		}
++		ids[at] = id;
++		masks[at] = fullMask;
++		versions[at] = version;
++		identities[at] = identity;
++		values[at] = value;
++	}
++
++	/** Drops references without restarting the iteration's adaptive history or releasing its table reservation. */
++	void clearEntries() {
++		if (values != null) {
++			clearCalls++;
++			Arrays.fill(values, null);
++			Arrays.fill(identities, null);
++			entries = 0;
++		}
++	}
++
++	/** Permanent fallback for this iteration; the statistics owner remains open until final close. */
++	void disable() {
++		disabled = true;
++		ids = null;
++		versions = null;
++		masks = null;
++		values = null;
++		identities = null;
++		entries = 0;
++		Reservation previous = reservation;
++		reservation = null;
++		if (previous != null) {
++			previous.close();
++		}
++	}
++
++	@Override
++	public void close() {
++		if (closed) {
++			return;
++		}
++		closed = true;
++		int retainedEntries = entries;
++		int retainedCapacity = capacity();
++		long disabledBeforeClose = disabled ? 1L : 0L;
++		disable();
++		NativeDirectValueMemoStatistics.close(statisticsOwner, probes, hits, collisions, invalidations,
++				unsupportedValues, clearCalls, resizes, rehashDiscards, lowHitDisable, initialAdmissionRefusals,
++				growthAdmissionRefusals, peakCapacity, peakArrayBytes, retainedEntries, retainedCapacity,
++				retainedBytes(), disabledBeforeClose);
++	}
++
++	boolean disabled() {
++		return disabled;
++	}
++
++	int capacity() {
++		return values == null ? 0 : values.length;
++	}
++
++	long probes() {
++		return probes;
++	}
++
++	long hits() {
++		return hits;
++	}
++
++	long collisions() {
++		return collisions;
++	}
++
++	/** Current ledger charge for the arrays only, excluding wrappers, payloads, and revision ownership graphs. */
++	long retainedBytes() {
++		return reservation == null ? 0L : reservation.bytes();
++	}
++
++	private static boolean matches(LmdbValue value, long id, long expectedVersion, InternalIdentity expected) {
++		long version = value.getSemanticVersion();
++		if (version < 0L || version != expectedVersion) {
++			return false;
++		}
++		InternalIdentity current = value.getInternalIdentity();
++		if (current == null || current.id() != id) {
++			return false;
++		}
++		ValueStoreRevision revision = current.revision();
++		ValueStoreRevision captured = expected.revision();
++		return revision != null && revision.getRevisionId() == captured.getRevisionId()
++				&& revision.getValueStore() == captured.getValueStore();
++	}
++
++	private void decline(int at, long id, int fullMask) {
++		unsupportedValues++;
++		// Declining an admission does not replace an unrelated valid entry in the same bucket.
++		if (values[at] != null && ids[at] == id && masks[at] == fullMask) {
++			clear(at);
++		}
++	}
++
++	private void clear(int at) {
++		values[at] = null;
++		identities[at] = null;
++		entries--;
++	}
++
++	private void adapt(long count) {
++		if (count == WARMUP_PROBES) {
++			if (hits < count / 4L) {
++				lowHitDisable++;
++				disable();
++			}
++		} else if (values.length < MAX_CAPACITY && hits >= count / 4L && collisions >= count / 8L) {
++			allocate(values.length << 1);
++		}
++	}
++
++	private boolean allocate(int capacity) {
++		long bytes = 80L + 36L * capacity;
++		Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
++		if (claim == null) {
++			if (values == null) {
++				initialAdmissionRefusals++;
++			} else {
++				growthAdmissionRefusals++;
++			}
++			disable();
++			return false;
++		}
++		peakArrayBytes = Math.max(peakArrayBytes, retainedBytes() + bytes);
++		try {
++			long[] nextIds = new long[capacity];
++			long[] nextVersions = new long[capacity];
++			int[] nextMasks = new int[capacity];
++			Value[] nextValues = new Value[capacity];
++			InternalIdentity[] nextIdentities = new InternalIdentity[capacity];
++			int nextEntries = 0;
++			if (values != null) {
++				for (int old = 0; old < values.length; old++) {
++					Value value = values[old];
++					if (value == null) {
++						continue;
++					}
++					int at = slot(ids[old], masks[old], capacity);
++					if (nextValues[at] != null) {
++						// Fixed-hash doubling is injective over occupied old slots; this counter must stay zero.
++						if (nextIds[at] != ids[old] || nextMasks[at] != masks[old]) {
++							rehashDiscards++;
++						}
++						continue;
++					}
++					nextIds[at] = ids[old];
++					nextVersions[at] = versions[old];
++					nextMasks[at] = masks[old];
++					nextIdentities[at] = identities[old];
++					nextValues[at] = value;
++					nextEntries++;
++				}
++			}
++			Reservation previous = reservation;
++			ids = nextIds;
++			versions = nextVersions;
++			masks = nextMasks;
++			values = nextValues;
++			identities = nextIdentities;
++			entries = nextEntries;
++			reservation = claim;
++			peakCapacity = capacity;
++			if (previous != null) {
++				resizes++;
++				previous.close();
++			}
++			return true;
++		} catch (RuntimeException | Error failure) {
++			claim.close();
++			disable();
++			throw failure;
++		}
++	}
++
++	/** The same full-key hash is used for every power-of-two table capacity. */
++	static int slot(long id, int fullMask, int capacity) {
++		long value = id ^ (Integer.toUnsignedLong(fullMask) * 0x9e3779b97f4a7c15L);
++		value ^= value >>> 33;
++		value *= 0xff51afd7ed558ccdL;
++		value ^= value >>> 33;
++		value *= 0xc4ceb9fe1a85ec53L;
++		value ^= value >>> 33;
++		return (int) value & (capacity - 1);
++	}
++}

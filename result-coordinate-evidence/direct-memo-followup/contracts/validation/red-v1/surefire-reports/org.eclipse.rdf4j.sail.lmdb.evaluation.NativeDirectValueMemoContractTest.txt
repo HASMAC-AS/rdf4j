@@ -1,0 +1,142 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+-------------------------------------------------------------------------------
+Tests run: 20, Failures: 18, Errors: 0, Skipped: 0, Time elapsed: 2.026 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.aConflictingKeyReplacesOnlyItsDirectMappedEntry -- Time elapsed: 0.357 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: replacement followed by a hit] 
+expected: 3L
+ but was: 4L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.aConflictingKeyReplacesOnlyItsDirectMappedEntry(NativeDirectValueMemoContractTest.java:176)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedInternalIdRejectsTheEntryWithoutAVersionChange -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: recache after identity rejection] 
+expected: 2L
+ but was: 3L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertReplacementAfterIdentityMutation(NativeDirectValueMemoContractTest.java:388)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedInternalIdRejectsTheEntryWithoutAVersionChange(NativeDirectValueMemoContractTest.java:119)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionOwnerRejectsTheEntryEvenWithTheSameRevisionNumber -- Time elapsed: 1.389 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: recache after identity rejection] 
+expected: 2L
+ but was: 3L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertReplacementAfterIdentityMutation(NativeDirectValueMemoContractTest.java:388)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionOwnerRejectsTheEntryEvenWithTheSameRevisionNumber(NativeDirectValueMemoContractTest.java:144)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionRejectsTheEntryWithoutAVersionChange -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: recache after identity rejection] 
+expected: 2L
+ but was: 3L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertReplacementAfterIdentityMutation(NativeDirectValueMemoContractTest.java:388)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.changedRevisionRejectsTheEntryWithoutAVersionChange(NativeDirectValueMemoContractTest.java:130)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.clearingKeepsCapacityButDropsEntriesAndAdaptiveHistory -- Time elapsed: 0.035 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: grown cache before clearing] 
+Expecting actual:
+  0
+to be greater than:
+  4096
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.clearingKeepsCapacityButDropsEntriesAndAdaptiveHistory(NativeDirectValueMemoContractTest.java:290)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.closeIsIdempotentAndSafeAfterTheLedgerClosesFirst -- Time elapsed: 0.002 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: live table reservation] 
+Expecting actual:
+  0L
+to be greater than:
+  0L
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.closeIsIdempotentAndSafeAfterTheLedgerClosesFirst(NativeDirectValueMemoContractTest.java:311)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.coldValueRemainsAHitAfterInitializationAndEquivalentIdentityReplacement -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: cold-to-warm reuse] 
+expected: 1L
+ but was: 2L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.coldValueRemainsAHitAfterInitializationAndEquivalentIdentityReplacement(NativeDirectValueMemoContractTest.java:162)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.cumulativeReuseAndCollisionPressureGrowOnlyFrom16384Probes -- Time elapsed: 0.009 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: initial table before growth boundary] 
+expected: 4096
+ but was: 0
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.cumulativeReuseAndCollisionPressureGrowOnlyFrom16384Probes(NativeDirectValueMemoContractTest.java:219)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.decodedPayloadGrowthDemonstratesTheArrayOnlyAccountingLimit(TestReporter) -- Time elapsed: 0.022 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: array charge exists before payload growth] 
+Expecting actual:
+  0L
+to be greater than:
+  0L
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.decodedPayloadGrowthDemonstratesTheArrayOnlyAccountingLimit(NativeDirectValueMemoContractTest.java:358)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.delayedRepetitionAfterTheCutoffRemainsUncached -- Time elapsed: 0.008 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: late reuse cannot revive this prototype] 
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.delayedRepetitionAfterTheCutoffRemainsUncached(NativeDirectValueMemoContractTest.java:206)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.fullMasksStayDistinctEvenWhenTheyShareACacheBank -- Time elapsed: 0.003 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: exact full-mask keys] 
+expected: 2L
+ but was: 4L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.fullMasksStayDistinctEvenWhenTheyShareACacheBank(NativeDirectValueMemoContractTest.java:71)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.growthReservationRefusalReleasesTheOldTableAndFallsBack -- Time elapsed: 0.003 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-memo: table admitted before pressure] 
+Expecting actual:
+  0L
+to be greater than:
+  0L
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.growthReservationRefusalReleasesTheOldTableAndFallsBack(NativeDirectValueMemoContractTest.java:265)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.initialReservationRefusalDisablesWithoutChangingResults -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: initial ledger refusal] 
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.initialReservationRefusalDisablesWithoutChangingResults(NativeDirectValueMemoContractTest.java:253)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.lowHitWarmupDisablesAtTheFirst8192ProbeBoundary -- Time elapsed: 0.003 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: one-time low-hit cutoff] 
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.lowHitWarmupDisablesAtTheFirst8192ProbeBoundary(NativeDirectValueMemoContractTest.java:189)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.repeatedGrowthStopsAt65536Entries -- Time elapsed: 0.021 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: bounded growth reaches the declared cap] 
+expected: 65536
+ but was: 0
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.repeatedGrowthStopsAt65536Entries(NativeDirectValueMemoContractTest.java:236)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.repeatedIdAndFullMaskReuseAcrossCallers -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: one resolution across callers] 
+expected: 1L
+ but was: 3L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.repeatedIdAndFullMaskReuseAcrossCallers(NativeDirectValueMemoContractTest.java:48)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.semanticMutationRejectsTheOldRepresentative -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: recache after semantic rejection] 
+expected: 2L
+ but was: 3L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.semanticMutationRejectsTheOldRepresentative(NativeDirectValueMemoContractTest.java:108)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.strongOwnershipEndsWhenTheMemoCloses -- Time elapsed: 0.095 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-memo: a live entry owns its value strongly] 
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.assertStronglyRetained(NativeDirectValueMemoContractTest.java:401)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest.strongOwnershipEndsWhenTheMemoCloses(NativeDirectValueMemoContractTest.java:369)
+

@@ -1,0 +1,205 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 11, Failures: 6, Errors: 0, Skipped: 0, Time elapsed: 0.419 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.aMissPublishesBeforeALaterColumnChecksTheSameHashSlot -- Time elapsed: 0.340 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: immediate collision publication] 
+Expected size: 3 but was: 2 in:
+[11L, 3268L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.aMissPublishesBeforeALaterColumnChecksTheSameHashSlot(NativeDirectValueMemoIntegrationTest.java:223)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.acceptedRowsShareValuesAcrossDifferentProjectionColumns -- Time elapsed: 0.005 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: cross-column lookup count] 
+Expected size: 2 but was: 4 in:
+[11L, 17L, 17L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.acceptedRowsShareValuesAcrossDifferentProjectionColumns(NativeDirectValueMemoIntegrationTest.java:68)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.collectionSharesValuesAndDetachedRowsRemainReadableAfterClose -- Time elapsed: 0.005 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: collection lookup count] 
+Expected size: 1 but was: 2 in:
+[11L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.collectionSharesValuesAndDetachedRowsRemainReadableAfterClose(NativeDirectValueMemoIntegrationTest.java:148)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualReadsRepairAHitWhenTheSourceViewChanges -- Time elapsed: 0.005 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-integration: individual scope repair] 
+expected: "urn:scope:1:id:11"
+ but was: "urn:scope:0:id:11"
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualReadsRepairAHitWhenTheSourceViewChanges(NativeDirectValueMemoIntegrationTest.java:181)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualValueReadsUseTheSameIterationMemo -- Time elapsed: 0.002 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: individual lookup count] 
+Expected size: 1 but was: 2 in:
+[11L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualValueReadsUseTheSameIterationMemo(NativeDirectValueMemoIntegrationTest.java:124)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.wideProjectionUsesTheSharedTableAndReleasesItsScratch -- Time elapsed: 0.008 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: wide cross-column lookup count] 
+Expected size: 80 but was: 160 in:
+[1L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    15L,
+    16L,
+    17L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L,
+    42L,
+    43L,
+    44L,
+    45L,
+    46L,
+    47L,
+    48L,
+    49L,
+    50L,
+    51L,
+    52L,
+    53L,
+    54L,
+    55L,
+    56L,
+    57L,
+    58L,
+    59L,
+    60L,
+    61L,
+    62L,
+    63L,
+    64L,
+    65L,
+    66L,
+    67L,
+    68L,
+    69L,
+    70L,
+    71L,
+    72L,
+    73L,
+    74L,
+    75L,
+    76L,
+    77L,
+    78L,
+    79L,
+    80L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    15L,
+    16L,
+    17L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L,
+    42L,
+    43L,
+    44L,
+    45L,
+    46L,
+    47L,
+    48L,
+    49L,
+    50L,
+    51L,
+    52L,
+    53L,
+    54L,
+    55L,
+    56L,
+    57L,
+    58L,
+    59L,
+    60L,
+    61L,
+    62L,
+    63L,
+    64L,
+    65L,
+    66L,
+    67L,
+    68L,
+    69L,
+    70L,
+    71L,
+    72L,
+    73L,
+    74L,
+    75L,
+    76L,
+    77L,
+    78L,
+    79L,
+    80L,
+    1L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.wideProjectionUsesTheSharedTableAndReleasesItsScratch(NativeDirectValueMemoIntegrationTest.java:253)
+

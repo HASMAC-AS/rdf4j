@@ -1,0 +1,280 @@
+--- a/src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
++++ b/src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java
+@@ -171,10 +171,23 @@
+ 	private boolean admissionRefused;
+ 	private boolean closed;
+ 	private long weakMisses;
++	private final long qualifiedOwnerOrdinal;
++	private long qualifiedOrdinaryWeak;
++	private long qualifiedOrdinaryWeakRecovered;
++	private long qualifiedOrdinaryWeakTerminalOther;
++	private long qualifiedJointWeakTerminal;
++	private long qualifiedFactorWeakTerminal;
++	private long qualifiedOrdinaryWitnessFailures;
++	private long qualifiedFactorWitnessFailures;
++	private long qualifiedAbandonCalls;
++	private long qualifiedOrdinaryAdmissionRefusals;
++	private long qualifiedFactorMemoAdmissionRefusals;
++	private long qualifiedFactorPageAdmissionRefusals;
+ 
+ 	NativeResultMaterializer(NativeResultMaterializerPlan plan, LmdbQueryMemoryManager.QueryLedger ledger) {
+ 		this.plan = plan;
+ 		this.ledger = ledger;
++		qualifiedOwnerOrdinal = PublicationQualifiedAccounting.open();
+ 	}
+ 
+ 	/** Begin one accepted outward row; null declines reuse for this row. */
+@@ -293,7 +306,18 @@
+ 				Value value = dereference(values[index]);
+ 				if (value == null) {
+ 					weakMisses++;
++					qualifiedOrdinaryWeak++;
+ 					clear(index);
++					long factorWeakBefore = qualifiedFactorWeakTerminal;
++					Value factorValue = findFactor(index, id, rowSequence);
++					if (factorValue != null) {
++						qualifiedOrdinaryWeakRecovered++;
++					} else if (qualifiedFactorWeakTerminal == factorWeakBefore) {
++						qualifiedOrdinaryWeakTerminalOther++;
++					} else {
++						qualifiedJointWeakTerminal++;
++					}
++					return factorValue;
+ 				} else if (matches(index, id, value)) {
+ 					if (rowSequence != 0L) {
+ 						// The same ID can be reached from a different accepted factor member.
+@@ -301,6 +325,7 @@
+ 					}
+ 					return value;
+ 				} else {
++					qualifiedOrdinaryWitnessFailures++;
+ 					clear(index);
+ 				}
+ 			}
+@@ -382,6 +407,7 @@
+ 
+ 	/** Roll back provisional admissions when a row's source view changes or capture fails. */
+ 	synchronized void abandon(Object currentView, Object currentExposure) {
++		qualifiedAbandonCalls++;
+ 		if (!closed && sameScope(currentView, currentExposure)) {
+ 			clearEntries();
+ 			clearFactorPages();
+@@ -539,10 +565,12 @@
+ 		Value value = dereference(page.values[cell]);
+ 		if (value == null) {
+ 			weakMisses++;
++			qualifiedFactorWeakTerminal++;
+ 			page.clear(cell);
+ 			return null;
+ 		}
+ 		if (!matches(page.versions[cell], page.revisionIds[cell], page.revisionOwners[cell], id, value)) {
++			qualifiedFactorWitnessFailures++;
+ 			page.clear(cell);
+ 			return null;
+ 		}
+@@ -643,11 +671,13 @@
+ 			factorActivation = coordinateActivation;
+ 		}
+ 		if (factorPages == null && !resizeFactorDirectory(8)) {
++			qualifiedFactorPageAdmissionRefusals++;
+ 			return null;
+ 		}
+ 		if (((long) factorPageCount + 1L) * 4L >= (long) factorPages.length * 3L) {
+ 			if (factorPages.length > Integer.MAX_VALUE / 2 || !resizeFactorDirectory(factorPages.length * 2)) {
+ 				factorAdmissionRefused = true;
++				qualifiedFactorPageAdmissionRefusals++;
+ 				return null;
+ 			}
+ 		}
+@@ -659,6 +689,7 @@
+ 				factorDirectoryReservation = null;
+ 			}
+ 			factorAdmissionRefused = true;
++			qualifiedFactorPageAdmissionRefusals++;
+ 			return null;
+ 		}
+ 		try {
+@@ -802,12 +833,14 @@
+ 		int width = plan.projection.names.length;
+ 		if (width > Integer.MAX_VALUE / FactorMemo.STRIDE) {
+ 			factorMemoRefused = true;
++			qualifiedFactorMemoAdmissionRefusals++;
+ 			return null;
+ 		}
+ 		long bytes = 1_024L + 96L * width;
+ 		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
+ 		if (claim == null) {
+ 			factorMemoRefused = true;
++			qualifiedFactorMemoAdmissionRefusals++;
+ 			return null;
+ 		}
+ 		try {
+@@ -947,6 +980,7 @@
+ 		LmdbQueryMemoryManager.Reservation claim = ledger.tryReserveWithoutReclamation(bytes);
+ 		if (claim == null) {
+ 			admissionRefused = true;
++			qualifiedOrdinaryAdmissionRefusals++;
+ 			return false;
+ 		}
+ 		try {
+@@ -1014,6 +1048,11 @@
+ 			coordinateScratch = null;
+ 			hitMasks = null;
+ 			hitMasksInUse = false;
++			PublicationQualifiedAccounting.close(qualifiedOwnerOrdinal, qualifiedOrdinaryWeak,
++					qualifiedOrdinaryWeakRecovered, qualifiedOrdinaryWeakTerminalOther, qualifiedJointWeakTerminal,
++					qualifiedFactorWeakTerminal, qualifiedOrdinaryWitnessFailures, qualifiedFactorWitnessFailures,
++					qualifiedAbandonCalls, qualifiedOrdinaryAdmissionRefusals, qualifiedFactorMemoAdmissionRefusals,
++					qualifiedFactorPageAdmissionRefusals);
+ 		}
+ 	}
+ }
+--- /dev/null
++++ b/src/org/eclipse/rdf4j/sail/lmdb/evaluation/PublicationQualifiedAccounting.java
+@@ -0,0 +1,146 @@
++/*******************************************************************************
++ * Copyright (c) 2026 Eclipse RDF4J contributors.
++ *
++ * All rights reserved. This program and the accompanying materials
++ * are made available under the terms of the Eclipse Distribution License v1.0
++ * which accompanies this distribution, and is available at
++ * http://www.eclipse.org/documents/edl-v10.php.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ *******************************************************************************/
++// Some portions generated by Codex
++package org.eclipse.rdf4j.sail.lmdb.evaluation;
++
++/**
++ * Experiment-only lifecycle recorder. Initialize before the unchanged launcher and create snapshots after it returns.
++ * The buffer holds only primitives; opening and closing an owner allocate nothing and perform no I/O.
++ */
++public final class PublicationQualifiedAccounting {
++
++	private static final int WORDS = 16;
++	private static final int OWNER = 0;
++	private static final int COMPILE_OPEN = 1;
++	private static final int COMPILE_CLOSE = 2;
++	private static final int LAZY_OPEN = 3;
++	private static final int LAZY_CLOSE = 4;
++	private static long[] records;
++	private static boolean[] completed;
++	private static int capacity;
++	private static int recordCount;
++	private static long openedOwners;
++	private static long closedOwners;
++	private static long overflowOwners;
++
++	private PublicationQualifiedAccounting() {
++	}
++
++	/** Zero disables recording; replacement is permitted only after every previously tracked owner has closed. */
++	public static synchronized void initialize(int requestedCapacity) {
++		if (requestedCapacity < 0) {
++			throw new IllegalArgumentException("Negative observation capacity");
++		}
++		if (openedOwners != closedOwners) {
++			throw new IllegalStateException("Cannot replace accounting while a materializer is active");
++		}
++		long[] replacement = requestedCapacity == 0 ? null : new long[Math.multiplyExact(requestedCapacity, WORDS)];
++		boolean[] replacementCompleted = requestedCapacity == 0 ? null : new boolean[requestedCapacity];
++		records = replacement;
++		completed = replacementCompleted;
++		capacity = requestedCapacity;
++		recordCount = 0;
++		openedOwners = 0L;
++		closedOwners = 0L;
++		overflowOwners = 0L;
++	}
++
++	/** Called once by the experimental materializer constructor; zero identifies an unobserved owner. */
++	static synchronized long open() {
++		if (records == null) {
++			return 0L;
++		}
++		long owner = Math.incrementExact(openedOwners);
++		openedOwners = owner;
++		if (owner > capacity) {
++			overflowOwners++;
++			return owner;
++		}
++		int base = ((int) owner - 1) * WORDS;
++		records[base + OWNER] = owner;
++		records[base + COMPILE_OPEN] = LmdbNativeAggregateCompiler.COMPILED.get();
++		records[base + LAZY_OPEN] = LmdbNativeExpressionCompiler.LAZY_VALUE_CALLS.get();
++		return owner;
++	}
++
++	/** Called after successful idempotent materializer cleanup; only scalar event totals cross this boundary. */
++	static synchronized void close(long owner, long ordinaryWeak, long ordinaryWeakRecovered,
++			long ordinaryWeakTerminalOther, long jointWeakTerminal, long factorWeakTerminal,
++			long ordinaryWitnessFailures, long factorWitnessFailures, long abandonCalls, long ordinaryAdmissionRefusals,
++			long factorMemoAdmissionRefusals, long factorPageAdmissionRefusals) {
++		if (owner == 0L) {
++			return;
++		}
++		if (records == null || owner < 0L || owner > openedOwners) {
++			throw new IllegalStateException("Unknown materializer owner");
++		}
++		if (owner > capacity) {
++			closedOwners++;
++			return;
++		}
++		int index = (int) owner - 1;
++		if (completed[index]) {
++			throw new IllegalStateException("Materializer owner exported twice");
++		}
++		int base = index * WORDS;
++		records[base + COMPILE_CLOSE] = LmdbNativeAggregateCompiler.COMPILED.get();
++		records[base + LAZY_CLOSE] = LmdbNativeExpressionCompiler.LAZY_VALUE_CALLS.get();
++		records[base + 5] = ordinaryWeak;
++		records[base + 6] = ordinaryWeakRecovered;
++		records[base + 7] = ordinaryWeakTerminalOther;
++		records[base + 8] = jointWeakTerminal;
++		records[base + 9] = factorWeakTerminal;
++		records[base + 10] = ordinaryWitnessFailures;
++		records[base + 11] = factorWitnessFailures;
++		records[base + 12] = abandonCalls;
++		records[base + 13] = ordinaryAdmissionRefusals;
++		records[base + 14] = factorMemoAdmissionRefusals;
++		records[base + 15] = factorPageAdmissionRefusals;
++		completed[index] = true;
++		recordCount++;
++		closedOwners++;
++	}
++
++	/** Reporting allocation happens only here, outside the unchanged launcher's timing and allocation windows. */
++	public static synchronized Snapshot snapshot(int index) {
++		if (index < 0 || index >= capacity || !completed[index]) {
++			throw new IllegalArgumentException("No completed accounting record at index " + index);
++		}
++		int base = index * WORDS;
++		return new Snapshot(records[base], records[base + 1], records[base + 2], records[base + 3], records[base + 4],
++				records[base + 5], records[base + 6], records[base + 7], records[base + 8], records[base + 9],
++				records[base + 10], records[base + 11], records[base + 12], records[base + 13], records[base + 14],
++				records[base + 15]);
++	}
++
++	public static synchronized long opened() {
++		return openedOwners;
++	}
++
++	public static synchronized long closed() {
++		return closedOwners;
++	}
++
++	public static synchronized int size() {
++		return recordCount;
++	}
++
++	public static synchronized long overflowCount() {
++		return overflowOwners;
++	}
++
++	public record Snapshot(long ownerOrdinal, long compileOrdinalAtOpen, long compileOrdinalAtClose,
++			long lazyValueCallsAtOpen, long lazyValueCallsAtClose, long ordinaryWeak, long ordinaryWeakRecovered,
++			long ordinaryWeakTerminalOther, long jointWeakTerminal, long factorWeakTerminal,
++			long ordinaryWitnessFailures, long factorWitnessFailures, long abandonCalls, long ordinaryAdmissionRefusals,
++			long factorMemoAdmissionRefusals, long factorPageAdmissionRefusals) {
++	}
++}

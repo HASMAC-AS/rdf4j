@@ -1,0 +1,454 @@
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn
+Java version: 25.0.5, vendor: Eclipse Adoptium, runtime: /workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.18.57", arch: "amd64", family: "unix"
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.eclipse.rdf4j:rdf4j-sail-lmdb >------------------
+[INFO] Building RDF4J: LmdbStore 6.2.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- surefire:3.6.1:test (default-cli) @ rdf4j-sail-lmdb ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+21:14:08,295 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+21:14:08,297 |-INFO in ch.qos.logback.classic.util.ContextInitializer@560513ce - No custom configurators were discovered as a service.
+21:14:08,297 |-INFO in ch.qos.logback.classic.util.ContextInitializer@560513ce - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:14:08,298 |-INFO in ch.qos.logback.classic.util.ContextInitializer@560513ce - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:14:08,303 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/validation/integration-red-v3/test-classes/logback-test.xml]
+21:14:08,370 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+21:14:08,370 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+21:14:08,411 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+21:14:08,417 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@13006998 - No contradictions in caller extraction instruction were detected
+21:14:08,419 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+21:14:08,419 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+21:14:08,425 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+21:14:08,469 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+21:14:08,469 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+21:14:08,469 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+21:14:08,471 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+21:14:08,471 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+21:14:08,472 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@37fbe4a8 - End of configuration.
+21:14:08,473 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@352c308 - Registering current configuration as safe fallback point
+21:14:08,475 |-INFO in ch.qos.logback.classic.util.ContextInitializer@560513ce - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 175 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[ERROR] Tests run: 12, Failures: 7, Errors: 0, Skipped: 0, Time elapsed: 1.774 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.aMissPublishesBeforeALaterColumnChecksTheSameHashSlot -- Time elapsed: 0.377 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: immediate collision publication] 
+Expected size: 3 but was: 2 in:
+[11L, 3268L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.aMissPublishesBeforeALaterColumnChecksTheSameHashSlot(NativeDirectValueMemoIntegrationTest.java:272)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.acceptedRowsShareValuesAcrossDifferentProjectionColumns -- Time elapsed: 0.004 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: cross-column lookup count] 
+Expected size: 2 but was: 4 in:
+[11L, 17L, 17L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.acceptedRowsShareValuesAcrossDifferentProjectionColumns(NativeDirectValueMemoIntegrationTest.java:70)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.collectionSharesValuesAndDetachedRowsRemainReadableAfterClose -- Time elapsed: 0.003 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: collection lookup count] 
+Expected size: 1 but was: 2 in:
+[11L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.collectionSharesValuesAndDetachedRowsRemainReadableAfterClose(NativeDirectValueMemoIntegrationTest.java:197)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualReadsRepairAHitWhenTheSourceViewChanges -- Time elapsed: 0.007 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[direct-integration: individual scope repair] 
+expected: "urn:scope:1:id:11"
+ but was: "urn:scope:0:id:11"
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualReadsRepairAHitWhenTheSourceViewChanges(NativeDirectValueMemoIntegrationTest.java:230)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualValueReadsUseTheSameIterationMemo -- Time elapsed: 0.002 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: individual lookup count] 
+Expected size: 1 but was: 2 in:
+[11L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.individualValueReadsUseTheSameIterationMemo(NativeDirectValueMemoIntegrationTest.java:126)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.standaloneReadsPreserveTheSourceOwnershipHandoffBeforeReusingExternalValues -- Time elapsed: 1.309 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: reuse follows the normal source handoff] 
+Expected size: 2 but was: 3 in:
+[11L, 11L, 11L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.standaloneReadsPreserveTheSourceOwnershipHandoffBeforeReusingExternalValues(NativeDirectValueMemoIntegrationTest.java:171)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.wideProjectionUsesTheSharedTableAndReleasesItsScratch -- Time elapsed: 0.009 s <<< FAILURE!
+java.lang.AssertionError: 
+[direct-integration: wide cross-column lookup count] 
+Expected size: 80 but was: 160 in:
+[1L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    15L,
+    16L,
+    17L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L,
+    42L,
+    43L,
+    44L,
+    45L,
+    46L,
+    47L,
+    48L,
+    49L,
+    50L,
+    51L,
+    52L,
+    53L,
+    54L,
+    55L,
+    56L,
+    57L,
+    58L,
+    59L,
+    60L,
+    61L,
+    62L,
+    63L,
+    64L,
+    65L,
+    66L,
+    67L,
+    68L,
+    69L,
+    70L,
+    71L,
+    72L,
+    73L,
+    74L,
+    75L,
+    76L,
+    77L,
+    78L,
+    79L,
+    80L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    15L,
+    16L,
+    17L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L,
+    42L,
+    43L,
+    44L,
+    45L,
+    46L,
+    47L,
+    48L,
+    49L,
+    50L,
+    51L,
+    52L,
+    53L,
+    54L,
+    55L,
+    56L,
+    57L,
+    58L,
+    59L,
+    60L,
+    61L,
+    62L,
+    63L,
+    64L,
+    65L,
+    66L,
+    67L,
+    68L,
+    69L,
+    70L,
+    71L,
+    72L,
+    73L,
+    74L,
+    75L,
+    76L,
+    77L,
+    78L,
+    79L,
+    80L,
+    1L]
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest.wideProjectionUsesTheSharedTableAndReleasesItsScratch(NativeDirectValueMemoIntegrationTest.java:302)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   NativeDirectValueMemoIntegrationTest.aMissPublishesBeforeALaterColumnChecksTheSameHashSlot:272 [direct-integration: immediate collision publication] 
+Expected size: 3 but was: 2 in:
+[11L, 3268L]
+[ERROR]   NativeDirectValueMemoIntegrationTest.acceptedRowsShareValuesAcrossDifferentProjectionColumns:70 [direct-integration: cross-column lookup count] 
+Expected size: 2 but was: 4 in:
+[11L, 17L, 17L, 11L]
+[ERROR]   NativeDirectValueMemoIntegrationTest.collectionSharesValuesAndDetachedRowsRemainReadableAfterClose:197 [direct-integration: collection lookup count] 
+Expected size: 1 but was: 2 in:
+[11L, 11L]
+[ERROR]   NativeDirectValueMemoIntegrationTest.individualReadsRepairAHitWhenTheSourceViewChanges:230 [direct-integration: individual scope repair] 
+expected: "urn:scope:1:id:11"
+ but was: "urn:scope:0:id:11"
+[ERROR]   NativeDirectValueMemoIntegrationTest.individualValueReadsUseTheSameIterationMemo:126 [direct-integration: individual lookup count] 
+Expected size: 1 but was: 2 in:
+[11L, 11L]
+[ERROR]   NativeDirectValueMemoIntegrationTest.standaloneReadsPreserveTheSourceOwnershipHandoffBeforeReusingExternalValues:171 [direct-integration: reuse follows the normal source handoff] 
+Expected size: 2 but was: 3 in:
+[11L, 11L, 11L]
+[ERROR]   NativeDirectValueMemoIntegrationTest.wideProjectionUsesTheSharedTableAndReleasesItsScratch:302 [direct-integration: wide cross-column lookup count] 
+Expected size: 80 but was: 160 in:
+[1L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    15L,
+    16L,
+    17L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L,
+    42L,
+    43L,
+    44L,
+    45L,
+    46L,
+    47L,
+    48L,
+    49L,
+    50L,
+    51L,
+    52L,
+    53L,
+    54L,
+    55L,
+    56L,
+    57L,
+    58L,
+    59L,
+    60L,
+    61L,
+    62L,
+    63L,
+    64L,
+    65L,
+    66L,
+    67L,
+    68L,
+    69L,
+    70L,
+    71L,
+    72L,
+    73L,
+    74L,
+    75L,
+    76L,
+    77L,
+    78L,
+    79L,
+    80L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    15L,
+    16L,
+    17L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L,
+    42L,
+    43L,
+    44L,
+    45L,
+    46L,
+    47L,
+    48L,
+    49L,
+    50L,
+    51L,
+    52L,
+    53L,
+    54L,
+    55L,
+    56L,
+    57L,
+    58L,
+    59L,
+    60L,
+    61L,
+    62L,
+    63L,
+    64L,
+    65L,
+    66L,
+    67L,
+    68L,
+    69L,
+    70L,
+    71L,
+    72L,
+    73L,
+    74L,
+    75L,
+    76L,
+    77L,
+    78L,
+    79L,
+    80L,
+    1L]
+[INFO] 
+[ERROR] Tests run: 12, Failures: 7, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.682 s
+[INFO] Finished at: 2026-11-16T21:14:10+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.1:test (default-cli) on project rdf4j-sail-lmdb: There are test failures.
+[ERROR] 
+[ERROR] See /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/validation/integration-red-v3/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

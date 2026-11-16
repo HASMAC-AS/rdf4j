@@ -1,0 +1,34 @@
+{
+  "className": "NativeDirectValueMemoIntegrationTest",
+  "expectedRedFailures": [
+    "aMissPublishesBeforeALaterColumnChecksTheSameHashSlot",
+    "acceptedRowsShareValuesAcrossDifferentProjectionColumns",
+    "collectionSharesValuesAndDetachedRowsRemainReadableAfterClose",
+    "individualReadsRepairAHitWhenTheSourceViewChanges",
+    "individualValueReadsUseTheSameIterationMemo",
+    "standaloneReadsPreserveTheSourceOwnershipHandoffBeforeReusingExternalValues",
+    "wideProjectionUsesTheSharedTableAndReleasesItsScratch"
+  ],
+  "failureMarker": "direct-integration:",
+  "format": 1,
+  "revision": 4,
+  "revisionReason": "Adds a public row-read contract that preserves a normal source ownership handoff before permitting cross-row reuse of an externally owned native value. The first two reads must consult the source; only the third reuse assertion is feature-red.",
+  "stubSourceFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/stub-src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java",
+  "stubSourceSha256": "d4fdfb85567f95512d57f788cc0c3c4287077c130554ca2d337dd408e9ad0c3e",
+  "testMethods": [
+    "aMissPublishesBeforeALaterColumnChecksTheSameHashSlot",
+    "aNewOwnerAndAnUncertifiedSourceDoNotShareCachedValues",
+    "acceptedRowsShareValuesAcrossDifferentProjectionColumns",
+    "aliasesDoNotCollapseDifferentFullMasksInTheSameCacheBank",
+    "captureRepairsAHitWhenItsWitnessChangesTheSourceView",
+    "changedExposureAndDifferentSourceCannotReuseAnOldEntry",
+    "collectionSharesValuesAndDetachedRowsRemainReadableAfterClose",
+    "disabledPropertyKeepsTheOrdinaryColumnCache",
+    "individualReadsRepairAHitWhenTheSourceViewChanges",
+    "individualValueReadsUseTheSameIterationMemo",
+    "standaloneReadsPreserveTheSourceOwnershipHandoffBeforeReusingExternalValues",
+    "wideProjectionUsesTheSharedTableAndReleasesItsScratch"
+  ],
+  "testSourceFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/integration-src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoIntegrationTest.java",
+  "testSourceSha256": "d872e42514b22d3559ee59e224b30c9a3addd41880880eb0e6330332bf57a7bf"
+}

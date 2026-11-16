@@ -1,0 +1,248 @@
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn
+Java version: 25.0.5, vendor: Eclipse Adoptium, runtime: /workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.18.57", arch: "amd64", family: "unix"
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.eclipse.rdf4j:rdf4j-sail-lmdb >------------------
+[INFO] Building RDF4J: LmdbStore 6.2.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- surefire:3.6.1:test (default-cli) @ rdf4j-sail-lmdb ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest
+[ERROR] Tests run: 15, Failures: 14, Errors: 0, Skipped: 0, Time elapsed: 0.380 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.bufferOverflowIsReportedWithoutChangingResolutionOrCleanup -- Time elapsed: 0.131 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: both owners must remain visible after overflow] 
+expected: 2L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.bufferOverflowIsReportedWithoutChangingResolutionOrCleanup(PublicationQualifiedAccountingContractTest.java:303)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorDirectoryRefusalIsCountedOnceAndFallsBack -- Time elapsed: 0.003 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: one refused factor page attempt] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertFactorAdmissionRefusal(PublicationQualifiedAccountingContractTest.java:339)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorDirectoryRefusalIsCountedOnceAndFallsBack(PublicationQualifiedAccountingContractTest.java:247)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorMemoRefusalPreservesTheAdmittedPage -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: factor memo refusal] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorMemoRefusalPreservesTheAdmittedPage(PublicationQualifiedAccountingContractTest.java:268)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorPayloadRefusalIsCountedOnceAndFallsBack -- Time elapsed: 0.003 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: one refused factor page attempt] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertFactorAdmissionRefusal(PublicationQualifiedAccountingContractTest.java:339)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorPayloadRefusalIsCountedOnceAndFallsBack(PublicationQualifiedAccountingContractTest.java:252)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorWeakAfterDifferentOrdinaryIdResolvesOnce -- Time elapsed: 0.046 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [0L, 0L, 0L, 0L, 1L]
+but some elements were not found:
+  [1L]
+and others were not expected:
+  [0L]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertWeak(PublicationQualifiedAccountingContractTest.java:354)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorWeakAfterDifferentOrdinaryIdResolvesOnce(PublicationQualifiedAccountingContractTest.java:95)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorWitnessRejectionRemainsSeparateFromWeakCollection -- Time elapsed: 0.009 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: factor witness branch] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.factorWitnessRejectionRemainsSeparateFromWeakCollection(PublicationQualifiedAccountingContractTest.java:183)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.jointOrdinaryAndFactorWeakFailureCountsOneTerminalLookup -- Time elapsed: 0.026 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [1L, 0L, 0L, 1L, 1L]
+but some elements were not found:
+  [1L, 1L, 1L]
+and others were not expected:
+  [0L, 0L, 0L]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertWeak(PublicationQualifiedAccountingContractTest.java:354)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.jointOrdinaryAndFactorWeakFailureCountsOneTerminalLookup(PublicationQualifiedAccountingContractTest.java:112)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ledgerFirstAndRepeatedCloseExportOnceAndKeepDetachedRowReadable -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: one materializer opened] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertOneOwner(PublicationQualifiedAccountingContractTest.java:362)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ledgerFirstAndRepeatedCloseExportOnceAndKeepDetachedRowReadable(PublicationQualifiedAccountingContractTest.java:289)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryAdmissionRefusalIsCountedOnceAndFallsBack -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: ordinary admission refusal] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryAdmissionRefusalIsCountedOnceAndFallsBack(PublicationQualifiedAccountingContractTest.java:239)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryScopeTransitionDoesNotLookLikeProvisionalRepair -- Time elapsed: 0.012 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: one materializer opened] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertOneOwner(PublicationQualifiedAccountingContractTest.java:362)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryScopeTransitionDoesNotLookLikeProvisionalRepair(PublicationQualifiedAccountingContractTest.java:225)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryWeakRecoveredByRetainedFactorDoesNotResolveAgain -- Time elapsed: 0.018 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [1L, 1L, 0L, 0L, 0L]
+but some elements were not found:
+  [1L, 1L]
+and others were not expected:
+  [0L, 0L]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertWeak(PublicationQualifiedAccountingContractTest.java:354)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryWeakRecoveredByRetainedFactorDoesNotResolveAgain(PublicationQualifiedAccountingContractTest.java:135)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryWeakWithoutFactorResolvesOnce -- Time elapsed: 0.022 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [1L, 0L, 1L, 0L, 0L]
+but some elements were not found:
+  [1L, 1L]
+and others were not expected:
+  [0L, 0L]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.assertWeak(PublicationQualifiedAccountingContractTest.java:354)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryWeakWithoutFactorResolvesOnce(PublicationQualifiedAccountingContractTest.java:78)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryWitnessRejectionRemainsSeparateFromWeakCollection -- Time elapsed: 0.003 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: ordinary witness branch] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.ordinaryWitnessRejectionRemainsSeparateFromWeakCollection(PublicationQualifiedAccountingContractTest.java:158)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.scopeChangeDuringValidationRepairsProvisionalHitAndRecordsAbandon -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[qualified-observer: provisional scope repair] 
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest.scopeChangeDuringValidationRepairsProvisionalHitAndRecordsAbandon(PublicationQualifiedAccountingContractTest.java:203)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   PublicationQualifiedAccountingContractTest.bufferOverflowIsReportedWithoutChangingResolutionOrCleanup:303 [qualified-observer: both owners must remain visible after overflow] 
+expected: 2L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.factorDirectoryRefusalIsCountedOnceAndFallsBack:247->assertFactorAdmissionRefusal:339 [qualified-observer: one refused factor page attempt] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.factorMemoRefusalPreservesTheAdmittedPage:268 [qualified-observer: factor memo refusal] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.factorPayloadRefusalIsCountedOnceAndFallsBack:252->assertFactorAdmissionRefusal:339 [qualified-observer: one refused factor page attempt] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.factorWeakAfterDifferentOrdinaryIdResolvesOnce:95->assertWeak:354 [qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [0L, 0L, 0L, 0L, 1L]
+but some elements were not found:
+  [1L]
+and others were not expected:
+  [0L]
+
+[ERROR]   PublicationQualifiedAccountingContractTest.factorWitnessRejectionRemainsSeparateFromWeakCollection:183 [qualified-observer: factor witness branch] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.jointOrdinaryAndFactorWeakFailureCountsOneTerminalLookup:112->assertWeak:354 [qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [1L, 0L, 0L, 1L, 1L]
+but some elements were not found:
+  [1L, 1L, 1L]
+and others were not expected:
+  [0L, 0L, 0L]
+
+[ERROR]   PublicationQualifiedAccountingContractTest.ledgerFirstAndRepeatedCloseExportOnceAndKeepDetachedRowReadable:289->assertOneOwner:362 [qualified-observer: one materializer opened] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.ordinaryAdmissionRefusalIsCountedOnceAndFallsBack:239 [qualified-observer: ordinary admission refusal] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.ordinaryScopeTransitionDoesNotLookLikeProvisionalRepair:225->assertOneOwner:362 [qualified-observer: one materializer opened] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.ordinaryWeakRecoveredByRetainedFactorDoesNotResolveAgain:135->assertWeak:354 [qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [1L, 1L, 0L, 0L, 0L]
+but some elements were not found:
+  [1L, 1L]
+and others were not expected:
+  [0L, 0L]
+
+[ERROR]   PublicationQualifiedAccountingContractTest.ordinaryWeakWithoutFactorResolvesOnce:78->assertWeak:354 [qualified-observer: actual ordinary/factor weak outcome] 
+Expecting actual:
+  [0L, 0L, 0L, 0L, 0L]
+to contain exactly (and in same order):
+  [1L, 0L, 1L, 0L, 0L]
+but some elements were not found:
+  [1L, 1L]
+and others were not expected:
+  [0L, 0L]
+
+[ERROR]   PublicationQualifiedAccountingContractTest.ordinaryWitnessRejectionRemainsSeparateFromWeakCollection:158 [qualified-observer: ordinary witness branch] 
+expected: 1L
+ but was: 0L
+[ERROR]   PublicationQualifiedAccountingContractTest.scopeChangeDuringValidationRepairsProvisionalHitAndRecordsAbandon:203 [qualified-observer: provisional scope repair] 
+expected: 1L
+ but was: 0L
+[INFO] 
+[ERROR] Tests run: 15, Failures: 14, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.287 s
+[INFO] Finished at: 2026-11-16T20:39:47+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.1:test (default-cli) on project rdf4j-sail-lmdb: There are test failures.
+[ERROR] 
+[ERROR] See /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/contracts/validation/red-v1/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

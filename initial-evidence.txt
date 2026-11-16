@@ -103,3 +103,102 @@ Publication follow-up contracts-after
 Command: ../mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/contracts-after/pom.xml -Dtest=PublicationAblationContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
 Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-followup/validation/contracts-after/surefire-reports
 Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.228 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationAblationContractTest
+
+
+Qualified publication restoration: initial root build
+Command: recorded in result-coordinate-evidence/publication-qualified-followup/initial/root-build-v1/command.json
+[ERROR] Failed to execute goal on project rdf4j-spring-boot-sparql-web: Could not resolve dependencies for project org.eclipse.rdf4j:rdf4j-spring-boot-sparql-web:jar:6.2.0-SNAPSHOT
+[ERROR] dependency: org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 has not been downloaded from it before.
+[ERROR] -> [Help 1]
+[ERROR] java.lang.NullPointerException: Cannot invoke "org.mvndaemon.mvnd.logging.smart.BuildEventListener.executionFailure(String, boolean, String)" because "this.buildEventListener" is null
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
+[ERROR] 
+
+Qualified publication recovery: online root retry
+Report: result-coordinate-evidence/publication-qualified-followup/initial/root-build-online-v2/maven-build.log
+[INFO] RDF4J: LmdbStore ................................... SUCCESS [01:02 min]
+[ERROR] Kotlin2.3.21 descriptor unavailable: Maven Central temporary DNS failure
+All2778 LMDB production class bytes match the frozen original runtime.
+
+Publication qualified contracts red-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/contracts/validation/red-v1/pom.xml -Dtest=PublicationQualifiedAccountingContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Drdf4j.lmdb.resultCoordinateTransport=dense -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/contracts/validation/red-v1/surefire-reports
+Tests run: 15, Failures: 14, Errors: 0, Skipped: 0, Time elapsed: 0.380 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationQualifiedAccountingContractTest
+
+Fresh focused baseline-v1: Maven passed93cases, but runner rejected incomplete prescribed106-case selection because preserved common testclasses predated13 materializer cases. Rawreports retained.
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/validation/baseline-focused-v1/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/validation/baseline-focused-v1/surefire-reports
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.791 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.256 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.730 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.187 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 36, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.805 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.092 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.029 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+validation/baseline-focused-v2
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/validation/baseline-focused-v2/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/validation/baseline-focused-v2/surefire-reports
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.003 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.476 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.752 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.190 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.701 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.087 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.049 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.029 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+validation/baseline-publication-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/validation/baseline-publication-v1/pom.xml -Dtest=PublicationAblationContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/publication-qualified-followup/validation/baseline-publication-v1/surefire-reports
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.211 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.PublicationAblationContractTest
+
+Direct memo first red attempt: actual20cases/18assertionfailures/0errors/0skips. Wrapper rejected injected TestReporter suffix in method identity. Before implementation, contract review also corrected clear-history semantics and initial-probe setup; all earlier evidence retained.
+
+Direct memo contracts red-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/validation/red-v1/pom.xml -Dtest=NativeDirectValueMemoContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=4G -Drdf4j.lmdb.resultCoordinateTransport=dense -Dsurefire.runOrder=alphabetical surefire:test
+Reports: /workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/validation/red-v1/surefire-reports
+Tests run: 20, Failures: 18, Errors: 0, Skipped: 0, Time elapsed: 2.026 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+
+Direct memo revised feature-red evidence (2026-11-16)
+Stage: result-coordinate-evidence/direct-memo-followup/contracts/validation/red-v2
+Tests run: 20, Failures: 18, Errors: 0, Skipped: 0, Time elapsed: 1.938 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Stage: result-coordinate-evidence/direct-memo-followup/contracts/validation/integration-red-v2
+Tests run: 11, Failures: 6, Errors: 0, Skipped: 0, Time elapsed: 0.400 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Integration-red-v1 raw result was 11 tests/6 failures/0 errors/0 skips, but its wrapper rejected an incorrectly classified expected failure. The full-mask case already passes the selected baseline. Seal v3 corrects only this classification; assertions and Java source are unchanged. Accepted integration-red-v2 confirms the exact expected six missing feature behaviors.
+
+Direct memo standalone ownership handoff contract, before outer integration generation:
+Stage: result-coordinate-evidence/direct-memo-followup/contracts/validation/integration-red-v3
+Tests run: 12, Failures: 7, Errors: 0, Skipped: 0, Time elapsed: 1.774 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Accepted exact expected failures; new test first requires ordinary ownership handoff, then its feature assertion requires reuse of the externally owned representative.
+
+Direct memo identity-witness candidate v2: passing validation (2026-11-16)
+Stage: result-coordinate-evidence/direct-memo-followup/contracts/validation/green-v1
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.102 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Stage: result-coordinate-evidence/direct-memo-followup/contracts/validation/integration-green-v1
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.733 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Stage: result-coordinate-evidence/direct-memo-followup/validation/focused-green-v1
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.967 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.989 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.893 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.212 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.681 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.088 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.047 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+Stage: result-coordinate-evidence/direct-memo-followup/validation/enabled-lifetime-green-v1
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.463 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Total 146 passing test executions:20 table +12 integration +106 existing disabled-feature cases +8 existing enabled-feature real-IR lifetime/bag cases. Zero failures, errors or skips. The enabled cases cover interpreted and compiled IR with transport off.
+Preliminary runtime identity-witness-v1 failed compilation because the delegating launcher declared Exception while its unchanged delegate mains declare Throwable; the source and javac errors are preserved. Corrected candidate identity-witness-v2 compiles all five Java sources, selects exactly six prefix classes, and preserves common128 and the original nested/Plan classes. No timing sample was run or discarded.
+
+Diagnostic-only four-array identity counterexample (2026-11-16):
+Stage: result-coordinate-evidence/direct-memo-followup/contracts/validation/identity-counterexample-v1
+Tests run: 3, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 1.697 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Accepted diagnostic: exactly the changed internal-ID, revision-number, and revision-owner assertions fail when only the semantic version is retained. The strengthened identity-witness candidate passes those cases. The four-array diagnostic cannot qualify a timing runtime.
