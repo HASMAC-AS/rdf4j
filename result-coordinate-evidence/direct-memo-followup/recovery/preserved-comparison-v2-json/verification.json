@@ -1,0 +1,62 @@
+{
+  "verified": true,
+  "helperSha256": "208eddbf6836b1ccb93516270b3856f7e95b3ec900d1baa172f7cff5238531c2",
+  "manifestSha256": "12cf2a9ec78525b44495f1b78bb9cd5bac6d402a90013626d62f192ff4f9905e",
+  "isolatedRestoreRoot": "/workspace/scratch/37853bcaea36/github-transfer/comparison-json-restore-ln12ekva",
+  "rawOriginalsUnchanged": true,
+  "noGitMutations": true,
+  "noJavaExecuted": true,
+  "checks": [
+    {
+      "name": "Verify actual archives and unchanged originals",
+      "passed": true,
+      "command": [
+        "python3",
+        "-B",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/recovery/preserved-comparison-v2-json/restore.py"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"records\": [\n    {\n      \"bytes\": 3249312,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/independent-v2/independent-results.json\",\n      \"restored\": false,\n      \"sha256\": \"ba79dee70320b9e11d1aba149311702ab898e2c95acf8d32c7b75b8badfeacd5\"\n    },\n    {\n      \"bytes\": 1744013,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/comparison-v2/runs.json\",\n      \"restored\": false,\n      \"sha256\": \"a2d7e7e1aed59c97bef7c3ed6fe1c655d5c3462ce40797030d411a95872e9a62\"\n    },\n    {\n      \"bytes\": 702902,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/comparison-v2/supervision.json\",\n      \"restored\": false,\n      \"sha256\": \"5a66f04e0618acbf6c36d2941b1a10858197feb6ed289fe867c2d4c431564e07\"\n    }\n  ],\n  \"verified\": true\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "Existing originals verified without overwrite",
+      "passed": true,
+      "command": [
+        "python3",
+        "-B",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/recovery/preserved-comparison-v2-json/restore.py",
+        "--restore"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"records\": [\n    {\n      \"bytes\": 3249312,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/independent-v2/independent-results.json\",\n      \"restored\": false,\n      \"sha256\": \"ba79dee70320b9e11d1aba149311702ab898e2c95acf8d32c7b75b8badfeacd5\"\n    },\n    {\n      \"bytes\": 1744013,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/comparison-v2/runs.json\",\n      \"restored\": false,\n      \"sha256\": \"a2d7e7e1aed59c97bef7c3ed6fe1c655d5c3462ce40797030d411a95872e9a62\"\n    },\n    {\n      \"bytes\": 702902,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/comparison-v2/supervision.json\",\n      \"restored\": false,\n      \"sha256\": \"5a66f04e0618acbf6c36d2941b1a10858197feb6ed289fe867c2d4c431564e07\"\n    }\n  ],\n  \"verified\": true\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "All three missing originals restored at exact relative paths",
+      "passed": true,
+      "command": [
+        "python3",
+        "-B",
+        "/workspace/scratch/37853bcaea36/github-transfer/comparison-json-restore-ln12ekva/result-coordinate-evidence/direct-memo-followup/recovery/preserved-comparison-v2-json/restore.py",
+        "--restore"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"records\": [\n    {\n      \"bytes\": 3249312,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/independent-v2/independent-results.json\",\n      \"restored\": true,\n      \"sha256\": \"ba79dee70320b9e11d1aba149311702ab898e2c95acf8d32c7b75b8badfeacd5\"\n    },\n    {\n      \"bytes\": 1744013,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/comparison-v2/runs.json\",\n      \"restored\": true,\n      \"sha256\": \"a2d7e7e1aed59c97bef7c3ed6fe1c655d5c3462ce40797030d411a95872e9a62\"\n    },\n    {\n      \"bytes\": 702902,\n      \"compressedVerified\": true,\n      \"originalPresent\": true,\n      \"path\": \"result-coordinate-evidence/direct-memo-followup/comparison-v2/supervision.json\",\n      \"restored\": true,\n      \"sha256\": \"5a66f04e0618acbf6c36d2941b1a10858197feb6ed289fe867c2d4c431564e07\"\n    }\n  ],\n  \"verified\": true\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "Differing existing original rejected and left unchanged",
+      "passed": true,
+      "command": [
+        "python3",
+        "-B",
+        "/workspace/scratch/37853bcaea36/github-transfer/comparison-json-restore-ln12ekva/result-coordinate-evidence/direct-memo-followup/recovery/preserved-comparison-v2-json/restore.py",
+        "--restore"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/37853bcaea36/github-transfer/comparison-json-restore-ln12ekva/result-coordinate-evidence/direct-memo-followup/recovery/preserved-comparison-v2-json/restore.py\", line 58, in <module>\n    main()\n  File \"/workspace/scratch/37853bcaea36/github-transfer/comparison-json-restore-ln12ekva/result-coordinate-evidence/direct-memo-followup/recovery/preserved-comparison-v2-json/restore.py\", line 46, in main\n    raise ValueError('Existing original differs; it was preserved unchanged: ' + str(raw))\nValueError: Existing original differs; it was preserved unchanged: /workspace/scratch/37853bcaea36/github-transfer/comparison-json-restore-ln12ekva/result-coordinate-evidence/direct-memo-followup/independent-v2/independent-results.json\n"
+    }
+  ]
+}

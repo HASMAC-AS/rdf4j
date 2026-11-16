@@ -15,8 +15,8 @@ The first comparison keeps the selected ownership implementation and original AU
 - [done] Specify and run direct-memo correctness and adaptive-policy contracts before implementation.
 - [done] Implement the experimental table and its existing-ownership integration; demonstrate the four-array witness counterexample.
 - [done] Verify enabled and disabled behavior, both IR tiers, detachment, cleanup, and lifecycle accounting.
-- [in_progress] Complete fresh comparison with finite supervision.
-- [todo] Independently audit raw observations, report the retention and cutoff limitations, and checkpoint complete source and evidence.
+- [done] Complete fresh comparison with finite supervision.
+- [in_progress] Audit results, report limits, preserve deliverables.
 
 ## Surprises & Discoveries
 
@@ -41,6 +41,8 @@ The first primary controller disappeared after seven complete JVMs and during th
 2026-11-16: The normal capture path currently defers publication until the row is captured. Direct mode must publish a miss immediately after ordinary lazy resolution to preserve the proposed table's within-row collision behavior. Ordinary and factor reuse are both bypassed in direct mode. The existing source/view/exposure validation and repair remain authoritative.
 
 2026-11-16: Preserve the interrupted primary cohort in full and begin `comparison-v2` from slot zero. Add a separate supervision controller that imports the frozen driver, pins the same runtime, protocol, schedule and Java commands, and launches exactly one JVM per invocation. It reconstructs completion from validated receipts, rejects any partial, failed, extra or missing predecessor, and never retries a fork. The original protocol, driver and independent analyzer remain unchanged. No first-attempt measurements are pooled, substituted or used to choose a new runtime or analysis rule. Record the gaps between JVMs without introducing a new cooling policy.
+
+2026-11-16: All 36 finite invocations completed with observed terminal exit zero. The independent analyzer accepted all 468 queries and 312 per-query treatment pairs. Report all six paired process ratios, including the two fanout direct/ordinary ratios above one. Both prospective engineering screens failed: fanout was not uniformly faster than ordinary reuse, and fanout direct/dense median allocation was 1.001190. Do not relax either gate after observing the data. The direct map remains an off-by-default experiment, with strong-retention accounting and delayed-repetition admission as the next design risks.
 
 ## Context and Orientation
 
@@ -79,3 +81,7 @@ Revision 2026-11-16: Created after the user's direct-mapped memo proposal, prese
 2026-11-16 implementation note: The existing Plan and projected-row duplicate scan already compare full masks exactly; preserve them unchanged. Individual reads lack an explicit Sail exposure token. A valid table hit whose native dictionary value is not externally owned must therefore still pass through ordinary lazy lookup to establish the current exposure handoff. Certified outward capture keeps its explicit exposure fence. The additional integration contract was sealed and reproduced before the helper was generated, and now passes.
 
 Revision 2026-11-16: After an unexplained controller disappearance, preserve the incomplete first primary cohort and change only external supervision for a completely fresh cohort. The candidate, controls, runtime, input, JVM settings, schedule and analysis criteria remain frozen.
+
+2026-11-16 completed comparison: `comparison-v2` contains 36 complete fresh JVMs, 288 warmup queries and 180 measured queries. The finite supervision replay and final full runtime-preservation check pass. The pinned independent analyzer agrees that every result, route, adjacency, owner interval and final ledger endpoint qualifies. Direct/ordinary paired median latency ratios are 0.938869 for fanout and 0.931292 for shared-tail; allocation ratios are 0.838266 and 0.854791. Direct/dense latency ratios are 0.720358 and 0.790969. Dense/ordinary latency ratios are 1.322319 and 1.185796, with all six pairs slower on both fixtures. The direct table stays at 4,096 slots throughout these workloads, so this timing study does not measure adaptive growth or cutoff recovery. The ordinary baseline already reuses weak values; older-host allocation comparisons are not pooled. Qualification, complete source archive, and the excluded first attempt were checkpointed on HASMAC as 591b70e10eaf2d01d0735064a3993d401f17a03e before the new cohort started.
+
+2026-11-16 final audit and deliverables: Independent reconciliation matches all 324 paired metric ratios, 324 JVM metric medians and 18 screen gates. All 36 supervisor claims/completions and 252 per-slot raw hashes verify. `RESULTS.md` reports every outcome and scope limit. The complete source archive v2 has 38 byte-verified members, and its four-file patch reproduces the compiled candidate sources. The paired-ratio figure was visually checked and all 48 points verified. Three verbose JSONs are preserved losslessly with raw/compressed hashes and a strict restore helper; original files remain unchanged. Final checkpoint publication and user handoff remain the active delivery step.
