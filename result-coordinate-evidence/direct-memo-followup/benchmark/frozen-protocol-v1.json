@@ -1,0 +1,372 @@
+{
+  "armDefinitions": {
+    "dense": {
+      "directMemoEnabled": "false",
+      "reuse": "existing ordinary weak reuse plus dense factor pages",
+      "transportMode": "dense"
+    },
+    "direct": {
+      "directMemoEnabled": "true",
+      "reuse": "strong adaptive direct map; ordinary and factor reuse bypassed",
+      "transportMode": "off"
+    },
+    "ordinary": {
+      "directMemoEnabled": "false",
+      "reuse": "existing ordinary weak last-value reuse",
+      "transportMode": "off"
+    }
+  },
+  "arms": [
+    "ordinary",
+    "dense",
+    "direct"
+  ],
+  "balancedOrders": [
+    [
+      "ordinary",
+      "dense",
+      "direct"
+    ],
+    [
+      "ordinary",
+      "direct",
+      "dense"
+    ],
+    [
+      "dense",
+      "ordinary",
+      "direct"
+    ],
+    [
+      "dense",
+      "direct",
+      "ordinary"
+    ],
+    [
+      "direct",
+      "ordinary",
+      "dense"
+    ],
+    [
+      "direct",
+      "dense",
+      "ordinary"
+    ]
+  ],
+  "budgetRationale": "Identical 512 MiB query budgets preserve the unrefused dense fixture configuration. Heap and global ledger remain 1 GiB. Array-only direct memo accounting is not a complete retained-memory bound.",
+  "commonHarnessDescriptorFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/runtime-descriptor.json",
+  "commonHarnessDescriptorFileSha256": "c6c46c4dec351666e404dddf9d374aaee619f742b6d6ba4adbde32dcbb27e815",
+  "configuration": {
+    "directAdjacency": true,
+    "directAdjacencyMode": "PREFER",
+    "forceSync": false,
+    "globalLedgerLimitBytes": 1073741824,
+    "indexes": "spoc,ospc,psoc,posc",
+    "nativeEvaluation": true,
+    "perQueryLedgerLimitBytes": 536870912,
+    "valueOverlay": false
+  },
+  "directMemoAccountingPolicy": {
+    "adaptiveOutcomes": "Low-hit disabling, varying collisions, growth, and replacement are measured outcomes; they never select or discard queries.",
+    "export": "Thirteen primitive records are preallocated before the unchanged launcher; serialize after its return.",
+    "fields": [
+      "ownerOrdinal",
+      "compileOrdinalAtOpen",
+      "compileOrdinalAtClose",
+      "lazyValueCallsAtOpen",
+      "lazyValueCallsAtClose",
+      "probes",
+      "hits",
+      "collisions",
+      "invalidations",
+      "unsupportedValues",
+      "clearCalls",
+      "resizes",
+      "rehashDiscards",
+      "lowHitDisable",
+      "initialAdmissionRefusals",
+      "growthAdmissionRefusals",
+      "peakCapacity",
+      "peakArrayBytes",
+      "retainedEntriesAtClose",
+      "capacityAtClose",
+      "arrayBytesAfterClose",
+      "disabledAtClose"
+    ],
+    "mapping": "Ordinary and dense create no direct-memo owner; direct creates 13. Direct owner and semantic-compile ordinals are 1..13; lazy-value interval differences exactly match original raw query counters without inter-owner gaps.",
+    "naturalCollection": "No explicit GC, profiler, heap walk, weak-miss exclusion, or replacement query.",
+    "observerLimit": "No new per-target/factor-page or weak-miss observer; original coordinate-owner admission counters remain available. Dense factor-page refusal is not separately counted by this new helper.",
+    "resolverPolicy": "Raw resolver differences are outcomes, not rejection criteria. No count tolerance, residual gate, causal subtraction, or timing/allocation normalization.",
+    "scope": "native-direct-memo-fixed-fixtures-v1",
+    "zeroRequiredFields": [
+      "invalidations",
+      "unsupportedValues",
+      "rehashDiscards",
+      "initialAdmissionRefusals",
+      "growthAdmissionRefusals",
+      "arrayBytesAfterClose"
+    ]
+  },
+  "directMemoPolicy": {
+    "accountingLimit": "Array storage only. Retained Values, lexical data, revision/owner graphs, and later lazy initialization are not bounded by this charge.",
+    "admissionFailure": "Permanently disable and resolve normally; no weak-cache fallback in direct mode.",
+    "arrays": "ID long[], semantic-version long[], full-mask int[], strong Value[], and InternalIdentity[]; the fifth array strengthens the four-array sketch against revision/identity changes without a semantic-version bump.",
+    "collision": "An occupied bucket with a different full key; replacement on admission, no LRU.",
+    "counters": "Cumulative per native iteration; scope clears do not restart the adaptive policy.",
+    "firstBoundary": "After probe 8192, permanently disable when cumulative hits are below 25 percent; no growth at this boundary.",
+    "growth": "Rehash in deterministic old-slot order and discard colliding entries; reserve complete replacement arrays while the old arrays remain live.",
+    "hitMeaning": "Hits count validated table candidates. Standalone access may still resolve such a candidate to preserve source ownership handoff; outward capture passes its actual Sail exposure token. Raw resolver counts remain authoritative.",
+    "initialCapacity": 4096,
+    "key": [
+      "numericValueId",
+      "fullValuePositionMask"
+    ],
+    "maximumCapacity": 65536,
+    "missBehavior": "No eager lexical initialization.",
+    "probeInterval": 8192,
+    "publication": "Publish an admitted miss immediately, before the next projected value is resolved.",
+    "stability": "Exact source identity, non-null stable result-view and exposure scopes, semantic version, and the captured ID/revision-number/revision-owner witness.",
+    "subsequentBoundaries": "At 16384 and each subsequent multiple of 8192, double up to 65536 when cumulative hits are at least 25 percent and cumulative collisions at least 12.5 percent.",
+    "variant": "identity-witness-v1"
+  },
+  "driverFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/run-comparison.py",
+  "driverFileSha256": "2884c48422c85991930ceb0216b47aa182c5790b39f9e1fe824017db9e644c0f",
+  "estimand": "Total query-cost effect of replacing existing result reuse with the adaptive strong direct map, including transport, strong retention, adaptation, allocation, natural GC, and resolver changes.",
+  "expectedFreshJvms": 36,
+  "expectedMeasuredQueries": 180,
+  "expectedTotalQueries": 468,
+  "expectedWarmupQueries": 288,
+  "failurePolicy": "Stop and preserve all outputs on process, result, route, source, lifecycle, counter-consistency, unexpected mutation/unsupported-value, or admission failure. Raw resolver differences and low-hit disabling remain valid outcomes. No replacement, exclusions, favorable tails, extra rounds, or forced routes.",
+  "fixtureOrdersByRound": [
+    [
+      "fanout",
+      "shared-tail"
+    ],
+    [
+      "shared-tail",
+      "fanout"
+    ],
+    [
+      "fanout",
+      "shared-tail"
+    ],
+    [
+      "shared-tail",
+      "fanout"
+    ],
+    [
+      "fanout",
+      "shared-tail"
+    ],
+    [
+      "shared-tail",
+      "fanout"
+    ]
+  ],
+  "fixtures": {
+    "fanout": {
+      "arguments": [
+        "--measurements=100",
+        "--readings=10",
+        "--width=12",
+        "--statuses=2",
+        "--unique-payloads=0"
+      ],
+      "harnessMain": "org.eclipse.rdf4j.sail.lmdb.benchmark.OptionalFanoutExperiment",
+      "launcher": "org.eclipse.rdf4j.sail.lmdb.evaluation.RootQualifiedOptionalFanoutLauncher",
+      "metadata": {
+        "canonicalGraphSha256": "cf637a7e80dbd9468d7e8b04116da072f726038282dfab15380c267c8cc82e9b",
+        "expectedChecksum": "3123987218479850048",
+        "expectedRows": 1152000,
+        "fixture": "optional-fanout",
+        "measurements": 100,
+        "querySha256": "9cffa2dc37bbb1e2743442b228d5ab9a41115bf7c4a6667506231fbda3bfc301",
+        "readings": 10,
+        "statuses": 2,
+        "uniquePayloads": 0,
+        "width": 12
+      },
+      "oracle": "Independent full-bag row count and lexical checksum; original consumption unchanged.",
+      "projectedNames": [
+        "patient",
+        "measurement",
+        "reading",
+        "diagnosis",
+        "severity",
+        "drug",
+        "route",
+        "language",
+        "procedure",
+        "author",
+        "department",
+        "status"
+      ],
+      "rootReadPhase": "after-original-harness-main"
+    },
+    "shared-tail": {
+      "arguments": [
+        "--roots=64",
+        "--left=128",
+        "--right=128",
+        "--tuple-width=2"
+      ],
+      "harnessMain": "org.eclipse.rdf4j.sail.lmdb.benchmark.SharedSelectionExperiment",
+      "launcher": "org.eclipse.rdf4j.sail.lmdb.evaluation.RootQualifiedSharedSelectionLauncher",
+      "metadata": {
+        "canonicalGraphSha256": "59218d96a3c4c1cd3a2634c72174b0f44f3a7415d6cae4c944b1a54ed9506621",
+        "compactPageSharedTailHarness": "adjacency-observation-v1",
+        "expectedChecksum": "8327963502356915200",
+        "expectedMultiplicityPerCompleteRow": 1,
+        "expectedRows": 1048576,
+        "fixture": "coherent-two-optional-tail-tuples",
+        "fixtureInsertionSha256": "6c6b154e249781a76e84cb0ccf614ee7a3248869f41e852e002639f935de6433",
+        "left": 128,
+        "querySha256": "570d85a6fd11ecabae385744a2137f45aad5c9e53bf74dd50b2de69f3c2a4b76",
+        "right": 128,
+        "roots": 64,
+        "statements": 32832,
+        "tupleWidth": 2,
+        "width": 6
+      },
+      "oracle": "Exact independent IRI types, lexical values, tuple/parent association, legal unique dense row keys, complete count/checksum.",
+      "projectedNames": [
+        "s",
+        "a",
+        "l0",
+        "l1",
+        "r0",
+        "r1"
+      ],
+      "rootReadPhase": "after-shared-selection-harness-main"
+    }
+  },
+  "format": 1,
+  "frozenEpochNs": 1794860935767841950,
+  "identityHelperFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/runtime_identity.py",
+  "identityHelperFileSha256": "c16cec6c56eeaf9bbb2d825a7084af5e04e89f9c5dd8c767740fd227f112009b",
+  "independentAnalysisFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/analyze-timing-independent.py",
+  "independentAnalysisFileSha256": "9f54c6ae0556d52070e2d1840229222d2588396f249ac50fc699106d860ed570",
+  "iterations": 5,
+  "java": "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+  "jvmArguments": [
+    "-Xms1024m",
+    "-Xmx1024m",
+    "-XX:+UseG1GC",
+    "-Drdf4j.lmdb.hotCounters=true",
+    "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912"
+  ],
+  "name": "Adaptive strong direct-memo total effect under natural GC",
+  "observerLimitations": "Adaptive counters are intrinsic to the direct algorithm. Primitive lifecycle exports occur at owner open/close and JSON only after the launcher returns. Ordinary/dense create no direct owner. Costs of helper branches/lifecycle observation are included; no uninstrumented counterfactual is estimated.",
+  "perFixtureStoreConfiguration": "Fanout retains AUTO direct-adjacency max bytes; shared-tail retains explicit 1 GiB direct-adjacency budget. Every arm within a fixture matches.",
+  "pooling": "No pooling with historical baselines, Stage 2, incomplete publication comparison, compact-page, frame-guard, shared-tail pilot, or diagnostics.",
+  "properties": {
+    "memoEnabled": "rdf4j.lmdb.nativeValueMemo.enabled",
+    "perQueryBudget": "rdf4j.lmdb.queryMemory.perQueryMaxBytes",
+    "transport": "rdf4j.lmdb.resultCoordinateTransport"
+  },
+  "protocolDocumentFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/PROTOCOL.md",
+  "protocolDocumentFileSha256": "b6eb4dd6d6b6c37921e65f264a28873c86a130a746b8e5dbfbd6dcdc9834755a",
+  "qualifiedLauncher": "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+  "quietPeriod": "One serial Java process; no simultaneous builds, tests, profiles, compression, or heavy hashing during timing.",
+  "resultGate": "Independent expected counts/checksums, exact shared-tail bag oracle, ledger endpoints zero, valid all-thread allocation, prescribed direct owner count and query mapping, consistent table statistics, and matched routes/tiers/adjacency.",
+  "rounds": 6,
+  "runtime": {
+    "allArmsShareCompiledRuntime": true,
+    "baseRuntimeDescriptorFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/runtime-descriptor.json",
+    "baseRuntimeDescriptorFileSha256": "c6c46c4dec351666e404dddf9d374aaee619f742b6d6ba4adbde32dcbb27e815",
+    "classpathEntryCount": 129,
+    "classpathFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classpath.txt",
+    "classpathFileSha256": "5e5ec747dc3d1d73b6bd4a584b297890b1664af3d9dfcccd251383c82b7bd0dd",
+    "classpathManifestFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classpath-manifest.json",
+    "classpathManifestFileSha256": "1b43dac57afb78354512292a6a11ad80a3d5202bf9bbfc866503297c01deade6",
+    "compileReceiptFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/compile-receipt.json",
+    "compileReceiptFileSha256": "2356f8e4bdfc921dbe46f50b3203940c3d6ee53b0ff7708fe0c6aacb17d750c9",
+    "diagnosticOnly": false,
+    "format": 1,
+    "frozenEpochNs": 1794860865907332867,
+    "launcherSourceFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/generated/src/org/eclipse/rdf4j/sail/lmdb/evaluation/DirectMemoLauncher.java",
+    "launcherSourceFileSha256": "1cc6b6abaefbfe0cd0134a65e53651c74882499a089308b16d6f43a7087324b9",
+    "lifecycleValidationFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/validation-receipt.json",
+    "lifecycleValidationFileSha256": "292007c881fcc44d65fe2974dd2a7a92615b07800522a6b0cdfbfc097fa9dfba",
+    "memoVariant": "identity-witness-v1",
+    "name": "iteration-direct-memo-identity-witness",
+    "noProductionPromotion": true,
+    "overlayPatchFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/generated/direct-memo-overlay.patch",
+    "overlayPatchFileSha256": "0920490ea84bbbce6b60bfdcf50e7b0da420d20db48e22145a88c58acf9aa568",
+    "prefixClasses": [
+      "org/eclipse/rdf4j/sail/lmdb/evaluation/DirectMemoLauncher.class",
+      "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.class",
+      "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoStatistics$Snapshot.class",
+      "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoStatistics.class",
+      "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeProjectedBindingSet.class",
+      "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.class"
+    ],
+    "prefixEntryCount": 1,
+    "productionEntryIndex": 3,
+    "runtimeBuilderFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/compile_freeze_direct_runtime.py",
+    "runtimeBuilderFileSha256": "0ee9628c2b64b1de6888a7b64ae1c02b47eeaac71d823908941504eb96a4c80a",
+    "scope": "native-direct-memo-fixed-fixtures-v1",
+    "sourceIdentity": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+    "sourceReceiptFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/generated/compiled-sources.json",
+    "sourceReceiptFileSha256": "a07e911df9924d10d39d4528fcdbc92d8b595e812eca1632fffd40ad352d74a1",
+    "statisticsSourceFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/generated/src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoStatistics.java",
+    "statisticsSourceFileSha256": "661ea299cfe636a2b4c774c2247477e89961281033c45ceb5353b445d2a22e38",
+    "validationFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/validation.json",
+    "validationFileSha256": "da63a9349273b8418bd725dee8eeeb42845d061a4b083233fd51aae9f6ea7511"
+  },
+  "runtimeDescriptorFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/runtime-descriptor.json",
+  "runtimeDescriptorFileSha256": "cf4336e8ce853bc3f4a604f0f29b4e3c9acfcff4751ea0b028c78e71f98d8115",
+  "statistics": {
+    "comparisons": [
+      [
+        "direct",
+        "ordinary"
+      ],
+      [
+        "direct",
+        "dense"
+      ],
+      [
+        "dense",
+        "ordinary"
+      ]
+    ],
+    "metrics": [
+      "totalNs",
+      "allThreadAllocatedBytes",
+      "callerThreadAllocatedBytes",
+      "prepareNs",
+      "evaluateNs",
+      "firstRowAfterEvaluateNs",
+      "consumeNs",
+      "closeNs",
+      "ledgerPeakBytes"
+    ],
+    "policy": "Two separately evaluated engineering screens: direct/ordinary and direct/dense. Dense/ordinary is descriptive. No significance or production-promotion claim.",
+    "preparation": "Warm preparation and first cold query separately. Cold query starts after fixture construction and excludes JVM launch. Preserve all eight warmups.",
+    "primary": "Each fresh JVM contributes the median of all five measurements. Ratios pair the same fixture and round. Report median and full range of six ratios. Never pool fixtures."
+  },
+  "status": "frozen-ready",
+  "strategy": "Normal AUTO; no forced strategy or tier. Every measured query must use compiled native IR and the same route histogram within its fixture.",
+  "timeoutSeconds": 300,
+  "totalEffectScreen": {
+    "everyLatencyRatioStrictlyBelowOne": true,
+    "individualAllocationMaximumRatioEitherFixture": 1.02,
+    "interpretation": "Apply the engineering screen separately against ordinary and dense; descriptive results always reported. Neither significance nor production promotion.",
+    "medianAllocationMaximumRatioEachFixture": 1.0,
+    "medianLatencyMaximumRatioEachFixture": 0.95,
+    "primaryComparisons": [
+      [
+        "direct",
+        "ordinary"
+      ],
+      [
+        "direct",
+        "dense"
+      ]
+    ],
+    "rationale": "A 5 percent median reduction on both fixtures with all six paired reductions is a useful engineering effect; allocation is separately screened. Value payload retention remains unbounded by the array ledger.",
+    "rawResolverEqualityRequired": false
+  },
+  "warmup": 8
+}

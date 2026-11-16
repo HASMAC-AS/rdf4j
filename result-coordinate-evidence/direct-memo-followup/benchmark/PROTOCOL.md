@@ -87,7 +87,7 @@ Freeze only after the runtime has qualified:
 
     python3 result-coordinate-evidence/direct-memo-followup/benchmark/run-comparison.py \
       --freeze \
-      --runtime result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v1/runtime-descriptor.json \
+      --runtime result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/runtime-descriptor.json \
       --protocol result-coordinate-evidence/direct-memo-followup/benchmark/frozen-protocol-v1.json
 
 Validate the frozen design without launching Java:

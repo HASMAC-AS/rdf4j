@@ -1,0 +1,959 @@
+{
+  "compileReceiptFile": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/compile-receipt.json",
+  "compileReceiptFileSha256": "2356f8e4bdfc921dbe46f50b3203940c3d6ee53b0ff7708fe0c6aacb17d750c9",
+  "configuration": {
+    "directAdjacency": true,
+    "directAdjacencyMode": "PREFER",
+    "forceSync": false,
+    "globalLedgerLimitBytes": 1073741824,
+    "indexes": "spoc,ospc,psoc,posc",
+    "nativeEvaluation": true,
+    "perQueryLedgerLimitBytes": 536870912,
+    "valueOverlay": false
+  },
+  "directMemoOwners": 26,
+  "failurePolicy": "Stop without replacements; preserve every output. No timing-based selection.",
+  "format": 1,
+  "freshJvms": 6,
+  "measurementsPerJvm": 5,
+  "memoPolicy": {
+    "accountingLimit": "Array storage only. Retained Values, lexical data, revision/owner graphs, and later lazy initialization are not bounded by this charge.",
+    "admissionFailure": "Permanently disable and resolve normally; no weak-cache fallback in direct mode.",
+    "arrays": "ID long[], semantic-version long[], full-mask int[], strong Value[], and InternalIdentity[]; the fifth array strengthens the four-array sketch against revision/identity changes without a semantic-version bump.",
+    "collision": "An occupied bucket with a different full key; replacement on admission, no LRU.",
+    "counters": "Cumulative per native iteration; scope clears do not restart the adaptive policy.",
+    "firstBoundary": "After probe 8192, permanently disable when cumulative hits are below 25 percent; no growth at this boundary.",
+    "growth": "Rehash in deterministic old-slot order and discard colliding entries; reserve complete replacement arrays while the old arrays remain live.",
+    "hitMeaning": "Hits count validated table candidates. Standalone access may still resolve such a candidate to preserve source ownership handoff; outward capture passes its actual Sail exposure token. Raw resolver counts remain authoritative.",
+    "initialCapacity": 4096,
+    "key": [
+      "numericValueId",
+      "fullValuePositionMask"
+    ],
+    "maximumCapacity": 65536,
+    "missBehavior": "No eager lexical initialization.",
+    "probeInterval": 8192,
+    "publication": "Publish an admitted miss immediately, before the next projected value is resolved.",
+    "stability": "Exact source identity, non-null stable result-view and exposure scopes, semantic version, and the captured ID/revision-number/revision-owner witness.",
+    "subsequentBoundaries": "At 16384 and each subsequent multiple of 8192, double up to 65536 when cumulative hits are at least 25 percent and cumulative collisions at least 12.5 percent.",
+    "variant": "identity-witness-v1"
+  },
+  "ordinaryAndDenseMemoOwners": 0,
+  "prefixFiles": {
+    "org/eclipse/rdf4j/sail/lmdb/evaluation/DirectMemoLauncher.class": {
+      "bytes": 6675,
+      "sha256": "1ce1511304ce1862ac21595fd75f2cfa65f68c1d8214dd8cd79cbc55544342c2"
+    },
+    "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.class": {
+      "bytes": 7762,
+      "sha256": "270e617770bf0402c3a3ac4dfa67151ad6f0a420edb5b6da00068099031fda46"
+    },
+    "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoStatistics$Snapshot.class": {
+      "bytes": 4840,
+      "sha256": "e677d42d64332eecb52c766b6a296cc6c130eff293e39ba969245f4e0584b4dd"
+    },
+    "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoStatistics.class": {
+      "bytes": 4395,
+      "sha256": "0fb0eae00b50698ce28cb2aad5c0dbd53b5b15eee649cd00eac675fa81d07564"
+    },
+    "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeProjectedBindingSet.class": {
+      "bytes": 14601,
+      "sha256": "6b25122cf5c343060a7b753c5b48c74dc934507825de4185ffb7234f9ae072ed"
+    },
+    "org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.class": {
+      "bytes": 23207,
+      "sha256": "f8be36fdf0a5cf9d5a17c2ecc10dfdc47ac20a7aa0f05a64728fb0bb5f1c5e97"
+    }
+  },
+  "purpose": "Full-size result, route, owner/query mapping, and cleanup preflight; timings not analyzed or pooled.",
+  "queries": 78,
+  "runtimeFolder": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2",
+  "runtimeManifest": [
+    {
+      "files": 6,
+      "kind": "tree",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes",
+      "sha256": "1db2e14afc44a344b418030c729354982a984e6cfdcbe3910f37bb7e2190e5e2"
+    },
+    {
+      "files": 15,
+      "kind": "tree",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes",
+      "sha256": "05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825"
+    },
+    {
+      "files": 4360,
+      "kind": "tree",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes",
+      "sha256": "dc8be49dac7eec2c8c819d177beb924a63df9d3daa9c21578d467ac6a4440828"
+    },
+    {
+      "files": 2780,
+      "kind": "tree",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes",
+      "sha256": "f822ad378729e2ebdd5c7e91d2420e9dbf1eb92aab382e76c35fba00989eab8c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar",
+      "sha256": "da5ad11655341a90e6464bca40e5995e24441d446d6706ffe0d152251e2dff2d"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar",
+      "sha256": "e4e681c0f3e442d26ee9b86c8d8a0795cb42ad0061f7063d0ac4f286d63da0b4"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar",
+      "sha256": "980072f45e9ece70d77ce8c8c4299075b2f36fa25c3b17b4e98090f7de75d639"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar",
+      "sha256": "19db8a9d05b401aba73f9743ec53a7ad26f33d4a9b252abbd6a0124fd838f229"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar",
+      "sha256": "ac4b36f121a661189a0e11a14de31c85ade7fec02bf6b030388d0f37f36f8099"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar",
+      "sha256": "88e36e7424309d13d121cb46d20d7a3066975e4c94e0bada5ae379efae7b6ac4"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar",
+      "sha256": "e8bc51bc602c165507609be8239e128506e859856bec4ba54238ef0f89dfa3fe"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar",
+      "sha256": "6605c7fea77368d394524bebeb5260022bf0390da5c11bbab7c298b2295401ec"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar",
+      "sha256": "e9f98f6dda08c835d0420f0689a485274c1b5dd57867c54b39473a04d11d216c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar",
+      "sha256": "6214c7b6c0e81833ce58d6d5b7a6a4520c7467b2fe913cada7ebcf6fe0ac8ae0"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar",
+      "sha256": "eb88f7341461174ec2084c41c0e1bfeeed957158e59ed55d9c34a13efcbe2665"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar",
+      "sha256": "e587674339289ba01e21bac0a9a31464f6e1ed6bae9e85cd58f3a1353080ec2b"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar",
+      "sha256": "41a81dae2cde8dd594504eb41b587cd5ccd1c510c930410c4100eed7029023c3"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar",
+      "sha256": "87f4dacde85fbb9759566c2c9e9e2548972e09de2a5ecfee211d40053cca5b82"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar",
+      "sha256": "6c370c17c6746cbdb8074f8302846a49fe19438ab371664e3f7b28dfebdea24c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar",
+      "sha256": "8e48cf335d308a84d7e782f001a5a89fdc9a30766e82a9056f30300bdff70d01"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar",
+      "sha256": "ddcc96530c6628bc3bc4ee5111d09ff1cb9a1fb4079893c652911e26718bbab4"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar",
+      "sha256": "d7b7844786d8add5d786cac1e5f4bcd53ee16f105eda9ab6ef84d499534d87ca"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "78f60dd07b73e08621ad6bc4eee90d894742e448fe094ab35c8fa2c55e3aa41c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar",
+      "sha256": "951f029d304b81b7a7821d25e166879c108a973a5d80a648b415d9e86addaa62"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar",
+      "sha256": "ad75857d64e3050d13741c5d27dba562f310b1858563f95e11e446869966bcf4"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar",
+      "sha256": "a56619ef488ddbfda2dc99bbe93adb40dcfcce3144826da6c9169a572b6de2a9"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar",
+      "sha256": "736a42c6cd4f0c226ae3d02f200251c38cadad3fb72d6de548d44d20305b0c28"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar",
+      "sha256": "b58d45863f9d752967d0603048c1a51830f23f49ca3e7c18a0717e6446e3b80a"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar",
+      "sha256": "967d959601a0c30493ca6a33c09f969b220e4b3229f4ed445c898acc3bd65a04"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar",
+      "sha256": "fa95c9166929480c78b1e83733990f1a802bbb106222264ad3df1777e34382ab"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar",
+      "sha256": "1dc5c00b879aa330b2521c92f857034ec35b465065afe44fb5bfb4d6c99e05a1"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "4aff2c5ec624b935032765ed6e6a04679d5d5aadbd60c91884eecef432871c06"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar",
+      "sha256": "bbea64c586cedd0af93979e8ba1f090125e2bf1537a8b0833c998210d150ed10"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar",
+      "sha256": "ee34175a6b1bca42c64dfcad9ac763cb990941c49284ce87ea506abfe6830f23"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar",
+      "sha256": "a10b555f7c85a720d1011a086d679d854b155816cde91a40198cc98c2b0867e8"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar",
+      "sha256": "b08e3c3a440fec2029e89980134c7c787dd6796454641ad1eafb81478d7e8b0b"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar",
+      "sha256": "9a61441889f9b222ce99581977cc549b4dfca7ac9d2841582c1e57a31fa65b48"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar",
+      "sha256": "15db76942babde5dc179599ae4b0125ab1099afc4a01381bbc70d39e868e676c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "98b8e52104d4d9c3c85d486a6e97e68a32f60cbf17346f26021d2c18f7fcda40"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar",
+      "sha256": "1e56d7b058d28b65abd256b8458e3885b674c1d588fa43cd7d1cbb9c7ef2b308"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar",
+      "sha256": "61bdc9ae0e5bd7867379f0ab1283783a5183bfab3b5401e209504b99da184c0c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar",
+      "sha256": "dffe75878456bb6c53421333d63dafdf4408604b05c94b166556930b6938f467"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "455b99d40a2db0b93aa9dca548d62cfc57930744691aa4cbdac8536c7b47adb9"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar",
+      "sha256": "4ef82563623914398ede99f25be6e6625f7c133f03a19a95e3f8b5b8b1fece18"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar",
+      "sha256": "78a5d732fbd715e2d10bd7150d2f8030bae57267f8aacc5c88f642cb6c2e5d3f"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar",
+      "sha256": "8f348e8de3f1a3c9ea94bf43f02f170925644a095cc3395ca0f4dfd9c3abbef3"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar",
+      "sha256": "ac158c23504fa76dc1a5f43436df2cb34b4b435b79b38c9b941d1c75e2efbe90"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar",
+      "sha256": "21ddb598807d3a51a876704eb979d9296e1c6a6f47ab1826ff88c6d6a127a2d0"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar",
+      "sha256": "494b9f5fccf008042d5a72c5bf00629b144c0ba7362a9864cbb02234c9772651"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar",
+      "sha256": "c4af37223d5024f1294a5450598b01b65f30c53d9e906f02c3955ba1fb14a67d"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar",
+      "sha256": "58d2da30f058512a1e7f914e39241deca4dff5c27a085b4ed2faa9e7208067f6"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar",
+      "sha256": "a2af247ec4db6eb8947e18e23e0433e4871a7c5d0a40e1f92e46ede54ae1defe"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar",
+      "sha256": "50c84b94cb725c0bcfd074847b66b6faa1d8e33e91981f4404f3d17252685bda"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "7c28fde265b182293c930542a41a427a32902905d22610b47bc1e12bac492fb7"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar",
+      "sha256": "5a544df3970b5554338c371d77c33fc39dcf47aff6ecb85f020c013f6cfe87d9"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar",
+      "sha256": "e905db1ae191fa4fcf5830731a578529409e9af302df2e3c635755685fcd66c4"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar",
+      "sha256": "0b80d43d48ad32779e0c931405505b9fba487625dd1998eb01ae1a349eb086e9"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar",
+      "sha256": "e253b957858dbf580d95c181208edf2178e22b1809fa6218c25e01651a1e806e"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar",
+      "sha256": "da5dc7f4fbb9ba1738a477ea26d9be032032da1da512d92aca4369afdb2bf1fb"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar",
+      "sha256": "08b28e50dfd82536a06cbbf2c2cf2cf486594c4f69edd1e4ce74b368d1e81755"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar",
+      "sha256": "fc9c8193e3f49467593e3d5ac2b2e2394d11747212c04bf3da4c66f3ba7c93f0"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar",
+      "sha256": "f9cdcdbff1f5de85380ae526977e683726c2aa42db1ed6e6e50ae89e496e95fd"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar",
+      "sha256": "29f93ff3d246f0bcdd5b7e5029c3bd8d2cb7752f5b83b5a701545a0499693491"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar",
+      "sha256": "55d69834e1d2ab4712bcbb2093f18d7cc796f70ee366680491dad63d22a6b584"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar",
+      "sha256": "668c8d9b7cd8bda7abcf1ecdc0c96b83340b49566d8279e1c8adafaecc4fbc28"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar",
+      "sha256": "c84f01440b506ae1ce69ee4f69d887ce2009b9e86b696be1c50774ca1f2b359a"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar",
+      "sha256": "5699878c31e71c9a94cf472f95a2dad52ca7b0449c099276b8bd7e992a43595b"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar",
+      "sha256": "17ea25d860225f4b59d0a512b4995f2e4711bdae5e15736cbcd5f6ce4dda8f7c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar",
+      "sha256": "7e1446499b359675d8aabe6af2de86b85e72ae8a2a932c0b40d0e5ba57097439"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar",
+      "sha256": "b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar",
+      "sha256": "cbfc3906b19b8f55dd7cfd6dfe0aa4532e834250d7f080bd8d211a3e246b59cb"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+      "sha256": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar",
+      "sha256": "070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar",
+      "sha256": "58c8e0b813960d2a248e050c353baea73139b48a2ffc55382d42c69707e17325"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar",
+      "sha256": "2dd421a874301ac55d7b2e2f98a362190e2d0b944e8813275a0e427680281809"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "236461776c5a7ac3efdaee3ad7ab7a45dd7b879f04a5990f4d8db3e47c7796e1"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "e6c2bb2439162ac216f39d29c20fac26e7ce223d65332f777cea0b2606f5b733"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar",
+      "sha256": "87ac4df373211c38b71d897e79634b3abc6ee016c3b564b0a796b99dc3096569"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar",
+      "sha256": "555d6cf20fa1710884dd01b86cc5785397ba73e21ada2d4b784f5f1a14dcafc4"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar",
+      "sha256": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar",
+      "sha256": "a4774ae923c109544034aeae7c762cf017fbcdd1342403ba90e0921984b608c3"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar",
+      "sha256": "646a0b2f1a555dc144642dcc5b951a88eb63e799740b06cab8fcb37b42b30e97"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar",
+      "sha256": "48a5f89bb7aa0e019b143924d918e65c2ee4bbb6b5f6735e6ae7348335dac45e"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar",
+      "sha256": "4aeb298e0e23229aa37c58180e772ecc82f5252af0bfc6395ba281b9bb0545f0"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar",
+      "sha256": "6334e2ca2ac26febda4f72b1ae739661124a6cc3396448a43e72334841843e2d"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar",
+      "sha256": "55ee464c0846fa4a695e5c2fc8d8ea8f16fb3d92b04746831b7a428519436c11"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar",
+      "sha256": "37a1e6ade75c09c5385c2830b7cda21c4b1f24a5f36ed7cd7397bc40f7dc71bc"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar",
+      "sha256": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar",
+      "sha256": "b78a3a81692f421cc01fc17ded9a45e9fb6f3949c712f8ec4d01da6b8c06bc6e"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar",
+      "sha256": "5d66b6a4a680755cb6ed7cb104fa7835ef644667586ff0737adeb977c39ecdbc"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar",
+      "sha256": "db20222bc2397d41d551b4321a221ab48a313c0259971b4c1e877d572e0c2262"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar",
+      "sha256": "820f8f67cb610963a45a11f1e0243bb8c6ea6e1d6eca82d22b9b258b2a6d2b6f"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar",
+      "sha256": "15af6ae4b56142ec8c3d33087a25b5b2c4d1d8f37c341675606246f48238b124"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar",
+      "sha256": "cfa52be7ff7fbc17f012f863bfca075283a2426c309d4b4b232a11eabcf1261e"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar",
+      "sha256": "48df064a838784aec0ae879e24e642d697d09d41465199441e192bc9220eca95"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar",
+      "sha256": "4b4f9d4e42a9969aa9293823e5faeabad3cf9f0667dc6779abea80284ec831c9"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar",
+      "sha256": "256d09abef8d3448d96229c03b776ba6492aacb5109e820d31fec791a992ba57"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar",
+      "sha256": "1f4978290948a58bec2cd9a602912fa7093da595868c97f8b16df631ef039586"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar",
+      "sha256": "53be662662bdbcfb46e93311ae76f94f5b8144ebfa4c8ab347b9b474322a4f3f"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar",
+      "sha256": "449dc0b8ea558eb119aa257c11aded6e04b37a148c1111f488c543465641f374"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar",
+      "sha256": "2b9a7b1f726fb86216dbd2c8321eabe0221dbd5b1be81c18e1cb53811b104758"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar",
+      "sha256": "d7af540a8f2dfaf8a99c6116a061c0c08afcaa0f694d3a914b74c3ca326ec5a2"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar",
+      "sha256": "374dc074c21686f68085457a0666dd09f8792f0b72ffca295f38b9dc18ac31b2"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar",
+      "sha256": "d4cbf8947087f305869826801913abdc50735a1fab2074a1993e7bc67ca974a3"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar",
+      "sha256": "2d30c375cddea9657a1e1ef97547a2694b663b355facb4de53a097782b312d1a"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar",
+      "sha256": "dc0eaf2bbf0036a70b60798c785d6e03a9daf06b68b8edb0f1ba9eb3421baeb3"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar",
+      "sha256": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar",
+      "sha256": "6a5604b5b804e0daca1145df1077609321687734a8b49387e49f10557c186c77"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar",
+      "sha256": "05c51cedba2c06a9770707391e006cee825876937dea580b94a265ce145d4939"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar",
+      "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar",
+      "sha256": "1dec64b1fc0b7c47a11302aa5b4d37d8160c041b396e27067709ce775601a7b6"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar",
+      "sha256": "21ad7ad3a35beda16387979317be1833a72a71d812f9a66ee4b9a7bafb56334c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar",
+      "sha256": "8b09db32c8cf5b2112a00262411ccd4ef6ca3bae695a0015ecad4def23dea9fd"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar",
+      "sha256": "321eb205dd8e42041dc365655fdb672b3b32cd9e8412f0ebba1049bee940ad2d"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar",
+      "sha256": "2cbd119bf1961c28788310963dc80ba65f58cdeec1dd139c8bdb1240faa2c36f"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar",
+      "sha256": "b49c5c958316ed67a09c699dda9aa749caf434d51d863dea599ef36a49b9c855"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar",
+      "sha256": "c8a67cfe0a87f009c0929a33c18d388b0f7ab4e1a49db810d01aa4e696597951"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar",
+      "sha256": "f808653309b1053e9879e3a8efc3985b701304bd46e197f7b4d49f30394087fb"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar",
+      "sha256": "ebc7aec252ed0c7d2d04c039d7f00e69f7b86b1f493c741d67b3ef31b986b054"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar",
+      "sha256": "414559e78bbfa3bdb2eab009ac3ab1e22369ac31117c270a0bd666da115c5c6c"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar",
+      "sha256": "c4a445426c3c2861666863b842cc4ec7bbb1c4226fefd370b6d2fe83d6c4ff0f"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar",
+      "sha256": "d78396e3c5bce3f2865c9186647481e5589d34cacc632484715b686108d17c66"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar",
+      "sha256": "97a1f835ad84075255aa37809e4379eff541273c02c6201cbad49bd5950932cd"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar",
+      "sha256": "a9ba887dca252ad61b7d5153294f34e6f3bdf4b2736b04373d13615a695fc0ff"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar",
+      "sha256": "02dfd0b0439a5591e35b708ed2f5474eb0948f53abf74637e959b8e4ef69bfeb"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar",
+      "sha256": "904d4ba9769284739dd720eceffe3792a67e9c0e78d8a50ad46925283386e048"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar",
+      "sha256": "5230217ccba7a9d31dda1dd878e5606037a7972282c7d3f8eac1efa80e9463d9"
+    },
+    {
+      "kind": "file",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar",
+      "sha256": "5458415d5d58a97ab670632f9b2bdac2d6f7e0e11455b45dd4e64e90d12670ab"
+    },
+    {
+      "files": 1,
+      "kind": "tree",
+      "path": "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+      "sha256": "044cf5e6cca19abbaf98ff8789ee92480fd25c04f05483be257d3e18807e867a"
+    }
+  ],
+  "schedule": [
+    {
+      "arm": "ordinary",
+      "command": [
+        "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+        "-Xms1024m",
+        "-Xmx1024m",
+        "-XX:+UseG1GC",
+        "-Drdf4j.lmdb.hotCounters=true",
+        "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912",
+        "-Drdf4j.lmdb.resultCoordinateTransport=off",
+        "-Drdf4j.lmdb.nativeValueMemo.enabled=false",
+        "-cp",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+        "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+        "fanout",
+        "--arm=ordinary",
+        "--source=15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+        "--warmup=8",
+        "--iterations=5",
+        "--measurements=100",
+        "--readings=10",
+        "--width=12",
+        "--statuses=2",
+        "--unique-payloads=0",
+        "--consumption=full",
+        "--output=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/00-fanout-ordinary/samples.jsonl",
+        "--store=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/00-fanout-ordinary/store"
+      ],
+      "fixture": "fanout",
+      "ordinal": 0
+    },
+    {
+      "arm": "dense",
+      "command": [
+        "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+        "-Xms1024m",
+        "-Xmx1024m",
+        "-XX:+UseG1GC",
+        "-Drdf4j.lmdb.hotCounters=true",
+        "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912",
+        "-Drdf4j.lmdb.resultCoordinateTransport=dense",
+        "-Drdf4j.lmdb.nativeValueMemo.enabled=false",
+        "-cp",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+        "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+        "fanout",
+        "--arm=dense",
+        "--source=15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+        "--warmup=8",
+        "--iterations=5",
+        "--measurements=100",
+        "--readings=10",
+        "--width=12",
+        "--statuses=2",
+        "--unique-payloads=0",
+        "--consumption=full",
+        "--output=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/01-fanout-dense/samples.jsonl",
+        "--store=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/01-fanout-dense/store"
+      ],
+      "fixture": "fanout",
+      "ordinal": 1
+    },
+    {
+      "arm": "direct",
+      "command": [
+        "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+        "-Xms1024m",
+        "-Xmx1024m",
+        "-XX:+UseG1GC",
+        "-Drdf4j.lmdb.hotCounters=true",
+        "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912",
+        "-Drdf4j.lmdb.resultCoordinateTransport=off",
+        "-Drdf4j.lmdb.nativeValueMemo.enabled=true",
+        "-cp",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+        "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+        "fanout",
+        "--arm=direct",
+        "--source=15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+        "--warmup=8",
+        "--iterations=5",
+        "--measurements=100",
+        "--readings=10",
+        "--width=12",
+        "--statuses=2",
+        "--unique-payloads=0",
+        "--consumption=full",
+        "--output=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/02-fanout-direct/samples.jsonl",
+        "--store=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/02-fanout-direct/store"
+      ],
+      "fixture": "fanout",
+      "ordinal": 2
+    },
+    {
+      "arm": "ordinary",
+      "command": [
+        "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+        "-Xms1024m",
+        "-Xmx1024m",
+        "-XX:+UseG1GC",
+        "-Drdf4j.lmdb.hotCounters=true",
+        "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912",
+        "-Drdf4j.lmdb.resultCoordinateTransport=off",
+        "-Drdf4j.lmdb.nativeValueMemo.enabled=false",
+        "-cp",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+        "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+        "shared-tail",
+        "--arm=ordinary",
+        "--source=15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+        "--warmup=8",
+        "--iterations=5",
+        "--roots=64",
+        "--left=128",
+        "--right=128",
+        "--tuple-width=2",
+        "--consumption=full",
+        "--output=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/03-shared-tail-ordinary/samples.jsonl",
+        "--store=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/03-shared-tail-ordinary/store"
+      ],
+      "fixture": "shared-tail",
+      "ordinal": 3
+    },
+    {
+      "arm": "dense",
+      "command": [
+        "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+        "-Xms1024m",
+        "-Xmx1024m",
+        "-XX:+UseG1GC",
+        "-Drdf4j.lmdb.hotCounters=true",
+        "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912",
+        "-Drdf4j.lmdb.resultCoordinateTransport=dense",
+        "-Drdf4j.lmdb.nativeValueMemo.enabled=false",
+        "-cp",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+        "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+        "shared-tail",
+        "--arm=dense",
+        "--source=15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+        "--warmup=8",
+        "--iterations=5",
+        "--roots=64",
+        "--left=128",
+        "--right=128",
+        "--tuple-width=2",
+        "--consumption=full",
+        "--output=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/04-shared-tail-dense/samples.jsonl",
+        "--store=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/04-shared-tail-dense/store"
+      ],
+      "fixture": "shared-tail",
+      "ordinal": 4
+    },
+    {
+      "arm": "direct",
+      "command": [
+        "/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java",
+        "-Xms1024m",
+        "-Xmx1024m",
+        "-XX:+UseG1GC",
+        "-Drdf4j.lmdb.hotCounters=true",
+        "-Drdf4j.lmdb.queryMemory.perQueryMaxBytes=536870912",
+        "-Drdf4j.lmdb.resultCoordinateTransport=off",
+        "-Drdf4j.lmdb.nativeValueMemo.enabled=true",
+        "-cp",
+        "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/runtimes/identity-witness-v2/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/compact-page-followup/compiled-v1/classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/000-test-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/001-classes:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/002-datasketches-java-9.0.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/003-lwjgl-lmdb-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/004-lwjgl-3.4.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/005-lwjgl-lmdb-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/006-lwjgl-lmdb-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/007-lwjgl-lmdb-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/008-lwjgl-lmdb-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/009-lwjgl-lmdb-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/010-lwjgl-lmdb-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/011-lwjgl-lmdb-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/012-lwjgl-3.4.2-natives-linux.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/013-lwjgl-3.4.2-natives-linux-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/014-lwjgl-3.4.2-natives-linux-ppc64le.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/015-lwjgl-3.4.2-natives-macos.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/016-lwjgl-3.4.2-natives-macos-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/017-lwjgl-3.4.2-natives-windows.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/018-lwjgl-3.4.2-natives-windows-arm64.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/019-rdf4j-sail-base-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/020-rdf4j-sail-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/021-rdf4j-common-transaction-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/022-rdf4j-common-order-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/023-rdf4j-queryrender-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/024-rdf4j-queryalgebra-evaluation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/025-rdf4j-repository-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/026-rdf4j-queryresultio-sparqlxml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/027-rdf4j-common-iterator-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/028-rdf4j-http-client-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/029-rdf4j-http-client-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/030-rdf4j-http-client-jdk-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/031-rdf4j-http-client-apache5-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/032-httpclient5-5.6.5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/033-httpcore5-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/034-httpcore5-h2-5.4.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/035-rdf4j-queryresultio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/036-rdf4j-collection-factory-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/037-commons-math3-3.6.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/038-rdf4j-queryalgebra-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/039-rdf4j-query-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/040-rdf4j-rio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/041-rdf4j-common-xml-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/042-commons-codec-1.22.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/043-hasmac-json-ld-0.10.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/044-jsonld-java-0.13.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/045-jackson-annotations-2.22.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/046-jackson-core-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/047-jackson-databind-3.2.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/048-commons-text-1.15.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/049-commons-lang3-3.21.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/050-rdf4j-model-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/051-rdf4j-model-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/052-rdf4j-common-annotation-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/053-rdf4j-model-vocabulary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/054-rdf4j-common-exception-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/055-rdf4j-common-text-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/056-rdf4j-common-io-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/057-rdf4j-collection-factory-mapdb3-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/058-mapdb-3.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/059-kotlin-stdlib-1.9.25.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/060-eclipse-collections-api-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/061-eclipse-collections-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/062-eclipse-collections-forkjoin-10.4.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/063-elsa-3.0.0-M5.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/064-janino-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/065-commons-compiler-3.1.12.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/066-slf4j-api-2.0.20.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/067-guava-33.7.2-jre.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/068-failureaccess-1.0.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/069-listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/070-jspecify-1.0.1.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/071-lz4-java-1.11.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/072-rdf4j-sail-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/073-rdf4j-repository-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/074-rdf4j-queryparser-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/075-rdf4j-rio-ntriples-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/076-junit-jupiter-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/077-opentest4j-1.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/078-junit-platform-commons-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/079-rdf4j-sail-memory-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/080-rdf4j-repository-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/081-rdf4j-queryresultio-api-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/082-junit-platform-suite-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/083-junit-platform-suite-api-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/084-junit-vintage-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/085-junit-4.13.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/086-hamcrest-core-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/087-hamcrest-3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/088-rdf4j-repository-sail-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/089-rdf4j-rio-turtle-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/090-rdf4j-repository-manager-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/091-rdf4j-repository-event-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/092-rdf4j-repository-http-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/093-rdf4j-rio-binary-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/094-rdf4j-http-protocol-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/095-rdf4j-rio-nquads-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/096-rdf4j-rio-datatypes-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/097-rdf4j-rio-languages-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/098-commons-io-2.22.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/099-rdf4j-model-testsuite-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/100-rdf4j-benchmark-common-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/101-jackson-databind-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/102-jackson-core-2.22.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/103-jmh-core-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/104-jopt-simple-5.0.4.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/105-jmh-generator-annprocess-1.37.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/106-junit-jupiter-params-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/107-apiguardian-api-1.1.2.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/108-junit-platform-launcher-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/109-junit-platform-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/110-junit-pioneer-2.3.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/111-rdf4j-queryrender-6.2.0-SNAPSHOT-tests.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/112-gson-2.14.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/113-error_prone_annotations-2.48.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/114-rdf4j-queryparser-sparql-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/115-rdf4j-rio-trig-6.2.0-SNAPSHOT.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/116-annotations-26.1.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/117-junit-jupiter-engine-6.1.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/118-assertj-core-3.27.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/119-byte-buddy-1.18.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/120-mockito-core-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/121-byte-buddy-agent-1.17.7.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/122-objenesis-3.3.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/123-mockito-junit-jupiter-5.24.0.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/124-logback-classic-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/frozen-current/artifacts/125-logback-core-1.6.6.jar:/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/root-qualified-launcher/classes",
+        "org.eclipse.rdf4j.sail.lmdb.evaluation.DirectMemoLauncher",
+        "shared-tail",
+        "--arm=direct",
+        "--source=15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+        "--warmup=8",
+        "--iterations=5",
+        "--roots=64",
+        "--left=128",
+        "--right=128",
+        "--tuple-width=2",
+        "--consumption=full",
+        "--output=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/05-shared-tail-direct/samples.jsonl",
+        "--store=/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/lifecycle/full-fixtures-v1/05-shared-tail-direct/store"
+      ],
+      "fixture": "shared-tail",
+      "ordinal": 5
+    }
+  ],
+  "scope": "native-direct-memo-fixed-fixtures-v1",
+  "sourceIdentity": "15fe7d5011+worktree-sha256-34767935d60f32ba61adfb44495c607e17ca760d5d2f77a17ddb2862c4f7a8ac+compact-page-harness-sha256-05c88f61336fce5028bb617e5ff7f7759e4a55ae4c4dba3a3b487c5512f0d825+direct-memo-sources-sha256-5863fe02555484d19edb0d5f0a71c4b6fff8eabfe0d520d2d0d55d9705e412b4",
+  "statisticsPolicy": {
+    "adaptiveOutcomes": "Low-hit disabling, varying collisions, growth, and replacement are measured outcomes; they never select or discard queries.",
+    "export": "Thirteen primitive records are preallocated before the unchanged launcher; serialize after its return.",
+    "fields": [
+      "ownerOrdinal",
+      "compileOrdinalAtOpen",
+      "compileOrdinalAtClose",
+      "lazyValueCallsAtOpen",
+      "lazyValueCallsAtClose",
+      "probes",
+      "hits",
+      "collisions",
+      "invalidations",
+      "unsupportedValues",
+      "clearCalls",
+      "resizes",
+      "rehashDiscards",
+      "lowHitDisable",
+      "initialAdmissionRefusals",
+      "growthAdmissionRefusals",
+      "peakCapacity",
+      "peakArrayBytes",
+      "retainedEntriesAtClose",
+      "capacityAtClose",
+      "arrayBytesAfterClose",
+      "disabledAtClose"
+    ],
+    "mapping": "Ordinary and dense create no direct-memo owner; direct creates 13. Direct owner and semantic-compile ordinals are 1..13; lazy-value interval differences exactly match original raw query counters without inter-owner gaps.",
+    "naturalCollection": "No explicit GC, profiler, heap walk, weak-miss exclusion, or replacement query.",
+    "observerLimit": "No new per-target/factor-page or weak-miss observer; original coordinate-owner admission counters remain available. Dense factor-page refusal is not separately counted by this new helper.",
+    "resolverPolicy": "Raw resolver differences are outcomes, not rejection criteria. No count tolerance, residual gate, causal subtraction, or timing/allocation normalization.",
+    "scope": "native-direct-memo-fixed-fixtures-v1",
+    "zeroRequiredFields": [
+      "invalidations",
+      "unsupportedValues",
+      "rehashDiscards",
+      "initialAdmissionRefusals",
+      "growthAdmissionRefusals",
+      "arrayBytesAfterClose"
+    ]
+  },
+  "timeoutSeconds": 300,
+  "tools": {
+    "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/lifecycle-preflight.py": "9135f4d168d16ba1aee56b159af5cac29c8d86c136cf33cb371a37ed2d9d32f6",
+    "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/run-comparison.py": "2884c48422c85991930ceb0216b47aa182c5790b39f9e1fe824017db9e644c0f",
+    "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/benchmark/runtime_identity.py": "c16cec6c56eeaf9bbb2d825a7084af5e04e89f9c5dd8c767740fd227f112009b",
+    "/workspace/scratch/37853bcaea36/rdf4j/result-coordinate-evidence/direct-memo-followup/contracts/compile_freeze_direct_runtime.py": "0ee9628c2b64b1de6888a7b64ae1c02b47eeaac71d823908941504eb96a4c80a"
+  },
+  "warmupsPerJvm": 8
+}
