@@ -1807,7 +1807,7 @@ final class LmdbNativeKernelExecution {
 				cursor.groupedRootSlot = NativeKernelGrouping.rootSlot(lowered.kernel,
 						lowered.bindings.columnEngineSlots, domains, row.keyAuthority(), row.cancellation,
 						parallelExecution == ParallelExecution.DISABLE && requestedTier == KernelTier.COMPILED,
-						!lowered.bindings.residualFilters.isEmpty());
+						!lowered.bindings.residualFilters.isEmpty(), views);
 			}
 			// Ownership has moved to the cursor. Null every local so the finally block cannot double-close it.
 			kernel = null;

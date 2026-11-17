@@ -93,6 +93,95 @@ class NativeKernelGroupingProofTest {
 	}
 
 	@Test
+	void outputModifiersAndMissingEmittedRootDecline() {
+		var base = kernel();
+		for (var mods : List.of(new LmdbNativeKernelIr.OutputMods(new int[] { 1 }, null, false, -1, 0),
+				new LmdbNativeKernelIr.OutputMods(null, null, false, 1, 0),
+				new LmdbNativeKernelIr.OutputMods(null, null, false, -1, 1))) {
+			var modified = new LmdbNativeKernelIr.Kernel(3, base.pipeline,
+					new LmdbNativeKernelIr.Emit(new int[] { 0, 1, 2 }, false, mods));
+			assertEquals(-1, prove(modified, new long[] { 1, 2 }, identity(), true, false));
+		}
+		var noRoot = new LmdbNativeKernelIr.Kernel(3, base.pipeline,
+				new LmdbNativeKernelIr.Emit(new int[] { 1, 2 }, false, LmdbNativeKernelIr.OutputMods.none()));
+		assertEquals(-1, prove(noRoot, new long[] { 1, 2 }, identity(), true, false));
+	}
+
+	@Test
+	void nestedOpaqueResidualCallbackDeclines() {
+		var callback = new LmdbNativeKernelIr.FilterResidual(0,
+				new LmdbNativeKernelIr.Operand[] { LmdbNativeKernelIr.Operand.col(0) }, new int[] { 4 });
+		assertEquals(-1, prove(kernel(new LmdbNativeKernelIr.LeftGroup(List.of(callback))),
+				new long[] { 1, 2 }, identity(), true, false));
+	}
+
+	@Test
+	void fixedAdjacencyRootWithCanonicalUniqueKeysIsCertified() {
+		var view = mock(NativeLmdbQuerySource.NativeAdjacency.class);
+		when(view.supportsKeyEnumeration()).thenReturn(true);
+		when(view.keyCount()).thenReturn(3L);
+		when(view.keyAt(anyLong())).thenAnswer(call -> (long) call.getArgument(0) + 1L);
+		var root = new LmdbNativeKernelIr.EnumerateAdjKeys(0, 0, 1);
+		var base = kernel();
+		var enumeration = new LmdbNativeKernelIr.Kernel(3, List.of(root), base.terminal);
+		var domains = new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]);
+		assertEquals(4, NativeKernelGrouping.rootSlot(enumeration, new int[] { 4, 5, 6 }, domains,
+				identity(), NativeCancellationToken.forSource(null), true, false,
+				new NativeLmdbQuerySource.NativeAdjacency[] { view }));
+	}
+
+	private static NativeLmdbQuerySource.NativeAdjacency view(long... keys) {
+		var view = mock(NativeLmdbQuerySource.NativeAdjacency.class);
+		when(view.supportsKeyEnumeration()).thenReturn(true);
+		when(view.keyCount()).thenReturn((long) keys.length);
+		when(view.keyAt(anyLong())).thenAnswer(call -> keys[Math.toIntExact(call.getArgument(0))]);
+		return view;
+	}
+
+	private static int proveAdjacency(NativeLmdbQuerySource.NativeAdjacency view, NativeTermAuthority authority,
+			NativeCancellationToken cancellation) {
+		var base = kernel();
+		var enumeration = new LmdbNativeKernelIr.Kernel(3,
+				List.of(new LmdbNativeKernelIr.EnumerateAdjKeys(0, 0, 1)), base.terminal);
+		return NativeKernelGrouping.rootSlot(enumeration, new int[] { 4, 5, 6 },
+				new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]),
+				authority, cancellation, true, false, new NativeLmdbQuerySource.NativeAdjacency[] { view });
+	}
+
+	@Test
+	void adjacencyDuplicatesAliasesAndSentinelsDecline() {
+		for (long[] keys : new long[][] { { 1, 1 }, { 2, 1 }, { -1 }, { 0 } })
+			assertEquals(-1, proveAdjacency(view(keys), identity(), new NativeCancellationToken()));
+		var alias = identity();
+		when(alias.canonicalTermKey(3)).thenReturn(1L);
+		assertEquals(-1, proveAdjacency(view(1, 2, 3), alias, new NativeCancellationToken()));
+		assertEquals(-1, proveAdjacency(null, identity(), new NativeCancellationToken()));
+		assertEquals(-1, proveAdjacency(mock(NativeLmdbQuerySource.NativeAdjacency.class), identity(),
+				new NativeCancellationToken()));
+	}
+
+	@Test
+	void adjacencyProofIsRecomputedPerSnapshotAndDoesNotCloseBorrowedView() {
+		var first = view(1, 2, 3);
+		var replay = view(1, 1, 3);
+		assertEquals(4, proveAdjacency(first, identity(), new NativeCancellationToken()));
+		assertEquals(-1, proveAdjacency(replay, identity(), new NativeCancellationToken()));
+		verify(first, never()).close();
+		verify(replay, never()).close();
+	}
+
+	@Test
+	void adjacencyValidationPollsCancellationBeforeReadingKeys() {
+		var view = view(1, 2, 3);
+		var token = new NativeCancellationToken();
+		token.requestCancellation();
+		assertThrows(org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelQueryCancelledException.class,
+				() -> proveAdjacency(view, identity(), token));
+		verify(view, never()).keyAt(anyLong());
+		verify(view, never()).close();
+	}
+
+	@Test
 	void partitionRetainsExactResidualMembership() {
 		var plan = NativeKernelGrouping.plan(null, new int[] { 0, 1 }, 0);
 		try (var tracker = new NativeOrderedDistinctTracker(plan)) {

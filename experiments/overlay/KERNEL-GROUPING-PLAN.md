@@ -10,8 +10,8 @@ Avoid global wide-key spill for repeated nested OPTIONAL expansions while retain
 
 - [x] Inspect actual fixture generated root.
 - [x] Capture smallest query spill failure.
-- [in_progress] Implement conservative producer certificate checks.
-- [ ] Verify adversarial fallback and parity.
+- [x] Implement conservative producer certificate checks.
+- [in_progress] Verify adversarial fallback, lifetime, replay and full-scale fixed-adjacency measurements.
 - [ ] Measure bounded compiled query benefit.
 
 ## Discoveries
@@ -47,3 +47,11 @@ Red evidence: NativeKernelGroupedDistinctTest1 test,1 failure,0 errors. Correct1
 ## Recovery checkpoint, 2026-11-17
 
 Recovered source includes external residual-callback exclusion and eight structural proof tests. Fresh combined Surefire run found the 100k query still produces correct output but declines the certificate (0 trackers, 14 spill files). Earlier 1.55 s result predates the final rebuild and is not current validation. Investigating isolated fixture versus test-state effects before 8M measurement. The replay lifecycle test remains running. This is a non-merge-ready experimental checkpoint.
+
+## Fixed-adjacency extension
+
+The 8M witness declines because its real root is EnumerateAdjKeys. NativeProbe.adjacency explicitly returns an immutable revision-valid complete view retained until probe close. NativeAdjacency enumerates distinct keys. Compiled key-only and key/run enumeration completes the continuation for each key before advancing. Added a separate bound-view certificate: reject wildcard roots, validate all ordinal keys as strictly unsigned-ascending canonical identity keys without allocating a domain or retaining a new cursor, preserve projection/tail/serial/callback restrictions. Replay recomputes against the new bound view.
+
+Red evidence: NativeKernelGroupingProofTest.fixedAdjacencyRootWithCanonicalUniqueKeysIsCertified, 1 test/1 failure, expected 4 actual -1, grouping-adjacency-red.log. Green initial selection: 12 tests/0 failures/0 errors, grouping-adjacency-green.log. Additional adversarial tests cover repeated/descending/aliased/sentinel keys, missing/unsupported view, per-snapshot recomputation, borrowed-view ownership, and cancellation before key reads.
+
+Current validation step includes the full-scale witness-bearing ABBA. No performance claim until every enabled fork consumes the certificate.

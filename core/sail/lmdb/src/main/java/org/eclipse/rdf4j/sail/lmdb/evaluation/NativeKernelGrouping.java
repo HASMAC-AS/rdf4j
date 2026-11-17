@@ -59,6 +59,46 @@ final class NativeKernelGrouping {
 		return emittedSlots[position];
 	}
 
+	static int rootSlot(LmdbNativeKernelIr.Kernel kernel, int[] emittedSlots,
+			LmdbNativeKernelBindings.BoundDomains domains, NativeTermAuthority authority,
+			NativeCancellationToken cancellation, boolean serialCompiled, boolean externalCallbacks,
+			NativeLmdbQuerySource.NativeAdjacency[] views) {
+		if (!kernel.pipeline.isEmpty() && kernel.pipeline.get(0) instanceof LmdbNativeKernelIr.SipDomainProbe)
+			return rootSlot(kernel, emittedSlots, domains, authority, cancellation, serialCompiled, externalCallbacks);
+		if (!serialCompiled || externalCallbacks || authority == null || !authority.supportsCanonicalTermKeys()
+				|| !(kernel.terminal instanceof LmdbNativeKernelIr.Emit emit) || emit.distinct
+				|| emit.mods.orderKeys != null || emit.mods.limit >= 0 || emit.mods.offset != 0
+				|| kernel.pipeline.isEmpty()
+				|| !(kernel.pipeline.get(0) instanceof LmdbNativeKernelIr.EnumerateAdjKeys root)
+				|| root.wildcard || root.keyCol == root.valueCol || root.keyCol == root.ctxCol
+				|| views == null || root.adjacency < 0 || root.adjacency >= views.length)
+			return -1;
+		int position = -1;
+		for (int i = 0; i < emit.cols.length; i++)
+			if (emit.cols[i] == root.keyCol)
+				position = i;
+		if (position < 0 || position >= emittedSlots.length || emittedSlots[position] < 0
+				|| !safeTail(kernel.pipeline.subList(1, kernel.pipeline.size()), root.keyCol))
+			return -1;
+		var view = views[root.adjacency];
+		if (view == null || !view.supportsKeyEnumeration() || view.keyCount() < 0)
+			return -1;
+		// NativeProbe.adjacency owns an immutable revision-valid view until the probe closes. Validate the
+		// bound view, not planner estimates; do not retain another cursor or allocate a second key domain.
+		// Both compiled key-only and key/run loops finish each key's continuation before advancing.
+		long previous = 0;
+		long count = view.keyCount();
+		for (long i = 0; i < count; i++) {
+			cancellation.poll((int) i);
+			long id = view.keyAt(i);
+			if (id == UNKNOWN || id == NULL_CONTEXT_ID || authority.canonicalTermKey(id) != id
+					|| i > 0 && Long.compareUnsigned(previous, id) >= 0)
+				return -1;
+			previous = id;
+		}
+		return emittedSlots[position];
+	}
+
 	private static boolean safeTail(List<LmdbNativeKernelIr.Node> nodes, int root) {
 		for (LmdbNativeKernelIr.Node node : nodes) {
 			BitSet writes = new BitSet();
