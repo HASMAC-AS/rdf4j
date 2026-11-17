@@ -25,3 +25,17 @@ Two forks per revision, one warmup + two measurements each (ABBA):
 - Main process maximum RSS in measured forks: 2,670,288 / 2,625,492 KiB; experimental: 2,065,724 / 2,058,520 KiB. Main charged query ledger peak was zero, experimental 7,078,016 bytes. Main is not memory-bounded by that ledger.
 
 The six-column and wide comparisons remain in progress. An initial pilot is excluded, and one brief compiler run occurred during the first experimental fork's warmup; measured samples ran after compilation completed. Repeat forks show the same direction.
+
+## Completed 30-column current-main result
+
+Cold-query ABBA, zero warmups, one measurement per JVM:
+- Main: 68.151 / 67.256 s, mean **67.703 s**.
+- Combined experimental: 43.182 / 41.686 s, mean **42.434 s**.
+- **37.32% lower elapsed time**, **39.38% less query-thread allocation** (53.085 GB to 32.182 GB).
+- All four returned 8,000,000 rows and checksum -3441391656945048864, forced compiled IR, zero retained ledger and zero spill files.
+- Main used its uncharged 30-slot object-key HashMap, so zero ledger usage does not imply zero memory. Maximum RSS 5,404,416 / 5,516,108 KiB; post-query used heap 3.747 / 4.039 GB.
+- Experimental grouping and memo witnesses fired, charged peak 7,336,288 bytes, maximum RSS 2,049,820 / 2,061,912 KiB.
+
+This is the actual current-main comparison. The earlier approximately 68% grouped improvement was against the bounded experimental ungrouped spilling path, not main. Main's unbounded DISTINCT stayed in memory and therefore is a substantially faster baseline. The earlier 37.48 s grouped number and this 42.43 s number came from separate benchmark sequences and should not be spliced into a mixed comparison. The common harness here has no experiment-specific counter polling inside the timed region.
+
+Six-column literal-bearing comparison remains in progress.
