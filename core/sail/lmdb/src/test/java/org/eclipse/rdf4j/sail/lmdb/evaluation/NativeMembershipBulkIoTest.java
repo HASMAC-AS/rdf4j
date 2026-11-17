@@ -66,6 +66,10 @@ class NativeMembershipBulkIoTest {
 		boolean failPayloadWrite, failIndexWrite;
 
 		Fixture(int width) {
+			this(width, 0L);
+		}
+
+		Fixture(int width, long seed) {
 			membership = new NativeExpressionDomain.Membership(width, ledger, token, opened -> {
 				paths.add(opened);
 				CountingFile result = new CountingFile(opened);
@@ -79,7 +83,7 @@ class NativeMembershipBulkIoTest {
 					result.failWrite = failIndexWrite;
 				}
 				return result;
-			});
+			}, seed);
 			assertEquals(4096, ledger.usedBytes(), "fixed workspace budget must not increase");
 			assertTrue(paths.isEmpty(), "construction must not open spill files before admission is exhausted");
 		}

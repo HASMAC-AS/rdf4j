@@ -51,3 +51,9 @@ Flat storage spills after 1,048,576 primitive rows at the default cap. Segmented
 - All optimization flags remain default-off. No ready-to-merge or full-regression claim.
 
 Raw data: `measurements.csv` preserves the historical memo matrix; `budget-measurements.csv` preserves later warmup and measured runs. `REPRODUCE.txt` explains snapshots, scripts and fixture verification. Relevant checkpoint reports distinguish each code version and validation scope.
+
+## Probe-reuse follow-up
+
+The same segmented+bulk candidate in an off/on/on/off series took 128.643 / 124.014 / 116.193 / 118.804 seconds. Means were 123.724 seconds off versus 120.103 on, a modest 2.93% reduction. System CPU decreased while user CPU increased; physical reads declined across the sequence. Earlier identical-candidate runs ranged from 103.253 to 158.900 seconds, so neither this small effect nor previous single-run bulk percentages are established general speedups. The deterministic benefit is avoiding a second index probe on eligible membership misses. All four runs preserve exact output, ledger cap and cleanup. See `SPILL-PROBE-ABBA.md` and `probe-abba-summary.csv`.
+
+Probe reuse remains default-off. Focused tests cover collisions, growth invalidation, failure cleanup and bulk on/off combinations. The earlier 5,030-test broad pass does not cover this later stage.

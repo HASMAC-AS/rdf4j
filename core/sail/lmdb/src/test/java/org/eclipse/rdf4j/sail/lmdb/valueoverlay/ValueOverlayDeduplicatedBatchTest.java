@@ -12,7 +12,6 @@
 package org.eclipse.rdf4j.sail.lmdb.valueoverlay;
 
 import static org.junit.jupiter.api.Assertions.*;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongFunction;
@@ -21,12 +20,12 @@ import org.junit.jupiter.api.Test;
 class ValueOverlayDeduplicatedBatchTest {
  static final CompressedValueOverlay.Options OPTIONS = new CompressedValueOverlay.Options(1L << 24, 0, 16, 65536, 1 << 20, true, true);
  static byte[] bytes(long id) { return ("\u0002value-" + id).getBytes(StandardCharsets.UTF_8); }
- static int batch(Object lease, boolean unique, long[] ids, int from, int count, byte[][] out, int offset) throws Exception {
-  if (!unique) {
-   if (lease instanceof CompressedValueOverlay.Lease l) return l.getMany(ids,from,count,out,offset);
-   return ((ValueOverlayRegistry.SnapshotLease)lease).getMany(ids,from,count,out,offset);
+ static int batch(Object lease, boolean unique, long[] ids, int from, int count, byte[][] out, int offset) {
+  if (lease instanceof CompressedValueOverlay.Lease l) {
+   return unique ? l.getManyDeduplicated(ids,from,count,out,offset) : l.getMany(ids,from,count,out,offset);
   }
-  return (int) lease.getClass().getMethod("getManyDeduplicated",long[].class,int.class,int.class,byte[][].class,int.class).invoke(lease,ids,from,count,out,offset);
+  ValueOverlayRegistry.SnapshotLease snapshot = (ValueOverlayRegistry.SnapshotLease) lease;
+  return unique ? snapshot.getManyDeduplicated(ids,from,count,out,offset) : snapshot.getMany(ids,from,count,out,offset);
  }
  static void check(Object lease, boolean unique, byte[] one, byte[] two) throws Exception {
   long[] ids={99,2,1,2,0,1,0,99}; byte[][] out=new byte[9][]; out[0]=new byte[]{7};out[8]=new byte[]{8};
@@ -48,18 +47,17 @@ class ValueOverlayDeduplicatedBatchTest {
     check(old,unique,bytes(1),bytes(2));
    }
    var closed=registry.acquireSnapshot(2);closed.close();
-   assertThrows(Exception.class,()->batch(closed,unique,new long[0],0,0,new byte[0][],0));
+   assertThrows(IllegalStateException.class,()->batch(closed,unique,new long[0],0,0,new byte[0][],0));
    try(var b=registry.newBaseBuilder(OPTIONS)){
     b.add(1,bytes(1),RecordFamily.TEXT,0,false);b.add(2,bytes(2),RecordFamily.TEXT,0,false);
-    try(var overlay=b.finish();var lease=overlay.acquire()){check(lease,unique,bytes(1),bytes(2));assertThrows(Exception.class,()->batch(lease,unique,new long[1],-1,1,new byte[1][],0));assertThrows(Exception.class,()->batch(lease,unique,new long[1],0,1,new byte[1][],1));}
+    try(var overlay=b.finish();var lease=overlay.acquire()){check(lease,unique,bytes(1),bytes(2));assertThrows(IndexOutOfBoundsException.class,()->batch(lease,unique,new long[1],-1,1,new byte[1][],0));assertThrows(IndexOutOfBoundsException.class,()->batch(lease,unique,new long[1],0,1,new byte[1][],1));}
    }
   }
  }
  @Test void decodesOncePerFullIdIncludingMissingAndExtremes() throws Exception {
-  Method helper=CompressedValueOverlay.class.getDeclaredMethod("deduplicatedBatch",long[].class,int.class,int.class,byte[][].class,int.class,LongFunction.class);
   AtomicInteger loads=new AtomicInteger(); long[] ids={0,-1,Long.MIN_VALUE,Long.MAX_VALUE,0,-1,Long.MIN_VALUE,Long.MAX_VALUE};byte[][] out=new byte[8][];
   LongFunction<byte[]> loader=id->{loads.incrementAndGet();return id==0?null:bytes(id);};
-  helper.invoke(null,ids,0,8,out,0,loader);assertEquals(4,loads.get());
+  assertEquals(8,CompressedValueOverlay.deduplicatedBatch(ids,0,8,out,0,loader));assertEquals(4,loads.get());
   for(int i=0;i<4;i++){assertArrayEquals(out[i],out[i+4]);if(out[i]!=null)assertNotSame(out[i],out[i+4]);}
  }
 }

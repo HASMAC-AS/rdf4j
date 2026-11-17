@@ -65,6 +65,9 @@ final class NativeExpressionDomain implements AutoCloseable {
 	static final AtomicLong IO_READ_BYTES = new AtomicLong();
 	static final AtomicLong IO_WRITE_BYTES = new AtomicLong();
 	private static final long WORKSPACE_BYTES = 4096L;
+	static final AtomicLong MEMBERSHIP_MISS_SLOTS_REUSED = new AtomicLong();
+	private static final boolean REUSE_MEMBERSHIP_MISS_SLOT = Boolean
+			.getBoolean("rdf4j.lmdb.expressionDomain.reuseMembershipMissSlot");
 	static final AtomicLong BULK_ID_RECORDS_WRITTEN = new AtomicLong();
 	private static final boolean BULK_ID_RECORD_IO = Boolean
 			.getBoolean("rdf4j.lmdb.expressionDomain.bulkIdRecordIo");
@@ -305,13 +308,15 @@ final class NativeExpressionDomain implements AutoCloseable {
 	private final NativeCancellationToken cancellation;
 	private final KernelRuntime.AggregateMemory memory;
 	private final long maxBytes;
-	private final long seed = ThreadLocalRandom.current().nextLong();
+	private final long seed;
 	private final boolean admitted;
 	private int[] dependencies;
 	private long[] scratch;
 	private NativeSpillValueCodec codec;
 	private byte[] idRecordBuffer;
 	private long bulkIdRecordsWritten;
+	private long membershipMissSlot = -1L;
+	private long membershipMissSlotsReused;
 	private long[] keys, hashes;
 	private Object[] outcomes;
 	private boolean[] occupied;
@@ -343,6 +348,14 @@ final class NativeExpressionDomain implements AutoCloseable {
 	private NativeExpressionDomain(long dependencyMask, Kind kind, NativeExpressionDomainPolicy.Mode mode,
 			LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
 			UnaryOperator<Value> representative, SpillFileFactory spillFiles) {
+		this(dependencyMask, kind, mode, ledger, cancellation, representative, spillFiles,
+				ThreadLocalRandom.current().nextLong());
+	}
+
+	private NativeExpressionDomain(long dependencyMask, Kind kind, NativeExpressionDomainPolicy.Mode mode,
+			LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
+			UnaryOperator<Value> representative, SpillFileFactory spillFiles, long seed) {
+		this.seed = seed;
 		this.spillFiles = java.util.Objects.requireNonNull(spillFiles);
 		this.kind = kind;
 		this.mode = mode;
@@ -382,12 +395,17 @@ final class NativeExpressionDomain implements AutoCloseable {
 
 		Membership(int width, LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
 				SpillFileFactory spillFiles) {
+			this(width, ledger, cancellation, spillFiles, ThreadLocalRandom.current().nextLong());
+		}
+
+		Membership(int width, LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
+				SpillFileFactory spillFiles, long seed) {
 			if (width < 0 || width > Long.SIZE) {
 				throw new IllegalArgumentException("Invalid exact tuple width");
 			}
 			long mask = width == Long.SIZE ? -1L : (1L << width) - 1L;
 			store = new NativeExpressionDomain(mask, Kind.ID, NativeExpressionDomainPolicy.Mode.HASHED, ledger,
-					cancellation, UnaryOperator.identity(), spillFiles);
+					cancellation, UnaryOperator.identity(), spillFiles, seed);
 			if (!store.admitted) {
 				store.close();
 				throw new KernelRuntime.AllocationDeniedException();
@@ -429,11 +447,18 @@ final class NativeExpressionDomain implements AutoCloseable {
 				scratch[position] = exactKey[position];
 				hash = mix(hash ^ mix(exactKey[position]));
 			}
-			if ((payload == null ? findMemory(hash) : findDisk(hash)) != MISSING) {
+			long lookupCapacity = diskCapacity;
+			boolean reuseMiss = REUSE_MEMBERSHIP_MISS_SLOT && payload != null;
+			if ((payload == null ? findMemory(hash) : findDisk(hash, reuseMiss)) != MISSING) {
 				check();
 				return false;
 			}
-			remember(hash, representativeId);
+			if (reuseMiss) {
+				// No evaluator/user callback occurs between lookup and insertion in this synchronized path.
+				appendDisk(hash, scratch, 0, representativeId, membershipMissSlot, lookupCapacity);
+			} else {
+				remember(hash, representativeId);
+			}
 			check();
 			return true;
 		} catch (Throwable failure) {
@@ -678,11 +703,18 @@ final class NativeExpressionDomain implements AutoCloseable {
 	}
 
 	private Object findDisk(long hash) throws IOException {
+		return findDisk(hash, false);
+	}
+
+	private Object findDisk(long hash, boolean rememberMissSlot) throws IOException {
 		long slot = hash & (diskCapacity - 1L);
 		for (int ticks = 0;; ticks++) {
 			poll(ticks);
 			long offset = entry(index, slot);
 			if (offset == 0L) {
+				if (rememberMissSlot) {
+					membershipMissSlot = slot;
+				}
 				return MISSING;
 			}
 			payload.seek(offset - 1L);
@@ -716,6 +748,11 @@ final class NativeExpressionDomain implements AutoCloseable {
 	}
 
 	private void appendDisk(long hash, long[] tuple, int from, Object outcome) throws IOException {
+		appendDisk(hash, tuple, from, outcome, -1L, -1L);
+	}
+
+	private void appendDisk(long hash, long[] tuple, int from, Object outcome, long missSlot,
+			long lookupCapacity) throws IOException {
 		if (diskSize >= diskCapacity - (diskCapacity >>> 2)) {
 			growDisk();
 		}
@@ -741,7 +778,12 @@ final class NativeExpressionDomain implements AutoCloseable {
 			writeIo(payload.getFilePointer() - offset);
 		}
 		check();
-		writeEntry(index, freeSlot(index, diskCapacity, hash), offset + 1L);
+		boolean reuseMiss = missSlot >= 0L && lookupCapacity == diskCapacity;
+		long slot = reuseMiss ? missSlot : freeSlot(index, diskCapacity, hash);
+		writeEntry(index, slot, offset + 1L);
+		if (reuseMiss) {
+			membershipMissSlotsReused++;
+		}
 		diskSize++;
 	}
 
@@ -883,6 +925,7 @@ final class NativeExpressionDomain implements AutoCloseable {
 		}
 		closed = true;
 		BULK_ID_RECORDS_WRITTEN.addAndGet(bulkIdRecordsWritten);
+		MEMBERSHIP_MISS_SLOTS_REUSED.addAndGet(membershipMissSlotsReused);
 		keys = null;
 		hashes = null;
 		outcomes = null;
