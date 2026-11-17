@@ -1,0 +1,1617 @@
+{
+  "schema_version": 1,
+  "filters": {
+    "logic": "thread OR any stack method",
+    "thread_regex": "(?i)(?:jmh-worker|BinaryWriterBenchmark)",
+    "stack_regex": "(?:BinaryWriterBenchmark\\.serialize|[A-Za-z0-9_$]*BinaryQueryResultWriter\\.)"
+  },
+  "events_seen": {
+    "jdk.ObjectAllocationSample": 3608,
+    "jdk.ExecutionSample": 1127
+  },
+  "cpu": {
+    "total_samples": 1127,
+    "filtered_samples": 1126,
+    "total_samples_with_stack": 1127,
+    "filtered_samples_with_stack": 1126,
+    "total_truncated_stacks": 0,
+    "filtered_truncated_stacks": 0,
+    "filter_matches": {
+      "both": 1126
+    },
+    "total_threads": {
+      "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize-jmh-worker-1": 1126,
+      "JFR Periodic Tasks": 1
+    },
+    "filtered_threads": {
+      "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize-jmh-worker-1": 1126
+    },
+    "first_filtered_timestamp": "2026-11-17T12:57:28.562768230+01:00",
+    "last_filtered_timestamp": "2026-11-17T12:57:40.599898011+01:00",
+    "filtered_sample_share_percent": 99.9113,
+    "self_methods": [
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.writePayload",
+        "descriptor": "([BII)V",
+        "samples": 272,
+        "percent_filtered": 24.1563
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.stopProbingLocked",
+        "descriptor": "()V",
+        "samples": 108,
+        "percent_filtered": 9.5915
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.writePayload",
+        "descriptor": "(I)V",
+        "samples": 104,
+        "percent_filtered": 9.2362
+      },
+      {
+        "method": "java.io.ByteArrayOutputStream.write",
+        "descriptor": "([BII)V",
+        "samples": 97,
+        "percent_filtered": 8.6146
+      },
+      {
+        "method": "java.lang.String.equals",
+        "descriptor": "(Ljava/lang/Object;)Z",
+        "samples": 74,
+        "percent_filtered": 6.5719
+      },
+      {
+        "method": "java.io.DataOutputStream.write",
+        "descriptor": "([BII)V",
+        "samples": 59,
+        "percent_filtered": 5.2398
+      },
+      {
+        "method": "sun.nio.cs.UTF_8$Encoder.encodeBufferLoop",
+        "descriptor": "(Ljava/nio/CharBuffer;Ljava/nio/ByteBuffer;)Ljava/nio/charset/CoderResult;",
+        "samples": 45,
+        "percent_filtered": 3.9964
+      },
+      {
+        "method": "java.nio.Buffer.hasRemaining",
+        "descriptor": "()Z",
+        "samples": 37,
+        "percent_filtered": 3.286
+      },
+      {
+        "method": "java.io.ByteArrayOutputStream.write",
+        "descriptor": "(I)V",
+        "samples": 29,
+        "percent_filtered": 2.5755
+      },
+      {
+        "method": "jdk.internal.util.ArraysSupport.hashCodeOfUnsigned",
+        "descriptor": "([BIII)I",
+        "samples": 27,
+        "percent_filtered": 2.3979
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.handleSolutionImpl",
+        "descriptor": "(Lorg/eclipse/rdf4j/query/BindingSet;)V",
+        "samples": 20,
+        "percent_filtered": 1.7762
+      },
+      {
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;II)Ljava/nio/CharBuffer;",
+        "samples": 17,
+        "percent_filtered": 1.5098
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.impl.ListBindingSet.getValue",
+        "descriptor": "(Ljava/lang/String;)Lorg/eclipse/rdf4j/model/Value;",
+        "samples": 17,
+        "percent_filtered": 1.5098
+      },
+      {
+        "method": "java.nio.ByteBuffer.allocate",
+        "descriptor": "(I)Ljava/nio/ByteBuffer;",
+        "samples": 15,
+        "percent_filtered": 1.3321
+      },
+      {
+        "method": "java.nio.StringCharBuffer.get",
+        "descriptor": "()C",
+        "samples": 15,
+        "percent_filtered": 1.3321
+      },
+      {
+        "method": "java.util.ImmutableCollections$ListN.indexOf",
+        "descriptor": "(Ljava/lang/Object;)I",
+        "samples": 14,
+        "percent_filtered": 1.2433
+      },
+      {
+        "method": "java.nio.HeapByteBuffer.<init>",
+        "descriptor": "(IILjava/lang/foreign/MemorySegment;)V",
+        "samples": 10,
+        "percent_filtered": 0.8881
+      },
+      {
+        "method": "java.lang.String.length",
+        "descriptor": "()I",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.nio.Buffer.nextPutIndex",
+        "descriptor": "()I",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.io.ByteArrayOutputStream.ensureCapacity",
+        "descriptor": "(I)V",
+        "samples": 8,
+        "percent_filtered": 0.7105
+      },
+      {
+        "method": "java.io.DataOutputStream.writeInt",
+        "descriptor": "(I)V",
+        "samples": 7,
+        "percent_filtered": 0.6217
+      },
+      {
+        "method": "java.util.HashMap.getNode",
+        "descriptor": "(Ljava/lang/Object;)Ljava/util/HashMap$Node;",
+        "samples": 7,
+        "percent_filtered": 0.6217
+      },
+      {
+        "method": "jdk.internal.util.ArraysSupport.newLength",
+        "descriptor": "(III)I",
+        "samples": 7,
+        "percent_filtered": 0.6217
+      },
+      {
+        "method": "java.lang.invoke.VarHandleByteArrayAsInts$ArrayHandle.index",
+        "descriptor": "([BI)I",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.util.Literals.isLanguageLiteral",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Literal;)Z",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeLiteral",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Literal;)V",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeQName",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/IRI;)V",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeValue",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Value;)V",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "java.io.DataOutputStream.incCount",
+        "descriptor": "(I)V",
+        "samples": 5,
+        "percent_filtered": 0.444
+      },
+      {
+        "method": "java.lang.StringLatin1.charAt",
+        "descriptor": "([BI)C",
+        "samples": 5,
+        "percent_filtered": 0.444
+      },
+      {
+        "method": "java.lang.StringLatin1.newString",
+        "descriptor": "([BII)Ljava/lang/String;",
+        "samples": 5,
+        "percent_filtered": 0.444
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat$HeartbeatOutputStream.write",
+        "descriptor": "([BII)V",
+        "samples": 5,
+        "percent_filtered": 0.444
+      },
+      {
+        "method": "java.lang.String.checkIndex",
+        "descriptor": "(II)V",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.lang.String.hashCode",
+        "descriptor": "()I",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.lang.StringLatin1.hashCode",
+        "descriptor": "([B)I",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.util.Arrays.copyOfRange",
+        "descriptor": "([BII)[B",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.util.Objects.equals",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;)Z",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.ensureWritableLocked",
+        "descriptor": "()V",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeString",
+        "descriptor": "(Ljava/lang/String;)V",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.nio.Buffer.nextGetIndex",
+        "descriptor": "()I",
+        "samples": 3,
+        "percent_filtered": 0.2664
+      },
+      {
+        "method": "java.nio.StringCharBuffer.<init>",
+        "descriptor": "(Ljava/lang/CharSequence;II)V",
+        "samples": 3,
+        "percent_filtered": 0.2664
+      },
+      {
+        "method": "java.nio.Buffer.position",
+        "descriptor": "()I",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.Buffer.remaining",
+        "descriptor": "()I",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.ByteBuffer.<init>",
+        "descriptor": "(IIII[BILjava/lang/foreign/MemorySegment;)V",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.charset.CoderResult.isOverflow",
+        "descriptor": "()Z",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.charset.CoderResult.isUnderflow",
+        "descriptor": "()Z",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.util.ArrayList$Itr.next",
+        "descriptor": "()Ljava/lang/Object;",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleLiteral.getCoreDatatype",
+        "descriptor": "()Lorg/eclipse/rdf4j/model/base/CoreDatatype;",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.impl.ListBindingSet.size",
+        "descriptor": "()I",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.io.DataOutputStream.flush",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.io.DataOutputStream.writeByte",
+        "descriptor": "(I)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.Integer.intValue",
+        "descriptor": "()I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.String.isLatin1",
+        "descriptor": "()Z",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.String.substring",
+        "descriptor": "(II)Ljava/lang/String;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.StringLatin1.lastIndexOf",
+        "descriptor": "([BII)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.<init>",
+        "descriptor": "(IIIILjava/lang/foreign/MemorySegment;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.flip",
+        "descriptor": "()Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.limit",
+        "descriptor": "(I)Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.position",
+        "descriptor": "(I)Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.HashMap.hash",
+        "descriptor": "(Ljava/lang/Object;)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.concurrent.ConcurrentHashMap.get",
+        "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "jdk.internal.util.Preconditions.checkFromIndexSize",
+        "descriptor": "(IIILjava/util/function/BiFunction;)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.getNamespace",
+        "descriptor": "()Ljava/lang/String;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.stringValue",
+        "descriptor": "()Ljava/lang/String;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.startQueryResult",
+        "descriptor": "(Ljava/util/List;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeBNode",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/BNode;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeNamespace",
+        "descriptor": "(Ljava/lang/String;)Ljava/lang/Integer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "sun.nio.cs.UTF_8$Encoder.encodeLoop",
+        "descriptor": "(Ljava/nio/CharBuffer;Ljava/nio/ByteBuffer;)Ljava/nio/charset/CoderResult;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      }
+    ],
+    "inclusive_methods": [
+      {
+        "method": "java.lang.Thread.run",
+        "descriptor": "()V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.Thread.runWith",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Runnable;)V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.invoke.LambdaForm$MH.0x000000006605d400.invoke",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.invoke.LambdaForm$MH.0x000000006605d800.invokeExact_MT",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.reflect.Method.invoke",
+        "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.Executors$RunnableAdapter.call",
+        "descriptor": "()Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.FutureTask.run",
+        "descriptor": "()V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.ThreadPoolExecutor$Worker.run",
+        "descriptor": "()V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.ThreadPoolExecutor.runWorker",
+        "descriptor": "(Ljava/util/concurrent/ThreadPoolExecutor$Worker;)V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "jdk.internal.reflect.DirectMethodHandleAccessor.invoke",
+        "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl",
+        "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize",
+        "descriptor": "(Lorg/openjdk/jmh/infra/Blackhole;)I",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.writeDocument",
+        "descriptor": "()V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.jmh_generated.BinaryWriterBenchmark_serialize_jmhTest.serialize_AverageTime",
+        "descriptor": "(Lorg/openjdk/jmh/runner/InfraControl;Lorg/openjdk/jmh/infra/ThreadParams;)Lorg/openjdk/jmh/results/BenchmarkTaskResult;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.jmh_generated.BinaryWriterBenchmark_serialize_jmhTest.serialize_avgt_jmhStub",
+        "descriptor": "(Lorg/openjdk/jmh/runner/InfraControl;Lorg/openjdk/jmh/results/RawResults;Lorg/openjdk/jmh/infra/BenchmarkParams;Lorg/openjdk/jmh/infra/IterationParams;Lorg/openjdk/jmh/infra/ThreadParams;Lorg/openjdk/jmh/infra/Blackhole;Lorg/openjdk/jmh/infra/Control;ILorg/eclipse/rdf4j/query/resultio/binary/benchmark/jmh_generated/BinaryWriterBenchmark_jmhType;)V",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.openjdk.jmh.runner.BenchmarkHandler$BenchmarkTask.call",
+        "descriptor": "()Ljava/lang/Object;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.openjdk.jmh.runner.BenchmarkHandler$BenchmarkTask.call",
+        "descriptor": "()Lorg/openjdk/jmh/results/BenchmarkTaskResult;",
+        "samples": 1126,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution",
+        "descriptor": "(Lorg/eclipse/rdf4j/query/BindingSet;)V",
+        "samples": 1123,
+        "percent_filtered": 99.7336
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.handleSolutionImpl",
+        "descriptor": "(Lorg/eclipse/rdf4j/query/BindingSet;)V",
+        "samples": 1123,
+        "percent_filtered": 99.7336
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeValue",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Value;)V",
+        "samples": 996,
+        "percent_filtered": 88.4547
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeLiteral",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Literal;)V",
+        "samples": 746,
+        "percent_filtered": 66.2522
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeString",
+        "descriptor": "(Ljava/lang/String;)V",
+        "samples": 639,
+        "percent_filtered": 56.7496
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeQName",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/IRI;)V",
+        "samples": 484,
+        "percent_filtered": 42.984
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat$HeartbeatOutputStream.write",
+        "descriptor": "([BII)V",
+        "samples": 470,
+        "percent_filtered": 41.7407
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.writePayload",
+        "descriptor": "([BII)V",
+        "samples": 464,
+        "percent_filtered": 41.2078
+      },
+      {
+        "method": "java.io.DataOutputStream.writeInt",
+        "descriptor": "(I)V",
+        "samples": 303,
+        "percent_filtered": 26.9094
+      },
+      {
+        "method": "java.io.DataOutputStream.write",
+        "descriptor": "([BII)V",
+        "samples": 243,
+        "percent_filtered": 21.5808
+      },
+      {
+        "method": "java.io.DataOutputStream.writeByte",
+        "descriptor": "(I)V",
+        "samples": 167,
+        "percent_filtered": 14.8313
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat$HeartbeatOutputStream.write",
+        "descriptor": "(I)V",
+        "samples": 165,
+        "percent_filtered": 14.6536
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.writePayload",
+        "descriptor": "(I)V",
+        "samples": 165,
+        "percent_filtered": 14.6536
+      },
+      {
+        "method": "java.nio.charset.CharsetEncoder.encode",
+        "descriptor": "(Ljava/nio/CharBuffer;)Ljava/nio/ByteBuffer;",
+        "samples": 155,
+        "percent_filtered": 13.7655
+      },
+      {
+        "method": "java.nio.charset.CharsetEncoder.encode",
+        "descriptor": "(Ljava/nio/CharBuffer;Ljava/nio/ByteBuffer;Z)Ljava/nio/charset/CoderResult;",
+        "samples": 124,
+        "percent_filtered": 11.0124
+      },
+      {
+        "method": "sun.nio.cs.UTF_8$Encoder.encodeLoop",
+        "descriptor": "(Ljava/nio/CharBuffer;Ljava/nio/ByteBuffer;)Ljava/nio/charset/CoderResult;",
+        "samples": 120,
+        "percent_filtered": 10.6572
+      },
+      {
+        "method": "sun.nio.cs.UTF_8$Encoder.encodeBufferLoop",
+        "descriptor": "(Ljava/nio/CharBuffer;Ljava/nio/ByteBuffer;)Ljava/nio/charset/CoderResult;",
+        "samples": 119,
+        "percent_filtered": 10.5684
+      },
+      {
+        "method": "java.io.ByteArrayOutputStream.write",
+        "descriptor": "([BII)V",
+        "samples": 110,
+        "percent_filtered": 9.7691
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.stopProbingLocked",
+        "descriptor": "()V",
+        "samples": 108,
+        "percent_filtered": 9.5915
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.impl.ListBindingSet.getValue",
+        "descriptor": "(Ljava/lang/String;)Lorg/eclipse/rdf4j/model/Value;",
+        "samples": 80,
+        "percent_filtered": 7.1048
+      },
+      {
+        "method": "java.lang.String.equals",
+        "descriptor": "(Ljava/lang/Object;)Z",
+        "samples": 74,
+        "percent_filtered": 6.5719
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeBNode",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/BNode;)V",
+        "samples": 66,
+        "percent_filtered": 5.8615
+      },
+      {
+        "method": "java.util.ImmutableCollections$ListN.indexOf",
+        "descriptor": "(Ljava/lang/Object;)I",
+        "samples": 62,
+        "percent_filtered": 5.5062
+      },
+      {
+        "method": "java.util.HashMap.getNode",
+        "descriptor": "(Ljava/lang/Object;)Ljava/util/HashMap$Node;",
+        "samples": 53,
+        "percent_filtered": 4.7069
+      },
+      {
+        "method": "java.util.Objects.equals",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;)Z",
+        "samples": 48,
+        "percent_filtered": 4.2629
+      },
+      {
+        "method": "java.nio.Buffer.hasRemaining",
+        "descriptor": "()Z",
+        "samples": 37,
+        "percent_filtered": 3.286
+      },
+      {
+        "method": "java.util.HashMap.hash",
+        "descriptor": "(Ljava/lang/Object;)I",
+        "samples": 37,
+        "percent_filtered": 3.286
+      },
+      {
+        "method": "java.lang.String.hashCode",
+        "descriptor": "()I",
+        "samples": 36,
+        "percent_filtered": 3.1972
+      },
+      {
+        "method": "java.io.ByteArrayOutputStream.write",
+        "descriptor": "(I)V",
+        "samples": 31,
+        "percent_filtered": 2.7531
+      },
+      {
+        "method": "java.lang.StringLatin1.hashCode",
+        "descriptor": "([B)I",
+        "samples": 31,
+        "percent_filtered": 2.7531
+      },
+      {
+        "method": "java.util.HashMap.get",
+        "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 29,
+        "percent_filtered": 2.5755
+      },
+      {
+        "method": "java.nio.ByteBuffer.allocate",
+        "descriptor": "(I)Ljava/nio/ByteBuffer;",
+        "samples": 28,
+        "percent_filtered": 2.4867
+      },
+      {
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;)Ljava/nio/CharBuffer;",
+        "samples": 27,
+        "percent_filtered": 2.3979
+      },
+      {
+        "method": "java.nio.StringCharBuffer.get",
+        "descriptor": "()C",
+        "samples": 27,
+        "percent_filtered": 2.3979
+      },
+      {
+        "method": "jdk.internal.util.ArraysSupport.hashCodeOfUnsigned",
+        "descriptor": "([BIII)I",
+        "samples": 27,
+        "percent_filtered": 2.3979
+      },
+      {
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;II)Ljava/nio/CharBuffer;",
+        "samples": 24,
+        "percent_filtered": 2.1314
+      },
+      {
+        "method": "java.util.HashMap.containsKey",
+        "descriptor": "(Ljava/lang/Object;)Z",
+        "samples": 24,
+        "percent_filtered": 2.1314
+      },
+      {
+        "method": "java.io.ByteArrayOutputStream.ensureCapacity",
+        "descriptor": "(I)V",
+        "samples": 15,
+        "percent_filtered": 1.3321
+      },
+      {
+        "method": "java.nio.HeapByteBuffer.<init>",
+        "descriptor": "(IILjava/lang/foreign/MemorySegment;)V",
+        "samples": 13,
+        "percent_filtered": 1.1545
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleLiteral.equals",
+        "descriptor": "(Ljava/lang/Object;)Z",
+        "samples": 13,
+        "percent_filtered": 1.1545
+      },
+      {
+        "method": "java.lang.String.substring",
+        "descriptor": "(II)Ljava/lang/String;",
+        "samples": 12,
+        "percent_filtered": 1.0657
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.getNamespace",
+        "descriptor": "()Ljava/lang/String;",
+        "samples": 11,
+        "percent_filtered": 0.9769
+      },
+      {
+        "method": "java.lang.String.charAt",
+        "descriptor": "(I)C",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.lang.String.length",
+        "descriptor": "()I",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.lang.StringLatin1.charAt",
+        "descriptor": "([BI)C",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.lang.StringLatin1.newString",
+        "descriptor": "([BII)Ljava/lang/String;",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.nio.Buffer.nextPutIndex",
+        "descriptor": "()I",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.nio.HeapByteBuffer.put",
+        "descriptor": "(B)Ljava/nio/ByteBuffer;",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.equals",
+        "descriptor": "(Ljava/lang/Object;)Z",
+        "samples": 9,
+        "percent_filtered": 0.7993
+      },
+      {
+        "method": "java.nio.StringCharBuffer.<init>",
+        "descriptor": "(Ljava/lang/CharSequence;II)V",
+        "samples": 7,
+        "percent_filtered": 0.6217
+      },
+      {
+        "method": "jdk.internal.util.ArraysSupport.newLength",
+        "descriptor": "(III)I",
+        "samples": 7,
+        "percent_filtered": 0.6217
+      },
+      {
+        "method": "java.lang.invoke.VarHandleByteArrayAsInts$ArrayHandle.index",
+        "descriptor": "([BI)I",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "java.lang.invoke.VarHandleByteArrayAsInts$ArrayHandle.set",
+        "descriptor": "(Ljava/lang/invoke/VarHandle;Ljava/lang/Object;II)V",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "java.lang.invoke.VarHandleGuards.guard_LII_V",
+        "descriptor": "(Ljava/lang/invoke/VarHandle;Ljava/lang/Object;IILjava/lang/invoke/VarHandle$AccessDescriptor;)V",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "jdk.internal.util.ByteArray.setInt",
+        "descriptor": "([BII)V",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.util.Literals.isLanguageLiteral",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Literal;)Z",
+        "samples": 6,
+        "percent_filtered": 0.5329
+      },
+      {
+        "method": "java.io.DataOutputStream.incCount",
+        "descriptor": "(I)V",
+        "samples": 5,
+        "percent_filtered": 0.444
+      },
+      {
+        "method": "java.lang.String.checkIndex",
+        "descriptor": "(II)V",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.lang.String.substring",
+        "descriptor": "(I)Ljava/lang/String;",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.util.Arrays.copyOfRange",
+        "descriptor": "([BII)[B",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.ensureWritableLocked",
+        "descriptor": "()V",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.getLocalName",
+        "descriptor": "()Ljava/lang/String;",
+        "samples": 4,
+        "percent_filtered": 0.3552
+      },
+      {
+        "method": "java.nio.Buffer.nextGetIndex",
+        "descriptor": "()I",
+        "samples": 3,
+        "percent_filtered": 0.2664
+      },
+      {
+        "method": "java.nio.ByteBuffer.<init>",
+        "descriptor": "(IIII[BILjava/lang/foreign/MemorySegment;)V",
+        "samples": 3,
+        "percent_filtered": 0.2664
+      },
+      {
+        "method": "java.nio.Buffer.<init>",
+        "descriptor": "(IIIILjava/lang/foreign/MemorySegment;)V",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.Buffer.position",
+        "descriptor": "()I",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.Buffer.remaining",
+        "descriptor": "()I",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.charset.CoderResult.isOverflow",
+        "descriptor": "()Z",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.nio.charset.CoderResult.isUnderflow",
+        "descriptor": "()Z",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.util.ArrayList$Itr.next",
+        "descriptor": "()Ljava/lang/Object;",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "java.util.Collections$UnmodifiableCollection$1.next",
+        "descriptor": "()Ljava/lang/Object;",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleLiteral.getCoreDatatype",
+        "descriptor": "()Lorg/eclipse/rdf4j/model/base/CoreDatatype;",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.BindingSet.isEmpty",
+        "descriptor": "()Z",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.impl.ListBindingSet.size",
+        "descriptor": "()I",
+        "samples": 2,
+        "percent_filtered": 0.1776
+      },
+      {
+        "method": "ch.qos.logback.classic.LoggerContext.getLogger",
+        "descriptor": "(Ljava/lang/String;)Lch/qos/logback/classic/Logger;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "ch.qos.logback.classic.LoggerContext.getLogger",
+        "descriptor": "(Ljava/lang/String;)Lorg/slf4j/Logger;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.io.DataOutputStream.flush",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.Integer.intValue",
+        "descriptor": "()I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.String.isLatin1",
+        "descriptor": "()Z",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.String.lastIndexOf",
+        "descriptor": "(I)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.String.lastIndexOf",
+        "descriptor": "(II)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.StringLatin1.lastIndexOf",
+        "descriptor": "([BII)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.invoke.DirectMethodHandle$Holder.newInvokeSpecial",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.invoke.Invokers$Holder.invokeExact_MT",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.invoke.LambdaForm$MH.0x0000000066134000.invoke",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.reflect.Constructor.newInstance",
+        "descriptor": "([Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.lang.reflect.Constructor.newInstanceWithCaller",
+        "descriptor": "([Ljava/lang/Object;ZLjava/lang/Class;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.flip",
+        "descriptor": "()Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.limit",
+        "descriptor": "(I)Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.Buffer.position",
+        "descriptor": "(I)Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.ByteBuffer.flip",
+        "descriptor": "()Ljava/nio/ByteBuffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.ByteBuffer.limit",
+        "descriptor": "(I)Ljava/nio/Buffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.ByteBuffer.limit",
+        "descriptor": "(I)Ljava/nio/ByteBuffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.CharBuffer.<init>",
+        "descriptor": "(IIIILjava/lang/foreign/MemorySegment;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.CharBuffer.<init>",
+        "descriptor": "(IIII[CILjava/lang/foreign/MemorySegment;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.CharBuffer.position",
+        "descriptor": "(I)Ljava/nio/CharBuffer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.nio.charset.CharsetEncoder.flush",
+        "descriptor": "(Ljava/nio/ByteBuffer;)Ljava/nio/charset/CoderResult;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.ArrayList.indexOf",
+        "descriptor": "(Ljava/lang/Object;)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.ArrayList.indexOfRange",
+        "descriptor": "(Ljava/lang/Object;II)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.Collections$UnmodifiableList.indexOf",
+        "descriptor": "(Ljava/lang/Object;)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.Objects.checkFromIndexSize",
+        "descriptor": "(III)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "java.util.concurrent.ConcurrentHashMap.get",
+        "descriptor": "(Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "jdk.internal.reflect.DirectConstructorHandleAccessor.invokeImpl",
+        "descriptor": "([Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance",
+        "descriptor": "([Ljava/lang/Object;)Ljava/lang/Object;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "jdk.internal.util.Preconditions.checkFromIndexSize",
+        "descriptor": "(IIILjava/util/function/BiFunction;)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.base.AbstractIRI.toString",
+        "descriptor": "()Ljava/lang/String;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.base.AbstractLiteral.equals",
+        "descriptor": "(Ljava/lang/Object;)Z",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.stringValue",
+        "descriptor": "()Ljava/lang/String;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.util.URIUtil.getLocalNameIndex",
+        "descriptor": "(Ljava/lang/String;)I",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.<init>",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.<init>",
+        "descriptor": "(Ljava/io/OutputStream;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.endDocument",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.endQueryResult",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.startQueryResult",
+        "descriptor": "(Ljava/util/List;)V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeNamespace",
+        "descriptor": "(Ljava/lang/String;)Ljava/lang/Integer;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.rio.RioConfig.<init>",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.eclipse.rdf4j.rio.WriterConfig.<init>",
+        "descriptor": "()V",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.slf4j.LoggerFactory.getLogger",
+        "descriptor": "(Ljava/lang/Class;)Lorg/slf4j/Logger;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      },
+      {
+        "method": "org.slf4j.LoggerFactory.getLogger",
+        "descriptor": "(Ljava/lang/String;)Lorg/slf4j/Logger;",
+        "samples": 1,
+        "percent_filtered": 0.0888
+      }
+    ]
+  },
+  "allocation": {
+    "total_samples": 3608,
+    "filtered_samples": 3607,
+    "total_samples_with_stack": 3608,
+    "filtered_samples_with_stack": 3607,
+    "total_truncated_stacks": 0,
+    "filtered_truncated_stacks": 0,
+    "filter_matches": {
+      "both": 3607
+    },
+    "total_threads": {
+      "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize-jmh-worker-1": 3607,
+      "JFR Periodic Tasks": 1
+    },
+    "filtered_threads": {
+      "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize-jmh-worker-1": 3607
+    },
+    "first_filtered_timestamp": "2026-11-17T12:57:28.545660938+01:00",
+    "last_filtered_timestamp": "2026-11-17T12:57:40.605088946+01:00",
+    "total_weight_bytes": 7997211096,
+    "filtered_weight_bytes": 7997146384,
+    "filtered_sample_share_percent": 99.9723,
+    "filtered_weight_share_percent": 99.9992,
+    "self_methods": [
+      {
+        "method": "java.nio.HeapByteBuffer.<init>",
+        "descriptor": "(IILjava/lang/foreign/MemorySegment;)V",
+        "weight_bytes": 2728597408,
+        "percent_filtered": 34.1196
+      },
+      {
+        "method": "java.nio.ByteBuffer.allocate",
+        "descriptor": "(I)Ljava/nio/ByteBuffer;",
+        "weight_bytes": 2711724800,
+        "percent_filtered": 33.9087
+      },
+      {
+        "method": "java.util.Arrays.copyOfRange",
+        "descriptor": "([BII)[B",
+        "weight_bytes": 1332039784,
+        "percent_filtered": 16.6564
+      },
+      {
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;II)Ljava/nio/CharBuffer;",
+        "weight_bytes": 1098098464,
+        "percent_filtered": 13.7311
+      },
+      {
+        "method": "java.lang.StringLatin1.newString",
+        "descriptor": "([BII)Ljava/lang/String;",
+        "weight_bytes": 126685928,
+        "percent_filtered": 1.5841
+      }
+    ],
+    "inclusive_methods": [
+      {
+        "method": "java.lang.Thread.run",
+        "descriptor": "()V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.Thread.runWith",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Runnable;)V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.invoke.LambdaForm$MH.0x000000006605d400.invoke",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.invoke.LambdaForm$MH.0x000000006605d800.invokeExact_MT",
+        "descriptor": "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.lang.reflect.Method.invoke",
+        "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.Executors$RunnableAdapter.call",
+        "descriptor": "()Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.FutureTask.run",
+        "descriptor": "()V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.ThreadPoolExecutor$Worker.run",
+        "descriptor": "()V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "java.util.concurrent.ThreadPoolExecutor.runWorker",
+        "descriptor": "(Ljava/util/concurrent/ThreadPoolExecutor$Worker;)V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "jdk.internal.reflect.DirectMethodHandleAccessor.invoke",
+        "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl",
+        "descriptor": "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize",
+        "descriptor": "(Lorg/openjdk/jmh/infra/Blackhole;)I",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.writeDocument",
+        "descriptor": "()V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.jmh_generated.BinaryWriterBenchmark_serialize_jmhTest.serialize_AverageTime",
+        "descriptor": "(Lorg/openjdk/jmh/runner/InfraControl;Lorg/openjdk/jmh/infra/ThreadParams;)Lorg/openjdk/jmh/results/BenchmarkTaskResult;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.benchmark.jmh_generated.BinaryWriterBenchmark_serialize_jmhTest.serialize_avgt_jmhStub",
+        "descriptor": "(Lorg/openjdk/jmh/runner/InfraControl;Lorg/openjdk/jmh/results/RawResults;Lorg/openjdk/jmh/infra/BenchmarkParams;Lorg/openjdk/jmh/infra/IterationParams;Lorg/openjdk/jmh/infra/ThreadParams;Lorg/openjdk/jmh/infra/Blackhole;Lorg/openjdk/jmh/infra/Control;ILorg/eclipse/rdf4j/query/resultio/binary/benchmark/jmh_generated/BinaryWriterBenchmark_jmhType;)V",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.openjdk.jmh.runner.BenchmarkHandler$BenchmarkTask.call",
+        "descriptor": "()Ljava/lang/Object;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.openjdk.jmh.runner.BenchmarkHandler$BenchmarkTask.call",
+        "descriptor": "()Lorg/openjdk/jmh/results/BenchmarkTaskResult;",
+        "weight_bytes": 7997146384,
+        "percent_filtered": 100.0
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution",
+        "descriptor": "(Lorg/eclipse/rdf4j/query/BindingSet;)V",
+        "weight_bytes": 7996622688,
+        "percent_filtered": 99.9935
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.handleSolutionImpl",
+        "descriptor": "(Lorg/eclipse/rdf4j/query/BindingSet;)V",
+        "weight_bytes": 7996622688,
+        "percent_filtered": 99.9935
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeValue",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Value;)V",
+        "weight_bytes": 7996622688,
+        "percent_filtered": 99.9935
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeString",
+        "descriptor": "(Ljava/lang/String;)V",
+        "weight_bytes": 6538420672,
+        "percent_filtered": 81.7594
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeQName",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/IRI;)V",
+        "weight_bytes": 5475526040,
+        "percent_filtered": 68.4685
+      },
+      {
+        "method": "java.nio.ByteBuffer.allocate",
+        "descriptor": "(I)Ljava/nio/ByteBuffer;",
+        "weight_bytes": 5440322208,
+        "percent_filtered": 68.0283
+      },
+      {
+        "method": "java.nio.charset.CharsetEncoder.encode",
+        "descriptor": "(Ljava/nio/CharBuffer;)Ljava/nio/ByteBuffer;",
+        "weight_bytes": 5440322208,
+        "percent_filtered": 68.0283
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeLiteral",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/Literal;)V",
+        "weight_bytes": 4191952664,
+        "percent_filtered": 52.4181
+      },
+      {
+        "method": "java.nio.HeapByteBuffer.<init>",
+        "descriptor": "(IILjava/lang/foreign/MemorySegment;)V",
+        "weight_bytes": 2728597408,
+        "percent_filtered": 34.1196
+      },
+      {
+        "method": "java.lang.String.substring",
+        "descriptor": "(II)Ljava/lang/String;",
+        "weight_bytes": 1458725712,
+        "percent_filtered": 18.2406
+      },
+      {
+        "method": "java.lang.StringLatin1.newString",
+        "descriptor": "([BII)Ljava/lang/String;",
+        "weight_bytes": 1458725712,
+        "percent_filtered": 18.2406
+      },
+      {
+        "method": "java.util.Arrays.copyOfRange",
+        "descriptor": "([BII)[B",
+        "weight_bytes": 1332039784,
+        "percent_filtered": 16.6564
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.getNamespace",
+        "descriptor": "()Ljava/lang/String;",
+        "weight_bytes": 1300567744,
+        "percent_filtered": 16.2629
+      },
+      {
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;)Ljava/nio/CharBuffer;",
+        "weight_bytes": 1098098464,
+        "percent_filtered": 13.7311
+      },
+      {
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;II)Ljava/nio/CharBuffer;",
+        "weight_bytes": 1098098464,
+        "percent_filtered": 13.7311
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.writeBNode",
+        "descriptor": "(Lorg/eclipse/rdf4j/model/BNode;)V",
+        "weight_bytes": 391190368,
+        "percent_filtered": 4.8916
+      },
+      {
+        "method": "java.lang.String.substring",
+        "descriptor": "(I)Ljava/lang/String;",
+        "weight_bytes": 158157968,
+        "percent_filtered": 1.9777
+      },
+      {
+        "method": "org.eclipse.rdf4j.model.impl.SimpleIRI.getLocalName",
+        "descriptor": "()Ljava/lang/String;",
+        "weight_bytes": 158157968,
+        "percent_filtered": 1.9777
+      },
+      {
+        "method": "org.eclipse.rdf4j.query.resultio.binary.OriginalBinaryQueryResultWriter.startQueryResult",
+        "descriptor": "(Ljava/util/List;)V",
+        "weight_bytes": 523696,
+        "percent_filtered": 0.0065
+      }
+    ],
+    "classes": [
+      {
+        "class": "byte[]",
+        "weight_bytes": 4060637192,
+        "percent_filtered": 50.7761
+      },
+      {
+        "class": "java.nio.HeapByteBuffer",
+        "weight_bytes": 2711724800,
+        "percent_filtered": 33.9087
+      },
+      {
+        "class": "java.nio.StringCharBuffer",
+        "weight_bytes": 1098098464,
+        "percent_filtered": 13.7311
+      },
+      {
+        "class": "java.lang.String",
+        "weight_bytes": 126685928,
+        "percent_filtered": 1.5841
+      }
+    ],
+    "class_self_sites": [
+      {
+        "class": "byte[]",
+        "method": "java.nio.HeapByteBuffer.<init>",
+        "descriptor": "(IILjava/lang/foreign/MemorySegment;)V",
+        "weight_bytes": 2728597408,
+        "percent_filtered": 34.1196
+      },
+      {
+        "class": "java.nio.HeapByteBuffer",
+        "method": "java.nio.ByteBuffer.allocate",
+        "descriptor": "(I)Ljava/nio/ByteBuffer;",
+        "weight_bytes": 2711724800,
+        "percent_filtered": 33.9087
+      },
+      {
+        "class": "byte[]",
+        "method": "java.util.Arrays.copyOfRange",
+        "descriptor": "([BII)[B",
+        "weight_bytes": 1332039784,
+        "percent_filtered": 16.6564
+      },
+      {
+        "class": "java.nio.StringCharBuffer",
+        "method": "java.nio.CharBuffer.wrap",
+        "descriptor": "(Ljava/lang/CharSequence;II)Ljava/nio/CharBuffer;",
+        "weight_bytes": 1098098464,
+        "percent_filtered": 13.7311
+      },
+      {
+        "class": "java.lang.String",
+        "method": "java.lang.StringLatin1.newString",
+        "descriptor": "([BII)Ljava/lang/String;",
+        "weight_bytes": 126685928,
+        "percent_filtered": 1.5841
+      }
+    ]
+  },
+  "notes": [
+    "CPU percentages are fractions of selected execution samples, not wall-clock time.",
+    "Allocation weight estimates bytes represented by samples; sample counts are not object counts.",
+    "Inclusive methods are deduplicated per stack; their percentages overlap and need not sum to 100%.",
+    "Self means the top recorded Java frame, not an exact native instruction or allocation count.",
+    "Missing-stack selected events remain in denominators; method tables omit those events.",
+    "The default selection covers benchmark worker threads and writer stacks, not arbitrary asynchronous query workers.",
+    "All matching events in the input are included, including any recorded setup or warmup.",
+    "Print JFR with --stack-depth 128; the default five-frame display can hide callers even when truncated=false."
+  ],
+  "input": "/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-evidence/jfr-final/baseline-ascii-heartbeat-pid71-2026-11-17T11_57_28.358697780Z-5472984616024138580.events.json"
+}
