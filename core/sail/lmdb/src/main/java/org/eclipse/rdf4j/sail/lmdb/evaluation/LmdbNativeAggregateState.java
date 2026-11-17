@@ -460,8 +460,11 @@ final class AggContext {
 						? KernelRuntime.AggregateMemory.forLedger(synthetic.executionContext().memoryLedger())
 						: null;
 		this.memory = memory != null ? memory : ownedMemory;
+		// Ineligible sources retain the established aggregate cache. Installing an already-disabled memo
+		// would otherwise bypass that cache on every value() call, doubling repeated resolutions.
 		this.valueMemo = Boolean.getBoolean(NativeValueMemo.ENABLED_PROPERTY)
-				? new NativeValueMemo(source, this.memory) : null;
+				&& source != null && source.hasStableValueIds()
+						? new NativeValueMemo(source, this.memory) : null;
 		this.comparator.setStrict(strictCompare);
 	}
 

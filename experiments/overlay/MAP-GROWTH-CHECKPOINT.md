@@ -21,3 +21,11 @@ bash experiments/overlay/run-memo-growth-proof.sh
 ```
 
 The eager-projection setup is deliberate and must not be called default-lazy-projection replay coverage. The hook is diagnostic-only and disabled by default. The exceptional-reopen test uses the existing dispatch observer's safely cleaned-up failure path to check caller-context restoration on failure.
+
+## Follow-up validation
+
+- `memo-growth-forcing-final.log`: final unconditional strict probe, successful replay plus exceptional-reopen caller restoration, **2 passed**. Routes are `irKernel → irKernel`, compiled binds 2.
+- `memo-growth-forcing-suite.log`: all **29 lifecycle tests passed**, including the two new/extended diagnostics. That combined run also attempted 20 nearby replay tests under `kernelInterpreter=false`; 4 of those checks failed because they explicitly require an interpreted aggregate route. Preserve this failed 49-test run as configuration-conflict evidence, not a passing regression suite.
+- `memo-growth-nearby-defaults.log`: those **20 nearby replay tests passed** with normal interpreter/lazy configuration and memo enabled. No test expectations were relaxed.
+
+Plan status: context-loss diagnosis, focused fix, strict replay proof, exceptional context restoration, and nearby regression validation complete. Full broader regression is coordinated separately.
