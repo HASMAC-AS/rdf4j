@@ -244,6 +244,53 @@ final class VectorPageCodec {
 				return len;
 			}
 
+			@Override
+			public void copy(int from, byte[] target, int offset, int count) {
+				java.util.Objects.checkFromIndexSize(from, count, len);
+				java.util.Objects.checkFromIndexSize(offset, count, target.length);
+				if (count == 0)
+					return;
+				// Copy constant bytes in bulk, then patch each intersecting field once. The
+				// random-byte accessor remains preferable for genuinely selective predicates.
+				MemorySegment.copy(raw, ValueLayout.JAVA_BYTE, p + HEADER + from, target, offset, count);
+				int end = from + count;
+				for (int f = 0; f < fields; f++) {
+					long at = p + HEADER + len + f * (long) FIELD_BYTES;
+					int start = raw.get(FfmAccess.INT_LE, at);
+					if (start >= end)
+						break;
+					int width = raw.get(ValueLayout.JAVA_BYTE, at + 4) & 255;
+					int run = width == 255 ? Short.toUnsignedInt(raw.get(FfmAccess.SHORT_LE, at + 6))
+							: Math.max(1, width);
+					int fieldEnd = start + run;
+					if (fieldEnd <= from)
+						continue;
+					int first = Math.max(start, from), last = Math.min(fieldEnd, end);
+					int bits = raw.get(ValueLayout.JAVA_BYTE, at + 5) & 255;
+					int payload = raw.get(FfmAccess.INT_LE, at + 16);
+					long base = raw.get(FfmAccess.LONG_LE, at + 8);
+					if (width == 255) {
+						long bit = ((long) slot * run + first - start) * bits;
+						for (int i = first; i < last; i++, bit += bits)
+							target[offset + i - from] = alphabetByte(
+									(int) PackedVector.getBits(raw, p + payload, bit, bits), (int) base);
+					} else {
+						long value = base + PackedVector.getBits(raw, p + payload, (long) slot * bits, bits);
+						if (width == 0 ? (value & ~255L) != 0 : value < 0 || value >= POWERS_OF_TEN[width])
+							throw new IllegalStateException("field exceeds lexical range");
+						if (width == 0) {
+							target[offset + start - from] = (byte) value;
+						} else {
+							value /= POWERS_OF_TEN[fieldEnd - last];
+							for (int i = last - 1; i >= first; i--) {
+								target[offset + i - from] = (byte) ('0' + value % 10);
+								value /= 10;
+							}
+						}
+					}
+				}
+			}
+
 			public int byteAt(int index) {
 				java.util.Objects.checkIndex(index, len);
 				int lo = 0, hi = fields;

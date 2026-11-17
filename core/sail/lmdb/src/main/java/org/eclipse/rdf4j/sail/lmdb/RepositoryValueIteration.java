@@ -41,6 +41,9 @@ import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 final class RepositoryValueIteration<T> implements CloseableIteration<T>, CooperativeCancellation {
 
 	private static final int WAVE_VALUES = 1024;
+	// Default-off experiment: share one dictionary/overlay transaction within the current row only.
+	private static final boolean GROUPED_VALUE_WAVES = Boolean
+			.getBoolean("rdf4j.lmdb.repository.groupedValueWaves");
 	private static final ThreadLocal<RepositoryValueIteration<?>> SOURCE_PULL = new ThreadLocal<>();
 
 	private record PendingValue(LmdbValue value, LmdbValue.InternalIdentity identity) {
@@ -278,10 +281,22 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 						scope = scopeFor(owner);
 					}
 					try (SailClosable activation = scope == null ? null : scope.activateForeground()) {
+						if (GROUPED_VALUE_WAVES) {
+							checkActive();
+							LmdbValue[] batch = new LmdbValue[values.size()];
+							int[] order = new int[batch.length];
+							for (int i = 0; i < batch.length; i++) {
+								batch[i] = values.get(i).value;
+								order[i] = i;
+							}
+							group.getKey().resolveValues(batch, order, batch.length);
+							checkActive();
+						}
 						for (PendingValue pending : values) {
 							LmdbValue value = pending.value;
 							checkActive();
-							value.init();
+							if (!GROUPED_VALUE_WAVES)
+								value.init();
 							if (!value.isInitialized()) {
 								throw new SailException("A repository result value could not be resolved");
 							}

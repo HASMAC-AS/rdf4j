@@ -1246,6 +1246,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		boolean hasReadLock;
 		boolean retainedDictionaryDecode;
 		boolean writerCapture;
+		OverlayMaterializer overlayMaterializer;
+		boolean overlayMaterializerBusy;
 		// The thread's LWJGL stack, looked up once per borrowed context and reused by nested native reads.
 		MemoryStack stack;
 	}
@@ -7357,6 +7359,10 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			return true;
 		}
 
+		if (TYPED_OVERLAY_MATERIALIZATION && resolveScalarFromOverlay(id, value, valueRevision)) {
+			return true;
+		}
+
 		byte[] data = getData(id);
 		if (data == null) {
 			return false;
@@ -7373,6 +7379,45 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			data2value(id, data, value, valueRevision);
 		}
 		return true;
+	}
+
+	private boolean resolveScalarFromOverlay(long id, LmdbValue value, ValueStoreRevision revision)
+			throws IOException {
+		ReadContext context = readContext.get();
+		// Namespace/datatype resolution can reenter this method. Never overwrite an active callback's state.
+		if (context.overlayMaterializerBusy)
+			return false;
+		return readTransaction(env, (stack, txn) -> {
+			try (ValueOverlayRegistry.SnapshotLease overlay = borrowValueOverlay(txn)) {
+				if (overlay == null)
+					return false;
+				OverlayMaterializer materializer = context.overlayMaterializer;
+				if (materializer == null)
+					context.overlayMaterializer = materializer = new OverlayMaterializer();
+				boolean publish = valueCaches.revision == completedRevision(revision);
+				materializer.store = this;
+				materializer.target = publish ? null : value;
+				materializer.revision = revision;
+				materializer.id = id;
+				context.overlayMaterializerBusy = true;
+				try {
+					if (!overlay.visitRecord(id, materializer))
+						return false;
+					if (publish) {
+						// Publish an initialized completed-revision model, never the caller's lazy shell.
+						cacheValue(id, materializer.target, revision);
+						value.setFromInitializedValue(materializer.target);
+					}
+					return true;
+				} finally {
+					materializer.target = null;
+					materializer.revision = null;
+					materializer.id = 0;
+					materializer.store = null;
+					context.overlayMaterializerBusy = false;
+				}
+			}
+		});
 	}
 
 	boolean isSafeAllocationResize() {
@@ -7418,6 +7463,97 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		}
 	}
 
+	// Experiment switch: keep the existing path as the default for controlled comparisons.
+	private static final boolean TYPED_OVERLAY_MATERIALIZATION = Boolean
+			.getBoolean("rdf4j.lmdb.valueOverlay.typedMaterialization");
+
+	/** Bounded reusable lexical buffer; no record escapes its lease or callback state escapes a decode. */
+	private static final class OverlayMaterializer implements ValueStoreRecordVisitor.Visitor {
+		private ValueStore store;
+		private LmdbValue target;
+		private ValueStoreRevision revision;
+		private long id;
+		private byte[] scratch;
+
+		private byte[] buffer(int length) {
+			if (length > 65536) {
+				return new byte[length];
+			}
+			if (scratch == null || scratch.length < length) {
+				scratch = new byte[Math.max(256, length)];
+			}
+			return scratch;
+		}
+
+		private String lexical(ValueStoreRecordVisitor.Record record) {
+			int length = record.lexicalByteLength();
+			byte[] bytes = buffer(length);
+			record.copyLexical(0, bytes, 0, length);
+			return new String(bytes, 0, length, StandardCharsets.UTF_8);
+		}
+
+		@Override
+		public void accept(ValueStoreRecordVisitor.Record record) {
+			try {
+				switch (record.kind()) {
+				case IRI -> {
+					String namespace = store.getNamespace(record.namespaceId()), localName = lexical(record);
+					if (target == null)
+						target = new LmdbIRI(store.completedRevision(revision), namespace, localName, id);
+					else
+						((LmdbIRI) target).setNamespaceAndIri(namespace, localName);
+				}
+				case BNODE -> {
+					String label = lexical(record);
+					if (target == null)
+						target = new LmdbBNode(store.completedRevision(revision), label, id);
+					else
+						((LmdbBNode) target).setID(label);
+				}
+				case LITERAL -> {
+					long datatypeId = record.datatypeId();
+					IRI datatype = datatypeId > 0 ? (IRI) store.getValue(datatypeId, revision) : null;
+					int languageLength = record.languageByteLength();
+					String language = null;
+					if (languageLength > 0) {
+						byte[] bytes = buffer(languageLength);
+						record.copyLanguage(bytes, 0);
+						language = new String(bytes, 0, languageLength, StandardCharsets.UTF_8);
+					}
+					String label = lexical(record);
+					Literal.BaseDirection direction = switch (record.direction()) {
+					case 1 -> Literal.BaseDirection.LTR;
+					case 2 -> Literal.BaseDirection.RTL;
+					default -> Literal.BaseDirection.NONE;
+					};
+					if (target == null) {
+						ValueStoreRevision completed = store.completedRevision(revision);
+						target = language != null ? new LmdbLiteral(completed, label, language, direction, id)
+								: datatype != null ? new LmdbLiteral(completed, label, datatype, id)
+										: new LmdbLiteral(completed, label, org.eclipse.rdf4j.model.vocabulary.XSD.STRING, id);
+						break;
+					}
+					LmdbLiteral literal = (LmdbLiteral) target;
+					literal.setLabel(label);
+					if (language != null) {
+						literal.setLanguage(language);
+						literal.setBaseDirection(direction);
+						literal.setDatatype(direction == Literal.BaseDirection.NONE ? CoreDatatype.RDF.LANGSTRING
+								: CoreDatatype.RDF.DIRLANGSTRING);
+					} else if (datatype != null) {
+						literal.setDatatype(datatype);
+					} else {
+						literal.setDatatype(CoreDatatype.XSD.STRING);
+					}
+				}
+				default -> throw new IllegalArgumentException("Invalid RDF value record " + record.kind());
+				}
+			} catch (IOException e) {
+				throw new SailException(e);
+			}
+		}
+	}
+
 	void resolveValues(ValueStoreRevision expectedRevision, ValueStoreRevision resolvedRevision, LmdbValue[] values,
 			int[] order, int count) {
 		try {
@@ -7425,13 +7561,15 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 					: expectedRevision instanceof ValueStoreRevision.Lazy lazy ? lazy : null;
 			withValueReadTransaction(selected, (outerStack, outerTxn) -> readTransaction(env, (stack, txn) -> {
 				try (ValueOverlayRegistry.SnapshotLease overlay = borrowValueOverlay(txn)) {
+					OverlayMaterializer materializer = overlay != null && TYPED_OVERLAY_MATERIALIZATION
+							? new OverlayMaterializer() : null;
 					MDBVal keyData = MDBVal.calloc(stack);
 					MDBVal valueData = MDBVal.calloc(stack);
 					ByteBuffer keyBuffer = idBuffer(stack);
 					LmdbValue.Resolver resolver = (id, value) -> {
 						try {
 							return resolveValueInTransaction(expectedRevision, resolvedRevision, id, value, txn,
-									keyData, valueData, keyBuffer, overlay);
+									keyData, valueData, keyBuffer, overlay, materializer);
 						} catch (IOException e) {
 							throw new SailException(e);
 						}
@@ -7452,7 +7590,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 
 	private boolean resolveValueInTransaction(ValueStoreRevision expectedRevision,
 			ValueStoreRevision resolvedRevision, long id, LmdbValue value, long txn, MDBVal keyData,
-			MDBVal valueData, ByteBuffer keyBuffer, ValueOverlayRegistry.SnapshotLease overlay) throws IOException {
+			MDBVal valueData, ByteBuffer keyBuffer, ValueOverlayRegistry.SnapshotLease overlay,
+			OverlayMaterializer materializer) throws IOException {
 		ValueStoreRevision valueRevision = value.getValueStoreRevision();
 		int positionMask = valueRevision == null ? ValuePosition.NONE : valueRevision.getPositionMask();
 		if (ValueIds.isInlined(id)) {
@@ -7478,6 +7617,22 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 				setResolvedRevision(value, id, resolvedRevision == null ? null : completedRevision(valueRevision));
 			}
 			return resolved;
+		}
+
+		if (materializer != null) {
+			materializer.store = this;
+			materializer.target = value;
+			materializer.revision = valueRevision;
+			try {
+				if (overlay.visitRecord(id, materializer)) {
+					setResolvedRevision(value, id, resolvedRevision == null ? null : completedRevision(valueRevision));
+					return true;
+				}
+			} finally {
+				materializer.target = null;
+				materializer.revision = null;
+				materializer.store = null;
+			}
 		}
 
 		byte[] data = overlay == null ? null : overlay.get(id);

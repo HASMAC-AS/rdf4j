@@ -1,0 +1,11 @@
+# Additive duplicate-coalesced overlay API checkpoint
+
+Purpose: avoid repeat record rank/decode work for duplicate full native IDs within one requested batch while preserving independent owned mutable byte arrays. The existing getMany API is unchanged. New getManyDeduplicated methods on CompressedValueOverlay.Lease and ValueOverlayRegistry.SnapshotLease are opt-in only; neither query integration nor default changes are present.
+
+The shared package-private helper uses an int[] open-address table storing first output positions, hashes the complete long ID, and calls existing lease.get once per distinct ID. Duplicate non-null outputs clone the first record; repeated misses remain null. Therefore delta/tombstone precedence uses existing scalar lookup unchanged. No physical page ordering, decoded RDF caching, or lease-lifetime extension is introduced. Very large requests above2^28entries use scalar fallback to avoid table-size overflow. This additive experimental method may allocate more for all-distinct inputs; no performance claim is made.
+
+Pre-change test report experiments/overlay/dedup-pre.log:3tests,existingScalarSemantics passed;2new API tests failed with expected NoSuchMethodException. Production methods added only after this evidence. Post-change experiments/overlay/dedup-post.log:9tests,0failures/errors (3dedup+6memory-lifecycle). Tests exercise both lease types,unsorted/repeated/missingIDs,offsets,empty batches,invalid bounds,closed snapshot,newest delta and tombstone,old snapshot retention,independent output mutation. Instrumented helper confirms8requests including0,-1,MIN,MAX IDs cause4loads, not8.
+
+Compiled classes are in target/classes; no commit/publication. Benchmark/integration paused because user reprioritized existing memo baseline and readiness/DISTINCT experiments. Parent may later explicitly call new method under an isolated experiment flag and benchmark all-distinct vs repeated inputs.
+
+Changed production files:core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/valueoverlay/CompressedValueOverlay.java and ValueOverlayRegistry.java. New test:ValueOverlayDeduplicatedBatchTest.java in matching test package. No other source changes owned here.

@@ -786,6 +786,14 @@ public final class ValueOverlayRegistry implements AutoCloseable {
 			return count;
 		}
 
+		/** Coalesces duplicate full IDs while preserving delta shadowing and independently owned outputs. */
+		public int getManyDeduplicated(long[] ids, int from, int count, byte[][] output, int offset) {
+			Objects.checkFromIndexSize(from, count, ids.length);
+			Objects.checkFromIndexSize(offset, count, output.length);
+			checked();
+			return CompressedValueOverlay.deduplicatedBatch(ids, from, count, output, offset, this::get);
+		}
+
 		@Override
 		public void close() {
 			if (state != null) {

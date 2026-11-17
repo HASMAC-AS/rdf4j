@@ -1,0 +1,8 @@
+Base: HASMAC/rdf4j 8fc7b0137164ffdc1f5d080b943fd362931137dd
+Apply final-prototype.patch, copy new test Java sources to same paths.
+Use JDK25 and Maven3.9.11. Build reactor dependencies with -DskipTests (test jars needed), then run tests by explicit -pl core/sail/lmdb, no -am for tests.
+Harness classes are under src/test/java; benchmark scripts expect compiled test/classes and dependency classpath at experiments/overlay/classpath.txt. Regenerate dependency classpath with Maven dependency:build-classpath.
+Experimental flag defaults false: -Drdf4j.lmdb.valueOverlay.typedMaterialization=true
+For recorded ABBA comparisons, freeze class outputs before edits as script paths indicate; scripts encode heap/workload/ordering.
+JFR files preserve raw profiles; print JSON ExecutionSample with JDK jfr tool, then summarize-profile.py. JSON not bundled to avoid hundreds of MB duplicates.
+RESULTS.md distinguishes valid micro timings from initially unexercised query path and final scalar hit proof. No production publication or enabled default.

@@ -295,6 +295,14 @@ public final class CompressedValueOverlay implements AutoCloseable {
 			return length;
 		}
 
+		/** Experimental duplicate-coalesced lookup; each returned non-null array remains independently owned. */
+		public int getManyDeduplicated(long[] ids, int from, int length, byte[][] target, int targetOffset) {
+			Objects.checkFromIndexSize(from, length, ids.length);
+			Objects.checkFromIndexSize(targetOffset, length, target.length);
+			checked();
+			return deduplicatedBatch(ids, from, length, target, targetOffset, this::get);
+		}
+
 		public Stats stats() {
 			return checked().stats;
 		}
@@ -388,6 +396,33 @@ public final class CompressedValueOverlay implements AutoCloseable {
 		if (handle == 0)
 			throw new IllegalStateException("unpublished value page");
 		return PageCodec.openRecord(allocator, handle, slot);
+	}
+
+	/** Full-ID hash table; output positions encode occupancy, so all long IDs including zero are valid. */
+	static int deduplicatedBatch(long[] ids, int from, int count, byte[][] output, int offset,
+			java.util.function.LongFunction<byte[]> loader) {
+		Objects.checkFromIndexSize(from, count, ids.length);
+		Objects.checkFromIndexSize(offset, count, output.length);
+		// Avoid table-size overflow for impractically large requests; existing scalar semantics remain safe.
+		if (count < 2 || count > (1 << 28)) {
+			for (int i = 0; i < count; i++) output[offset + i] = loader.apply(ids[from + i]);
+			return count;
+		}
+		int[] first = new int[Integer.highestOneBit(count - 1) << 2];
+		int mask = first.length - 1;
+		for (int i = 0; i < count; i++) {
+			long id = ids[from + i];
+			int slot = (int) mix(id) & mask;
+			while (first[slot] != 0 && ids[from + first[slot] - 1] != id) slot = (slot + 1) & mask;
+			if (first[slot] == 0) {
+				first[slot] = i + 1;
+				output[offset + i] = loader.apply(id);
+			} else {
+				byte[] original = output[offset + first[slot] - 1];
+				output[offset + i] = original == null ? null : original.clone();
+			}
+		}
+		return count;
 	}
 
 	private byte[] recordAt(long rank) {
