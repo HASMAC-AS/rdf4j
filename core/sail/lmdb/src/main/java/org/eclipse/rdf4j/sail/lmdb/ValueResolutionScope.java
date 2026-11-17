@@ -107,7 +107,10 @@ final class ValueResolutionScope implements SailClosable {
 
 	/** Foreground result calls share their parked reader until the transaction or standalone iteration ends. */
 	SailClosable activateForeground() {
-		return activate(false);
+		ValueResolutionScope previous = ACTIVE.get();
+		ACTIVE.set(this);
+		// Foreground activation never retires a worker reader. Preserve even a closed previous exposure.
+		return () -> ACTIVE.set(previous);
 	}
 
 	private SailClosable activate(boolean releaseTaskReader) {

@@ -203,11 +203,8 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 	}
 
 	private static void restoreSourcePull(RepositoryValueIteration<?> previous) {
-		if (previous == null) {
-			SOURCE_PULL.remove();
-		} else {
-			SOURCE_PULL.set(previous);
-		}
+		// A null value retains no owner. Keep the entry to avoid recreating it on every row pull.
+		SOURCE_PULL.set(previous);
 	}
 
 	/** Cheap check that a root needs no owner scope, decode or child traversal; uncertain shapes take the full path. */

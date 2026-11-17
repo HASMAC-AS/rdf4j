@@ -23,6 +23,8 @@ final class NativeValueMemo {
 	static final AtomicLong PROBES = new AtomicLong(), HITS = new AtomicLong(), MISSES = new AtomicLong(), DISABLED = new AtomicLong();
 	private long totalProbes, totalHits;
 	private boolean reported;
+	private final boolean alwaysAdmit;
+	private final boolean fixedCapacity;
 	// Test-only pre-exposure replay barrier. Static-final false gate is removed from ordinary hot paths by JIT.
 	private static final boolean TEST_PROBE = Boolean.getBoolean("rdf4j.lmdb.nativeValueMemo.testProbe");
 	static volatile java.util.function.Consumer<NativeValueMemo> testHitObserver;
@@ -38,6 +40,16 @@ final class NativeValueMemo {
 	String disabledReason;
 
 	NativeValueMemo(NativeLmdbQuerySource source, KernelRuntime.MemoryAccount memory) {
+		alwaysAdmit = switch (System.getProperty("rdf4j.lmdb.nativeValueMemo.admission", "initial")) {
+		case "initial" -> false;
+		case "always" -> true;
+		default -> throw new IllegalArgumentException("Unknown native Value memo admission");
+		};
+		fixedCapacity = switch (System.getProperty("rdf4j.lmdb.nativeValueMemo.capacity", "adaptive")) {
+		case "adaptive" -> false;
+		case "fixed4096" -> true;
+		default -> throw new IllegalArgumentException("Unknown native Value memo capacity");
+		};
 		this.source = source;
 		this.memory = memory;
 		if (source == null || !source.hasStableValueIds())
@@ -73,9 +85,9 @@ final class NativeValueMemo {
 			}
 		}
 		if (probes == SAMPLE) {
-			if (!sampled && hits < SAMPLE / 4) {
+			if (!alwaysAdmit && !sampled && hits < SAMPLE / 4) {
 				disable("low-repetition");
-			} else if (references != null && references.length < MAXIMUM && hits >= SAMPLE / 2
+			} else if (!fixedCapacity && references != null && references.length < MAXIMUM && hits >= SAMPLE / 2
 					&& occupied >= references.length * 3 / 4) {
 				// Conservative reconstructed policy: >=50% hits and >=75% occupied, at most one doubling/window.
 				resize(references.length * 2);
@@ -138,6 +150,15 @@ final class NativeValueMemo {
 		references = newReferences;
 		occupied = count;
 		return true;
+	}
+
+	/** Untimed diagnostics: no tracing, observers or additional counters in the per-value path. */
+	Snapshot snapshot() {
+		return new Snapshot(totalProbes, totalHits, references == null ? 0 : references.length,
+				occupied, reserved, disabledReason);
+	}
+
+	record Snapshot(long probes, long hits, int capacity, int occupied, long reserved, String disabledReason) {
 	}
 
 	void clear() {

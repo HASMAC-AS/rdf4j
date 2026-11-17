@@ -40,11 +40,18 @@ public interface SailResultValueExtractor<T> {
 	SailResultValueExtractor<BindingSet> BINDING_SETS = new SailResultValueExtractor<>() {
 		@Override
 		public void extract(BindingSet bindings, Consumer<Value> roots) {
-			bindings.forEach(binding -> roots.accept(binding.getValue()));
+			if (bindings instanceof CompactBindingSetSnapshot compact) {
+				compact.extractValues(roots);
+			} else {
+				bindings.forEach(binding -> roots.accept(binding.getValue()));
+			}
 		}
 
 		@Override
 		public BindingSet snapshot(BindingSet bindings) {
+			if (CompactBindingSetSnapshot.ENABLED) {
+				return CompactBindingSetSnapshot.copy(bindings);
+			}
 			MapBindingSet copy = new MapBindingSet(bindings.size());
 			bindings.forEach(binding -> copy.addBinding(binding.getName(), binding.getValue()));
 			return copy;
