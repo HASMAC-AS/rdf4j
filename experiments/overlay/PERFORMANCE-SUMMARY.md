@@ -77,3 +77,5 @@ A deterministic competing-query test now steals the 4,096-byte spill workspace b
 ## Final safety-fix validation
 
 Checkpoint c8f2848 passed 5,048 executed evaluation tests (429 classes; zero failures/errors; five intentional skips). A fresh 1-million-row pre/post ABBA showed no demonstrated performance regression: pooled means 5.111/4.918 s, with substantial late-fork variance. See [post-review validation](POST-REVIEW-VALIDATION.md) for provenance, exact scope and caveats.
+
+Final safety fixes also preserve default-budget 8m spill performance: matched ABBA means112.644/112.671 s (effectively identical). Final-code native JFR samples are read-heavy. See [post-review spill validation](POST-REVIEW-SPILL.md).
