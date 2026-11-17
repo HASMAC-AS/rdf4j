@@ -33,6 +33,7 @@ import org.eclipse.rdf4j.query.impl.SimpleBinding;
 final class CompactBindingSetSnapshot extends MapBindingSet implements IdentityValueMappingBindingSet {
 	private static final long serialVersionUID = 1L;
 	static final boolean ENABLED = Boolean.getBoolean("rdf4j.sail.compactResultSnapshots");
+	private static final boolean SEQUENTIAL_LOOKUP = Boolean.getBoolean("rdf4j.sail.compactSequentialLookup");
 	private static final int MAX_COMPACT_BINDINGS = 256;
 
 	private String[] names;
@@ -40,6 +41,7 @@ final class CompactBindingSetSnapshot extends MapBindingSet implements IdentityV
 	private int[] slots;
 	private int count;
 	private int structuralVersion;
+	private int nextLookupIndex;
 	private MapBindingSet materialized;
 	private transient Set<String> namesView;
 
@@ -191,7 +193,17 @@ final class CompactBindingSetSnapshot extends MapBindingSet implements IdentityV
 		if (names == null) {
 			return materialized.getValue(name);
 		}
-		int index = index(name);
+		int index;
+		if (SEQUENTIAL_LOOKUP && name != null && count != 0) {
+			int hint = nextLookupIndex;
+			// This is only a prediction: arbitrary request order always falls back to the hash table.
+			index = hint < count && names[hint].equals(name) ? hint : index(name);
+			if (index >= 0) {
+				nextLookupIndex = index + 1 == count ? 0 : index + 1;
+			}
+		} else {
+			index = index(name);
+		}
 		return index < 0 ? null : values[index];
 	}
 

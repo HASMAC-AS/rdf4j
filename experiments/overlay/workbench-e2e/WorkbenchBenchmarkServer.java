@@ -113,6 +113,7 @@ public class WorkbenchBenchmarkServer {
         Map<String,Object> result = new LinkedHashMap<>();
         result.put("tupleContentType",tupleContentType);
         result.put("transportIdentityMapping",Boolean.getBoolean("rdf4j.http.compactIdentityMapping"));
+        result.put("compactSequentialLookup",Boolean.getBoolean("rdf4j.sail.compactSequentialLookup"));
         result.put("tupleResponses",tupleResponses.get());
         result.put("heapUsed",ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed());
         for (String spec : new String[]{"LmdbNativeKernelExecution:COMPILED_BINDS", "LmdbNativeKernelExecution:INTERPRETED_BINDS",
