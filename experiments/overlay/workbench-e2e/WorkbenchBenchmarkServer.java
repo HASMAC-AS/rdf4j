@@ -112,6 +112,7 @@ public class WorkbenchBenchmarkServer {
     private static Map<String,Object> metrics() throws ReflectiveOperationException {
         Map<String,Object> result = new LinkedHashMap<>();
         result.put("tupleContentType",tupleContentType);
+        result.put("transportIdentityMapping",Boolean.getBoolean("rdf4j.http.compactIdentityMapping"));
         result.put("tupleResponses",tupleResponses.get());
         result.put("heapUsed",ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed());
         for (String spec : new String[]{"LmdbNativeKernelExecution:COMPILED_BINDS", "LmdbNativeKernelExecution:INTERPRETED_BINDS",
@@ -125,7 +126,7 @@ public class WorkbenchBenchmarkServer {
                 result.put(spec,((AtomicLong)field.get(null)).get());
             } catch (ClassNotFoundException|NoSuchFieldException absent) { result.put(spec,"absent"); }
         }
-        for (String cls : new String[]{"org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter",
+        for (String cls : new String[]{"org.eclipse.rdf4j.http.client.BNodeOriginTransport", "org.eclipse.rdf4j.query.BindingSet", "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter",
                 "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration", "org.eclipse.rdf4j.sail.features.SailResultValueExposure", "org.eclipse.rdf4j.sail.lmdb.LmdbStore"}) {
             result.put(cls, Class.forName(cls).getProtectionDomain().getCodeSource().getLocation().toString());
         }

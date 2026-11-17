@@ -18,3 +18,82 @@ Callback-triggered materialization does not restart mapping. Later bindings come
 - No full-repository or full HTTP module test claim. These tests do not establish throughput improvement; matched Workbench timings are separate.
 
 The first test compile caught a missing test-only Resource cast; it was corrected before the successful run. No production correctness failure was observed in this focused qualification.
+
+## Exact reproduction commands
+
+Run from the repository root at source checkpoint `6e6bc3eaeb` (or a descendant with the same candidate sources). These are the invocations used for qualification, with all paths made repository-relative. They are recorded here without rerunning them during the timed HTTP matrix. Prerequisites: the existing Java25/Maven tools used by the overlay experiments, dependency cache/network configuration accepted by `lifetime/mvn.sh`, and the prepared Workbench runtime jars under `workbench-e2e/runtime/BOOT-INF/lib`. See the Workbench harness preparation script for that runtime. These commands do not start a Workbench timing trial.
+
+### Focused build and tests
+
+```bash
+bash experiments/overlay/lifetime/mvn.sh \
+  -pl core/sail/api,core/http/client -am \
+  -Dtest=CompactIdentityMappingTest,CompactBindingSetSnapshotTest,BNodeOriginTransportTest,BNodeOriginTransportStreamingTest \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  -Drdf4j.sail.compactResultSnapshots=true \
+  -Drdf4j.http.compactIdentityMapping=true \
+  test > experiments/overlay/transport-mapping-tests.log 2>&1
+```
+
+Verify `BUILD SUCCESS` and the four per-class test reports. The selected suite ran 44 tests, zero failures/errors/skips. The null-binding method returns early when JVM assertions are enabled; the separate `-da` run below exercises that case.
+
+### Freeze the tested outputs
+
+The following `cp -a` invocations were run once when the three destination class directories did not exist. Use fresh destinations when reproducing, rather than copying into an existing directory and accidentally nesting `classes/` or mixing outputs. Never replace frozen outputs during a timing matrix.
+
+```bash
+mkdir -p experiments/overlay/transport-mapping
+cp -a core/query/target/classes experiments/overlay/transport-mapping/query-classes
+cp -a core/sail/api/target/classes experiments/overlay/transport-mapping/api-classes
+cp -a core/http/client/target/classes experiments/overlay/transport-mapping/http-client-classes
+```
+
+### Actual compact snapshot plus HTTP transport integration
+
+This compiles the standalone qualification against the frozen three modules, ahead of the prepared runtime jars. It runs OFF and ON in separate JVMs because the property is read into a static final field.
+
+```bash
+python - <<'PY'
+import pathlib, subprocess
+p = pathlib.Path('experiments/overlay/transport-mapping')
+libs = sorted(pathlib.Path('experiments/overlay/workbench-e2e/runtime/BOOT-INF/lib').glob('*.jar'))
+cp = ':'.join(map(str, [p/'query-classes', p/'api-classes', p/'http-client-classes', *libs]))
+java = 'experiments/overlay/tools/jdk-25.0.5+8/bin/'
+subprocess.run([java+'javac', '-cp', cp, '-d', str(p/'harness'),
+                str(p/'TransportMappingQualification.java')], check=True)
+with (p/'integration-qualification.txt').open('w') as out:
+    for flag in ['false', 'true']:
+        result = subprocess.check_output([
+            java+'java', '-ea', '-Drdf4j.http.compactIdentityMapping='+flag,
+            '-cp', str(p/'harness')+':'+cp,
+            'org.eclipse.rdf4j.sail.features.TransportMappingQualification'], text=True)
+        out.write(result)
+        print(result.strip())
+PY
+```
+
+### Assertions-disabled callback parity
+
+Use the test classpath recorded by the successful Maven run above. This launches a separate JVM with `-da` and invokes all 13 new JUnit test methods through the checked-in standalone driver; JUnit assertions remain active even though Java language assertions are disabled.
+
+```bash
+python - <<'PY'
+import xml.etree.ElementTree as E
+import pathlib, subprocess
+report = 'core/sail/api/target/surefire-reports/TEST-org.eclipse.rdf4j.sail.features.CompactIdentityMappingTest.xml'
+r = E.parse(report).getroot()
+cp = next(x.attrib['value'] for x in r.find('properties') if x.attrib['name'] == 'java.class.path')
+p = pathlib.Path('experiments/overlay/transport-mapping')
+java = 'experiments/overlay/tools/jdk-25.0.5+8/bin/'
+subprocess.run([java+'javac', '-cp', cp, '-d', str(p/'harness'),
+                str(p/'AssertionsDisabledQualification.java')], check=True)
+result = subprocess.check_output([
+    java+'java', '-da', '-Drdf4j.sail.compactResultSnapshots=true',
+    '-cp', str(p/'harness')+':'+cp,
+    'org.eclipse.rdf4j.sail.features.AssertionsDisabledQualification'], text=True)
+(p/'assertions-disabled-qualification.txt').write_text(result)
+print(result)
+PY
+```
+
+The Surefire XML is local build output and contains machine-specific paths; it is read locally rather than copied into published evidence. Published qualification receipts contain only PASS descriptions.
