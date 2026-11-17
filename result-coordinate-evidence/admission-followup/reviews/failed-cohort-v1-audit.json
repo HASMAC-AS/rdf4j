@@ -1,0 +1,629 @@
+{
+  "acceptedComparisonProcesses": 0,
+  "cohortRemainsInvalid": true,
+  "completion": {
+    "harnessReturned": true,
+    "hostedGenericTotal": 0,
+    "ledgerAfterBytes": 0,
+    "measurements": 5,
+    "memoClosedTotal": 0,
+    "memoOpenedTotal": 0,
+    "memoOverflowCount": 0,
+    "memoStatisticsSize": 0,
+    "queries": 13,
+    "semanticNativeCompilesTotal": 13,
+    "type": "completion",
+    "unhostedHardDeclinesTotal": 0,
+    "warmups": 8
+  },
+  "diagnosis": "The 98309 floor was copied from three-query pilots that ended before store-scoped AUTO statement-access alternative sampling. After eight complete preferred root scans, the next five query root scans can deliberately use LMDB without an adjacency fallback; the query remains ordered-factorized native.",
+  "evidence": [
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/protocol.json",
+      "sha256": "8a2c2fd92799ae667965cf3bb1af86b12d47d4e6af6ce83f3ad13134318b6949"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/failure.json",
+      "sha256": "8e72c5478bbdce283207c01549c45d96d7b72af8d9e894016fca5b3d6fc89b13"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/benchmark/fixture-definitions-v1.json",
+      "sha256": "46e8471fa310fdcb25406bea31eba43c6272a80453be45a27b12f767dfe9530f"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/benchmark/qualification/final-runtime-v1.json",
+      "sha256": "ce9f7c7323fb697c3ed13f99e52840ebfdf36ab556edeeab0a97644cd9b588fd"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/round-00-00-early-cold-hot-00-ordinary/launch.json",
+      "sha256": "3f23c238403baa6b64bdcb270fae25e24c656eb810b92bfd5f8e23c340c0a9f7"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/round-00-00-early-cold-hot-00-ordinary/process.json",
+      "sha256": "39e0b538ede7c4c8c16d4306d0d6142a2a6ee8821389f406c03a5e3eefe1507d"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/round-00-00-early-cold-hot-00-ordinary/samples.jsonl",
+      "sha256": "4d854e02770c5b35725d9e1a12f7e3bfb94bf90dcd05c0861ea4a5f0bd81b976"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/round-00-00-early-cold-hot-00-ordinary/inputs-before.json",
+      "sha256": "7bccebaad94f32b5e639eb694bb6f0917363836365dab657f87c47eb430ac82e"
+    },
+    {
+      "path": "result-coordinate-evidence/admission-followup/comparison-v1/round-00-00-early-cold-hot-00-ordinary/inputs-after.json",
+      "sha256": "609d48beaebbe9863a62251980dd40250db9babe1e2acaf92bbb4bf5545db3ef"
+    }
+  ],
+  "format": "admission-failed-cohort-correctness-audit-v1",
+  "frozenV1FilesUnchanged": true,
+  "javaLaunchesByAuditor": 0,
+  "processExitCode": 0,
+  "processesAttempted": 1,
+  "prospectiveProfile": [
+    98309,
+    98309,
+    98309,
+    98309,
+    98309,
+    98309,
+    98309,
+    98309,
+    98308,
+    98308,
+    98308,
+    98308,
+    98308
+  ],
+  "queries": [
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -8,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 0,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -7,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 1,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -6,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 2,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -5,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 3,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -4,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 4,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -3,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 5,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -2,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 6,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98309,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": -1,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 7,
+      "rows": 32768,
+      "stage": "warmup"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98308,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": 0,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 8,
+      "rows": 32768,
+      "stage": "measurement"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98308,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": 1,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 9,
+      "rows": 32768,
+      "stage": "measurement"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98308,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": 2,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 10,
+      "rows": 32768,
+      "stage": "measurement"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98308,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": 3,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 11,
+      "rows": 32768,
+      "stage": "measurement"
+    },
+    {
+      "adjacency": {
+        "appliedRevisionAfter": 0,
+        "appliedRevisionBefore": 0,
+        "currentRevisionAfter": 0,
+        "currentRevisionBefore": 0,
+        "exactMisses": 0,
+        "fallbacks": {},
+        "lookupHits": 98308,
+        "plannerStatsHits": 1,
+        "stateAfter": "ACTIVE",
+        "stateBefore": "ACTIVE"
+      },
+      "checksum": "-392792955594352548",
+      "counters": {
+        "aggregateCompiledBinds": 0,
+        "aggregateInterpretedBinds": 0,
+        "chunkEngaged": 1,
+        "compiledBinds": 0,
+        "factorizedEngagement": 1,
+        "hostedGeneric": 0,
+        "interpretedBinds": 0,
+        "irOpened": 0,
+        "irPlanned": 0,
+        "irRows": 0,
+        "lazyValueCalls": 131072,
+        "leftJoinReplayMaterializations": 0,
+        "semanticNativeCompiles": 1,
+        "unhostedHardDeclines": 0
+      },
+      "iteration": 4,
+      "ledgerAfterBytes": 0,
+      "ledgerBeforeBytes": 0,
+      "memoOwners": [],
+      "queryOrdinal": 12,
+      "rows": 32768,
+      "stage": "measurement"
+    }
+  ],
+  "route": [
+    {
+      "count": 1,
+      "label": "ORDER BY dispatch",
+      "mode": "normal",
+      "point": "ORDER",
+      "strategy": "orderedFactorizedSort"
+    }
+  ],
+  "scope": "The fixed 8+5 sequence measures normal AUTO alternative-source learning, not converged post-learning state. No failed-cohort latency/allocation estimate is computed or pooled. New exact13-query pilots and a sealed ordinal profile are required before a new cohort.",
+  "sourceAttribution": "Three ENUM branches are keyed by unique subject and open one subject+predicate probe per row; adjacency work <=1.125 versus LMDB work >=9 makes the +/-25% intervals disjoint. Four constant-predicate compilation proofs call exactPredicateCount, each recording one hit. The single full-root scan has overlapping intervals, so RuntimeEvidence.MIN_COMPLETIONS=8 enables alternative sampling. NamespaceAdjacencyObservation only subtracts cumulative counters; it has no warmup reset. This identifies the inner access by source reasoning, not a per-call trace captured in raw records.",
+  "sourceEvidence": [
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStatementAccessArbiter.java",
+      "sha256": "969fb24034549f4507d02786d70cd5db1d95777119c08d71c72702719ecb05b1"
+    },
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbSailStore.java",
+      "sha256": "47fa0903f1c4def1d0dc3bd90299bd9ac0a0b3e180c35ae3323f25922c7a40e2"
+    },
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbDirectAdjacencyStore.java",
+      "sha256": "d778823e6ffbb3ba9a8365b6475c994443ef527ff02e373b905ec1cb31f909d1"
+    },
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeAggregatePatternCompiler.java",
+      "sha256": "99e357f8df2d64d82337596101f577af98900dc8f17279b9fe4a3f1d79bcc28b"
+    },
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeFactorizedRows.java",
+      "sha256": "ae1d696b2c7ca17cd8046fb0b36448932117753c1195f1751e896173b6449b68"
+    },
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeChunkPipeline.java",
+      "sha256": "aad68b60497dac3a662292c42e07d08100ad7875c52fbf62f8a0df881d7bf82a"
+    },
+    {
+      "path": "core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativePatternPlan.java",
+      "sha256": "2432c84f43a024c6aa4a0804aeca664f59100fbaa4c3f9cbe88cdafc42b0e39a"
+    },
+    {
+      "path": "result-coordinate-evidence/retention-followup/recovery/runtime-v1/common/src/org/eclipse/rdf4j/sail/lmdb/NamespaceAdjacencyObservation.java",
+      "sha256": "90825b5f4c5d111e00533e53d7339da1be472b3e22f137086043b2216ced2752"
+    }
+  ],
+  "structuralBound": {
+    "boundChildLookupHits": 98304,
+    "exactPredicatePlanningLookupHits": 4,
+    "formula": "(projectionWidth - 1) * fullRows + projectionWidth",
+    "minimumAdjacencyLookupHits": 98308,
+    "rows": 32768,
+    "width": 4
+  },
+  "timingOrAllocationAnalysisPerformed": false,
+  "validQueryRecords": 13
+}

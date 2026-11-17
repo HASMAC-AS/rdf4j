@@ -14,7 +14,8 @@ The user will receive reproducible query fixtures, complete source and a patch, 
 - [x] (2026-11-17 10:52Z) Restore toolchain and perform root installs.
 - [x] (2026-11-17 10:54Z) Capture failing contract before minimal treatment.
 - [x] (2026-11-17 11:24Z) Qualify final fixtures and GC routes.
-- [in_progress] Freeze protocol and run matched comparisons.
+- [x] (2026-11-17) Qualify complete warmup adjacency accounting.
+- [in_progress] Freeze revised protocol and compare.
 - [ ] Audit evidence and publish complete checkpoint.
 
 ## Surprises & Discoveries
@@ -49,6 +50,12 @@ All ten natural-GC diagnostic JVMs finished successfully without explicit collec
 
 The prospective comparison is frozen at `comparison-v1/protocol.json`, SHA-256 `8a2c2fd92799ae667965cf3bb1af86b12d47d4e6af6ce83f3ad13134318b6949`. It schedules 54 fresh JVMs, each with eight warmups and five measurements, across three fixtures and three arms with all six arm permutations and balanced fixture positions. The exact code and protocol will be checkpointed before the first timing JVM. All five measured queries and all six process pairs enter the prespecified median and mean-sensitivity estimates.
 
+The qualified checkpoint was published as `4a5f982b2ced59966af63084abf2a353ce994650`, with exact tree equality to local checkpoint `0ed2b3009e0e965608bbd4802a71bc59ee33407a`. The first comparison JVM exited successfully with all 13 row counts/checksums correct. Its five measurement queries recorded 98,308 adjacency lookup hits, one fewer than the 98,309 minimum inferred from the short qualification pilots; all eight warmups recorded 98,309. ACTIVE state and data revisions remained unchanged. The validator permanently failed comparison-v1, which is preserved and contributes no accepted timings. No latency or allocation values from this failed attempt have been analyzed. Independent review is tracing the extra lookup and full 13-query exact qualification will precede a new frozen cohort. Frozen v1 files will not be edited or reused as replacement samples.
+
+The independent source reviews and nine fresh full-length exact pilots explain and reproduce the transition. Four compiler metadata lookups plus three bound child probes for each of 32,768 rows give a structural floor of 98,308. A preferred adjacency root scan adds one hit for the first eight queries. The store-scoped statement-access arbiter then deliberately samples the LMDB alternative; this normal AUTO selection removes that root hit without a fallback or outer strategy change. All 117 exact queries reproduced the complete 13-query profile. The additive revision-2 definitions/qualification retain the same runtime, fixtures, JVM settings and estimators, and add a sealed exact profile check after every completed process. The primary runner and analyzer remain unchanged. Queries 9–13 measure the same AUTO alternative-source learning phase in every arm, not fully converged source selection.
+
+Revision 2 is frozen at `comparison-v2/protocol.json`, SHA-256 `239c97fd23424922cde7b91ad507bf3dad4cdc0629f411fef63078fa6266149c`, with no JVM launched. Its exact profile checker passed an unmodified synthetic sequence and rejected a changed query-9 adjacency count after the synthetic raw seal was recomputed. The empty-prefix check also passed against the real frozen protocol, confirming the checker/qualification source bindings before a timing process can run.
+
 ## Context and Orientation
 
 Work from `/workspace/scratch/73b19a6d6f5c/rdf4j` on branch `GH-0000-lmdb-lazy-result-coordinates`. The native engine implementation lives under `core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation`. Experiments use isolated compiled class directories placed before frozen module JARs on the Java classpath, so all comparison arms share the same dependency bytes. The existing direct memo implementation is preserved at `result-coordinate-evidence/retention-followup/implementation-src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java`; its companion materializer, projected binding set, statistics, launcher, contract runners, and runtime identity scripts are in the same study directory. Read those files before creating new copies, and never modify a frozen old file to accommodate a new runtime.
@@ -75,11 +82,13 @@ From the repository root, after restoring Java and Maven, record their paths and
 
 If dependencies are absent, retry exactly once without `-o` and then return offline. If the failure is unrelated to dependency resolution, retry without `-T 1C`. The previous checkpoint had an unrelated missing Spring Kotlin 2.3.21 dependency; do not claim a full reactor success unless observed. Do not run tests with `-am` or `-q`. The isolated Surefire runner may be adapted from `retention-followup/contracts/run_contracts.py`, using a new attempt directory and the selected current runtime paths. Append initial failing evidence to root `initial-evidence.txt` without erasing older entries.
 
-The primary protocol was frozen with `benchmark/run_comparison.py freeze`, selecting `benchmark/fixture-definitions-v1.json`, `benchmark/runtime-v2/classpath.txt`, and `benchmark/qualification/final-runtime-v1.json`. Frozen source scopes are `implementation-src`, `benchmark/src`, `benchmark/PROTOCOL.md`, `compile_support.py`, and `contracts/test-src`, in addition to the runner's explicit analyzer/oracle/qualification inputs. Mutable reports and reviews are outside these scopes. The runner verifies complete runtime and JDK hashes before and after each Java process.
+The rejected first protocol was frozen with `benchmark/run_comparison.py freeze`, selecting `benchmark/fixture-definitions-v1.json`, `benchmark/runtime-v2/classpath.txt`, and `benchmark/qualification/final-runtime-v1.json`. Revision 2 uses the additive `fixture-definitions-v2.json`, `qualification/final-runtime-v2.json`, `PROTOCOL-v2.md`, and `reviews/check_qualified_route_profile_v2.py`; implementation, classpath, runner, analyzer and JDK bytes remain unchanged. Frozen source scopes include `implementation-src`, `benchmark/src`, the selected protocol document, `compile_support.py`, `contracts/test-src`, and the exact profile checker, in addition to the runner's explicit analyzer/oracle/qualification inputs. Mutable reports and other reviews are outside these scopes. The runner verifies complete runtime and JDK hashes before and after each Java process.
 
 After the qualified checkpoint is published, execute exactly one slot at a time and observe its successful terminal result before the next invocation:
 
-    python3 result-coordinate-evidence/admission-followup/benchmark/run_comparison.py next --cohort result-coordinate-evidence/admission-followup/comparison-v1 --slot-released
+    python3 result-coordinate-evidence/admission-followup/benchmark/run_comparison.py next --cohort result-coordinate-evidence/admission-followup/comparison-v2 --slot-released
+
+After each successful process, run `reviews/check_qualified_route_profile_v2.py --cohort result-coordinate-evidence/admission-followup/comparison-v2 --allow-incomplete --output FRESH_PROFILE_RECEIPT.json`. Require its success before launching another JVM. After all 54 processes, repeat without `--allow-incomplete` before latency analysis.
 
 After all 54 slots seal successfully, use the runner's `audit` command and the independently implemented `reviews/audit_admission_cohort.py`. No timing result may be accepted from a failed or incomplete cohort, and no replacement slots are allowed.
 
@@ -108,3 +117,7 @@ Revision note (2026-11-17 10:45Z): created this plan after checkpoint verificati
 Revision note (2026-11-17): corrected the exact-edge explanation to allow cold-prefix collisions, recorded successful exact toolchain recovery, and separated ordered-result retention from natural-GC diagnostics before any timing.
 
 Revision note (2026-11-17 11:24Z): closed the nine final exact pilots and ten natural-GC runs, recorded the prospective 54-JVM protocol and exact reproduction command, and advanced the sole active step to checkpointing and running the comparison.
+
+Revision note (2026-11-17): stopped comparison-v1 after its first JVM exposed a one-lookup adjacency qualification mismatch. Preserved the failed cohort, moved the sole active step to full warmup accounting qualification, and required a newly frozen complete cohort with no replacement or pooled timings.
+
+Revision note (2026-11-17): completed 117 full-sequence exact qualification queries, explained the normal AUTO exploration transition from source, and strengthened the revised protocol with an exact per-ordinal route-profile check. The sole active step is freezing/checkpointing and running the fresh complete comparison.
