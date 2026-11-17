@@ -1,0 +1,75 @@
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn
+Java version: 25.0.5, vendor: Eclipse Adoptium, runtime: /workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.18.57", arch: "amd64", family: "unix"
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.eclipse.rdf4j:rdf4j-sail-lmdb >------------------
+[INFO] Building RDF4J: LmdbStore 6.2.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- surefire:3.6.1:test (default-cli) @ rdf4j-sail-lmdb ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+21:08:02,201 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+21:08:02,202 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7fe083b1 - No custom configurators were discovered as a service.
+21:08:02,203 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7fe083b1 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:08:02,204 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7fe083b1 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:08:02,205 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/red-small-v1/test-classes/logback-test.xml]
+21:08:02,290 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+21:08:02,290 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+21:08:02,354 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+21:08:02,366 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@23c388c2 - No contradictions in caller extraction instruction were detected
+21:08:02,368 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+21:08:02,368 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+21:08:02,377 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+21:08:02,436 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+21:08:02,436 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+21:08:02,436 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+21:08:02,438 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+21:08:02,438 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+21:08:02,438 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@486be205 - End of configuration.
+21:08:02,440 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@f713686 - Registering current configuration as safe fallback point
+21:08:02,443 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7fe083b1 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 236 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.497 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary -- Time elapsed: 0.466 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Fixed growth must keep the original table] 
+expected: 4096
+ but was: 8192
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary(NativeDirectValueMemoGrowthContractTest.java:81)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   NativeDirectValueMemoGrowthContractTest.fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary:81 [Fixed growth must keep the original table] 
+expected: 4096
+ but was: 8192
+[INFO] 
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.583 s
+[INFO] Finished at: 2026-11-17T21:08:02+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.1:test (default-cli) on project rdf4j-sail-lmdb: There are test failures.
+[ERROR] 
+[ERROR] See /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/red-small-v1/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

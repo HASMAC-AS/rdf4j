@@ -433,3 +433,113 @@ Primary audit: result-coordinate-evidence/admission-followup/comparison-v2/audit
 All 468 memo owners opened/closed; all ledger endpoints zero. 78 cutoffs (late initial only), 624 resizes; no collected misses, invalidations, unsupported values, reservation refusals or post-close array charges.
 Late always/initial paired latency 1.135265102917428, prescribed mean sensitivity 1.054137; Java allocation ratio 0.9752996560878666. Late always/ordinary latency 1.2219967180492461, mean sensitivity 1.052751; allocation 0.9743021364278929. No causal resize-time or general production-performance claim.
 Complete source-v2: 139 regular files, 41 Java/35 Python; SHA-256 831feacaf27d260da3c8b0c53bd2503b1a4d9000b7f5662490a940d024d70bb0. Full archive readback and complete/admission-only patch reconstruction plus git apply checks passed.
+
+Growth root build root-offline-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -Dmaven.compiler.showWarnings=false -T 1C -o -Dmaven.repo.local=.m2_repo -Pquick clean install
+Log: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/recovery/root-offline-v1/maven-build.log
+Exit: 1
+[INFO] RDF4J: LmdbStore ................................... SUCCESS [01:15 min]
+[ERROR] dependency: org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 has not been downloaded from it before.
+[ERROR] dependency: org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 has not been downloaded from it before.
+
+Growth root build root-online-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -Dmaven.compiler.showWarnings=false -T 1C -Dmaven.repo.local=.m2_repo -Pquick clean install
+Log: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/recovery/root-online-v1/maven-build.log
+Exit: 1
+[INFO] RDF4J: LmdbStore ................................... SUCCESS [01:09 min]
+[ERROR] Failed to read artifact descriptor for org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21
+[ERROR] 	Caused by: The following artifacts could not be resolved: org.jetbrains.kotlin:kotlin-stdlib:pom:2.3.21 (absent): Could not transfer artifact org.jetbrains.kotlin:kotlin-stdlib:pom:2.3.21 from/to central (https://repo.maven.apache.org/maven2): repo.maven.apache.org: Temporary failure in name resolution
+[ERROR] dependency: org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 (compile)
+[ERROR] 	Could not transfer artifact org.jetbrains.kotlin:kotlin-stdlib:jar:2.3.21 from/to central (https://repo.maven.apache.org/maven2): repo.maven.apache.org
+
+Growth contracts red-small-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/red-small-v1/pom.xml -Dtest=NativeDirectValueMemoGrowthContractTest#fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/red-small-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.497 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+
+Growth contracts red-all-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/red-all-v1/pom.xml -Dtest=NativeDirectValueMemoGrowthContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/red-all-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+Tests run: 12, Failures: 7, Errors: 0, Skipped: 0, Time elapsed: 0.811 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+
+Growth contracts green-growth-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/green-growth-v1/pom.xml -Dtest=NativeDirectValueMemoGrowthContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/green-growth-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.914 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+
+Growth contracts green-admission-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/green-admission-v1/pom.xml -Dtest=NativeDirectValueMemoAdmissionContractTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical -Drdf4j.lmdb.nativeValueMemo.growth=adaptive surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/green-admission-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.914 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest
+
+Growth contracts qualified-default-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-default-v1/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest,NativeDirectValueMemoContractTest,NativeDirectValueMemoIntegrationTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical -Drdf4j.lmdb.nativeValueMemo.enabled=false -Drdf4j.lmdb.nativeValueMemo.retention=strong -Drdf4j.lmdb.nativeValueMemo.growth=adaptive surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-default-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.399 s -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.569 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.208 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.203 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.162 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.038 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 40, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.194 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.123 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.069 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.080 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+Growth contracts qualified-weak-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-weak-v1/pom.xml -Dtest=NativeDirectValueMemoContractTest#repeatedIdAndFullMaskReuseAcrossCallers+fullMasksStayDistinctEvenWhenTheyShareACacheBank+unknownSemanticVersionsAreNeverAdmitted+semanticMutationRejectsTheOldRepresentative+changedInternalIdRejectsTheEntryWithoutAVersionChange+changedRevisionRejectsTheEntryWithoutAVersionChange+changedRevisionOwnerRejectsTheEntryEvenWithTheSameRevisionNumber+coldValueRemainsAHitAfterInitializationAndEquivalentIdentityReplacement+aConflictingKeyReplacesOnlyItsDirectMappedEntry+lowHitWarmupDisablesAtTheFirst8192ProbeBoundary+delayedRepetitionAfterTheCutoffRemainsUncached+cumulativeReuseAndCollisionPressureGrowOnlyFrom16384Probes+repeatedGrowthStopsAt65536Entries+initialReservationRefusalDisablesWithoutChangingResults+growthReservationRefusalReleasesTheOldTableAndFallsBack+clearingKeepsCapacityAndHistoryButDropsEntries+closeIsIdempotentAndSafeAfterTheLedgerClosesFirst+missAndAdmissionDoNotInitializeColdPayloads+decodedPayloadGrowthDemonstratesTheArrayOnlyAccountingLimit,NativeDirectValueMemoIntegrationTest,NativeDirectValueMemoRetentionContractTest,LmdbNativeIrFactorCoordinateTransportTest#compiledIrPreservesAliasedUnionAndNestedOptionalBags+interpretedIrPreservesAliasedUnionAndNestedOptionalBags+capturedFirstRowRemainsReadableAfterEarlyClose+interpretedCapturedFirstRowRemainsReadableAfterEarlyClose+compiledCapturedFirstRowRemainsReadableAfterCancellationAndClose+interpretedCapturedFirstRowRemainsReadableAfterCancellationAndClose+compiledCancellationRacingWithCloseReleasesTheLiveCoordinateLedger+interpretedCancellationRacingWithCloseReleasesTheLiveCoordinateLedger -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical -Drdf4j.lmdb.nativeValueMemo.enabled=true -Drdf4j.lmdb.nativeValueMemo.retention=weak -Drdf4j.lmdb.resultCoordinateTransport=off -Drdf4j.lmdb.nativeValueMemo.admission=initial -Drdf4j.lmdb.nativeValueMemo.growth=adaptive surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-weak-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.426 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.080 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.034 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.370 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+
+Growth contracts qualified-adaptive-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-adaptive-v1/pom.xml -Dtest=NativeDirectValueMemoIntegrationTest,NativeDirectValueMemoRetentionContractTest,LmdbNativeIrFactorCoordinateTransportTest#compiledIrPreservesAliasedUnionAndNestedOptionalBags+interpretedIrPreservesAliasedUnionAndNestedOptionalBags+capturedFirstRowRemainsReadableAfterEarlyClose+interpretedCapturedFirstRowRemainsReadableAfterEarlyClose+compiledCapturedFirstRowRemainsReadableAfterCancellationAndClose+interpretedCapturedFirstRowRemainsReadableAfterCancellationAndClose+compiledCancellationRacingWithCloseReleasesTheLiveCoordinateLedger+interpretedCancellationRacingWithCloseReleasesTheLiveCoordinateLedger -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical -Drdf4j.lmdb.nativeValueMemo.enabled=true -Drdf4j.lmdb.nativeValueMemo.retention=weak -Drdf4j.lmdb.resultCoordinateTransport=off -Drdf4j.lmdb.nativeValueMemo.admission=always -Drdf4j.lmdb.nativeValueMemo.growth=adaptive surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-adaptive-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.499 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.171 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.340 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+
+Growth contracts qualified-fixed-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-fixed-v1/pom.xml -Dtest=NativeDirectValueMemoIntegrationTest,NativeDirectValueMemoRetentionContractTest,LmdbNativeIrFactorCoordinateTransportTest#compiledIrPreservesAliasedUnionAndNestedOptionalBags+interpretedIrPreservesAliasedUnionAndNestedOptionalBags+capturedFirstRowRemainsReadableAfterEarlyClose+interpretedCapturedFirstRowRemainsReadableAfterEarlyClose+compiledCapturedFirstRowRemainsReadableAfterCancellationAndClose+interpretedCapturedFirstRowRemainsReadableAfterCancellationAndClose+compiledCancellationRacingWithCloseReleasesTheLiveCoordinateLedger+interpretedCancellationRacingWithCloseReleasesTheLiveCoordinateLedger -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical -Drdf4j.lmdb.nativeValueMemo.enabled=true -Drdf4j.lmdb.nativeValueMemo.retention=weak -Drdf4j.lmdb.resultCoordinateTransport=off -Drdf4j.lmdb.nativeValueMemo.admission=always -Drdf4j.lmdb.nativeValueMemo.growth=fixed surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/growth-followup/contracts/validation/qualified-fixed-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.592 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.497 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.535 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+
+Growth pre-timing qualification (2026-11-17)
+Description: compare always-admitted weak memo fixed capacity against adaptive growth with identical ownership and normal AUTO.
+Report: result-coordinate-evidence/growth-followup/benchmark/qualification/final-runtime-v1.json
+Tests run: 265, Failures: 0, Errors: 0, Skipped: 0 (six retained Surefire groups).
+Exact query qualification: 9 JVMs, 117 queries, exact lexical oracle valid, matching ordinal AUTO profiles, zero ledger endpoints.
+Final qualification SHA-256: de7cdee686e3bfe8875829e1ea69d04e316f1bf6638a4bba2508da7abc9b17b9
+Prospective protocol SHA-256: 60d231209b9d3a52e88d3ccc262422a90d342d7daacfe13383ec1a93ad209fe9
+Timing schedule: 54 fresh JVMs, 8 warmups plus 5 measurements each; no timing JVM launched at this checkpoint.
+Plan in_progress: Qualify fixtures and freeze matched comparison.

@@ -1,0 +1,38 @@
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
+@@ -40,6 +40,7 @@
+ 	private final long statisticsOwner;
+ 	private final boolean weakRetention;
+ 	private final boolean alwaysAdmit;
++	private final boolean adaptiveGrowth;
+ 	private WeakReference<ValueStore> latestOwner;
+ 	private long[] ids;
+ 	private long[] versions;
+@@ -81,6 +82,11 @@
+ 		case "always" -> true;
+ 		default -> throw new IllegalArgumentException("Unknown native Value memo admission");
+ 		};
++		adaptiveGrowth = switch (System.getProperty("rdf4j.lmdb.nativeValueMemo.growth", "adaptive")) {
++		case "adaptive" -> true;
++		case "fixed" -> false;
++		default -> throw new IllegalArgumentException("Unknown native Value memo growth");
++		};
+ 		statisticsOwner = NativeDirectValueMemoStatistics.open();
+ 	}
+ 
+@@ -285,12 +291,12 @@
+ 
+ 	private void adapt(long count) {
+ 		if (count == WARMUP_PROBES) {
+-			// Diagnostic ablation: all growth and ownership decisions remain unchanged.
++			// Initial admission remains independent of the growth policy.
+ 			if (!alwaysAdmit && hits < count / 4L) {
+ 				lowHitDisable++;
+ 				disable();
+ 			}
+-		} else if (values.length < MAX_CAPACITY && hits >= count / 4L && collisions >= count / 8L) {
++		} else if (adaptiveGrowth && values.length < MAX_CAPACITY && hits >= count / 4L && collisions >= count / 8L) {
+ 			allocate(values.length << 1);
+ 		}
+ 	}

@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": null,
+      "method": "adaptiveGrowthStillDisablesOnGrowthReservationRefusal"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": null,
+      "method": "closeReleasesFixedTableAndLeavesRetainedValuesReadable"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "[Fixed growth must keep the original table] \nexpected: 4096\n but was: 8192",
+      "method": "fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "[Fixed growth must not request a larger reservation] \nExpecting value to be false but was true",
+      "method": "fixedGrowthKeepsReusingWhenNoAdditionalReservationIsAvailable"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": null,
+      "method": "fixedGrowthPreservesPermanentInitialReservationRefusal"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": null,
+      "method": "fixedGrowthPreservesTheInitialAdmissionCutoff"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "\nexpected: 4096\n but was: 8192",
+      "method": "fixedGrowthStillChecksFullMasksAndSemanticVersionsAfterAGrowthBoundary"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "[Existing fixed owner keeps its constructor policy] \nexpected: 4096\n but was: 8192",
+      "method": "growthPolicyIsCapturedWhenEachMemoIsCreated"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "\nexpected: 4096\n but was: 32768",
+      "method": "largerCyclicWorkingSetBenefitsFromAdaptiveCapacity"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "[Fixed capacity after tail request 16384] \nexpected: 4096\n but was: 8192",
+      "method": "lateColdHotReuseIsIdenticalWhileFixedGrowthKeepsItsInitialReservation"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": null,
+      "method": "omittedAndExplicitAdaptiveGrowthHaveTheSameBehavior"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest",
+      "error": null,
+      "failure": "\nExpecting code to raise a throwable.",
+      "method": "unknownGrowthPolicyIsRejectedBeforeAnyReservation"
+    }
+  ],
+  "expectedFailures": [
+    "fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary",
+    "fixedGrowthKeepsReusingWhenNoAdditionalReservationIsAvailable",
+    "fixedGrowthStillChecksFullMasksAndSemanticVersionsAfterAGrowthBoundary",
+    "growthPolicyIsCapturedWhenEachMemoIsCreated",
+    "largerCyclicWorkingSetBenefitsFromAdaptiveCapacity",
+    "lateColdHotReuseIsIdenticalWhileFixedGrowthKeepsItsInitialReservation",
+    "unknownGrowthPolicyIsRejectedBeforeAnyReservation"
+  ],
+  "moduleSourcesUnchanged": true,
+  "passed": true,
+  "results": {
+    "errors": 0,
+    "failures": 7,
+    "skipped": 0,
+    "tests": 12
+  },
+  "testProcessExit": 1
+}

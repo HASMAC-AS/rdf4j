@@ -1,0 +1,51 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+-------------------------------------------------------------------------------
+Tests run: 12, Failures: 7, Errors: 0, Skipped: 0, Time elapsed: 0.811 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary -- Time elapsed: 0.029 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Fixed growth must keep the original table] 
+expected: 4096
+ but was: 8192
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthKeeps4096SlotsAtTheFirstGrowthBoundary(NativeDirectValueMemoGrowthContractTest.java:81)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthKeepsReusingWhenNoAdditionalReservationIsAvailable -- Time elapsed: 0.056 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Fixed growth must not request a larger reservation] 
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthKeepsReusingWhenNoAdditionalReservationIsAvailable(NativeDirectValueMemoGrowthContractTest.java:237)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthStillChecksFullMasksAndSemanticVersionsAfterAGrowthBoundary -- Time elapsed: 0.043 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 4096
+ but was: 8192
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.fixedGrowthStillChecksFullMasksAndSemanticVersionsAfterAGrowthBoundary(NativeDirectValueMemoGrowthContractTest.java:280)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.growthPolicyIsCapturedWhenEachMemoIsCreated -- Time elapsed: 0.006 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Existing fixed owner keeps its constructor policy] 
+expected: 4096
+ but was: 8192
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.growthPolicyIsCapturedWhenEachMemoIsCreated(NativeDirectValueMemoGrowthContractTest.java:163)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.largerCyclicWorkingSetBenefitsFromAdaptiveCapacity -- Time elapsed: 0.087 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 4096
+ but was: 32768
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.largerCyclicWorkingSetBenefitsFromAdaptiveCapacity(NativeDirectValueMemoGrowthContractTest.java:147)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.lateColdHotReuseIsIdenticalWhileFixedGrowthKeepsItsInitialReservation -- Time elapsed: 0.083 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Fixed capacity after tail request 16384] 
+expected: 4096
+ but was: 8192
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.lateColdHotReuseIsIdenticalWhileFixedGrowthKeepsItsInitialReservation(NativeDirectValueMemoGrowthContractTest.java:116)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.unknownGrowthPolicyIsRejectedBeforeAnyReservation -- Time elapsed: 0.004 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expecting code to raise a throwable.
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoGrowthContractTest.unknownGrowthPolicyIsRejectedBeforeAnyReservation(NativeDirectValueMemoGrowthContractTest.java:180)
+
