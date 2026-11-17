@@ -1,0 +1,24 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+-------------------------------------------------------------------------------
+Tests run: 10, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 4.779 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest.compiledIrReusesFactorValuesBeyondTheConsecutivePerSlotBaseline -- Time elapsed: 0.572 s <<< FAILURE!
+java.lang.AssertionError: 
+[IR coordinate hits must beat the one-last-ID-per-projection baseline; tier=COMPILED, calls=74221, baseline=74221] 
+Expecting actual:
+  74221L
+to be less than:
+  74221L 
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest.assertIrCoordinateReuse(LmdbNativeIrFactorCoordinateTransportTest.java:415)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest.compiledIrReusesFactorValuesBeyondTheConsecutivePerSlotBaseline(LmdbNativeIrFactorCoordinateTransportTest.java:195)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest.interpretedIrReusesFactorValuesBeyondTheConsecutivePerSlotBaseline -- Time elapsed: 0.419 s <<< FAILURE!
+java.lang.AssertionError: 
+[IR coordinate hits must beat the one-last-ID-per-projection baseline; tier=INTERPRETED, calls=74221, baseline=74221] 
+Expecting actual:
+  74221L
+to be less than:
+  74221L 
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest.assertIrCoordinateReuse(LmdbNativeIrFactorCoordinateTransportTest.java:415)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest.interpretedIrReusesFactorValuesBeyondTheConsecutivePerSlotBaseline(LmdbNativeIrFactorCoordinateTransportTest.java:200)
+

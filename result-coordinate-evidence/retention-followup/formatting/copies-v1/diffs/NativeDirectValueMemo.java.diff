@@ -1,0 +1,19 @@
+--- result-coordinate-evidence/retention-followup/implementation-src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
++++ src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
+@@ -24,11 +24,11 @@
+ import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue.InternalIdentity;
+ 
+ /**
+- * Experimental iteration-local strong/weak memo, confined by its materializer's monitor. The materializer must certify the
+- * source, result view, and exposure scope before lookup, and clear or disable this table when those boundaries change.
+- * Five arrays are charged in both modes. Weak mode also reserves a conservative per-slot reference allowance.
+- * Strong mode still excludes payloads and revision graphs; weak mode owns no strong path to either.
+- * Metadata estimates assume HotSpot object alignment 8 and compressed class pointers, pinned by the experiment.
++ * Experimental iteration-local strong/weak memo, confined by its materializer's monitor. The materializer must certify
++ * the source, result view, and exposure scope before lookup, and clear or disable this table when those boundaries
++ * change. Five arrays are charged in both modes. Weak mode also reserves a conservative per-slot reference allowance.
++ * Strong mode still excludes payloads and revision graphs; weak mode owns no strong path to either. Metadata estimates
++ * assume HotSpot object alignment 8 and compressed class pointers, pinned by the experiment.
+  */
+ final class NativeDirectValueMemo implements AutoCloseable {
+ 

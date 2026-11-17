@@ -1,0 +1,12 @@
+--- result-coordinate-evidence/retention-followup/contracts/src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoRetentionContractTest.java
++++ src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoRetentionContractTest.java
+@@ -169,7 +169,8 @@
+ 				assertThat(retained.getSemanticVersion()).isEqualTo(version);
+ 				assertCollected("Old non-null owner must be collectible before probing the reassigned value", obsolete);
+ 				assertThat(fixture.memo.find(ID, MASK))
+-						.as("A cleared non-null owner witness is not an admission with a null owner").isNull();
++						.as("A cleared non-null owner witness is not an admission with a null owner")
++						.isNull();
+ 				assertThat(fixture.resolve(ID, MASK)).isNotSameAs(retained);
+ 				assertThat(fixture.sourceCalls).isEqualTo(2L);
+ 			} finally {

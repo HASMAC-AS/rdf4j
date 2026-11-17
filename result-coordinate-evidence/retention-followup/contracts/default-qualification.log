@@ -1,0 +1,869 @@
+compile exit 0
+tests exit 1
+
+Retention contracts qualified-default-v1
+Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn/bin/mvn -B -ntp -o -Dmaven.repo.local=.m2_repo -Pquick -DskipTests=false -f /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/retention-followup/contracts/validation/qualified-default-v1/pom.xml -Dtest=NativeResultMaterializerTest,LmdbNativeProjectionValueReuseTest,LmdbNativeIrFactorCoordinateTransportTest,LmdbNativeIrOptionalFanoutCoordinateTest,LmdbNativePackedFtreeTest#delayedPackedRowsFallBackAfterAdvanceAndIterationClose,KernelResultCoordinatesTest,KernelResultCoordinateRepresentationsTest,KernelResultRowSelectionsTest,NativeDirectValueMemoContractTest,NativeDirectValueMemoIntegrationTest -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=1G -Dsurefire.runOrder=alphabetical -Drdf4j.lmdb.nativeValueMemo.enabled=false -Drdf4j.lmdb.nativeValueMemo.retention=strong -Drdf4j.lmdb.resultCoordinateTransport=off surefire:test
+Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/retention-followup/contracts/validation/qualified-default-v1/target/surefire-reports
+Test set: org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Tests run: 2, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 3.160 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Tests run: 10, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 4.779 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.016 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.198 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.330 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.037 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Tests run: 40, Failures: 15, Errors: 0, Skipped: 0, Time elapsed: 0.151 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.072 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Tests run: 19, Failures: 19, Errors: 0, Skipped: 0, Time elapsed: 0.031 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest
+
+{
+  "passed": false,
+  "results": {
+    "tests": 138,
+    "failures": 38,
+    "errors": 0,
+    "skipped": 0
+  },
+  "expectedFailures": [],
+  "cases": [
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest",
+      "method": "compiledOptionalFanoutPreservesTheExactBagAndReusesSourcesAcrossFills",
+      "failure": "[the 1x1 fixture has 49 original projected source cells: 3 prefix, 3 diagnoses, 6 severity, 4 drugs, 8 routes, 16 route-language pairs, 3 procedures, 2 authors, 2 departments, and 2 statuses; tier=COMPILED] \nexpected: 49L\n but was: 2772L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.benchmark.LmdbNativeIrOptionalFanoutCoordinateTest",
+      "method": "interpretedOptionalFanoutPreservesTheExactBagAndReusesSourcesAcrossFills",
+      "failure": "[the 1x1 fixture has 49 original projected source cells: 3 prefix, 3 diagnoses, 6 severity, 4 drugs, 8 routes, 16 route-language pairs, 3 procedures, 2 authors, 2 departments, and 2 statuses; tier=INTERPRETED] \nexpected: 49L\n but was: 2772L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "capturedFirstRowRemainsReadableAfterEarlyClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "compiledCancellationRacingWithCloseReleasesTheLiveCoordinateLedger",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "compiledCapturedFirstRowRemainsReadableAfterCancellationAndClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "compiledIrPreservesAliasedUnionAndNestedOptionalBags",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "compiledIrReusesFactorValuesBeyondTheConsecutivePerSlotBaseline",
+      "failure": "[IR coordinate hits must beat the one-last-ID-per-projection baseline; tier=COMPILED, calls=74221, baseline=74221] \nExpecting actual:\n  74221L\nto be less than:\n  74221L ",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "interpretedCancellationRacingWithCloseReleasesTheLiveCoordinateLedger",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "interpretedCapturedFirstRowRemainsReadableAfterCancellationAndClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "interpretedCapturedFirstRowRemainsReadableAfterEarlyClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "interpretedIrPreservesAliasedUnionAndNestedOptionalBags",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest",
+      "method": "interpretedIrReusesFactorValuesBeyondTheConsecutivePerSlotBaseline",
+      "failure": "[IR coordinate hits must beat the one-last-ID-per-projection baseline; tier=INTERPRETED, calls=74221, baseline=74221] \nExpecting actual:\n  74221L\nto be less than:\n  74221L ",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativePackedFtreeTest",
+      "method": "delayedPackedRowsFallBackAfterAdvanceAndIterationClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "aCompileScopedCarrierCanStillDecodeStoredValues",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "authorityChangesAndErrorsReleaseRetainedDecodedValues",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "closingTheEvaluationReleasesItsDecodedRuntimeValues",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "decodedFootprintCountsStringsAndNumericStorageConservatively",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "decodedInputAccountingUsesTheSharedLedgerAndReleasesItsReservation",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "failedResolutionDoesNotCacheAnUnpublishedValue",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "independentExpressionsShareTheDecodedValueOfAnUnchangedSlot",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "inheritedAccountingSharesTheQueryCapButKeepsEachScratchMemoIndependent",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "refusedDecodedInputMemoReturnsTheExactValueWithoutRetainingIt",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "replacingAnAccountedValueTracksTheCurrentCacheHighWater",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "restoredSlotsAndDifferentCodecsCannotReuseAnotherValuesDecode",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeProjectionValueReuseTest",
+      "method": "unknownTripleOwnershipIsNeverRetainedByAnAccountedMemo",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "aConflictingKeyReplacesOnlyItsDirectMappedEntry",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "changedInternalIdRejectsTheEntryWithoutAVersionChange",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "changedRevisionOwnerRejectsTheEntryEvenWithTheSameRevisionNumber",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "changedRevisionRejectsTheEntryWithoutAVersionChange",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "clearingKeepsCapacityAndHistoryButDropsEntries",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "closeIsIdempotentAndSafeAfterTheLedgerClosesFirst",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "coldValueRemainsAHitAfterInitializationAndEquivalentIdentityReplacement",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "cumulativeReuseAndCollisionPressureGrowOnlyFrom16384Probes",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "decodedPayloadGrowthDemonstratesTheArrayOnlyAccountingLimit(TestReporter)",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "delayedRepetitionAfterTheCutoffRemainsUncached",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "fullMasksStayDistinctEvenWhenTheyShareACacheBank",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "growthReservationRefusalReleasesTheOldTableAndFallsBack",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "initialReservationRefusalDisablesWithoutChangingResults",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "lowHitWarmupDisablesAtTheFirst8192ProbeBoundary",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "missAndAdmissionDoNotInitializeColdPayloads",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "repeatedGrowthStopsAt65536Entries",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "repeatedIdAndFullMaskReuseAcrossCallers",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "semanticMutationRejectsTheOldRepresentative",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "strongOwnershipEndsWhenTheMemoCloses",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoContractTest",
+      "method": "unknownSemanticVersionsAreNeverAdmitted",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "aMissPublishesBeforeALaterColumnChecksTheSameHashSlot",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "aNewOwnerAndAnUncertifiedSourceDoNotShareCachedValues",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "acceptedRowsShareValuesAcrossDifferentProjectionColumns",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "aliasesDoNotCollapseDifferentFullMasksInTheSameCacheBank",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "captureRepairsAHitWhenItsWitnessChangesTheSourceView",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "changedExposureAndDifferentSourceCannotReuseAnOldEntry",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "collectionSharesValuesAndDetachedRowsRemainReadableAfterClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "disabledPropertyKeepsTheOrdinaryColumnCache",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "individualReadsRepairAHitWhenTheSourceViewChanges",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "individualValueReadsUseTheSameIterationMemo",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "standaloneReadsPreserveTheSourceOwnershipHandoffBeforeReusingExternalValues",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoIntegrationTest",
+      "method": "wideProjectionUsesTheSharedTableAndReleasesItsScratch",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "acceptedCaptureUsesItsEvaluationLedgerAndCloseReleasesReservations",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "acceptedReplayHitAdmitsItsOriginalFactorCoordinate",
+      "failure": "\nExpecting actual:\n  [Lookup[id=42, mask=4], Lookup[id=43, mask=4], Lookup[id=42, mask=4]]\nto contain exactly (and in same order):\n  [Lookup[id=42, mask=4], Lookup[id=43, mask=4]]\nbut some elements were not expected:\n  [Lookup[id=42, mask=4]]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "cacheAdmissionDoesNotReclaimSharedQueryMemory",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "cacheStateIsPerEvaluationAndChangesWithTheResultValueScope",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "changedSourceMaskRefreshesTheCoordinateNamespaceMemo",
+      "failure": "\nexpected: 1L\n but was: 0L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "clearedWeakReferentFallsBackAndIncrementsTheWeakMissCount(TestReporter)",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "coldNativeLiteralInitializedWithCoreDatatypeRemainsReusable",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "coldNativeLiteralStaysLazyAndUnsupportedInitializationDeclinesReuse",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "compiledProjectionAliasesRespectQueryPositionMasksAcrossAcceptedRows",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "dynamicDuplicateTargetsKeepLastBoundOccurrenceAndLeaveUnboundTargetsAbsent",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPageAdmissionDoesNotReclaimSharedQueryMemory",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPageAdmissionRefusalFallsBackAndReleasesItsLedger",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPageMutationRejectsOldWitnessAndRepublishesReplacement",
+      "failure": "\nExpecting actual:\n  [Lookup[id=42, mask=4],\n    Lookup[id=43, mask=4],\n    Lookup[id=42, mask=4],\n    Lookup[id=42, mask=4]]\nto contain exactly (and in same order):\n  [Lookup[id=42, mask=4], Lookup[id=43, mask=4], Lookup[id=42, mask=4]]\nbut some elements were not expected:\n  [Lookup[id=42, mask=4]]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPagePayloadAdmissionDoesNotReclaimSharedQueryMemory",
+      "failure": "\nExpecting actual:\n  672L\nto be greater than:\n  672L\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPagePromotionPreservesAllLongPositionCells",
+      "failure": "\nexpected: 18368L\n but was: 672L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPageRetirementAndLedgerCloseReleaseMixedPageRepresentations",
+      "failure": "\nExpecting actual:\n  672L\nto be greater than:\n  672L\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPageReusesClearedCellAfterSamePositionWitnessReplacement",
+      "failure": "\nExpecting actual:\n  [Lookup[id=42, mask=4], Lookup[id=42, mask=4], Lookup[id=42, mask=4]]\nto contain exactly (and in same order):\n  [Lookup[id=42, mask=4], Lookup[id=42, mask=4]]\nbut some elements were not expected:\n  [Lookup[id=42, mask=4]]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPageWeakMissUsesTheCapturedMember(TestReporter)",
+      "failure": "\nexpected: 1L\n but was: 0L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPagesDistinguishPositiveNamespacesWithIdenticalCoordinates",
+      "failure": "\nExpecting actual:\n  _:factor-namespace-second\nand:\n  _:factor-namespace-first\nto refer to the same object",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "factorPagesUseLongMemberPositionsAndRetireOnActivationChanges",
+      "failure": "\nExpecting actual:\n  [Lookup[id=42, mask=4], Lookup[id=43, mask=4], Lookup[id=42, mask=4]]\nto contain exactly (and in same order):\n  [Lookup[id=42, mask=4], Lookup[id=43, mask=4]]\nbut some elements were not expected:\n  [Lookup[id=42, mask=4]]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "failedCaptureClearsProvisionalHitsAndAliasesBeforeRetryingTheSameRow",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "legacyCoordinatesDefaultToNamespaceZeroAfterPositiveNamespaceSampling",
+      "failure": "\nexpected: 2L\n but was: 0L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeLiteralDatatypeMutationAvoidsDictionaryIdSpill",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeLiteralDatatypeMutationInvalidatesAnExactSimpleIriChild",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeSemanticMutationInvalidatesTheCachedIdAndColumnValue",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeTripleBNodeMutationInvalidatesTheCachedValueAndInternalId",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeTripleChildMutationAvoidsDictionaryIdSpill",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeTripleWitnessTracksAllMutableSimpleLiteralFieldsIncludingNestedTriples",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "nativeValueWithUnknownSemanticVersionDoesNotSpillItsHistoricalId",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "refusedMaterializerClaimsFallBackWithoutChangingResultsOrRepeatingScopeChecks",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "retiringOneNamespacePreservesAnOverlappingLiveNamespace",
+      "failure": "\nExpecting actual:\n  []\nto contain exactly (and in same order):\n  [201L]\nbut could not find the following elements:\n  [201L]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "scopeChangeDuringAValueWitnessCheckCannotReturnAnOldViewHit",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "simpleIriNamespaceBoundaryMutationDeclinesTheOldStringWitness",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "sourceReportsNamespaceRetirementOnlyAfterItsLastBufferedConsumer",
+      "failure": "\nExpecting actual:\n  []\nto contain exactly (and in same order):\n  [501L]\nbut could not find the following elements:\n  [501L]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "sourcesWithoutAStableResultValueScopeDoNotReuseValues",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "tupleColumnsReuseAcrossOuterMembersAndDescriptorRebind",
+      "failure": "\nExpecting actual:\n  [Lookup[id=201, mask=4],\n    Lookup[id=301, mask=4],\n    Lookup[id=202, mask=4],\n    Lookup[id=302, mask=4],\n    Lookup[id=201, mask=4],\n    Lookup[id=301, mask=4],\n    Lookup[id=202, mask=4],\n    Lookup[id=302, mask=4]]\nto contain exactly (and in same order):\n  [Lookup[id=201, mask=4],\n    Lookup[id=301, mask=4],\n    Lookup[id=202, mask=4],\n    Lookup[id=302, mask=4]]\nbut some elements were not expected:\n  [Lookup[id=201, mask=4],\n    Lookup[id=301, mask=4],\n    Lookup[id=202, mask=4],\n    Lookup[id=302, mask=4]]\n",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "unchangedMiddleFactorAvoidsPerInnerRowCoordinateScansAndKeepsSkippedChanges",
+      "failure": "\nexpected: 4L\n but was: 0L",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "viewChangeBetweenColumnWitnessChecksReResolvesEarlierCacheHits",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "viewChangeDuringCapturePreservesARowLocalValueResolvedBeforeCapture",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest",
+      "method": "wideProjectionRollsBackCacheHitsAndAliasesAcrossTheLongMaskBoundary",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "compactRepresentationsAdmitLessMetadataForRepeatedWideRows",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "copiedWindowsPreserveAliasesUnboundCellsFramesAndBackwardsReads(Transport)[1]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "copiedWindowsPreserveAliasesUnboundCellsFramesAndBackwardsReads(Transport)[2]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "copiedWindowsPreserveAliasesUnboundCellsFramesAndBackwardsReads(Transport)[3]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "offDoesNotAcquireCoordinateMemory",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "recordGrowthRefusalWithdrawsCoordinatesAndReleasesEveryReservation(Transport)[1]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinateRepresentationsTest",
+      "method": "recordGrowthRefusalWithdrawsCoordinatesAndReleasesEveryReservation(Transport)[2]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "collisionChainRemovalsKeepLaterNamespaceAllocationsUsable",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "fatalFrameCapacityDisableRetiresEveryNamespaceAndCloseReleasesTheQueryLedger",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "frameCreatedBeforeFirstManagedNamespaceKeepsItsLaterManagedPins",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "namespaceGrowthRefusalKeepsAdmittedCoordinatesAndRetiresAfterTheirLastConsumer",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "outputWindowLeavesFrameAndSourceBatchOwnershipIndependent",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "outputWindowRetainsEveryPublishedNamespaceUntilItsLastRowIsConsumed",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "repeatedBatchNamespacesKeepExactPinsAcrossSentinelsUnboundCellsAndFrameReplacement",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "repeatedBatchPinsSurviveCollisionDeletionAndGrowthBetweenCalls",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "repeatedNamespacesAndOutOfOrderReleasesKeepWindowOriginsAndChangeMasks",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "restoringAnUnsavedFrameLeavesLiveOriginsUntouched",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "rowsAndFramesRetainRetiringNamespaceUntilBothReleaseIt",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "sparseRetirementReusesOneDirectoryForThousandsOfUniqueNamespaces",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "unknownManagedTokenWithoutDirectoryDisablesFrameOperations(String)[1]",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "unknownManagedTokenWithoutDirectoryDisablesFrameOperations(String)[2]",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "unknownManagedTokenWithoutDirectoryDisablesFrameOperations(String)[3]",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "unknownNamespaceAfterRepeatedBatchTokensWithdrawsTransport(boolean)[1]",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "unknownNamespaceAfterRepeatedBatchTokensWithdrawsTransport(boolean)[2]",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "unmanagedFramesPreserveReplacementPartialRestoreAliasesAndRelease",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultCoordinatesTest",
+      "method": "windowPinsSurviveCollisionDeletionAndNamespaceDirectoryGrowth",
+      "failure": "\nExpecting actual not to be null",
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "aSharedGroupCanBecomeUnboundAndRestoreItsSavedFrame",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "divergenceWithdrawsTheWholeWindowWithoutPublishingParticipation(int)[1]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "divergenceWithdrawsTheWholeWindowWithoutPublishingParticipation(int)[2]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "divergenceWithdrawsTheWholeWindowWithoutPublishingParticipation(int)[3]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "divergenceWithdrawsTheWholeWindowWithoutPublishingParticipation(int)[4]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "divergenceWithdrawsTheWholeWindowWithoutPublishingParticipation(int)[5]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "divergenceWithdrawsTheWholeWindowWithoutPublishingParticipation(int)[6]",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "earlyClosePublishesOnceAndReleasesFramesSidecarsAndBufferedRows",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "independentFanoutGroupsSelectTheirOwnRowsAndReportOnlyOnClose",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "initialAdmissionRefusalDoesNotPublishAnOwner",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "initiallyUnknownCellsStayIndependentAndNewWindowsMayRegroup",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "recordGrowthRefusalReleasesClaimsAndExcludesTheWithdrawnWindow",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "selectionGrowthRefusalPreservesEarlierWindowDiagnosticsAndReleasesClaims",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "sharedSelectionsUseLessWindowMemoryThanPerCellSelectionIndices",
+      "failure": null,
+      "error": null
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelResultRowSelectionsTest",
+      "method": "sharedSourceRowsPreserveAliasesFullWidthCoordinatesAndBackwardsReads",
+      "failure": null,
+      "error": null
+    }
+  ],
+  "testProcessExit": 1,
+  "moduleSourcesUnchanged": true
+}

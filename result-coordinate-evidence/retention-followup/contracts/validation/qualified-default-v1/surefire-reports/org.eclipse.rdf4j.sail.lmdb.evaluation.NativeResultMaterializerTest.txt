@@ -1,0 +1,169 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+-------------------------------------------------------------------------------
+Tests run: 40, Failures: 15, Errors: 0, Skipped: 0, Time elapsed: 0.151 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.acceptedReplayHitAdmitsItsOriginalFactorCoordinate -- Time elapsed: 0.008 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  [Lookup[id=42, mask=4], Lookup[id=43, mask=4], Lookup[id=42, mask=4]]
+to contain exactly (and in same order):
+  [Lookup[id=42, mask=4], Lookup[id=43, mask=4]]
+but some elements were not expected:
+  [Lookup[id=42, mask=4]]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.acceptedReplayHitAdmitsItsOriginalFactorCoordinate(NativeResultMaterializerTest.java:1091)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.changedSourceMaskRefreshesTheCoordinateNamespaceMemo -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.changedSourceMaskRefreshesTheCoordinateNamespaceMemo(NativeResultMaterializerTest.java:925)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageMutationRejectsOldWitnessAndRepublishesReplacement -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  [Lookup[id=42, mask=4],
+    Lookup[id=43, mask=4],
+    Lookup[id=42, mask=4],
+    Lookup[id=42, mask=4]]
+to contain exactly (and in same order):
+  [Lookup[id=42, mask=4], Lookup[id=43, mask=4], Lookup[id=42, mask=4]]
+but some elements were not expected:
+  [Lookup[id=42, mask=4]]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageMutationRejectsOldWitnessAndRepublishesReplacement(NativeResultMaterializerTest.java:1382)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagePayloadAdmissionDoesNotReclaimSharedQueryMemory -- Time elapsed: 0.001 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expecting actual:
+  672L
+to be greater than:
+  672L
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagePayloadAdmissionDoesNotReclaimSharedQueryMemory(NativeResultMaterializerTest.java:1559)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagePromotionPreservesAllLongPositionCells -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 18368L
+ but was: 672L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagePromotionPreservesAllLongPositionCells(NativeResultMaterializerTest.java:614)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageRetirementAndLedgerCloseReleaseMixedPageRepresentations -- Time elapsed: 0.001 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expecting actual:
+  672L
+to be greater than:
+  672L
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageRetirementAndLedgerCloseReleaseMixedPageRepresentations(NativeResultMaterializerTest.java:736)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageReusesClearedCellAfterSamePositionWitnessReplacement -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  [Lookup[id=42, mask=4], Lookup[id=42, mask=4], Lookup[id=42, mask=4]]
+to contain exactly (and in same order):
+  [Lookup[id=42, mask=4], Lookup[id=42, mask=4]]
+but some elements were not expected:
+  [Lookup[id=42, mask=4]]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageReusesClearedCellAfterSamePositionWitnessReplacement(NativeResultMaterializerTest.java:672)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageWeakMissUsesTheCapturedMember(TestReporter) -- Time elapsed: 0.028 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 1L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPageWeakMissUsesTheCapturedMember(NativeResultMaterializerTest.java:1332)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagesDistinguishPositiveNamespacesWithIdenticalCoordinates -- Time elapsed: 0.002 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expecting actual:
+  _:factor-namespace-second
+and:
+  _:factor-namespace-first
+to refer to the same object
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagesDistinguishPositiveNamespacesWithIdenticalCoordinates(NativeResultMaterializerTest.java:850)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagesUseLongMemberPositionsAndRetireOnActivationChanges -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  [Lookup[id=42, mask=4], Lookup[id=43, mask=4], Lookup[id=42, mask=4]]
+to contain exactly (and in same order):
+  [Lookup[id=42, mask=4], Lookup[id=43, mask=4]]
+but some elements were not expected:
+  [Lookup[id=42, mask=4]]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.factorPagesUseLongMemberPositionsAndRetireOnActivationChanges(NativeResultMaterializerTest.java:794)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.legacyCoordinatesDefaultToNamespaceZeroAfterPositiveNamespaceSampling -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 2L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.legacyCoordinatesDefaultToNamespaceZeroAfterPositiveNamespaceSampling(NativeResultMaterializerTest.java:986)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.retiringOneNamespacePreservesAnOverlappingLiveNamespace -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  []
+to contain exactly (and in same order):
+  [201L]
+but could not find the following elements:
+  [201L]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.retiringOneNamespacePreservesAnOverlappingLiveNamespace(NativeResultMaterializerTest.java:893)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.sourceReportsNamespaceRetirementOnlyAfterItsLastBufferedConsumer -- Time elapsed: 0.001 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  []
+to contain exactly (and in same order):
+  [501L]
+but could not find the following elements:
+  [501L]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.sourceReportsNamespaceRetirementOnlyAfterItsLastBufferedConsumer(NativeResultMaterializerTest.java:1032)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.tupleColumnsReuseAcrossOuterMembersAndDescriptorRebind -- Time elapsed: 0.006 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting actual:
+  [Lookup[id=201, mask=4],
+    Lookup[id=301, mask=4],
+    Lookup[id=202, mask=4],
+    Lookup[id=302, mask=4],
+    Lookup[id=201, mask=4],
+    Lookup[id=301, mask=4],
+    Lookup[id=202, mask=4],
+    Lookup[id=302, mask=4]]
+to contain exactly (and in same order):
+  [Lookup[id=201, mask=4],
+    Lookup[id=301, mask=4],
+    Lookup[id=202, mask=4],
+    Lookup[id=302, mask=4]]
+but some elements were not expected:
+  [Lookup[id=201, mask=4],
+    Lookup[id=301, mask=4],
+    Lookup[id=202, mask=4],
+    Lookup[id=302, mask=4]]
+
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.tupleColumnsReuseAcrossOuterMembersAndDescriptorRebind(NativeResultMaterializerTest.java:1165)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.unchangedMiddleFactorAvoidsPerInnerRowCoordinateScansAndKeepsSkippedChanges -- Time elapsed: 0.002 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 4L
+ but was: 0L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultMaterializerTest.unchangedMiddleFactorAvoidsPerInnerRowCoordinateScansAndKeepsSkippedChanges(NativeResultMaterializerTest.java:1288)
+

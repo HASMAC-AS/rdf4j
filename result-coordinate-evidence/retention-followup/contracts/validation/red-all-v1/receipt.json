@@ -1,0 +1,68 @@
+{
+  "cases": [
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": "[Old non-null owner must be collectible before probing the reassigned value; weak observer 0] \nExpecting value to be true but was false",
+      "method": "collectedNonNullOwnerDoesNotMatchAReplacementNullOwner"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": null,
+      "method": "consumerRetainedValueRemainsASameObjectHitAfterCollection"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": "[Equivalent obsolete identity and revision must not become memo roots; weak observer 0] \nExpecting value to be true but was false",
+      "method": "initializedValueHitsAfterItsEquivalentOldIdentityAndRevisionCollect"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": null,
+      "method": "strongControlOwnsDroppedGraphUntilClose"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": "\nExpected not same: urn:test:retention:42",
+      "method": "weakMetadataReservationRefusalFallsBackWithoutRetainingAnEntry"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": "[Weak memo must not own value, identity, revision, or store; weak observer 0] \nExpecting value to be true but was false",
+      "method": "weakModeReleasesDroppedValueAndWitnessGraphWhileOpen"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": "\nexpected: 606448L\n but was: 147536L",
+      "method": "weakTableReservesArrayAndReferenceMetadataBeforeAdmission"
+    },
+    {
+      "class": "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest",
+      "error": null,
+      "failure": null,
+      "method": "weakWitnessRejectsIdRevisionOwnerAndSemanticVersionChanges"
+    }
+  ],
+  "expectedFailures": [
+    "collectedNonNullOwnerDoesNotMatchAReplacementNullOwner",
+    "initializedValueHitsAfterItsEquivalentOldIdentityAndRevisionCollect",
+    "weakMetadataReservationRefusalFallsBackWithoutRetainingAnEntry",
+    "weakModeReleasesDroppedValueAndWitnessGraphWhileOpen",
+    "weakTableReservesArrayAndReferenceMetadataBeforeAdmission"
+  ],
+  "moduleSourcesUnchanged": true,
+  "passed": true,
+  "results": {
+    "errors": 0,
+    "failures": 5,
+    "skipped": 0,
+    "tests": 8
+  },
+  "testProcessExit": 1
+}

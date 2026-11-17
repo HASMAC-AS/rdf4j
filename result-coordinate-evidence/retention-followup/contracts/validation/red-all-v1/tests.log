@@ -1,0 +1,111 @@
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn
+Java version: 25.0.5, vendor: Eclipse Adoptium, runtime: /workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.18.57", arch: "amd64", family: "unix"
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.eclipse.rdf4j:rdf4j-sail-lmdb >------------------
+[INFO] Building RDF4J: LmdbStore 6.2.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- surefire:3.6.1:test (default-cli) @ rdf4j-sail-lmdb ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+07:05:19,937 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+07:05:19,938 |-INFO in ch.qos.logback.classic.util.ContextInitializer@71a9b4c7 - No custom configurators were discovered as a service.
+07:05:19,938 |-INFO in ch.qos.logback.classic.util.ContextInitializer@71a9b4c7 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+07:05:19,939 |-INFO in ch.qos.logback.classic.util.ContextInitializer@71a9b4c7 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+07:05:19,940 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/retention-followup/contracts/validation/red-all-v1/test-classes/logback-test.xml]
+07:05:19,993 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+07:05:19,993 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+07:05:20,039 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+07:05:20,046 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@4628b1d3 - No contradictions in caller extraction instruction were detected
+07:05:20,048 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+07:05:20,048 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+07:05:20,057 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+07:05:20,107 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+07:05:20,107 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+07:05:20,107 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+07:05:20,109 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+07:05:20,109 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+07:05:20,109 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@77cf3f8b - End of configuration.
+07:05:20,110 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@1df98368 - Registering current configuration as safe fallback point
+07:05:20,113 |-INFO in ch.qos.logback.classic.util.ContextInitializer@71a9b4c7 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 171 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+[ERROR] Tests run: 8, Failures: 5, Errors: 0, Skipped: 0, Time elapsed: 3.205 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.collectedNonNullOwnerDoesNotMatchAReplacementNullOwner -- Time elapsed: 2.032 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Old non-null owner must be collectible before probing the reassigned value; weak observer 0] 
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.assertCollected(NativeDirectValueMemoRetentionContractTest.java:265)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.collectedNonNullOwnerDoesNotMatchAReplacementNullOwner(NativeDirectValueMemoRetentionContractTest.java:170)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.initializedValueHitsAfterItsEquivalentOldIdentityAndRevisionCollect -- Time elapsed: 0.565 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Equivalent obsolete identity and revision must not become memo roots; weak observer 0] 
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.assertCollected(NativeDirectValueMemoRetentionContractTest.java:265)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.initializedValueHitsAfterItsEquivalentOldIdentityAndRevisionCollect(NativeDirectValueMemoRetentionContractTest.java:152)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.weakMetadataReservationRefusalFallsBackWithoutRetainingAnEntry -- Time elapsed: 0.004 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expected not same: urn:test:retention:42
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.weakMetadataReservationRefusalFallsBackWithoutRetainingAnEntry(NativeDirectValueMemoRetentionContractTest.java:78)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.weakModeReleasesDroppedValueAndWitnessGraphWhileOpen -- Time elapsed: 0.471 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Weak memo must not own value, identity, revision, or store; weak observer 0] 
+Expecting value to be true but was false
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.assertCollected(NativeDirectValueMemoRetentionContractTest.java:265)
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.weakModeReleasesDroppedValueAndWitnessGraphWhileOpen(NativeDirectValueMemoRetentionContractTest.java:94)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.weakTableReservesArrayAndReferenceMetadataBeforeAdmission -- Time elapsed: 0.006 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+expected: 606448L
+ but was: 147536L
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoRetentionContractTest.weakTableReservesArrayAndReferenceMetadataBeforeAdmission(NativeDirectValueMemoRetentionContractTest.java:66)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   NativeDirectValueMemoRetentionContractTest.collectedNonNullOwnerDoesNotMatchAReplacementNullOwner:170->assertCollected:265 [Old non-null owner must be collectible before probing the reassigned value; weak observer 0] 
+Expecting value to be true but was false
+[ERROR]   NativeDirectValueMemoRetentionContractTest.initializedValueHitsAfterItsEquivalentOldIdentityAndRevisionCollect:152->assertCollected:265 [Equivalent obsolete identity and revision must not become memo roots; weak observer 0] 
+Expecting value to be true but was false
+[ERROR]   NativeDirectValueMemoRetentionContractTest.weakMetadataReservationRefusalFallsBackWithoutRetainingAnEntry:78 
+Expected not same: urn:test:retention:42
+[ERROR]   NativeDirectValueMemoRetentionContractTest.weakModeReleasesDroppedValueAndWitnessGraphWhileOpen:94->assertCollected:265 [Weak memo must not own value, identity, revision, or store; weak observer 0] 
+Expecting value to be true but was false
+[ERROR]   NativeDirectValueMemoRetentionContractTest.weakTableReservesArrayAndReferenceMetadataBeforeAdmission:66 
+expected: 606448L
+ but was: 147536L
+[INFO] 
+[ERROR] Tests run: 8, Failures: 5, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.345 s
+[INFO] Finished at: 2026-11-17T07:05:23+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.1:test (default-cli) on project rdf4j-sail-lmdb: There are test failures.
+[ERROR] 
+[ERROR] See /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/retention-followup/contracts/validation/red-all-v1/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
