@@ -1,0 +1,89 @@
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/mvn
+Java version: 25.0.5, vendor: Eclipse Adoptium, runtime: /workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.18.57", arch: "amd64", family: "unix"
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.eclipse.rdf4j:rdf4j-sail-lmdb >------------------
+[INFO] Building RDF4J: LmdbStore 6.2.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- surefire:3.6.1:test (default-cli) @ rdf4j-sail-lmdb ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest
+11:53:04,038 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+11:53:04,039 |-INFO in ch.qos.logback.classic.util.ContextInitializer@641856 - No custom configurators were discovered as a service.
+11:53:04,039 |-INFO in ch.qos.logback.classic.util.ContextInitializer@641856 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:53:04,040 |-INFO in ch.qos.logback.classic.util.ContextInitializer@641856 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:53:04,041 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/admission-followup/contracts/validation/red-all-v1/test-classes/logback-test.xml]
+11:53:04,104 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+11:53:04,104 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+11:53:04,156 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+11:53:04,167 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@1b58ff9e - No contradictions in caller extraction instruction were detected
+11:53:04,169 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+11:53:04,169 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+11:53:04,177 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+11:53:04,231 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+11:53:04,231 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+11:53:04,231 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+11:53:04,233 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+11:53:04,233 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+11:53:04,234 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@2f66e802 - End of configuration.
+11:53:04,235 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@56b78e55 - Registering current configuration as safe fallback point
+11:53:04,240 |-INFO in ch.qos.logback.classic.util.ContextInitializer@641856 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 196 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+[ERROR] Tests run: 12, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 0.641 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.admissionPolicyIsCapturedWhenEachMemoIsCreated -- Time elapsed: 0.407 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Existing always owner keeps its constructor policy] 
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.admissionPolicyIsCapturedWhenEachMemoIsCreated(NativeDirectValueMemoAdmissionContractTest.java:252)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Always admission must survive the cold first window] 
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses(NativeDirectValueMemoAdmissionContractTest.java:67)
+
+[ERROR] org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionStillRequiresCumulativeHitsBeforeGrowing -- Time elapsed: 0.033 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionStillRequiresCumulativeHitsBeforeGrowing(NativeDirectValueMemoAdmissionContractTest.java:145)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   NativeDirectValueMemoAdmissionContractTest.admissionPolicyIsCapturedWhenEachMemoIsCreated:252 [Existing always owner keeps its constructor policy] 
+Expecting value to be false but was true
+[ERROR]   NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses:67 [Always admission must survive the cold first window] 
+Expecting value to be false but was true
+[ERROR]   NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionStillRequiresCumulativeHitsBeforeGrowing:145 
+Expecting value to be false but was true
+[INFO] 
+[ERROR] Tests run: 12, Failures: 3, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.131 s
+[INFO] Finished at: 2026-11-17T11:53:04+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.1:test (default-cli) on project rdf4j-sail-lmdb: There are test failures.
+[ERROR] 
+[ERROR] See /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/admission-followup/contracts/validation/red-all-v1/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

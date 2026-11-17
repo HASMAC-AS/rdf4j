@@ -1,0 +1,22 @@
+--- result-coordinate-evidence/admission-followup/diagnostics/src/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectMemoAdmissionTraceDiagnostic.java
++++ src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectMemoAdmissionTraceDiagnostic.java
+@@ -39,7 +39,8 @@
+ 
+ 	public static void main(String[] args) {
+ 		if (args.length != 1 || !List.of("ordinary", "initial", "always").contains(args[0])) {
+-			throw new IllegalArgumentException("Usage: NativeDirectMemoAdmissionTraceDiagnostic ordinary|initial|always");
++			throw new IllegalArgumentException(
++					"Usage: NativeDirectMemoAdmissionTraceDiagnostic ordinary|initial|always");
+ 		}
+ 		String arm = args[0];
+ 		System.setProperty("rdf4j.lmdb.nativeValueMemo.retention", "weak");
+@@ -118,7 +119,8 @@
+ 			require(snapshot.invalidations() == 0L && snapshot.unsupportedValues() == 0L, "Unexpected invalid value");
+ 			require(snapshot.initialAdmissionRefusals() == 0L && snapshot.growthAdmissionRefusals() == 0L,
+ 					"Diagnostic budget unexpectedly refused the table");
+-			require(snapshot.rehashDiscards() == 0L && snapshot.clearCalls() == 0L, "Unexpected clearing or rehash loss");
++			require(snapshot.rehashDiscards() == 0L && snapshot.clearCalls() == 0L,
++					"Unexpected clearing or rehash loss");
+ 			require(snapshot.arrayBytesAfterClose() == 0L, "Memo close leaked a reservation");
+ 			if ("always".equals(arm) || bootstrap != 0) {
+ 				require(snapshot.lowHitDisable() == 0L, "Expected admitted trace was disabled");

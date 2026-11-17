@@ -1,0 +1,43 @@
+{
+  "admissionImplementationSha256": "a6f982712640e13cae877a2452ca28b84d69d5970d0d3c5b7ca008470d5a0b51",
+  "attempts": [
+    {
+      "attempt": "red-small-v1",
+      "errors": 0,
+      "failedCases": [
+        "alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses"
+      ],
+      "failures": 1,
+      "skipped": 0,
+      "sourceSha256": "f5d27f5863de57cc22cba42afbd914c352d3eef0f4917eb4276bcadb72e02f25",
+      "tests": 1
+    },
+    {
+      "attempt": "red-all-v1",
+      "errors": 0,
+      "failedCases": [
+        "admissionPolicyIsCapturedWhenEachMemoIsCreated",
+        "alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses",
+        "alwaysAdmissionStillRequiresCumulativeHitsBeforeGrowing"
+      ],
+      "failures": 3,
+      "skipped": 0,
+      "sourceSha256": "f5d27f5863de57cc22cba42afbd914c352d3eef0f4917eb4276bcadb72e02f25",
+      "tests": 12
+    },
+    {
+      "attempt": "green-admission-v1",
+      "errors": 0,
+      "failedCases": [],
+      "failures": 0,
+      "skipped": 0,
+      "sourceSha256": "f5d27f5863de57cc22cba42afbd914c352d3eef0f4917eb4276bcadb72e02f25",
+      "tests": 12
+    }
+  ],
+  "format": 1,
+  "review": "Only captured admission mode plus first-window cutoff guard changes behavior. Consumer roots deliberately exclude weak collection from policy contracts. Growth, identity, retention, refusals, accounting and cleanup unchanged.",
+  "reviewerJavaLaunches": 0,
+  "sealedContractSourceSha256": "f5d27f5863de57cc22cba42afbd914c352d3eef0f4917eb4276bcadb72e02f25",
+  "sealedSourceIdenticalAcrossRedAndGreen": true
+}

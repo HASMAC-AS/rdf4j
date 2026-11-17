@@ -1,0 +1,33 @@
+--- result-coordinate-evidence/admission-followup/benchmark/src/org/eclipse/rdf4j/sail/lmdb/evaluation/PhaseMemoQueryHarness.java
++++ src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/PhaseMemoQueryHarness.java
+@@ -157,7 +157,8 @@
+ 		int statisticsBefore = NativeDirectValueMemoStatistics.size();
+ 		var adjacencyBefore = NamespaceAdjacencyObservation.snapshot(nativeStore);
+ 		int expectedRows = options.consumption == Consumption.EARLY
+-				? Math.min(options.limit, fixture.rows) : fixture.rows;
++				? Math.min(options.limit, fixture.rows)
++				: fixture.rows;
+ 		long expectedChecksum = fixture.expectedChecksum(expectedRows);
+ 		int retain = options.consumption == Consumption.RETAINED ? Math.min(options.retain, expectedRows) : 0;
+ 		List<BindingSet> retained = retain == 0 ? List.of() : new ArrayList<>(retain);
+@@ -358,7 +359,8 @@
+ 		});
+ 		LmdbQueryMemoryManager memory = LmdbQueryMemoryManager.process();
+ 		int consumedRows = options.consumption == Consumption.EARLY
+-				? Math.min(options.limit, fixture.rows) : fixture.rows;
++				? Math.min(options.limit, fixture.rows)
++				: fixture.rows;
+ 		return fields("type", "metadata", "formatVersion", 1, "fixture", "ordered-phase-value-memo",
+ 				"arm", options.arm, "source", options.source, "pattern", fixture.pattern,
+ 				"prefixProbes", fixture.prefixProbes, "tailProbes", fixture.tailProbes,
+@@ -404,7 +406,9 @@
+ 				"javaVendor", System.getProperty("java.vendor"),
+ 				"jvmArguments", ManagementFactory.getRuntimeMXBean().getInputArguments(),
+ 				"garbageCollectors", ManagementFactory.getGarbageCollectorMXBeans()
+-						.stream().map(bean -> bean.getName()).toList(),
++						.stream()
++						.map(bean -> bean.getName())
++						.toList(),
+ 				"maxHeapBytes", Runtime.getRuntime().maxMemory(),
+ 				"availableProcessors", Runtime.getRuntime().availableProcessors(),
+ 				"systemProperties", properties);

@@ -1,0 +1,18 @@
+--- result-coordinate-evidence/admission-followup/benchmark/src/org/eclipse/rdf4j/sail/lmdb/evaluation/PhaseMemoQueryFixture.java
++++ src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/PhaseMemoQueryFixture.java
+@@ -112,8 +112,13 @@
+ 		}
+ 		sparql.append(" WHERE {\n");
+ 		for (int column = 0; column < width; column++) {
+-			sparql.append("  ?row <").append(NS).append("p").append(column).append("> ?")
+-					.append(names[column]).append(" .\n");
++			sparql.append("  ?row <")
++					.append(NS)
++					.append("p")
++					.append(column)
++					.append("> ?")
++					.append(names[column])
++					.append(" .\n");
+ 		}
+ 		query = sparql.append("} ORDER BY ?row\n").toString();
+ 		querySha256 = hashText(query);

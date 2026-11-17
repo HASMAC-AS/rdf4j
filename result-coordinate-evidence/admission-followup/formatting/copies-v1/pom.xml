@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.eclipse.rdf4j.experiments</groupId>
+  <artifactId>admission-java-formatting</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>3.10.4</version>
+        <configuration>
+          <java>
+            <includes>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeProjectedBindingSet.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeResultMaterializer.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/PhaseMemoQueryFixture.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/PhaseMemoQueryHarness.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectMemoAdmissionTraceDiagnostic.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectMemoNaturalGcDiagnostic.java</include>
+              <include>src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemoAdmissionContractTest.java</include>
+            </includes>
+            <eclipse>
+              <version>4.40</version>
+              <file>/workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/admission-followup/formatting/copies-v1/eclipse-rdf4j-conventions.xml</file>
+            </eclipse>
+            <importOrder>
+              <order>java,javax,org,com</order>
+            </importOrder>
+            <trimTrailingWhitespace />
+            <endWithNewline />
+          </java>
+          <skip>false</skip>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

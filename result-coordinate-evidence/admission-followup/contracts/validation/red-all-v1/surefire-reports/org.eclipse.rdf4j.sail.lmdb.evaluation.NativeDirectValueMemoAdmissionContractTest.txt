@@ -1,0 +1,22 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest
+-------------------------------------------------------------------------------
+Tests run: 12, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 0.641 s <<< FAILURE! -- in org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.admissionPolicyIsCapturedWhenEachMemoIsCreated -- Time elapsed: 0.407 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Existing always owner keeps its constructor policy] 
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.admissionPolicyIsCapturedWhenEachMemoIsCreated(NativeDirectValueMemoAdmissionContractTest.java:252)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+[Always admission must survive the cold first window] 
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionReusesLateValuesAfterTheFirst8192ColdMisses(NativeDirectValueMemoAdmissionContractTest.java:67)
+
+org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionStillRequiresCumulativeHitsBeforeGrowing -- Time elapsed: 0.033 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+
+Expecting value to be false but was true
+	at org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDirectValueMemoAdmissionContractTest.alwaysAdmissionStillRequiresCumulativeHitsBeforeGrowing(NativeDirectValueMemoAdmissionContractTest.java:145)
+
