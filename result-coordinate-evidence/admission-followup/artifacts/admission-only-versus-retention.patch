@@ -1,0 +1,42 @@
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeDirectValueMemo.java
+@@ -4,7 +4,7 @@
+  * All rights reserved. This program and the accompanying materials
+  * are made available under the terms of the Eclipse Distribution License v1.0
+  * which accompanies this distribution, and is available at
+- * http://www.eclipse.org/documents/edl-v10.php.
++ * http://www.eclipse.org/org/documents/edl-v10.php.
+  *
+  * SPDX-License-Identifier: BSD-3-Clause
+  *******************************************************************************/
+@@ -39,6 +39,7 @@
+ 	private final QueryLedger ledger;
+ 	private final long statisticsOwner;
+ 	private final boolean weakRetention;
++	private final boolean alwaysAdmit;
+ 	private WeakReference<ValueStore> latestOwner;
+ 	private long[] ids;
+ 	private long[] versions;
+@@ -75,6 +76,11 @@
+ 		case "weak" -> true;
+ 		default -> throw new IllegalArgumentException("Unknown native Value memo retention");
+ 		};
++		alwaysAdmit = switch (System.getProperty("rdf4j.lmdb.nativeValueMemo.admission", "initial")) {
++		case "initial" -> false;
++		case "always" -> true;
++		default -> throw new IllegalArgumentException("Unknown native Value memo admission");
++		};
+ 		statisticsOwner = NativeDirectValueMemoStatistics.open();
+ 	}
+ 
+@@ -279,7 +285,8 @@
+ 
+ 	private void adapt(long count) {
+ 		if (count == WARMUP_PROBES) {
+-			if (hits < count / 4L) {
++			// Diagnostic ablation: all growth and ownership decisions remain unchanged.
++			if (!alwaysAdmit && hits < count / 4L) {
+ 				lowHitDisable++;
+ 				disable();
+ 			}
