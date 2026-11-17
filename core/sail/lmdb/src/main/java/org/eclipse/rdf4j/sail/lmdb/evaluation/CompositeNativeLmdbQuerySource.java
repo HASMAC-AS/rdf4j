@@ -80,6 +80,11 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 	}
 
 	@Override
+	public boolean hasStableValueIds() {
+		return sources.stream().allMatch(NativeLmdbQuerySource::hasStableValueIds);
+	}
+
+	@Override
 	public Value lazyValue(long id) throws QueryEvaluationException {
 		return sources.get(0).lazyValue(id);
 	}
@@ -1251,6 +1256,11 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 		@Override
 		public Object valueLookupScope() {
 			return delegate.valueLookupScope();
+		}
+
+		@Override
+		public boolean hasStableValueIds() {
+			return !closed && delegate.hasStableValueIds();
 		}
 
 		@Override

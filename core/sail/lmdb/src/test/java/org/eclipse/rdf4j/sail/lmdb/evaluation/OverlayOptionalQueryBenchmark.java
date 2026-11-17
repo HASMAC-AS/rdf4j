@@ -84,6 +84,9 @@ public final class OverlayOptionalQueryBenchmark {
 					}
 				});
 				long binds = LmdbNativeKernelExecution.COMPILED_BINDS.get();
+				long memoProbes = NativeValueMemo.PROBES.get(), memoHits = NativeValueMemo.HITS.get();
+				long primitive = NativeDistinctTracker.PRIMITIVE_ROWS.get();
+				long objects = NativeDistinctTracker.OBJECT_ROWS.get();
 				long allocated = bean.isThreadAllocatedMemoryEnabled() ? bean.getCurrentThreadAllocatedBytes() : -1;
 				long start = System.nanoTime();
 				long rows = 0, sum = 0;
@@ -114,8 +117,14 @@ public final class OverlayOptionalQueryBenchmark {
 							+ " routes=" + routes + " compiledBinds=" + binds);
 				}
 				checksum = sum;
-				System.out.printf("run=%d overlay=%s rows=%d checksum=%d millis=%.3f threadAllocated=%d routes=%s compiledBinds=%d%n",
-						run, overlay, rows, sum, nanos / 1e6, allocated, routes, binds);
+				memoProbes = NativeValueMemo.PROBES.get() - memoProbes;
+				memoHits = NativeValueMemo.HITS.get() - memoHits;
+				if (Boolean.getBoolean(NativeValueMemo.ENABLED_PROPERTY) && (memoProbes == 0 || memoHits == 0))
+					throw new IllegalStateException("Memo was not exercised: probes=" + memoProbes + " hits=" + memoHits);
+				primitive = NativeDistinctTracker.PRIMITIVE_ROWS.get() - primitive;
+				objects = NativeDistinctTracker.OBJECT_ROWS.get() - objects;
+				System.out.printf("run=%d overlay=%s rows=%d checksum=%d millis=%.3f threadAllocated=%d routes=%s compiledBinds=%d distinctPrimitive=%d distinctObjects=%d memoProbes=%d memoHits=%d%n",
+						run, overlay, rows, sum, nanos / 1e6, allocated, routes, binds, primitive, objects, memoProbes, memoHits);
 			}
 		} finally {
 			repository.shutDown();

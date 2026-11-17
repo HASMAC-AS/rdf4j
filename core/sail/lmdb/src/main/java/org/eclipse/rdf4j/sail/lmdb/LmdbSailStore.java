@@ -14068,6 +14068,11 @@ class LmdbSailStore implements SailStore {
 		}
 
 		@Override
+		public boolean hasStableValueIds() {
+			return !closed.get() && lease.readView.valueSnapshot().hasStableIds();
+		}
+
+		@Override
 		public Value lazyValue(long id) throws QueryEvaluationException {
 			return lazyValue(id, ValuePosition.NONE);
 		}
@@ -15584,6 +15589,11 @@ class LmdbSailStore implements SailStore {
 			} catch (IOException e) {
 				throw new QueryEvaluationException(e);
 			}
+		}
+
+		@Override
+		public boolean hasStableValueIds() {
+			return readView != null && readView.valueSnapshot().hasStableIds();
 		}
 
 		@Override

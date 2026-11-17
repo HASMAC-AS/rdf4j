@@ -412,6 +412,7 @@ final class AggContext {
 	}
 
 	final NativeLmdbQuerySource source;
+	final NativeValueMemo valueMemo;
 	final NativeTermAuthority termAuthority;
 	final NativeCancellationToken cancellation;
 	final ValueComparator comparator;
@@ -459,6 +460,8 @@ final class AggContext {
 						? KernelRuntime.AggregateMemory.forLedger(synthetic.executionContext().memoryLedger())
 						: null;
 		this.memory = memory != null ? memory : ownedMemory;
+		this.valueMemo = Boolean.getBoolean(NativeValueMemo.ENABLED_PROPERTY)
+				? new NativeValueMemo(source, this.memory) : null;
 		this.comparator.setStrict(strictCompare);
 	}
 
@@ -491,10 +494,12 @@ final class AggContext {
 	}
 
 	Value value(long id, int positionMask) {
+		if (valueMemo != null)
+			return valueMemo.value(id, positionMask);
 		if (valueCacheIds == null && !initializeValueCache()) {
 			return source.lazyValue(id, positionMask);
 		}
-		byte bankState = (byte) (ValuePosition.cacheBank(positionMask) + 1);
+		byte bankState = (byte) (ValuePosition.validateMask(positionMask) + 1);
 		int slot = valueCacheSlot(id, bankState);
 		if (valueCacheStates[slot] != 0) {
 			return valueCacheValues[slot];
@@ -605,6 +610,8 @@ final class AggContext {
 
 	/** Releases optional cache arrays and retained values. Generic contexts have no owner and remain unchanged. */
 	void close() {
+		if (valueMemo != null)
+			valueMemo.clear();
 		valueCacheUnavailable = true;
 		if (memory == null) {
 			return;

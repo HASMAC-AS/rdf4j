@@ -29,6 +29,8 @@ import org.eclipse.rdf4j.common.annotation.Experimental;
 @Experimental
 final class PrimitiveTupleTable {
 
+	static final int MAX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
+
 	static final AtomicLong PROBES = new AtomicLong();
 	static final AtomicLong INSERTIONS = new AtomicLong();
 
@@ -70,7 +72,10 @@ final class PrimitiveTupleTable {
 		this.hashHook = hashHook;
 		int bucketCapacity = 4;
 		int requested = Math.max(2, expectedSize);
-		while (bucketCapacity < requested * 2) {
+		if ((long) requested * 2 > (1L << 30) || (long) Math.max(4, requested) * width > MAX_ARRAY_LENGTH) {
+			throw new IllegalArgumentException("Primitive tuple capacity exceeds flat-array limits");
+		}
+		while (bucketCapacity < (long) requested * 2) {
 			bucketCapacity <<= 1;
 		}
 		this.buckets = new int[bucketCapacity];
@@ -121,8 +126,9 @@ final class PrimitiveTupleTable {
 		while (true) {
 			int stored = buckets[bucket];
 			if (stored == 0) {
-				int index = size++;
-				ensureEntryCapacity(size);
+				int index = size;
+				ensureEntryCapacity(Math.addExact(size, 1));
+				size++;
 				store(index, row, slots, nullAsUnknown);
 				fullHashes[index] = hash;
 				buckets[bucket] = index + 1;
@@ -149,8 +155,9 @@ final class PrimitiveTupleTable {
 		while (true) {
 			int stored = buckets[bucket];
 			if (stored == 0) {
-				int index = size++;
-				ensureEntryCapacity(size);
+				int index = size;
+				ensureEntryCapacity(Math.addExact(size, 1));
+				size++;
 				store(index, batch, row, slots, nullAsUnknown);
 				fullHashes[index] = hash;
 				buckets[bucket] = index + 1;
@@ -270,12 +277,17 @@ final class PrimitiveTupleTable {
 	}
 
 	private void ensureEntryCapacity(int tupleCount) {
-		int required = tupleCount * width;
+		long requiredLong = (long) tupleCount * width;
+		if (tupleCount < 0 || requiredLong > MAX_ARRAY_LENGTH) {
+			throw new IllegalStateException("Primitive tuple capacity exceeds flat-array limits");
+		}
+		int required = (int) requiredLong;
 		if (required > keys.length) {
-			keys = Arrays.copyOf(keys, Math.max(required, keys.length << 1));
+			keys = Arrays.copyOf(keys, (int) Math.min(MAX_ARRAY_LENGTH, Math.max(requiredLong, (long) keys.length * 2)));
 		}
 		if (tupleCount > fullHashes.length) {
-			fullHashes = Arrays.copyOf(fullHashes, Math.max(tupleCount, fullHashes.length << 1));
+			fullHashes = Arrays.copyOf(fullHashes,
+					(int) Math.min(MAX_ARRAY_LENGTH, Math.max((long) tupleCount, (long) fullHashes.length * 2)));
 		}
 	}
 
@@ -381,6 +393,9 @@ final class PrimitiveTupleTable {
 	}
 
 	private void rehash(int capacity) {
+		if (capacity < 1 || capacity > (1 << 30)) {
+			throw new IllegalStateException("Primitive bucket capacity exceeds array limits");
+		}
 		int[] replacement = new int[capacity];
 		byte[] replacementFingerprints = new byte[capacity];
 		for (int index = 0; index < size; index++) {
@@ -408,7 +423,7 @@ final class PrimitiveTupleTable {
 	}
 }
 
-/** DISTINCT tuple tracker backed by the primitive table for the common narrow projections. */
+/** DISTINCT tuple tracker; wide primitive keys remain an opt-in experiment. */
 @Experimental
 final class NativeDistinctTracker {
 
@@ -418,9 +433,10 @@ final class NativeDistinctTracker {
 	final int[] slots;
 	final NativeTermAuthority authority;
 	final NativeTermReferenceCache termCache;
-	final PrimitiveTupleTable primitive;
-	final HashMap<GroupKey, Boolean> objects;
-	final GroupKey probe;
+	PrimitiveTupleTable primitive;
+	HashMap<GroupKey, Boolean> objects;
+	GroupKey probe;
+	final int keyArrayLimit;
 	final long[] normalizedRow;
 	final int[] normalizedSlots;
 	NativeBatch normalizedBatch;
@@ -438,10 +454,19 @@ final class NativeDistinctTracker {
 	}
 
 	NativeDistinctTracker(int[] slots, NativeTermAuthority authority) {
+		this(slots, authority, PrimitiveTupleTable.MAX_ARRAY_LENGTH);
+	}
+
+	/** Package-private limit injection exercises fallback without allocating multi-gigabyte arrays. */
+	NativeDistinctTracker(int[] slots, NativeTermAuthority authority, int keyArrayLimit) {
+		this.keyArrayLimit = Math.max(0, Math.min(keyArrayLimit, PrimitiveTupleTable.MAX_ARRAY_LENGTH));
 		this.slots = slots;
 		this.authority = authority;
 		this.termCache = authority == null ? null : new NativeTermReferenceCache(authority);
-		this.primitive = slots.length >= 1 && slots.length <= 4 ? new PrimitiveTupleTable(slots.length, 256) : null;
+		boolean wide = Boolean.getBoolean("rdf4j.lmdb.nativeDistinct.widePrimitive");
+		int initialRows = slots.length == 0 ? 0 : Math.min(256, this.keyArrayLimit / slots.length);
+		this.primitive = slots.length >= 1 && (slots.length <= 4 || wide) && initialRows >= 4
+				? new PrimitiveTupleTable(slots.length, initialRows) : null;
 		this.objects = primitive == null && slots.length > 0 ? new HashMap<>() : null;
 		this.probe = objects == null ? null : new GroupKey(new long[slots.length]);
 		this.normalizedRow = authority == null ? null : new long[slots.length];
@@ -449,6 +474,7 @@ final class NativeDistinctTracker {
 	}
 
 	boolean add(long[] row) {
+		ensurePrimitiveCapacity(1);
 		if (slots.length == 0) {
 			boolean fresh = !emptySeen;
 			emptySeen = true;
@@ -483,6 +509,7 @@ final class NativeDistinctTracker {
 	}
 
 	boolean add(NativeBatch batch, int row) {
+		ensurePrimitiveCapacity(1);
 		if (slots.length == 0) {
 			boolean fresh = !emptySeen;
 			emptySeen = true;
@@ -527,6 +554,7 @@ final class NativeDistinctTracker {
 	}
 
 	int selectBatch(NativeBatch batch, int[] selection, int count) {
+		ensurePrimitiveCapacity(count);
 		if (slots.length == 0) {
 			if (count == 0 || emptySeen) {
 				return 0;
@@ -579,6 +607,24 @@ final class NativeDistinctTracker {
 			}
 		}
 		return accepted;
+	}
+
+	private void ensurePrimitiveCapacity(int additional) {
+		if (primitive == null) {
+			return;
+		}
+		long tuples = (long) primitive.size + additional;
+		if (tuples * slots.length <= keyArrayLimit && tuples <= (3L << 28)) {
+			return;
+		}
+		// Preserve every normalized key before releasing the flat primitive arrays.
+		HashMap<GroupKey, Boolean> migrated = new HashMap<>();
+		for (int i = 0; i < primitive.size; i++) {
+			migrated.put(primitive.groupKey(i), Boolean.TRUE);
+		}
+		objects = migrated;
+		probe = new GroupKey(new long[slots.length]);
+		primitive = null;
 	}
 
 	private void ensureBatchCapacity(int capacity) {

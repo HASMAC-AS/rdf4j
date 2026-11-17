@@ -76,6 +76,11 @@ public interface NativeLmdbQuerySource {
 		}
 	}
 
+	/** Explicit snapshot-lifetime guarantee for optional ID-to-value memoization. */
+	default boolean hasStableValueIds() {
+		return false;
+	}
+
 	Value lazyValue(long id) throws QueryEvaluationException;
 
 	/** Materializes a value using the complete static position mask of its lexical binding. */

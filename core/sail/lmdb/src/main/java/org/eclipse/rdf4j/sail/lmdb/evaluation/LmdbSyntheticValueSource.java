@@ -440,6 +440,11 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 	}
 
 	@Override
+	public boolean hasStableValueIds() {
+		return delegate.hasStableValueIds();
+	}
+
+	@Override
 	public Object idSpace() {
 		return syntheticIdSpace == null ? this : syntheticIdSpace;
 	}

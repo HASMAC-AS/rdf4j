@@ -41,6 +41,7 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 	static final AtomicLong MATERIALIZED_VALUES = new AtomicLong();
 
 	NativeLmdbQuerySource source;
+	private NativeValueMemo memo;
 	final String[] names;
 	final long[] ids;
 	final Value[] values;
@@ -53,6 +54,11 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 	}
 
 	NativeProjectedBindingSet(NativeLmdbQuerySource source, ProjectionLayout layout, long[] row) {
+		this(source, layout, row, null);
+	}
+
+	NativeProjectedBindingSet(NativeLmdbQuerySource source, ProjectionLayout layout, long[] row, NativeValueMemo memo) {
+		this.memo = memo;
 		this.source = source;
 		this.names = layout.names;
 		this.positionMasks = layout.positionMasks;
@@ -224,6 +230,7 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 			}
 		});
 		source = null;
+		memo = null;
 	}
 
 	/** Makes every projected value available to the Sail boundary without resolving its lexical form. */
@@ -242,7 +249,8 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 				if (value == null) {
 					value = findMaterializedDuplicate(i);
 					if (value == null) {
-						value = currentSource.lazyValue(ids[i], positionMasks[i]);
+						value = memo == null ? currentSource.lazyValue(ids[i], positionMasks[i])
+								: memo.value(ids[i], positionMasks[i]);
 						materializedValues++;
 					}
 					values[i] = value;
@@ -259,6 +267,7 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 	/** Removes the native source after every bound value has been captured independently of that source. */
 	public void detachAfterMaterialization() {
 		source = null;
+		memo = null;
 	}
 
 	int nextBound(int from) {
@@ -291,7 +300,8 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 			if (currentSource == null) {
 				throw new IllegalStateException("detached native result has an unresolved value");
 			}
-			value = currentSource.lazyValue(id, positionMasks[index]);
+			value = memo == null ? currentSource.lazyValue(id, positionMasks[index])
+					: memo.value(id, positionMasks[index]);
 			values[index] = value;
 			MATERIALIZED_VALUES.incrementAndGet();
 		}

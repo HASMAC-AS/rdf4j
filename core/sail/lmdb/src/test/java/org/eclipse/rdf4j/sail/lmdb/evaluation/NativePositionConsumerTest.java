@@ -253,7 +253,7 @@ class NativePositionConsumerTest {
 	}
 
 	@Test
-	void aggregateMemoAdmitsTheSameIdInEachRequestedBank() {
+	void aggregateMemoAdmitsTheSameIdInEachCompleteMask() {
 		RecordingSource source = new RecordingSource();
 		AggContext context = new AggContext(source, false);
 		try {
@@ -261,7 +261,7 @@ class NativePositionConsumerTest {
 			assertThat(context.value(id, 1)).isNotNull();
 			assertThat(context.value(id, 4)).isNotNull();
 			assertThat(context.value(id, 5)).isNotNull();
-			assertThat(source.masks).containsExactly(1, 4);
+			assertThat(source.masks).containsExactly(1, 4, 5);
 		} finally {
 			context.close();
 		}

@@ -41,6 +41,7 @@ import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 final class RepositoryValueIteration<T> implements CloseableIteration<T>, CooperativeCancellation {
 
 	private static final int WAVE_VALUES = 1024;
+	private static final boolean PARTIAL_READY = Boolean.getBoolean("rdf4j.lmdb.repository.partialReady");
 	// Default-off experiment: share one dictionary/overlay transaction within the current row only.
 	private static final boolean GROUPED_VALUE_WAVES = Boolean
 			.getBoolean("rdf4j.lmdb.repository.groupedValueWaves");
@@ -153,8 +154,13 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 		boolean[] prepared = { true };
 		extractor.extract(nextRow, root -> {
 			if (root != null) {
-				roots.add(root);
-				prepared[0] &= isPrepared(root);
+				boolean ready = isPrepared(root);
+				prepared[0] &= ready;
+				// The exact all-ready guard already proves these roots need no owner scope or wave.
+				// In mixed rows, avoid traversing them again while retaining all uncertain/Lazy shapes.
+				if (!PARTIAL_READY || !ready) {
+					roots.add(root);
+				}
 			}
 		});
 		// Rows whose values are already resolved need neither owner scopes nor dictionary waves.

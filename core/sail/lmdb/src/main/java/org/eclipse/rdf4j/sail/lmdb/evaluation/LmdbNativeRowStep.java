@@ -860,6 +860,7 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 			return List.of();
 		}
 		AggContext values = new AggContext(row.source, strictCompare);
+		try {
 		long emitCap = NativeSliceMath.limitPlusOffset(limit, Math.max(0L, offset));
 
 		// ORDER BY: pack slot rows into one reusable arena (keys may be unprojected), sort primitive row indexes,
@@ -958,6 +959,9 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 			}
 		} catch (IOException e) {
 			throw new QueryEvaluationException(e);
+		}
+		} finally {
+			values.close();
 		}
 	}
 
@@ -2533,7 +2537,7 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 			NativeProjectedBindingSet.ProjectionLayout activeProjection) {
 		if (NativeProjectedBindingSet.enabled() && values.source != null
 				&& !containsEvaluationScopedId(values.source, slots, activeProjection.sourceSlots)) {
-			return new NativeProjectedBindingSet(values.source, activeProjection, slots);
+			return new NativeProjectedBindingSet(values.source, activeProjection, slots, values.valueMemo);
 		}
 		long[] projectedIds = new long[activeProjection.names.length];
 		activeProjection.copyIds(slots, projectedIds);
@@ -3942,6 +3946,9 @@ final class NativeRowsIteration implements CloseableIteration<BindingSet>, Coope
 	}
 
 	private Throwable closeResources(boolean completed, Throwable primary) {
+		if (values != null)
+			values.close(); // Drop memo witnesses before any input can release its snapshot.
+
 		NativeUnorderedInput activeInput = unorderedInput;
 		unorderedInput = null;
 		RowCursor activeCursor = cursor;
