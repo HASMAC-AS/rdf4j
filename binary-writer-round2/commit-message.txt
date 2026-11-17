@@ -1,0 +1,12 @@
+GH-0000 Reduce binary record and large-string overhead
+
+Assemble complete short records in one bulk write and grow encoding scratch
+from 132 bytes to a bounded 4,100 bytes only when needed. Reuse the copied
+ASCII prefix when encoding a Unicode suffix.
+
+Replace ordinary large-string CharsetEncoder allocations with strict UTF-8
+length validation followed by bounded chunk encoding. Keep the existing
+wire representation, datatype cache, stream lifecycle, and extreme-size
+strict encoder fallback.
+
+Extend exact-byte, malformed-input, buffer-growth, and I/O-failure coverage.

@@ -1,0 +1,30 @@
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.SmallDocumentBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-small.json -p implementation=current,published -p rows=0,1,8 -p sink=memory -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-small.log
+SmallDocumentBenchmark.serialize:gc.time                      current       0  memory  avgt   10     68.000                 ms
+SmallDocumentBenchmark.serialize                              current       1  memory  avgt   10   1824.906 ±  216.539   ns/op
+SmallDocumentBenchmark.serialize:gc.alloc.rate                current       1  memory  avgt   10    907.444 ±  108.725  MB/sec
+SmallDocumentBenchmark.serialize:gc.alloc.rate.norm           current       1  memory  avgt   10   1728.013 ±    0.001    B/op
+SmallDocumentBenchmark.serialize:gc.count                     current       1  memory  avgt   10     29.000             counts
+SmallDocumentBenchmark.serialize:gc.time                      current       1  memory  avgt   10     45.000                 ms
+SmallDocumentBenchmark.serialize                              current       8  memory  avgt   10   8171.582 ±  268.232   ns/op
+SmallDocumentBenchmark.serialize:gc.alloc.rate                current       8  memory  avgt   10    489.153 ±   15.923  MB/sec
+SmallDocumentBenchmark.serialize:gc.alloc.rate.norm           current       8  memory  avgt   10   4192.057 ±    0.002    B/op
+SmallDocumentBenchmark.serialize:gc.count                     current       8  memory  avgt   10     16.000             counts
+SmallDocumentBenchmark.serialize:gc.time                      current       8  memory  avgt   10     69.000                 ms
+SmallDocumentBenchmark.serialize                            published       0  memory  avgt   10   1396.143 ±  148.278   ns/op
+SmallDocumentBenchmark.serialize:gc.alloc.rate              published       0  memory  avgt   10   3428.299 ±  363.649  MB/sec
+SmallDocumentBenchmark.serialize:gc.alloc.rate.norm         published       0  memory  avgt   10   5000.010 ±    0.001    B/op
+SmallDocumentBenchmark.serialize:gc.count                   published       0  memory  avgt   10    113.000             counts
+SmallDocumentBenchmark.serialize:gc.time                    published       0  memory  avgt   10    125.000                 ms
+SmallDocumentBenchmark.serialize                            published       1  memory  avgt   10   3252.500 ±  166.609   ns/op
+SmallDocumentBenchmark.serialize:gc.alloc.rate              published       1  memory  avgt   10   1698.938 ±   90.507  MB/sec
+SmallDocumentBenchmark.serialize:gc.alloc.rate.norm         published       1  memory  avgt   10   5792.023 ±    0.001    B/op
+SmallDocumentBenchmark.serialize:gc.count                   published       1  memory  avgt   10     56.000             counts
+SmallDocumentBenchmark.serialize:gc.time                    published       1  memory  avgt   10     74.000                 ms
+SmallDocumentBenchmark.serialize                            published       8  memory  avgt   10  12707.915 ± 1234.977   ns/op
+SmallDocumentBenchmark.serialize:gc.alloc.rate              published       8  memory  avgt   10    619.667 ±   59.109  MB/sec
+SmallDocumentBenchmark.serialize:gc.alloc.rate.norm         published       8  memory  avgt   10   8232.089 ±   38.246    B/op
+SmallDocumentBenchmark.serialize:gc.count                   published       8  memory  avgt   10     20.000             counts
+SmallDocumentBenchmark.serialize:gc.time                    published       8  memory  avgt   10     67.000                 ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-small.json

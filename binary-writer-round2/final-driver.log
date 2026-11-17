@@ -1,0 +1,465 @@
+Starting final-ascii order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-ascii.json -p implementation=published,current -p workload=ascii -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-ascii.log
+
+# Run complete. Total time: 00:00:43
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt     Score    Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat       ascii  avgt   10  2149.951 ± 56.616   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat       ascii  avgt   10   160.252 ±  4.232  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat       ascii  avgt   10   361.394 ±  0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat       ascii  avgt   10     5.000           counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat       ascii  avgt   10    23.000               ms
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat       ascii  avgt   10  1209.645 ± 52.870   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat       ascii  avgt   10   284.098 ± 12.870  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat       ascii  avgt   10   360.395 ±  0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat       ascii  avgt   10     9.000           counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat       ascii  avgt   10    70.000               ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-ascii.json
+Starting final-unicode order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-unicode.json -p implementation=current,published -p workload=unicode -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-unicode.log
+
+# Run complete. Total time: 00:00:44
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt     Score     Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat     unicode  avgt   10  1224.068 ±  52.246   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat     unicode  avgt   10   318.136 ±  13.635  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat     unicode  avgt   10   408.395 ±   0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat     unicode  avgt   10    10.000            counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat     unicode  avgt   10    42.000                ms
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat     unicode  avgt   10  2244.968 ± 250.170   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat     unicode  avgt   10   174.513 ±  17.208  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat     unicode  avgt   10   409.395 ±   0.002    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat     unicode  avgt   10     6.000            counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat     unicode  avgt   10    47.000                ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-unicode.json
+Starting final-repeat_identity order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-repeat_identity.json -p implementation=published,current -p workload=repeat_identity -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-repeat_identity.log
+  ≈ 0 counts
+
+
+# Run complete. Total time: 00:00:43
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)       (workload)  Mode  Cnt    Score    Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  repeat_identity  avgt   10  307.816 ± 19.294   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  repeat_identity  avgt   10    4.105 ±  0.259  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  repeat_identity  avgt   10    1.325 ±  0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  repeat_identity  avgt   10      ≈ 0           counts
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  repeat_identity  avgt   10  286.496 ± 25.036   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  repeat_identity  avgt   10    1.108 ±  0.088  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  repeat_identity  avgt   10    0.332 ±  0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  repeat_identity  avgt   10      ≈ 0           counts
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-repeat_identity.json
+Starting final-repeat_equal_lmdb order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-repeat_equal_lmdb.json -p implementation=current,published -p workload=repeat_equal_lmdb -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-repeat_equal_lmdb.log
+  ≈ 0 counts
+
+
+# Run complete. Total time: 00:00:43
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)         (workload)  Mode  Cnt    Score    Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  repeat_equal_lmdb  avgt   10  333.390 ± 14.726   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  repeat_equal_lmdb  avgt   10    0.952 ±  0.040  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  repeat_equal_lmdb  avgt   10    0.333 ±  0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  repeat_equal_lmdb  avgt   10      ≈ 0           counts
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  repeat_equal_lmdb  avgt   10  388.297 ± 17.570   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  repeat_equal_lmdb  avgt   10    3.255 ±  0.148  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  repeat_equal_lmdb  avgt   10    1.325 ±  0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  repeat_equal_lmdb  avgt   10      ≈ 0           counts
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-repeat_equal_lmdb.json
+Starting final-unique_lmdb order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-unique_lmdb.json -p implementation=published,current -p workload=unique_lmdb -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-unique_lmdb.log
+  ≈ 0 counts
+
+
+# Run complete. Total time: 00:00:43
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)   (workload)  Mode  Cnt     Score     Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  unique_lmdb  avgt   10  2203.742 ± 205.521   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  unique_lmdb  avgt   10     0.580 ±   0.051  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  unique_lmdb  avgt   10     1.337 ±   0.001    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  unique_lmdb  avgt   10       ≈ 0            counts
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  unique_lmdb  avgt   10  1185.305 ± 267.310   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  unique_lmdb  avgt   10     0.277 ±   0.058  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  unique_lmdb  avgt   10     0.338 ±   0.002    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  unique_lmdb  avgt   10       ≈ 0            counts
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-unique_lmdb.json
+Starting final-wide order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-wide.json -p implementation=current,published -p workload=wide -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-wide.log
+
+# Run complete. Total time: 00:00:44
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt      Score     Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat        wide  avgt   10   5817.344 ± 522.403   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat        wide  avgt   10    236.743 ±  20.889  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat        wide  avgt   10   1440.504 ±   0.004    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat        wide  avgt   10      8.000            counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat        wide  avgt   10     59.000                ms
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat        wide  avgt   10  10095.064 ± 603.285   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat        wide  avgt   10    136.265 ±   7.970  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat        wide  avgt   10   1441.592 ±   0.216    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat        wide  avgt   10      5.000            counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat        wide  avgt   10     64.000                ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-wide.json
+Starting final-medium order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-medium.json -p implementation=published,current -p workload=medium -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-medium.log
+
+# Run complete. Total time: 00:00:43
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt     Score     Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat      medium  avgt   10  5313.211 ± 762.204   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat      medium  avgt   10    65.304 ±   8.590  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat      medium  avgt   10   361.416 ±   0.005    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat      medium  avgt   10     4.000            counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat      medium  avgt   10    34.000                ms
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat      medium  avgt   10  2828.882 ± 431.470   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat      medium  avgt   10   122.551 ±  17.846  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat      medium  avgt   10   360.666 ±   0.003    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat      medium  avgt   10     5.000            counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat      medium  avgt   10    66.000                ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-medium.json
+Starting final-medium_unicode order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-medium_unicode.json -p implementation=current,published -p workload=medium_unicode -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-medium_unicode.log
+
+# Run complete. Total time: 00:00:45
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)      (workload)  Mode  Cnt     Score      Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  medium_unicode  avgt   10  3791.523 ±  678.282   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  medium_unicode  avgt   10   104.059 ±   16.086  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  medium_unicode  avgt   10   409.513 ±    0.005    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  medium_unicode  avgt   10     5.000             counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat  medium_unicode  avgt   10   189.000                 ms
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  medium_unicode  avgt   10  4845.673 ± 1063.587   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  medium_unicode  avgt   10    81.881 ±   16.206  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  medium_unicode  avgt   10   409.413 ±    0.007    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  medium_unicode  avgt   10     3.000             counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat  medium_unicode  avgt   10    59.000                 ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-medium_unicode.json
+Starting final-long order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long.json -p implementation=published,current -p workload=long -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long.log
+
+# Run complete. Total time: 00:00:46
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt      Score      Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat        long  avgt   10  31135.226 ± 3614.207   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat        long  avgt   10    292.486 ±   32.414  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat        long  avgt   10   9505.587 ±    0.027    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat        long  avgt   10     10.000             counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat        long  avgt   10     16.000                 ms
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat        long  avgt   10  22958.425 ± 3183.413   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat        long  avgt   10     15.125 ±    2.156  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat        long  avgt   10    361.544 ±    0.022    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat        long  avgt   10      2.000             counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat        long  avgt   10    130.000                 ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long.json
+Starting final-long_unicode order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_unicode.json -p implementation=current,published -p workload=long_unicode -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_unicode.log
+
+# Run complete. Total time: 00:00:49
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)    (workload)  Mode  Cnt      Score      Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  long_unicode  avgt   10  41691.600 ± 3928.160   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  long_unicode  avgt   10      9.399 ±    0.919  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  long_unicode  avgt   10    409.661 ±    0.032    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  long_unicode  avgt   10      2.000             counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat  long_unicode  avgt   10    332.000                 ms
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  long_unicode  avgt   10  58540.010 ± 3141.305   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  long_unicode  avgt   10    487.230 ±   26.367  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  long_unicode  avgt   10  29889.738 ±    0.041    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  long_unicode  avgt   10     20.000             counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat  long_unicode  avgt   10     44.000                 ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_unicode.json
+Starting final-long_latin1 order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_latin1.json -p implementation=published,current -p workload=long_latin1 -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_latin1.log
+
+
+# Run complete. Total time: 00:00:48
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)   (workload)  Mode  Cnt      Score      Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  long_latin1  avgt   10  46188.281 ± 2617.225   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  long_latin1  avgt   10    570.382 ±   31.486  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  long_latin1  avgt   10  27601.671 ±    0.028    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  long_latin1  avgt   10     20.000             counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat  long_latin1  avgt   10     30.000                 ms
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  long_latin1  avgt   10  33841.381 ± 2339.578   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  long_latin1  avgt   10     10.205 ±    0.702  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  long_latin1  avgt   10    361.618 ±    0.024    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  long_latin1  avgt   10        ≈ 0             counts
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_latin1.json
+Starting final-long_cjk order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_cjk.json -p implementation=current,published -p workload=long_cjk -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_cjk.log
+
+
+# Run complete. Total time: 00:00:49
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt      Score      Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat    long_cjk  avgt   10  32601.952 ± 4854.124   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat    long_cjk  avgt   10     10.663 ±    1.534  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat    long_cjk  avgt   10    361.609 ±    0.039    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat    long_cjk  avgt   10        ≈ 0             counts
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat    long_cjk  avgt   10  70106.679 ± 3999.895   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat    long_cjk  avgt   10    867.553 ±   48.869  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat    long_cjk  avgt   10  63721.828 ±    0.092    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat    long_cjk  avgt   10     36.000             counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat    long_cjk  avgt   10     39.000                 ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_cjk.json
+Starting final-long_emoji order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_emoji.json -p implementation=published,current -p workload=long_emoji -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_emoji.log
+
+
+# Run complete. Total time: 00:00:49
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt      Score       Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  long_emoji  avgt   10  59435.209 ±  5308.199   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  long_emoji  avgt   10    444.092 ±    40.478  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  long_emoji  avgt   10  27601.765 ±     0.070    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  long_emoji  avgt   10     18.000              counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat  long_emoji  avgt   10     24.000                  ms
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  long_emoji  avgt   10  33323.776 ± 10447.908   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  long_emoji  avgt   10     10.662 ±     2.672  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  long_emoji  avgt   10    361.611 ±     0.074    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  long_emoji  avgt   10        ≈ 0              counts
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_emoji.json
+Starting final-long_sparse order current,published
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_sparse.json -p implementation=current,published -p workload=long_sparse -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_sparse.log
+
+# Run complete. Total time: 00:00:47
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)   (workload)  Mode  Cnt      Score       Error   Units
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat  long_sparse  avgt   10  31474.770 ± 19269.376   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat  long_sparse  avgt   10     12.752 ±     7.572  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat  long_sparse  avgt   10    361.597 ±     0.117    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat  long_sparse  avgt   10      1.000              counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat  long_sparse  avgt   10    166.000                  ms
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat  long_sparse  avgt   10  32628.233 ± 16455.227   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat  long_sparse  avgt   10    308.052 ±   153.342  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat  long_sparse  avgt   10   9505.590 ±     0.095    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat  long_sparse  avgt   10     11.000              counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat  long_sparse  avgt   10     25.000                  ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-long_sparse.json
+Starting final-query order published,current
+/workspace/scratch/d0a0e51b9386/toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -XX:ActiveProcessorCount=2 -cp <recorded classpath> org.openjdk.jmh.Main org.eclipse.rdf4j.query.resultio.binary.benchmark.BinaryWriterBenchmark.serialize -t 1 -foe true -jvmArgsAppend --enable-native-access=ALL-UNNAMED -Xms512m -Xmx1g -XX:ActiveProcessorCount=2 -XX:FlightRecorderOptions=stackdepth=128 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -Dlogback.configurationFile=/workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/harness/logback.xml -rf json -rff /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-query.json -p implementation=published,current -p workload=query -p sink=heartbeat -p namespaceLayout=stable -wi 5 -w 1s -i 5 -r 1s -f 2 -prof gc
+exit 0 log /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-query.log
+
+# Run complete. Total time: 00:00:53
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                           (implementation)  (namespaceLayout)     (sink)  (workload)  Mode  Cnt     Score      Error   Units
+BinaryWriterBenchmark.serialize                            published             stable  heartbeat       query  avgt   10  8912.214 ± 1403.736   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate              published             stable  heartbeat       query  avgt   10   756.862 ±  124.629  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm         published             stable  heartbeat       query  avgt   10  7049.140 ±  101.272    B/op
+BinaryWriterBenchmark.serialize:gc.count                   published             stable  heartbeat       query  avgt   10    26.000             counts
+BinaryWriterBenchmark.serialize:gc.time                    published             stable  heartbeat       query  avgt   10   215.000                 ms
+BinaryWriterBenchmark.serialize                              current             stable  heartbeat       query  avgt   10  7713.223 ± 1493.214   ns/op
+BinaryWriterBenchmark.serialize:gc.alloc.rate                current             stable  heartbeat       query  avgt   10   929.553 ±  162.209  MB/sec
+BinaryWriterBenchmark.serialize:gc.alloc.rate.norm           current             stable  heartbeat       query  avgt   10  7451.197 ±   24.456    B/op
+BinaryWriterBenchmark.serialize:gc.count                     current             stable  heartbeat       query  avgt   10    32.000             counts
+BinaryWriterBenchmark.serialize:gc.time                      current             stable  heartbeat       query  avgt   10   179.000                 ms
+
+Benchmark result is saved to /workspace/scratch/966a0d01c43b/rdf4j/binary-writer-round2/final-query.json
