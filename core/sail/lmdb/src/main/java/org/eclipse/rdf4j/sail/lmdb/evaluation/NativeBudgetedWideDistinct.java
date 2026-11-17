@@ -25,10 +25,9 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 	private final KernelRuntime.AggregateMemory memory;
 	private int[] slots, identity;
 	private long[] key, migrationKey;
-	private PrimitiveTupleTable primitive;
+	private NativeSegmentedTupleTable primitive;
 	private NativeExpressionDomain.Membership membership;
 	private NativeBoundedDistinct semantic;
-	private long primitiveBytes;
 	private boolean closed, initialized;
 	static final java.util.concurrent.atomic.AtomicLong ADMITTED = new java.util.concurrent.atomic.AtomicLong();
 	static final java.util.concurrent.atomic.AtomicLong MIGRATED = new java.util.concurrent.atomic.AtomicLong();
@@ -61,11 +60,7 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 			} else {
 				// Reserve fallback workspace before retaining keys, so migration never requires dropping exact state.
 				membership = new NativeExpressionDomain.Membership(slots.length, ledger, this.cancellation);
-				long bytes = arrayBytes(256 * slots.length, 256, 512);
-				if (memory.tryReserve(bytes)) {
-					primitiveBytes = bytes;
-					primitive = new PrimitiveTupleTable(slots.length, 256);
-				}
+				primitive = new NativeSegmentedTupleTable(slots.length, ledger);
 			}
 		} catch (Throwable failure) {
 			NativeContextClosingIteration.throwFailure(KernelRuntime.closeResource(this, failure));
@@ -95,39 +90,12 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 	private boolean addKey() {
 		if (semantic != null) return semantic.add(key);
 		if (primitive == null) return membership.add(key, UNKNOWN);
-		long extra = growthPeakBytes();
-		if (extra < 0 || !memory.tryReserve(extra)) {
+		int result = primitive.add(key);
+		if (result == NativeSegmentedTupleTable.REFUSED) {
 			migrate();
 			return membership.add(key, UNKNOWN);
 		}
-		long previous = primitiveBytes;
-		try {
-			int before = primitive.size;
-			primitive.findOrInsert(key, identity, false);
-			return primitive.size != before;
-		} finally {
-			primitiveBytes = arrayBytes(primitive.keys.length, primitive.fullHashes.length, primitive.buckets.length);
-			memory.release(previous + extra - primitiveBytes);
-		}
-	}
-
-	private long growthPeakBytes() {
-		long count = (long) primitive.size + 1;
-		long required = count * slots.length;
-		if (required > PrimitiveTupleTable.MAX_ARRAY_LENGTH || count > (3L << 28)) return -1;
-		long extra = 0;
-		if (required > primitive.keys.length)
-			extra += 16 + 8L * Math.min(PrimitiveTupleTable.MAX_ARRAY_LENGTH,
-					Math.max(required, (long) primitive.keys.length * 2));
-		if (count > primitive.fullHashes.length)
-			extra += 16 + 4L * Math.min(PrimitiveTupleTable.MAX_ARRAY_LENGTH,
-					Math.max(count, (long) primitive.fullHashes.length * 2));
-		if (primitive.size >= primitive.threshold) extra += 32 + primitive.buckets.length * 10L;
-		return extra;
-	}
-
-	private static long arrayBytes(int keys, int hashes, int buckets) {
-		return 64L + keys * 8L + hashes * 4L + buckets * 5L;
+		return result == NativeSegmentedTupleTable.INSERTED;
 	}
 
 	private void migrate() {
@@ -137,9 +105,8 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 			for (int c = 0; c < slots.length; c++) migrationKey[c] = primitive.key(i, c);
 			membership.add(migrationKey, UNKNOWN);
 		}
+		primitive.close();
 		primitive = null;
-		memory.release(primitiveBytes);
-		primitiveBytes = 0;
 	}
 
 	void clear() {
@@ -164,10 +131,11 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 	@Override public void close() {
 		if (closed) return;
 		closed = true;
+		Throwable failure = KernelRuntime.closeResource(primitive, null);
 		primitive = null;
 		slots = identity = null;
 		key = migrationKey = null;
-		Throwable failure = KernelRuntime.closeResource(membership, null);
+		failure = KernelRuntime.closeResource(membership, failure);
 		failure = KernelRuntime.closeResource(semantic, failure);
 		failure = KernelRuntime.closeResource(memory, failure);
 		if (failure != null) NativeContextClosingIteration.throwFailure(failure);

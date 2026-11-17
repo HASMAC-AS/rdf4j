@@ -5,7 +5,7 @@ import pathlib
 import re
 root = pathlib.Path(__file__).parent
 fields = ['log', 'run', 'rows', 'checksum', 'millis', 'threadAllocated', 'compiledBinds', 'distinctPrimitive', 'distinctObjects', 'memoProbes', 'memoHits', 'admitted', 'migrated', 'spillCreated', 'spillDeleted', 'usedBefore', 'usedAfter', 'processPeak', 'globalLimit', 'perQueryLimit']
-paths = sorted(set(root.glob('budget-comparison-[1-4]-*.log')) | set(root.glob('budget-spill-million.log')) | set(root.glob('budget-eight-million-*.log')) | set(root.glob('wide-budget-query-smoke.log')))
+paths = sorted(set(root.glob('budget-comparison-[1-4]-*.log')) | set(root.glob('budget-spill-million.log')) | set(root.glob('budget-eight-million-*.log')) | set(root.glob('wide-budget-query-smoke.log')) | set(root.glob('segmented-eight-million-*.log')) | set(root.glob('bulk-eight-million-*.log')))
 with (root / 'budget-measurements.csv').open('w', newline='') as stream:
     writer = csv.DictWriter(stream, fieldnames=fields)
     writer.writeheader()

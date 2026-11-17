@@ -152,4 +152,18 @@ class WideDistinctBudgetTest {
 		}
 	}
 
+	@Test void incrementalKeyChunksAvoidFlatReplacementPeak() {
+		var manager = LmdbQueryMemoryManager.createForTesting(400_000, 400_000);
+		long migrated = NativeBudgetedWideDistinct.MIGRATED.get();
+		try (var ledger = manager.openQuery(); var tracker = tracker(ledger)) {
+			for (int i = 1; i <= 1100; i++) assertTrue(tracker.add(row(i)));
+			for (int i = 1; i <= 1100; i++) assertFalse(tracker.add(row(i)));
+			assertEquals(migrated, NativeBudgetedWideDistinct.MIGRATED.get(), "keys fit without copying a flat array");
+			assertTrue(manager.peakUsedBytes() < 400_000);
+			tracker.clear();
+			for (int i = 1100; i >= 1; i--) assertTrue(tracker.add(row(i)));
+		}
+		assertEquals(0, manager.usedBytes());
+	}
+
 }
