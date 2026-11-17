@@ -47,9 +47,33 @@ Source explains the row-copy signal: `SailResultValueExtractor.BINDING_SETS.snap
 1. **Keep the memo and readiness improvements.** They remove large repeated revision/lazy-value work; the remaining memo cost is not evidence that memo is a net loss.
 2. **Prototype a compact immutable/stable snapshot for known native rows**, sharing immutable projection-name layout and copying only the value/ID arrays as needed. Avoid rebuilding a hash map, entries and binding objects for every row. Preserve ownership, retained-row independence, replay, unbound values and mutable-source compatibility.
 3. **Reduce duplicate scans and memo access cost**, for example precomputed duplicate-slot structure when applicable or a cheaper per-row lookup, keeping exact ID/position/snapshot semantics. Measure lookup overhead separately from saved resolutions.
+The copying signal is primarily rebuilding row maps/bindings, not demonstrated dominance of raw `arraycopy`: `ProjectionLayout.copyIds` is only about 1.1% of combined leaf samples. A compact snapshot is therefore a representation/allocation experiment, not simply a faster bulk-memory-copy experiment.
+
 4. **Reduce per-row read-context/lifetime scope overhead** only after preserving replay and mutation-safety tests. It remains a real cost, not merely decoding.
 5. **Do not prioritize overlay lexical decoding on this fixture**: it accounts for little of the measured query CPU after reuse. Query production/search is next after the above, not evidence everything remaining is raw copying.
 
-## Writer caveat and ongoing ablation
+## Clean unchanged-writer ablation
 
-Initial writer profiles exposed a benchmark artifact: a system-property lookup was executed for each output call in the byte-counting sink. Those initial writer timings are excluded from performance claims. The sink now caches that switch once, and clean matched writer profiles are running. Both initial outputs contained exactly 3,637,322,543 bytes, with matching tuple checksums. The writer path adds the actual binary writer to the same lexical checksum consumer, so it isolates incremental encoding work but does not simulate network backpressure or eliminate the harness's own string accesses.
+The binary writer in this comparison is **unchanged on both sides, before PR #6440**. The combined query optimization branch does not include that writer PR.
+
+| | Main | Combined |
+|---|---:|---:|
+| Consumer without writer | 69.004 s / 53.075 GB | 39.436 s / 32.180 GB |
+| Consumer plus binary writer | 103.960 s / 85.437 GB | 69.117 s / 64.456 GB |
+| Encoded output bytes | 3,637,322,543 | 3,637,322,543 |
+| Writer CPU stack category | 30.55% | 41.90% |
+| `writeString` allocation weight | 30.79 GB | 30.34 GB |
+
+All runs have 8 million rows, the same lexical checksum, compiled IR and no spills; combined memo/grouping witnesses fired. Output byte count equality is not independent byte-for-byte validation. These are single cold diagnostic profiles, not a repeated speedup benchmark; differences between times are an ablation estimate, not exact additive CPU attribution.
+
+The writer therefore remains a major **separate** target: in the combined writer profile, `writeString` accounts for ~47% of weighted allocation samples, with UTF-8 encoder/character-buffer work prominent. This does not establish how much remains after #6440. Profile that PR separately before proposing duplicate fixes.
+
+Initial writer profiles exposed a benchmark artifact: a system-property lookup was executed for each output call in the byte-counting sink. Those initial writer timings are excluded from claims. The clean measurements cache the switch once. The writer path adds the actual binary writer to the same lexical checksum consumer, so it isolates incremental encoding work but does not simulate network backpressure or eliminate the harness's own string accesses. No Workbench NDJSON conversion or remote parser was profiled.
+
+## Verification and limits
+
+- Identical source harness compiles against both frozen version classpaths.
+- Results/checksums, forced compiled route, memory/spill release and memo/grouping witnesses checked on every run.
+- Main's object DISTINCT remains uncharged, so nominal query caps do not impose equal memory behavior.
+- No production code changed; diagnostic harness only. Not a correctness/full-suite/merge-ready claim.
+- Raw JFR recordings remain local; aggregate reports and source are committed. The broad JFR profile may contain machine/runtime metadata, so it is deliberately not uploaded unreviewed.
