@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.lang.reflect.Field;
 import java.nio.file.Path;
@@ -570,6 +571,17 @@ class LmdbMapGrowthReplayLifecycleTest {
 	@Timeout(value = 45, unit = TimeUnit.SECONDS)
 	@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "rdf4j.lmdb.nativeValueMemo.testProbe", matches = "true")
 	void initiallyCompiledMemoIsRecreatedAcrossUnobservedMapGrowth(@TempDir Path dataDirectory) throws Exception {
+		assertMemoReplay(dataDirectory, false);
+	}
+
+	@Test
+	@Timeout(value = 45, unit = TimeUnit.SECONDS)
+	@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "rdf4j.lmdb.nativeValueMemo.testProbe", matches = "true")
+	void replayRestoresCallerContextWhenReopeningFails(@TempDir Path dataDirectory) throws Exception {
+		assertMemoReplay(dataDirectory, true);
+	}
+
+	private void assertMemoReplay(Path dataDirectory, boolean failOnReplayOpen) throws Exception {
 		LmdbStore store = new LmdbStore(dataDirectory.toFile(), new LmdbStoreConfig("spoc,posc")
 				.setNativeEvaluationEnabled(true).setInlineLiterals(false).setForceSync(true)
 				.setTripleDBSize(INITIAL_MAP_SIZE).setValueDBSize(128L * 1024L * 1024L)
@@ -577,7 +589,7 @@ class LmdbMapGrowthReplayLifecycleTest {
 		SailRepository repository = new SailRepository(store);
 		ExecutorService executor = Executors.newFixedThreadPool(2);
 		java.util.concurrent.atomic.AtomicInteger observed = new java.util.concurrent.atomic.AtomicInteger();
-		try (var probe = new org.eclipse.rdf4j.sail.lmdb.evaluation.NativeMemoReplayProbe()) {
+		try (var probe = new org.eclipse.rdf4j.sail.lmdb.evaluation.NativeMemoReplayProbe(failOnReplayOpen)) {
 			repository.init();
 			java.util.Set<String> expected = new java.util.TreeSet<>();
 			try (var seed = repository.getConnection()) {
@@ -604,10 +616,26 @@ class LmdbMapGrowthReplayLifecycleTest {
 					tuple.setForcedLmdbExecutionStrategy("irKernel");
 					java.util.Set<String> output = new java.util.HashSet<>();
 					try (var result = tuple.evaluate()) {
-						while (result.hasNext()) {
-							var row = result.next();
-							observed.incrementAndGet();
-							output.add(row.getValue("s").stringValue() + "/" + row.getValue("v").stringValue());
+						// Consumption can happen under another caller context. Reopening this query must use
+						// its captured context, and must restore this unrelated context on return.
+						var previous = org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.set(
+								"caller context", org.eclipse.rdf4j.query.Query.QueryType.TUPLE, "batch");
+						var callerContext = org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.get();
+						try {
+							while (result.hasNext()) {
+								assertSame(callerContext, org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.get());
+								var row = result.next();
+								observed.incrementAndGet();
+								output.add(row.getValue("s").stringValue() + "/" + row.getValue("v").stringValue());
+							}
+							assertSame(callerContext, org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.get());
+						} finally {
+							try {
+								assertSame(callerContext, org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.get(),
+										"reopen must restore the caller context even on failure");
+							} finally {
+								org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.restore(previous);
+							}
 						}
 					}
 					reader.commit();
@@ -631,11 +659,20 @@ class LmdbMapGrowthReplayLifecycleTest {
 			assertEquals(0, observed.get());
 			probe.release();
 			writer.get(20, TimeUnit.SECONDS);
-			assertEquals(new java.util.HashSet<>(expected.stream().limit(200).toList()), query.get(20, TimeUnit.SECONDS));
-			assertEquals(200, observed.get(), "no duplicated or lost rows across replay");
+			if (failOnReplayOpen) {
+				var failure = assertThrows(java.util.concurrent.ExecutionException.class,
+						() -> query.get(20, TimeUnit.SECONDS));
+				Throwable cause = failure;
+				while (cause.getCause() != null) cause = cause.getCause();
+				assertEquals("test replay open failure", cause.getMessage());
+				assertEquals(0, observed.get());
+			} else {
+				assertEquals(new java.util.HashSet<>(expected.stream().limit(200).toList()), query.get(20, TimeUnit.SECONDS));
+				assertEquals(200, observed.get(), "no duplicated or lost rows across replay");
+				probe.assertReplacementHit();
+			}
 			assertTrue(mapSize(tripleStore) > initialMapSize);
 			assertEquals(before.replayAccepted() + 1, backingStore.growthMetricsSnapshot().replayAccepted());
-			probe.assertReplacementHit();
 		} finally {
 			executor.shutdownNow();
 			try { assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS)); }

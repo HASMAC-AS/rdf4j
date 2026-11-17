@@ -23,8 +23,14 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 	private volatile long firstCompiled;
 	private final java.util.List<String> routes = new java.util.concurrent.CopyOnWriteArrayList<>();
 
-	public NativeMemoReplayProbe() {
-		LmdbNativeDispatchLoop.observeSelections((target, label, id, record) -> routes.add(record.point() + ":" + id));
+	public NativeMemoReplayProbe() { this(false); }
+	public NativeMemoReplayProbe(boolean failOnReplayOpen) {
+		LmdbNativeDispatchLoop.observeSelections((target, label, id, record) -> {
+			routes.add(record.point() + ":" + id);
+			if (failOnReplayOpen && routes.size() == 2) {
+				throw new IllegalStateException("test replay open failure");
+			}
+		});
 		NativeValueMemo.testHitObserver = memo -> {
 			long compiled = LmdbNativeKernelExecution.COMPILED_BINDS.get();
 			synchronized (contexts) { contexts.putIfAbsent(memo, compiled); }
@@ -47,8 +53,7 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 			org.junit.jupiter.api.Assertions.assertTrue(firstCompiled > initialCompiled, "old attempt must compile");
 			org.junit.jupiter.api.Assertions.assertTrue(contexts.size() >= 2, "replacement must own a fresh memo");
 			System.out.println("memo replay contexts=" + contexts.size() + " routes=" + routes + " compiledBinds=" + (LmdbNativeKernelExecution.COMPILED_BINDS.get() - initialCompiled));
-			// Optional diagnostic deliberately fails while replay loses the forced compiled strategy.
-			if (Boolean.getBoolean("rdf4j.lmdb.nativeValueMemo.requireCompiledReplay"))
+			// Every successful replay proof requires a new compiled bind, not merely a new memo.
 			org.junit.jupiter.api.Assertions.assertTrue(contexts.values().stream().anyMatch(count -> count > firstCompiled),
 					"replacement memo hit must follow a new compiled bind; initial=" + initialCompiled + " first=" + firstCompiled
 							+ " contexts=" + contexts.values() + " routes=" + routes + " final=" + LmdbNativeKernelExecution.COMPILED_BINDS.get());

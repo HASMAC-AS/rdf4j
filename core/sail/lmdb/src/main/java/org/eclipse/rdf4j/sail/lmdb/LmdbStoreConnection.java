@@ -1016,6 +1016,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 		boolean queryIncludeInferred = includeInferred;
 		boolean repeatable = hasRepeatableQueryInputs(expression);
 		AtomicBoolean inputsConsumed = new AtomicBoolean();
+		SlowQueryContextHolder.SlowQueryContext queryContext = SlowQueryContextHolder.get();
 		ReplayFactory<BindingSet> factory = () -> {
 			if (!repeatable) {
 				// Every reopen path, including a generation change before registration, must not re-read the input.
@@ -1026,15 +1027,23 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 				sealReadReplay();
 			}
 			TupleExpr attemptExpression = explanationCapture == null ? expression : (TupleExpr) expression.clone();
-			CloseableIteration<? extends BindingSet> evaluation = openEvaluation(attemptExpression, queryDataset,
-					queryBindings, queryIncludeInferred);
-			if (explanationCapture != null) {
-				// The optimized model itself escapes through Explanation after its iteration is closed.
-				// Complete its values while this read attempt still owns its epoch and native capabilities.
-				detachTupleValues(attemptExpression);
-				explanationCapture.tupleExpr = attemptExpression;
+			// Repository evaluation restores its thread-local context before lazy result consumption.
+			// A replay must reconstruct the strategy with this query's settings, not the caller's.
+			SlowQueryContextHolder.SlowQueryContext previousContext = SlowQueryContextHolder.get();
+			SlowQueryContextHolder.restore(queryContext);
+			try {
+				CloseableIteration<? extends BindingSet> evaluation = openEvaluation(attemptExpression, queryDataset,
+						queryBindings, queryIncludeInferred);
+				if (explanationCapture != null) {
+					// The optimized model itself escapes through Explanation after its iteration is closed.
+					// Complete its values while this read attempt still owns its epoch and native capabilities.
+					detachTupleValues(attemptExpression);
+					explanationCapture.tupleExpr = attemptExpression;
+				}
+				return evaluation;
+			} finally {
+				SlowQueryContextHolder.restore(previousContext);
 			}
-			return evaluation;
 		};
 		ReplayPlanIteration<BindingSet> iteration = openReplayPlan(factory);
 		// Raw Sail iterations retain SailException so the repository boundary can perform its own conversion.

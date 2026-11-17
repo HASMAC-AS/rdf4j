@@ -36,4 +36,7 @@ Typed overlay decoding reduced a cold-microbenchmark's allocations but initially
 
 These are synthetic fixtures, not the downstream private query. There is no claim that its two-minute runtime becomes 44.9 seconds.
 
-A diagnostic real-map-growth test found the first attempt uses irKernel but replacement selects batch. It establishes fresh memo instances/hits and correct output across actual growth before exposure, **not compiled execution on both attempts**. The forcing/replay route switch remains an explicit open issue.
+A diagnostic real-map-growth test found the first attempt uses irKernel but replacement selects batch. It establishes fresh memo instances/hits and correct output across actual growth before exposure, **not compiled execution on both attempts**. A subsequent investigation traced this to lost query-local context during lazy replay. The scoped restoration fix now passes the strict test with two compiled irKernel attempts and preserves an unrelated caller context. See MAP-GROWTH-CHECKPOINT.md; the broader replay suite is still running at this checkpoint.
+
+## Memory admission limitation
+Wide DISTINCT is still experimental and not fully query-budgeted. Eight million 30-column long keys alone consume1.92GB, before capacity slack and indexing. Array-limit guards are not memory admission; migration to HashMap can temporarily retain both representations. Bounded ledger admission/spill work follows this checkpoint. No ready-to-merge claim.
