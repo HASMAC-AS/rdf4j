@@ -73,3 +73,7 @@ Ordered-route buffer diagnostics support the allocation explanation: reducing on
 Review hardening adds cancellation/deadline polling to segmented growth and collision loops. Twenty-nine focused tests pass, including natural-path red-to-green cancellation tests, migration failure/cleanup, canonical aliases and concurrent spilled clear/reopen. The combined broad sweep above predates this patch; its rerun is pending.
 
 A deterministic competing-query test now steals the 4,096-byte spill workspace between clear and re-admission. Admission refuses correctly; the hardening change immediately releases the failed owner's remaining 1,728-byte structural claim and prevents reuse after exact state was discarded. The competing tracker remains usable, and final claims return to zero. The focused suite now passes 31 tests; full post-fix regression and matched cancellation-overhead measurements are pending.
+
+## Final safety-fix validation
+
+Checkpoint c8f2848 passed 5,048 executed evaluation tests (429 classes; zero failures/errors; five intentional skips). A fresh 1-million-row pre/post ABBA showed no demonstrated performance regression: pooled means 5.111/4.918 s, with substantial late-fork variance. See [post-review validation](POST-REVIEW-VALIDATION.md) for provenance, exact scope and caveats.
