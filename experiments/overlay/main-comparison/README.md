@@ -39,3 +39,15 @@ Cold-query ABBA, zero warmups, one measurement per JVM:
 This is the actual current-main comparison. The earlier approximately 68% grouped improvement was against the bounded experimental ungrouped spilling path, not main. Main's unbounded DISTINCT stayed in memory and therefore is a substantially faster baseline. The earlier 37.48 s grouped number and this 42.43 s number came from separate benchmark sequences and should not be spliced into a mixed comparison. The common harness here has no experiment-specific counter polling inside the timed region.
 
 Six-column literal-bearing comparison remains in progress.
+
+## Six-column experiment stopped by user
+
+The user requested stopping this separate literal-containing benchmark to free the machine for profiling. The driver was interrupted and exited 130; the shared benchmark lock was then acquired nonblocking successfully, confirming release. No further benchmark runs were started.
+
+Completed partial observations are preserved, **not a completed ABBA comparison**:
+- First main fork: warmup 32.189 s; measurements 29.971 / 30.348 s.
+- First experimental fork: warmup 18.345 s; measurements 16.186 / 17.575 s.
+- Second experimental fork: warmup 18.889 s, then interrupted. Reverse main fork and exact-validation runs were not reached.
+- Completed runs had 8 million rows, checksum 5492130445631162080, compiled IR and zero spill. The completed experimental fork exercised grouping and memo.
+
+Do not publish a final percentage for this incomplete sequence or claim that six-column exact domain/literal validation ran. The completed four-column and 30-column comparisons above remain valid separate results.
