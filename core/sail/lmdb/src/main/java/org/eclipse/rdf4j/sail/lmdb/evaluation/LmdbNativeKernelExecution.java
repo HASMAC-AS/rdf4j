@@ -443,6 +443,13 @@ final class LmdbNativeKernelExecution {
 		return null;
 	}
 
+	/** A certificate exists only on the actual serial compiled cursor; parallel/foreign cursors never inherit it. */
+	static int groupedRootSlot(RowCursor cursor) {
+		if (cursor instanceof FusedRuntimeRowCursor fused)
+			return groupedRootSlot(fused.delegate);
+		return cursor instanceof KernelRowCursor kernel ? kernel.groupedRootSlot : -1;
+	}
+
 	/**
 	 * Worker-kernel factory for the parallel rungs. Arbitrated proposals pin their serving tier: a compiled proposal
 	 * must decline while its worker variant is pending, leaving the independently priced interpreted-parallel proposal
@@ -1796,6 +1803,12 @@ final class LmdbNativeKernelExecution {
 			KernelRowCursor cursor = new KernelRowCursor(kernel, probe, scanner, hooks, views, row,
 					lowered.bindings.columnEngineSlots, lowered.bindings.residualFilters, hashReservation, route,
 					fillRows, initialBuffer, initialRows);
+			if (Boolean.getBoolean(NativeKernelGrouping.ENABLED_PROPERTY)) {
+				cursor.groupedRootSlot = NativeKernelGrouping.rootSlot(lowered.kernel,
+						lowered.bindings.columnEngineSlots, domains, row.keyAuthority(), row.cancellation,
+						parallelExecution == ParallelExecution.DISABLE && requestedTier == KernelTier.COMPILED,
+						!lowered.bindings.residualFilters.isEmpty());
+			}
 			// Ownership has moved to the cursor. Null every local so the finally block cannot double-close it.
 			kernel = null;
 			probe = null;
@@ -2223,6 +2236,7 @@ final class LmdbNativeKernelExecution {
 
 	/** Translates packed kernel rows into RowState binds and applies residual filters (plan-owned semantics). */
 	private static final class KernelRowCursor implements RowCursor {
+		private int groupedRootSlot = -1;
 		private final JaninoKernel kernel;
 		private final NativeLmdbQuerySource.NativeProbe probe;
 		private final LmdbNativeKernelScanner scanner;

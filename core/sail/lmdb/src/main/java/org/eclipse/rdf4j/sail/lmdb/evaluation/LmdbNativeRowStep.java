@@ -1034,10 +1034,12 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 			failure = e;
 			throw e;
 		} finally {
-			if (topKDistinct != null) topKDistinct.commitMetrics();
+			if (topKDistinct != null)
+				topKDistinct.commitMetrics();
 			Throwable closed = KernelRuntime.closeResource(best::close, failure);
 			closed = KernelRuntime.closeResource(topKDistinct, closed);
-			if (failure == null && closed != null) NativeContextClosingIteration.throwFailure(closed);
+			if (failure == null && closed != null)
+				NativeContextClosingIteration.throwFailure(closed);
 		}
 	}
 
@@ -1047,8 +1049,9 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 		NativeDistinctTracker topKDistinct = distinct ? new NativeDistinctTracker(sourceSlots, row.keyAuthority(),
 				NativeDistinctTracker.ledger(row), row.cancellation)
 				: null;
-		try (topKDistinct; NativeSpillSort snapshots = new NativeSpillSort(sortLayout.liveToPlan.length, sortLayout.keyWidth,
-				comparator, topK, metrics)) {
+		try (topKDistinct;
+				NativeSpillSort snapshots = new NativeSpillSort(sortLayout.liveToPlan.length, sortLayout.keyWidth,
+						comparator, topK, metrics)) {
 			snapshots.cancellationPoll(row.cancellation::check);
 			long[] packed = new long[sortLayout.liveToPlan.length];
 			long ordinal = 0L;
@@ -2145,7 +2148,9 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 		String route = LmdbNativeKernelExecution.openedRowRoute(cursor);
 		LmdbNativeExplain.recordExecutionPath(originalExpr,
 				route == null ? LmdbNativeAttemptMetrics.PATH_IR_KERNEL : route);
-		return NativeUnorderedInput.rows(row, cursor);
+		NativeUnorderedInput input = NativeUnorderedInput.rows(row, cursor);
+		input.kernelPartitionSlot = LmdbNativeKernelExecution.groupedRootSlot(cursor);
+		return input;
 	}
 
 	/**
@@ -3381,6 +3386,7 @@ final class NativeUnorderedInput implements AutoCloseable {
 	}
 
 	DedupMode dedupMode = DedupMode.HASH;
+	int kernelPartitionSlot = -1;
 
 	private NativeUnorderedInput(RowState row) {
 		this.row = row;
@@ -3888,17 +3894,24 @@ final class NativeRowsIteration implements CloseableIteration<BindingSet>, Coope
 		}
 		// Every row strategy — prefix-run, ordered-distinct, the distinct-sinking kernel included — meets in the
 		// arbiter; nothing captures the query by ladder position any more. The winner reports who owes the DISTINCT
-		// dedup, and the tracker is built AFTER selection: an ordered tracker may only serve the ordered-distinct
-		// plan cursor itself, every other winner dedups through the global hash tracker.
+		// dedup, and the tracker is built AFTER selection. The logical ordered plan only serves its own cursor;
+		// a serial kernel may separately certify its actual producer's grouping. Other winners use global hashing.
 		unorderedInput = step.openUnorderedInput(row, step.distinct ? distinctPlan : null);
 		distinctHandledByCursor = unorderedInput.dedupMode == NativeUnorderedInput.DedupMode.HANDLED;
 		if (step.distinct) {
-			distinctRows = unorderedInput.dedupMode == NativeUnorderedInput.DedupMode.ORDERED
-					? new NativeOrderedDistinctTracker(distinctPlan, row.keyAuthority(),
-						NativeDistinctTracker.ledger(row), row.cancellation)
-					: new NativeOrderedDistinctTracker(
-							NativeTupleDistinctPlan.global(step.arg, step.sourceSlots), row.keyAuthority(),
-							NativeDistinctTracker.ledger(row), row.cancellation);
+			NativeTupleDistinctPlan certified = distinctHandledByCursor ? null
+					: NativeKernelGrouping.plan(step.arg, step.sourceSlots, unorderedInput.kernelPartitionSlot);
+			if (certified != null)
+				NativeKernelGrouping.TRACKERS.incrementAndGet();
+			distinctRows = certified != null
+					? new NativeOrderedDistinctTracker(certified, row.keyAuthority(),
+							NativeDistinctTracker.ledger(row), row.cancellation)
+					: unorderedInput.dedupMode == NativeUnorderedInput.DedupMode.ORDERED
+							? new NativeOrderedDistinctTracker(distinctPlan, row.keyAuthority(),
+									NativeDistinctTracker.ledger(row), row.cancellation)
+							: new NativeOrderedDistinctTracker(
+									NativeTupleDistinctPlan.global(step.arg, step.sourceSlots), row.keyAuthority(),
+									NativeDistinctTracker.ledger(row), row.cancellation);
 		}
 		cursor = unorderedInput.cursor;
 		batchCursor = unorderedInput.batchCursor;

@@ -49,6 +49,7 @@ class LmdbNativeIrKernelParallelTest {
 	private static final String EX = "http://example.com/irkernel/";
 
 	private static final String[] PROPERTIES = {
+			NativeKernelGrouping.ENABLED_PROPERTY,
 			"rdf4j.lmdb.nativeQueryEngine.enabled",
 			"rdf4j.lmdb.janinoCodegen.enabled",
 			"rdf4j.lmdb.janinoCodegen.thresholdRows",
@@ -277,6 +278,34 @@ class LmdbNativeIrKernelParallelTest {
 			}
 			assertThat(connection.size()).isEqualTo(statements);
 		}
+	}
+
+	@Test
+	void groupedDistinctCertificateIsNotExportedByParallelCursor() {
+		System.setProperty(NativeKernelGrouping.ENABLED_PROPERTY, "true");
+		String query = DOMAIN_ROOT_QUERY.replace("SELECT ", "SELECT DISTINCT ");
+		System.setProperty("rdf4j.lmdb.nativeQueryEngine.enabled", "false");
+		List<String> expected = rows(query);
+		assertThat(expected).hasSize(1200);
+		System.setProperty("rdf4j.lmdb.nativeQueryEngine.enabled", "true");
+		long certificates = NativeKernelGrouping.TRACKERS.get();
+		assertParallelKernelMatchesGeneric(query, expected);
+		assertThat(NativeKernelGrouping.TRACKERS.get()).isEqualTo(certificates);
+	}
+
+	@Test
+	void unprojectedRootKeepsGlobalDistinctAcrossRepeatedUnboundResiduals() {
+		System.setProperty(NativeKernelGrouping.ENABLED_PROPERTY, "true");
+		String query = DOMAIN_ROOT_QUERY.replace("SELECT ?s ?v ?w", "SELECT DISTINCT ?w");
+		System.setProperty("rdf4j.lmdb.nativeQueryEngine.enabled", "false");
+		List<String> expected = rows(query);
+		assertThat(expected).hasSize(401);
+		System.setProperty("rdf4j.lmdb.nativeQueryEngine.enabled", "true");
+		long certificates = NativeKernelGrouping.TRACKERS.get();
+		long compiled = LmdbNativeKernelExecution.COMPILED_BINDS.get();
+		assertThat(rows(query, "irKernel")).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(LmdbNativeKernelExecution.COMPILED_BINDS.get()).isGreaterThan(compiled);
+		assertThat(NativeKernelGrouping.TRACKERS.get()).isEqualTo(certificates);
 	}
 
 	@Test
