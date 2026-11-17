@@ -1,0 +1,31 @@
+46:		var memo = new NativeValueMemo(null, null);
+47:		assertNull(memo.value(1, 1));
+55:		var memo = new NativeValueMemo(source, null);
+56:		assertNotSame(memo.value(1, 1), memo.value(1, 1));
+61:	void repeatedIdReturnsSameObject() {
+63:		var memo = new NativeValueMemo(source, null);
+64:		assertSame(memo.value(1, 1), memo.value(1, 1));
+70:		var memo = new NativeValueMemo(source(), null);
+71:		assertNotSame(memo.value(1, 1), memo.value(1, 5));
+76:		var memo = new NativeValueMemo(source(), null);
+77:		var original = (org.eclipse.rdf4j.sail.lmdb.model.LmdbBNode) memo.value(1, 1);
+79:		assertNotSame(original, memo.value(1, 1));
+88:		var memo = new NativeValueMemo(source, null);
+89:		memo.value(1, 1);
+90:		memo.value(1, 1);
+100:		var memo = new NativeValueMemo(source, null);
+101:		assertSame(cold, memo.value(1, 1));
+107:		var memo = new NativeValueMemo(source(), null);
+108:		var first = memo.value(1, 1);
+112:		assertNotSame(first, memo.value(1, 1));
+119:		var memo = new NativeValueMemo(source(), memory);
+120:		assertNotNull(memo.value(1, 1));
+128:		var memo = new NativeValueMemo(source(), memory);
+129:		memo.value(1, 1);
+139:		var memo = new NativeValueMemo(source(), null);
+149:		var memo = new NativeValueMemo(source, null);
+159:	void growthRequiresOccupancyAndRepeatedHits() {
+161:		var memo = new NativeValueMemo(source(), memory);
+164:			retained.add(memo.value(1, 1));
+179:		var first = new NativeValueMemo(source, null);
+180:		var second = new NativeValueMemo(source, null);

@@ -114,6 +114,13 @@ public class WorkbenchBenchmarkServer {
         result.put("tupleContentType",tupleContentType);
         result.put("transportIdentityMapping",Boolean.getBoolean("rdf4j.http.compactIdentityMapping"));
         result.put("compactSequentialLookup",Boolean.getBoolean("rdf4j.sail.compactSequentialLookup"));
+        try {
+            var entryMode = Class.forName("org.eclipse.rdf4j.sail.lmdb.evaluation.NativeValueMemo").getDeclaredField("ENTRY_LOCAL_METADATA");
+            entryMode.setAccessible(true);
+            result.put("memoEntryMetadataEnabled", entryMode.getBoolean(null));
+        } catch (NoSuchFieldException olderFrozenMemo) {
+            result.put("memoEntryMetadataEnabled", "absent");
+        }
         result.put("tupleResponses",tupleResponses.get());
         result.put("heapUsed",ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed());
         for (String spec : new String[]{"LmdbNativeKernelExecution:COMPILED_BINDS", "LmdbNativeKernelExecution:INTERPRETED_BINDS",
