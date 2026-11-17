@@ -1,62 +1,53 @@
-# Measured outcome: memo baseline, wide DISTINCT and readiness
+# Query materialization and bounded DISTINCT: measured findings
 
-**Version note:** the8-million-row timings below are historical unbudgeted-wide results. The later bounded-wide implementation is separately measured below; do not attribute the old8-million timing to the new memory-safe route.
-All comparisons below keep the reconstructed weak per-iteration memo enabled. This is not the unavailable historical memo implementation. All experimental flags remain opt-in on this WIP branch.
+This is a synthetic reproduction, not the unavailable downstream dataset/query. It uses 2,136,000 triples, 8,000,000 DISTINCT result rows, 30 projected columns and nested OPTIONALs. Every result value is consumed. Adjacency, value overlay and compiled IR are enabled; the ordinary value cache is the default 256k entries. The memo is a documented reconstruction, not the missing historical implementation.
 
-## Exact-scale synthetic workload
+## What moves the needle
 
-2,136,000 triples;8,000,000 distinct output rows;30 projected variables with nested OPTIONAL;adjacency, overlay and compiled IR;default 256k-entry value cache;5 GiB heap. Each fresh JVM performs one query after opening the same verified persisted fixture. Dataset load is excluded, no discarded query warmups. Mirrored order A/B/C/C/B/A controls ordering drift.
+1. Keep the memo. With it held constant, wide primitive DISTINCT was about 20.6% faster than the object-key baseline in the original 8-million-row comparison.
+2. Account for the key table. Unbudgeted speed is not a safe memory policy. The flat table needs a large temporary resize allocation and spills early under tighter limits.
+3. Segment the keys. This preserves roughly 40-second performance while lowering accounted peak from 3.117 GB to 2.042 GB, fitting an explicit 2.5 GiB query cap.
+4. Batch spill records. Writing 32 separate eight-byte pieces for each 30-column record is expensive. One bounded record write reduces the default-budget segmented run from 179.817 to 118.630 seconds without increasing its memory limit.
+5. Do not add more overlay caches blindly. Typed overlay decoding did not deliver a convincing end-to-end win. Partial-ready processing reduces allocation but did not add a clear 8-million-row runtime win on top of wide DISTINCT.
 
-| Configuration | Fork timings | Mean | Versus memo baseline |
-|---|---|---|---|
-| Memo |57.978s,55.078s|56.528s|baseline|
-| Memo + wide primitive DISTINCT |45.741s,43.990s|44.866s|20.6% faster|
-| Memo + wide DISTINCT + partial-ready |43.993s,45.776s|44.884s|20.6% faster|
+## 8-million-row results
 
-The combination is not measurably faster than wide DISTINCT alone. It allocates36.44 GB on the query thread versus39.94 GB for wide alone (~8.8% less); these are cumulative allocations, **not retained-memory or heap sizes**. Baseline allocates38.66 GB. Wide is faster despite allocating more than baseline because of flat-array growth; don't sell it as an allocation reduction.
+All use 5 GiB JVM heap and the same verified persisted fixture. The first three rows are means of two cold, fresh-JVM runs in mirrored order. Later rows are single cold runs, no discarded query warmup: useful causal evidence with route checks, not a statistical speedup claim.
 
-All six runs returned exactly 8m rows and checksum -3441391656945048864. Every run used compiled IR. Each recorded220.8m memo probes and~218.753m memo hits (~99.1%). Wide variants switched 8m DISTINCT probes from object to primitive storage. No run was killed.
+| Implementation | Query cap | Time | Accounted peak | Spill files |
+|---|---:|---:|---:|---:|
+| Memo, object DISTINCT baseline | Wide keys unaccounted | 56.528 s | Not comparable | 0 |
+| Memo + unbudgeted flat wide DISTINCT | Wide keys unaccounted | 44.866 s | Not comparable | 0 |
+| Above + partial-ready | Wide keys unaccounted | 44.884 s | Not comparable | 0 |
+| Bounded flat + partial-ready | 3.5 GiB | 40.392 s | 3,116,898,144 B | 0 |
+| Bounded flat + partial-ready | 640 MiB | 175.682 s | 393,746,272 B | 20 |
+| Segmented + partial-ready | 2.5 GiB | 40.383 s | 2,042,135,040 B | 0 |
+| Segmented + partial-ready | 640 MiB | 179.817 s | 671,067,808 B | 20 |
+| Flat + bulk record I/O | 640 MiB | 126.486 s | 393,746,272 B | 20 |
+| Segmented + bulk record I/O | 640 MiB | 118.630 s | 671,067,808 B | 20 |
 
-## Supporting million-row mirrored matrix
+The default 640 MiB query cap is a consequence of this 5 GiB heap: the existing global limit is half the heap, and the default per-query limit is one quarter of that global limit. No budget-policy default was changed. The 2.5 GiB segmented experiment explicitly allows one query to use the unchanged global limit; concurrent admission still shares that global authority.
 
-267,000 triples, 1m rows, 4 GiB heap, two warmups and four measured runs per fork; final three averaged; two forks per variant:
-- Memo:6.177s.
-- Memo+partial-ready:5.542s (~10.3% faster).
-- Memo+wide DISTINCT:4.484s (~27.4% faster).
-- Memo+both:4.548s (~26.4% faster).
+Every run returns checksum `-3441391656945048864`, the exact row count, compiled `irKernel`, and memo hits. Budgeted runs release all ledger bytes and delete every created spill file. Bulk runs additionally assert exactly 8,000,000 successful bulk record writes. These ledger peaks are accounted operator memory, not whole-process RSS or a universal bound on all query allocations.
 
-Wide DISTINCT is the strongest demonstrated lever. Partial-ready reduces redundant traversal/allocation; its speed benefit is workload-dependent and not additive at 8m rows.
+Flat storage spills after 1,048,576 primitive rows at the default cap. Segmented storage keeps 2,642,432 rows before spilling. But migration writes the retained prefix too: all eight million keys ultimately reach disk in either case. Delaying migration alone therefore does not remove spill I/O.
 
-## What not to enable based on these results
+## Supporting measurements and profiling
 
-Typed overlay decoding reduced a cold-microbenchmark's allocations but initially slowed it; a profile-guided vector bulk-copy improvement recovered only part of the loss. After correcting scalar-route integration and proving it executed, query improvement was negligible/noisy under cache pressure and absent under default cache. Keep typed overlay off. Grouped waves and deduplicated overlay APIs are correctness-tested prototypes, not performance recommendations.
+- Matched 1-million-row ABBA, two forks/version, two warmups plus three measured queries/fork: old unbudgeted wide mean 4.486 s; bounded flat mean 4.207 s. Fork drift prevents claiming a definitive 6.2% speedup. New accounting records a 393,746,272-byte peak, no spill, zero retained budget.
+- The same 1-million-row fixture with a 64 MiB query cap takes 25.915 s in one cold run, with a 61,512,000-byte peak and 17 spill files, all deleted. Do not directly compare this cold number with the warm ABBA means.
+- The default-budget 8-million-row spill profile took 209.071 s under profiling, versus 175.682 s unprofiled. Of 4,247 main-thread native-method samples, 1,941 were file writes and 1,727 reads; approximately 97% were RandomAccessFile operations. This is a share of native samples, not 97% of query wall time. Java and native sampling periods differ.
+- The source and focused call-count tests establish 32 payload writes becoming one for a 30-column ID record, with identical bytes. Other index probes and index rebuilds remain separate optimization candidates.
+- Cumulative allocated bytes are not retained memory. Original partial-ready reduced the 8-million-row cumulative thread allocation from about 39.94 GB to 36.44 GB without an additive timing win. Segmentation further avoids payload recopying; see raw CSV values.
 
-## Validation and limits
+## Correctness and limits
 
-75 combined focused/replay/lifetime tests passed with memo+partial-ready+wide enabled. Separate overlay and vector tests are recorded in RESULTS.md. Full module regression was not completed.
+- Fixed a real replay bug: lazy map-growth replay lost the original query context and changed `irKernel` to `batch`. The strict test now proves two compiled attempts, fresh memo hits, exact output and caller-context restoration, including exceptional reopen. Full lifecycle: 29 passed; nearby replay: 20 passed.
+- Fixed optional memo integration for unsupported sources: they retain their established aggregate cache. Eligible memos still fall back without caching after memory refusal.
+- Bounded-flat validation: 5,030 scoped evaluation tests completed with zero failures/errors and five skips; early shards were rerun after the final cleanup change. A broader store/value/replay selection completed 1,771 checks with zero failures and two diagnostic skips. These are not full-module/compliance claims, and overlap with focused suites.
+- Segmented storage: 31 focused checks passed. Bulk I/O passes the same 28 format, call-count, failure and cleanup checks with the flag off and on, using naturally budget-triggered spill and a typed file factory. New stages require their own broader regression.
+- The bounded optimization covers opted-in wide SELECT DISTINCT with a real ledger. Legacy aggregate, narrow and no-ledger paths are not newly memory-bounded.
+- The existing spill representation supports at most 64 columns. Wider bounded opt-in requests refuse before publishing a key, rather than falling back to uncharged storage.
+- All optimization flags remain default-off. No ready-to-merge or full-regression claim.
 
-These are synthetic fixtures, not the downstream private query. There is no claim that its two-minute runtime becomes 44.9 seconds.
-
-A diagnostic real-map-growth test found the first attempt uses irKernel but replacement selects batch. It establishes fresh memo instances/hits and correct output across actual growth before exposure, **not compiled execution on both attempts**. A subsequent investigation traced this to lost query-local context during lazy replay. The scoped restoration fix now passes the strict test with two compiled irKernel attempts and preserves an unrelated caller context. See MAP-GROWTH-CHECKPOINT.md; the broader replay suite is still running at this checkpoint.
-
-## Memory admission limitation
-Wide DISTINCT is still experimental and not fully query-budgeted. Eight million 30-column long keys alone consume1.92GB, before capacity slack and indexing. Array-limit guards are not memory admission; migration to HashMap can temporarily retain both representations. Bounded ledger admission/spill work follows this checkpoint. No ready-to-merge claim.
-
-## Bounded-wide checkpoint: matched1-million-row comparison
-
-Memo+partial-ready+wide enabled in both versions;4GiBheap,default512MiB per-query limit,2warmups then3measured queries per JVM; ABBA twoforks/version; same verified267k-triple fixture. Legacy unbudgeted mean4.485753s (fork means4.701464/4.270041); bounded mean4.207123s (4.210418/4.203828). This small sample is~6.2%lower, but fork drift means no definitive speedup claim. Budget accounting does not show a material runtime regression here.
-
-Newroute charges393,746,272Bpeak and releases to0 aftereachquery, no spill at this size. Legacy reports only~7MB because its wide-key table was unaccounted. Every run returns1mrows withchecksum-2986462905361302464 and compiledirKernel/memohit proof. Allocation varies by fork (bounded4.59–5.43GB vslegacy4.53GBcumulative); not a retained-memory measurement or reliable allocation win.
-
-Scope: bounded optimization is for opted-in wide SELECT DISTINCT with an actual ledger. Legacy aggregate/no-ledger/narrow paths are not newly memory-bounded. Width>64 is explicitly refused in bounded opt-in mode because the existing spill representation supports atmost64columns. See WIDE-BUDGET-CHECKPOINT.md. Actual constrained-budget spill throughput and new8m timings pending at this checkpoint.
-
-Actual constrained query: same1mrows/30columns with64MiB querycap (256MiBglobal), one cold query/no warmup,25.914588s. Peak61,512,000B stays below67,108,864B; one migration;17spillfiles created and17deleted;0bytesleft afterclose; exactchecksum/cardinality. This verifies real-query spill correctness/cleanup, not a matched speed comparison against the warm4.2s runs. Tight budgets clearly carry a substantial spill cost.8m default versus generous budget measurement is running.
-
-## Final flat-table bounded baseline:8-million-row budget contrast
-
-Same2,136,000triples,8mDISTINCTrows,30columns,compiledIR,memo+partial-ready,5GiBheap,onecoldquery perfreshJVM/no discardedwarmups:
-
-- Generous3.5GiBquerycap (4GiBglobal):40.391800s;3,116,898,144Bpeak;8mprimitive probes;no spill.
-- Default640MiBquerycap (2.5GiBglobal):175.682105s;393,746,272Bpeak;1,048,576primitive then6,951,424spill probes;one migration;20spillfiles created/deleted.
-
-Both checksum-3441391656945048864,220.8mmemoprobes/~218.753mhits,and0budgetbytes afterclose. These single-run measurements establish a large memory/spill tradeoff, not a statistically established speedup. Do not recommend the default-budget flat-table version as a performance win for this workload. Its next growth would exceed the limit before using all640MiB, so it spills early. Segmentedpayload storage and batched spillI/O are the next experiments; no globalbudget policy change has been made.
+Raw data: `measurements.csv` preserves the historical memo matrix; `budget-measurements.csv` preserves later warmup and measured runs. `REPRODUCE.txt` explains snapshots, scripts and fixture verification. Relevant checkpoint reports distinguish each code version and validation scope.

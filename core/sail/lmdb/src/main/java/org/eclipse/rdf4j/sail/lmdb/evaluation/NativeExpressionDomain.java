@@ -65,6 +65,11 @@ final class NativeExpressionDomain implements AutoCloseable {
 	static final AtomicLong IO_READ_BYTES = new AtomicLong();
 	static final AtomicLong IO_WRITE_BYTES = new AtomicLong();
 	private static final long WORKSPACE_BYTES = 4096L;
+	static final AtomicLong BULK_ID_RECORDS_WRITTEN = new AtomicLong();
+	private static final boolean BULK_ID_RECORD_IO = Boolean
+			.getBoolean("rdf4j.lmdb.expressionDomain.bulkIdRecordIo");
+	private static final java.lang.invoke.VarHandle ID_RECORD_LONGS = java.lang.invoke.MethodHandles
+			.byteArrayViewVarHandle(long[].class, java.nio.ByteOrder.BIG_ENDIAN);
 	// Conservative ownership with 8-byte references: scope 96, scope key 64, context-map entry 64, memory account 64,
 	// reservation bookkeeping 128, identity-map object 64, its initial Object[64] array, representative callback 64.
 	// The 128-byte per-carrier claim below covers later identity-index growth, including its replacement peak.
@@ -285,6 +290,16 @@ final class NativeExpressionDomain implements AutoCloseable {
 		}
 	}
 
+	@FunctionalInterface
+	interface SpillFileFactory {
+		RandomAccessFile open(Path path) throws IOException;
+	}
+
+	private static RandomAccessFile openSpillFile(Path path) throws IOException {
+		return new RandomAccessFile(path.toFile(), "rw");
+	}
+
+	private final SpillFileFactory spillFiles;
 	private final Kind kind;
 	private final NativeExpressionDomainPolicy.Mode mode;
 	private final NativeCancellationToken cancellation;
@@ -295,6 +310,8 @@ final class NativeExpressionDomain implements AutoCloseable {
 	private int[] dependencies;
 	private long[] scratch;
 	private NativeSpillValueCodec codec;
+	private byte[] idRecordBuffer;
+	private long bulkIdRecordsWritten;
 	private long[] keys, hashes;
 	private Object[] outcomes;
 	private boolean[] occupied;
@@ -320,6 +337,13 @@ final class NativeExpressionDomain implements AutoCloseable {
 	private NativeExpressionDomain(long dependencyMask, Kind kind, NativeExpressionDomainPolicy.Mode mode,
 			LmdbQueryMemoryManager.QueryLedger ledger,
 			NativeCancellationToken cancellation, UnaryOperator<Value> representative) {
+		this(dependencyMask, kind, mode, ledger, cancellation, representative, NativeExpressionDomain::openSpillFile);
+	}
+
+	private NativeExpressionDomain(long dependencyMask, Kind kind, NativeExpressionDomainPolicy.Mode mode,
+			LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
+			UnaryOperator<Value> representative, SpillFileFactory spillFiles) {
+		this.spillFiles = java.util.Objects.requireNonNull(spillFiles);
 		this.kind = kind;
 		this.mode = mode;
 		this.cancellation = cancellation;
@@ -336,7 +360,14 @@ final class NativeExpressionDomain implements AutoCloseable {
 			if (mode == NativeExpressionDomainPolicy.Mode.LAST_TUPLE) {
 				previousTuple = new long[dependencies.length];
 			}
-			codec = new NativeSpillValueCodec(cancellation, representative, () -> LmdbNativeProbeDeadline.poll(0));
+			if (kind == Kind.ID && BULK_ID_RECORD_IO) {
+				// ID records never use the value codec. Replace its eagerly allocated 1024-byte buffer with
+				// at most 528 bytes (64 keys plus hash and outcome), reducing owned workspace under the same
+				// conservative 4096-byte admission. No per-record array or additional uncharged workspace.
+				idRecordBuffer = new byte[(dependencies.length + 2) * Long.BYTES];
+			} else {
+				codec = new NativeSpillValueCodec(cancellation, representative, () -> LmdbNativeProbeDeadline.poll(0));
+			}
 		}
 	}
 
@@ -346,12 +377,17 @@ final class NativeExpressionDomain implements AutoCloseable {
 		private long size;
 
 		Membership(int width, LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation) {
+			this(width, ledger, cancellation, NativeExpressionDomain::openSpillFile);
+		}
+
+		Membership(int width, LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
+				SpillFileFactory spillFiles) {
 			if (width < 0 || width > Long.SIZE) {
 				throw new IllegalArgumentException("Invalid exact tuple width");
 			}
 			long mask = width == Long.SIZE ? -1L : (1L << width) - 1L;
 			store = new NativeExpressionDomain(mask, Kind.ID, NativeExpressionDomainPolicy.Mode.HASHED, ledger,
-					cancellation, UnaryOperator.identity());
+					cancellation, UnaryOperator.identity(), spillFiles);
 			if (!store.admitted) {
 				store.close();
 				throw new KernelRuntime.AllocationDeniedException();
@@ -621,8 +657,8 @@ final class NativeExpressionDomain implements AutoCloseable {
 		try (NativeExecutionPhaseEvent.Span phase = NativeExecutionPhaseEvent.start("spill", cancellation)) {
 			payloadPath = create("payload");
 			indexPath = create("index");
-			payload = new RandomAccessFile(payloadPath.toFile(), "rw");
-			index = new RandomAccessFile(indexPath.toFile(), "rw");
+			payload = spillFiles.open(payloadPath);
+			index = spillFiles.open(indexPath);
 			resizeIndex(index, diskCapacity * Long.BYTES);
 			for (int slot = 0; slot < capacity; slot++) {
 				poll(slot);
@@ -653,12 +689,23 @@ final class NativeExpressionDomain implements AutoCloseable {
 			long start = payload.getFilePointer();
 			try {
 				if (payload.readLong() == hash) {
-					boolean same = true;
-					for (int position = 0; position < dependencies.length; position++) {
-						same &= payload.readLong() == scratch[position];
-					}
-					if (same) {
-						return readOutcome();
+					if (idRecordBuffer != null) {
+						payload.readFully(idRecordBuffer, 0, (dependencies.length + 1) * Long.BYTES);
+						boolean same = true;
+						for (int position = 0; position < dependencies.length; position++) {
+							same &= (long) ID_RECORD_LONGS.get(idRecordBuffer, position * Long.BYTES) == scratch[position];
+						}
+						if (same) {
+							return (long) ID_RECORD_LONGS.get(idRecordBuffer, dependencies.length * Long.BYTES);
+						}
+					} else {
+						boolean same = true;
+						for (int position = 0; position < dependencies.length; position++) {
+							same &= payload.readLong() == scratch[position];
+						}
+						if (same) {
+							return readOutcome();
+						}
 					}
 				}
 			} finally {
@@ -675,11 +722,21 @@ final class NativeExpressionDomain implements AutoCloseable {
 		long offset = payload.length();
 		payload.seek(offset);
 		try {
-			payload.writeLong(hash);
-			for (int position = 0; position < dependencies.length; position++) {
-				payload.writeLong(tuple[from + position]);
+			if (idRecordBuffer != null) {
+				ID_RECORD_LONGS.set(idRecordBuffer, 0, hash);
+				for (int position = 0; position < dependencies.length; position++) {
+					ID_RECORD_LONGS.set(idRecordBuffer, (position + 1) * Long.BYTES, tuple[from + position]);
+				}
+				ID_RECORD_LONGS.set(idRecordBuffer, (dependencies.length + 1) * Long.BYTES, (long) outcome);
+				payload.write(idRecordBuffer, 0, idRecordBuffer.length);
+				bulkIdRecordsWritten++;
+			} else {
+				payload.writeLong(hash);
+				for (int position = 0; position < dependencies.length; position++) {
+					payload.writeLong(tuple[from + position]);
+				}
+				writeOutcome(outcome);
 			}
-			writeOutcome(outcome);
 		} finally {
 			writeIo(payload.getFilePointer() - offset);
 		}
@@ -722,7 +779,7 @@ final class NativeExpressionDomain implements AutoCloseable {
 		boolean published = false;
 		Throwable failure = null;
 		try {
-			replacement = new RandomAccessFile(replacementPath.toFile(), "rw");
+			replacement = spillFiles.open(replacementPath);
 			resizeIndex(replacement, Math.multiplyExact(replacementCapacity, Long.BYTES));
 			for (long slot = 0L; slot < diskCapacity; slot++) {
 				poll((int) slot);
@@ -825,12 +882,14 @@ final class NativeExpressionDomain implements AutoCloseable {
 			return;
 		}
 		closed = true;
+		BULK_ID_RECORDS_WRITTEN.addAndGet(bulkIdRecordsWritten);
 		keys = null;
 		hashes = null;
 		outcomes = null;
 		occupied = null;
 		previousTuple = null;
 		previousOutcome = null;
+		idRecordBuffer = null;
 		Throwable failure = KernelRuntime.closeResource(payload, null);
 		failure = KernelRuntime.closeResource(index, failure);
 		failure = delete(payloadPath, failure);
