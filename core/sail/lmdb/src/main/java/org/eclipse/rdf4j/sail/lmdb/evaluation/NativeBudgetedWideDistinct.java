@@ -23,6 +23,7 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 	private final NativeCancellationToken cancellation;
 	private final NativeTermAuthority authority;
 	private final KernelRuntime.AggregateMemory memory;
+	private final NativeExpressionDomain.SpillFileFactory spillFiles;
 	private int[] slots, identity;
 	private long[] key, migrationKey;
 	private NativeSegmentedTupleTable primitive;
@@ -34,7 +35,15 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 
 	NativeBudgetedWideDistinct(int[] slots, NativeTermAuthority authority,
 			LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation) {
+		this(slots, authority, ledger, cancellation, null);
+	}
+
+	/** Package-private spill I/O injection for deterministic failure-path tests. */
+	NativeBudgetedWideDistinct(int[] slots, NativeTermAuthority authority,
+			LmdbQueryMemoryManager.QueryLedger ledger, NativeCancellationToken cancellation,
+			NativeExpressionDomain.SpillFileFactory spillFiles) {
 		this.ledger = ledger;
+		this.spillFiles = spillFiles;
 		this.cancellation = cancellation == null ? new NativeCancellationToken() : cancellation;
 		this.authority = authority;
 		this.memory = KernelRuntime.AggregateMemory.forLedger(ledger);
@@ -59,13 +68,19 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 				semantic = new NativeBoundedDistinct(authority, identity, this.cancellation, ledger);
 			} else {
 				// Reserve fallback workspace before retaining keys, so migration never requires dropping exact state.
-				membership = new NativeExpressionDomain.Membership(slots.length, ledger, this.cancellation);
-				primitive = new NativeSegmentedTupleTable(slots.length, ledger);
+				membership = newMembership();
+				primitive = new NativeSegmentedTupleTable(slots.length, ledger, cancellation);
 			}
 		} catch (Throwable failure) {
 			NativeContextClosingIteration.throwFailure(KernelRuntime.closeResource(this, failure));
 			throw new AssertionError("unreachable");
 		}
+	}
+
+	private NativeExpressionDomain.Membership newMembership() {
+		return spillFiles == null
+				? new NativeExpressionDomain.Membership(slots.length, ledger, cancellation)
+				: new NativeExpressionDomain.Membership(slots.length, ledger, cancellation, spillFiles);
 	}
 
 	boolean primitiveActive() { return primitive != null; }
@@ -118,7 +133,7 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 			semantic = new NativeBoundedDistinct(authority, identity, cancellation, ledger);
 		} else {
 			membership.close();
-			membership = new NativeExpressionDomain.Membership(slots.length, ledger, cancellation);
+			membership = newMembership();
 		}
 	}
 

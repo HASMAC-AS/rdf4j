@@ -44,3 +44,23 @@ run-ordered-route.sh route groups queryBudgetBytes logStem [expectedChecksum] [w
 -ordered-100k-profile.log / ordered-100k.jfr / ordered-allocation-summary.txt
 
 All heavy work used native-benchmark.lock and allowed final regression shards between runs.
+
+## Existing-buffer-knob diagnostic
+
+No production edits; same frozen classes,100k fixture,4MiB query cap, memo retained, one warmup + one measured run per fresh JVM. Settings are printed from actual initialized LmdbNativePackedFtree fields in the harness.
+
+| Effective vector/root/initial rows | Warmed ms | Thread allocated bytes |
+|---|---:|---:|
+|2048/1024/2048 (prior default run)|4703.049|31,393,166,008|
+|2048/64/2048 (rootBatchRows=64 only)|3707.882|25,207,896,240|
+|64/64/64 (both knobs=64)|2850.392|11,777,421,760|
+
+Every run retains exact100k count/checksum1220594000736094224, no spill,3,797,344-byte tracked peak, zero ledger bytes after close,2,760,000 memo probes/~2,731,750hits. Root-only reduces allocated bytes~19.7%; both64 reduce them~62.5%. Single warmed timings improve~21.2% and~39.4%, respectively; this is a diagnostic, not replicated ABBA evidence. Both64 remains slower and vastly more allocating than the prior matched IR1.731s/395MB run.
+
+RootBatchRows is clamped to VECTOR_SIZE, so vectorRows=64 alone would already force the effective root size64. Root-only versus both64 is therefore the meaningful isolation. INITIAL_NODE_CAPACITY also becomes64 when vectorRows=64; its vectors no longer round up to2048-long blocks. These settings directly support the repeated oversized-buffer allocation hypothesis. They do not eliminate repeated packed planning/setup, and should not be made global defaults on this small-correlated-arm fixture alone.
+
+Reproduction:
+- `PACKED_ROOT_ROWS=64 bash experiments/overlay/run-ordered-route.sh orderedDistinct 100 4194304 ordered-100k-root64 1220594000736094224 1 1`
+- `PACKED_VECTOR_ROWS=64 PACKED_ROOT_ROWS=64 bash experiments/overlay/run-ordered-route.sh orderedDistinct 100 4194304 ordered-100k-both64 1220594000736094224 1 1`
+
+Logs: ordered-100k-root64.log and ordered-100k-both64.log. No8m run. These diagnostics ran only after the focused migration/cancellation worker released lock priority.

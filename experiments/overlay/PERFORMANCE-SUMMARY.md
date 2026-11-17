@@ -63,3 +63,11 @@ Probe reuse remains default-off. Focused tests cover collisions, growth invalida
 On a 100,000-row fixture with a 4 MiB query cap and memo retained, the existing proven ordered route used bounded partition state and avoided spill. It nevertheless took 4.703 seconds versus compiled IR's 1.731 seconds, allocating 31.39 GB versus 395 MB cumulatively. Separate allocation profiling implicated repeated packed factor-tree setup and buffers. The 20,000-row ordered case also passed under a 1 MiB cap without spill or leaked budget.
 
 This is not a recommendation to replace compiled IR with the existing ordered route. Ordinary IR exports no ordering certificate, and its DISTINCT sinking rejects OPTIONAL. Safely exposing grouping from the final compiled producer could be valuable, but remains unimplemented and unproven. See `ORDERED-DISTINCT-EXPERIMENT.md`; no 8-million-row ordered run was attempted.
+
+## Combined regression checkpoint
+
+At `42c43d5`, segmented storage, bulk I/O and probe reuse together passed all 426 selected evaluation test classes: 5,040 executed tests, zero failures/errors, and five intentional benchmark skips. Source hashes were unchanged throughout the eleven shards. This is evaluation-package coverage, not the full module. Subsequent cancellation/review changes require their own validation. See `SPILL-FINAL-REGRESSION.md` and `spill-final-regression-summary.csv`.
+
+Ordered-route buffer diagnostics support the allocation explanation: reducing only the existing root-buffer setting to 64 gave 3.708 seconds / 25.21 GB allocated; reducing both effective buffers to 64 gave 2.850 seconds / 11.78 GB. Both preserve exact 100k-row output, but remain worse than compiled IR. These are single warmed samples, not ABBA or a default-setting recommendation.
+
+Review hardening adds cancellation/deadline polling to segmented growth and collision loops. Twenty-nine focused tests pass, including natural-path red-to-green cancellation tests, migration failure/cleanup, canonical aliases and concurrent spilled clear/reopen. The combined broad sweep above predates this patch; its rerun is pending.

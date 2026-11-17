@@ -24,6 +24,7 @@ final class NativeSegmentedTupleTable implements AutoCloseable {
 	private final int width, maxBuckets;
 	private final IntUnaryOperator hashHook;
 	private final KernelRuntime.AggregateMemory memory;
+	private final NativeCancellationToken cancellation;
 	private long[][] keys;
 	private int[][] hashes;
 	private int[] buckets;
@@ -33,21 +34,33 @@ final class NativeSegmentedTupleTable implements AutoCloseable {
 	private boolean closed;
 
 	NativeSegmentedTupleTable(int width, LmdbQueryMemoryManager.QueryLedger ledger) {
-		this(width, ledger, 1 << 30, IntUnaryOperator.identity());
+		this(width, ledger, new NativeCancellationToken());
+	}
+
+	NativeSegmentedTupleTable(int width, LmdbQueryMemoryManager.QueryLedger ledger,
+			NativeCancellationToken cancellation) {
+		this(width, ledger, 1 << 30, IntUnaryOperator.identity(), cancellation);
 	}
 
 	NativeSegmentedTupleTable(int width, LmdbQueryMemoryManager.QueryLedger ledger,
 			int maxBuckets, IntUnaryOperator hashHook) {
+		this(width, ledger, maxBuckets, hashHook, new NativeCancellationToken());
+	}
+
+	private NativeSegmentedTupleTable(int width, LmdbQueryMemoryManager.QueryLedger ledger,
+			int maxBuckets, IntUnaryOperator hashHook, NativeCancellationToken cancellation) {
 		if (width < 1 || width > 64 || maxBuckets < 4 || Integer.bitCount(maxBuckets) != 1
 				|| maxBuckets > 1 << 30) throw new IllegalArgumentException("Invalid segmented tuple limits");
 		this.width = width;
 		this.maxBuckets = maxBuckets;
 		this.hashHook = hashHook;
+		this.cancellation = cancellation;
 		memory = KernelRuntime.AggregateMemory.forLedger(ledger);
 	}
 
 	int add(long[] key) {
 		if (closed) throw new IllegalStateException("Segmented tuple table is closed");
+		cancellation.check();
 		if (key.length != width) throw new IllegalArgumentException("Tuple width mismatch");
 		int hash = hash(key);
 		int[] previousBuckets = buckets;
@@ -57,7 +70,10 @@ final class NativeSegmentedTupleTable implements AutoCloseable {
 		// Rehash may have moved the empty bucket. No payload allocation/copy happens for a duplicate.
 		if (previousBuckets != buckets) {
 			bucket = hash & (buckets.length - 1);
-			while (buckets[bucket] != 0) bucket = bucket + 1 & (buckets.length - 1);
+			for (int ticks = 0; buckets[bucket] != 0; ticks++) {
+				poll(ticks);
+				bucket = bucket + 1 & (buckets.length - 1);
+			}
 		}
 		int chunk = size >>> SHIFT, offset = (size & ROW_MASK) * width;
 		System.arraycopy(key, 0, keys[chunk], offset, width);
@@ -93,10 +109,15 @@ final class NativeSegmentedTupleTable implements AutoCloseable {
 		if (bucketCapacity != 0) {
 			int[] replacement = new int[bucketCapacity];
 			byte[] replacementFingerprints = new byte[bucketCapacity];
+			int probes = 0;
 			for (int i = 0; i < size; i++) {
+				poll(i);
 				int hash = hashes[i >>> SHIFT][i & ROW_MASK];
 				int bucket = hash & (bucketCapacity - 1);
-				while (replacement[bucket] != 0) bucket = bucket + 1 & (bucketCapacity - 1);
+				while (replacement[bucket] != 0) {
+					poll(++probes);
+					bucket = bucket + 1 & (bucketCapacity - 1);
+				}
 				replacement[bucket] = i + 1;
 				replacementFingerprints[bucket] = fingerprint(hash);
 			}
@@ -111,7 +132,8 @@ final class NativeSegmentedTupleTable implements AutoCloseable {
 	private int locate(long[] key, int hash) {
 		int bucket = hash & (buckets.length - 1);
 		byte fingerprint = fingerprint(hash);
-		while (buckets[bucket] != 0) {
+		for (int ticks = 0; buckets[bucket] != 0; ticks++) {
+			poll(ticks);
 			int index = buckets[bucket] - 1, chunk = index >>> SHIFT;
 			if (fingerprints[bucket] == fingerprint && hashes[chunk][index & ROW_MASK] == hash) {
 				int offset = (index & ROW_MASK) * width;
@@ -122,6 +144,11 @@ final class NativeSegmentedTupleTable implements AutoCloseable {
 			bucket = bucket + 1 & (buckets.length - 1);
 		}
 		return bucket;
+	}
+
+	private void poll(int ticks) {
+		cancellation.poll(ticks);
+		LmdbNativeProbeDeadline.poll(ticks);
 	}
 
 	long key(int index, int column) {

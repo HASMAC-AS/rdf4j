@@ -56,6 +56,9 @@ public final class OverlayOptionalQueryBenchmark {
 		System.setProperty("rdf4j.lmdb.parallel.enabled", "false");
 		System.setProperty("rdf4j.lmdb.irKernelParallel.enabled", "false");
 		System.setProperty("rdf4j.lmdb.valueOverlay.maxBytes", "268435456");
+		System.out.printf("packedSettings vectorRows=%d rootBatchRows=%d initialNodeRows=%d%n",
+				LmdbNativePackedFtree.VECTOR_SIZE, LmdbNativePackedFtree.ROOT_BATCH_SIZE,
+				LmdbNativePackedFtree.INITIAL_NODE_CAPACITY);
 		String fixture = System.getProperty("overlay.benchmark.fixture");
 		boolean reusable = fixture != null;
 		var directory = reusable ? new java.io.File(fixture) : Files.createTempDirectory("overlay-optional-query-").toFile();
