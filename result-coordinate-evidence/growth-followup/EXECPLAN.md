@@ -14,10 +14,15 @@ The deliverable is a minimal experimental growth selection, passing ownership an
 - [x] (2026-11-17) Capture failure before growth policy change.
 - [x] (2026-11-17) Implement and qualify fixed growth behavior.
 - [x] (2026-11-17) Qualify fixtures and freeze matched comparison.
+- [x] (2026-11-17) Preserve interruption and freeze fresh cohort.
 - [in_progress] Execute and audit complete measurement cohort.
 - [ ] Publish source, evidence and verified findings.
 
 ## Surprises & Discoveries
+
+The first growth cohort suffered an execution-control interruption at slot 23, after 22 JVMs had completed and sealed. The tool reported `Unknown process id 13272`; the runner's file lock was free, but its process and completion receipts were absent. The partial sample file contains four warmup queries and no measurements. Its last write stopped near the tool's initial yield. The actual process exit status and root cause are unknown. `comparison-v1/failure.json` permanently rejects the entire cohort, preserves all existing raw files, and contributes no performance estimate. The next cohort must retain the same Java, inputs, schedule and estimators, with no timing-based tuning. Keep one orchestration cell alive through each complete supervised invocation and confirm the process transport before another Java launch.
+
+The independent rejection review verified all 181 raw hashes and all frozen inputs. The runner automatically saved per-process medians/means in the 22 terminal validation files; these were never inspected or used to select the new cohort. No accepted cohort or paired-comparison estimate was computed. This is the intended scope of `performanceEstimatesComputed=false` in the failure receipt, not a claim that the automatic per-process summaries do not exist. The saved console/GC files contain no inspected fatal/OOM/signal marker; no cause or exit code is inferred from that absence.
 
 The preceding study's measured native route was normal AUTO `orderedFactorizedSort`, not either IR execution tier. With eight warmups and five measurements, the inner statement-access arbiter uses the preferred adjacency root for queries 1–8 and samples its LMDB alternative for queries 9–13. The full history must be qualified for every new fixture and arm; short pilots are insufficient. The observed latency also contains substantial blocking work before the first row, before that query can resize its memo. Per-query total, preparation, first-row and remaining-consumption intervals therefore remain separate reported outcomes.
 
@@ -50,6 +55,8 @@ All nine fresh full-sequence exact pilots passed: 117 queries, identical final r
 The pilot mechanism observations preserve the intended controls. Early repetition gives both policies 126,944 hits without growth. Late repetition gives both 98,240 hits and 32,832 source calls; fixed remains at 4,096 slots and 606,448 peak tracked memo bytes, while adaptive grows four times to 65,536 slots and 14,549,472 bytes. The larger working set gives adaptive 98,506 hits versus fixed 23,416; the policies are not interchangeable. These are exact-pilot observations, not accepted latency estimates. The frozen cohort and independent qualification audit precede publication and timing.
 
 The empty `comparison-v1` cohort is frozen at protocol SHA-256 `60d231209b9d3a52e88d3ccc262422a90d342d7daacfe13383ec1a93ad209fe9`. Independent qualification-only audit passed, rehashing 188 manifest entries and 7,372 file checks over 344,166,308 bytes. The checker accepted a positive synthetic profile and rejected a deliberately changed ninth-query profile even after every raw seal was recomputed. The complete source archive contains 319 regular files, including 48 Java and 54 Python sources. Both full-feature and growth-only patches passed strict reconstruction and actual disposable Git application; the coordinator independently read every archive payload and matched all four current feature files and both patches. No accepted timing JVM has started. The immutable checkpoint must publish before the first scheduled invocation.
+
+The initial checkpoint was published as `7538840c68014013d3aaf36cb485db63994d7f4d` before comparison-v1 launched. After its interruption, a 40-second non-Java transport probe completed with one execution cell alive through all child waits. The failed slot's files remained byte-identical beyond the original 300-second deadline. Fresh `comparison-v2` is frozen at SHA-256 `2aa846bb18d8c1eb028ca2fc9b90c782ac5446a7bcbcbf0cd94fc893d6539e0d`. Independent comparison found exactly the allowed 218 path/timestamp scalar changes; all code, input identities, options, schedule and estimators are unchanged. Independent qualification-only audit passed again with zero new timing claims. The source archive remains the same complete implementation/harness package; its original protocol is historical, and the accepted cohort, if completed, must be comparison-v2. Publish the recovery checkpoint before its first invocation.
 
 ## Context and Orientation
 
@@ -110,3 +117,7 @@ Revision note (2026-11-17): Recorded 265 green executions and the final harness/
 Revision note (2026-11-17): Recorded all nine exact pilots and the independent final runtime qualification, including the larger-set loss of reuse; retained the prospective schedule unchanged.
 
 Revision note (2026-11-17): Sealed the empty 54-JVM cohort, recorded independent qualification and source-delivery readback, and advanced to supervised execution after checkpoint publication.
+
+Revision note (2026-11-17): Preserved a tool/process-control interruption after 22 sealed JVMs and four warmup records in slot 23. Rejected the entire incomplete cohort without computing performance estimates; paused Java launches and moved to transport recovery before an identical fresh cohort.
+
+Revision note (2026-11-17): Passed the continuous-cell transport probe and independent v2 protocol/qualification audits; clarified automatic per-process versus accepted cohort summaries and resumed the execution step pending recovery-checkpoint publication.

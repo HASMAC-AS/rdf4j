@@ -1,0 +1,13 @@
+{
+  "command": "python3 -u - <<'PY'\nfrom pathlib import Path\nimport json,time\np=Path('result-coordinate-evidence/growth-followup/recovery/transport-heartbeat-v1.jsonl')\nwith p.open('x') as f:\n start=time.monotonic()\n for i in range(9):\n  event={'ordinal':i,'elapsedSeconds':time.monotonic()-start,'epochNs':time.time_ns(),'javaLaunched':False}\n  f.write(json.dumps(event)+'\\n');f.flush()\n  print('transport heartbeat '+str(i),flush=True)\n  if i<8:time.sleep(5)\nprint('transport probe completed',flush=True)\nPY",
+  "execution": "One functions execution cell remained alive while awaiting exec_command and all write_stdin calls; functions.wait yielded progress without ending that cell.",
+  "terminalResult": {
+    "chunk_id": "a169dd",
+    "wall_time_seconds": 8.964832846,
+    "exit_code": 0,
+    "original_token_count": 18,
+    "output": "transport heartbeat 7\ntransport heartbeat 8\ntransport probe completed\n"
+  },
+  "javaLaunched": false,
+  "rootCauseOfEarlierInterruptionEstablished": false
+}
