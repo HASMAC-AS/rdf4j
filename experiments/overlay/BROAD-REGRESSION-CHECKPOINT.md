@@ -9,3 +9,8 @@ First three shards predate replay-context fix class rebuild at2026-11-17T07:58:1
 Strict real map-growth test: red1/1/0, then green1/0/0 with two memo instances and two compiled irKernel attempts, exact200 output rows, and caller context identity restored. Broader lifecycle/exceptional-reopen validation pending at this checkpoint.
 
 All branches here are WIP. No full-regression pass claim.
+
+## Completed evaluation sweep and isolated rerun
+All421 selected classes completed:5018tests,initial2failures,0errors,5skips. The memo source-eligibility regression is fixed (36focused tests green). The counter fixture now explicitly injects keyArrayLimit0 to exercise object counters rather than assuming width5 always chooses objects; its exact once-publication assertions remain unchanged. The entire failing40-class shard03 then passed831/0/0 (broad-shard03-fixed.log). No unexplained evaluation failures remain. This is not a single final-tree rerun of all5018tests: fixes landed during the sweep; budgetdelegate classes were present but production callsites still legacy during shard03rerun.
+
+Broader store/boundary/replay/value selection96top-level classes is underway via run-store-regression.sh, first759tests green with2diagnostic skips. Its results and new bounded-wide implementation must be reported separately.

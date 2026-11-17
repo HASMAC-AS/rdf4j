@@ -71,7 +71,7 @@ public class LmdbNativeHotLoopCounterTest {
 	@Test
 	public void distinctCountersPublishExactlyOnce() {
 		NativeDistinctTracker primitive = new NativeDistinctTracker(new int[] { 0, 1 });
-		NativeDistinctTracker object = new NativeDistinctTracker(new int[] { 0, 1, 2, 3, 4 });
+		NativeDistinctTracker object = new NativeDistinctTracker(new int[] { 0, 1, 2, 3, 4 }, null, 0);
 		long[] row = { 11L, 22L, 33L, 44L, 55L };
 		primitive.add(row);
 		primitive.add(row);
