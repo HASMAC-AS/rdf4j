@@ -36,6 +36,7 @@ import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.GraphQueryResult;
+import org.eclipse.rdf4j.query.IdentityValueMappingBindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryResultHandlerException;
 import org.eclipse.rdf4j.query.TupleQueryResult;
@@ -60,6 +61,7 @@ public final class BNodeOriginTransport {
 	public static final String VERSION = "1";
 	private static final String STORED = "rdf4jbo1_s_";
 	private static final String TRANSIENT = "rdf4jbo1_u_";
+	private static final boolean COMPACT_MAPPING = Boolean.getBoolean("rdf4j.http.compactIdentityMapping");
 	private static final ValueFactory VALUES = SimpleValueFactory.getInstance();
 
 	private BNodeOriginTransport() {
@@ -149,6 +151,9 @@ public final class BNodeOriginTransport {
 	}
 
 	public static BindingSet map(BindingSet row, UnaryOperator<Value> values) {
+		if (COMPACT_MAPPING && row instanceof IdentityValueMappingBindingSet compact) {
+			return compact.mapValuesPreservingIdentity(values);
+		}
 		MapBindingSet result = null;
 		for (Binding binding : row) {
 			Value mapped = values.apply(binding.getValue());

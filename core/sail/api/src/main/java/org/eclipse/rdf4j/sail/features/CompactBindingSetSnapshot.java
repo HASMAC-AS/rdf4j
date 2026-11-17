@@ -17,10 +17,12 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.IdentityValueMappingBindingSet;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.impl.SimpleBinding;
 
@@ -28,7 +30,7 @@ import org.eclipse.rdf4j.query.impl.SimpleBinding;
  * Default-off experiment: stable shallow rows without per-binding map entries. Read operations used by the repository
  * boundary and result writers stay compact; operations exposing mutable views use a plain map delegate.
  */
-final class CompactBindingSetSnapshot extends MapBindingSet {
+final class CompactBindingSetSnapshot extends MapBindingSet implements IdentityValueMappingBindingSet {
 	private static final long serialVersionUID = 1L;
 	static final boolean ENABLED = Boolean.getBoolean("rdf4j.sail.compactResultSnapshots");
 	private static final int MAX_COMPACT_BINDINGS = 256;
@@ -132,6 +134,56 @@ final class CompactBindingSetSnapshot extends MapBindingSet {
 			// Callback reads can materialize the map; replacing an existing binding must affect later roots.
 			roots.accept(names == null ? materialized.getValue(originalNames[i]) : values[i]);
 		}
+	}
+
+	@Override
+	public BindingSet mapValuesPreservingIdentity(UnaryOperator<Value> mapper) {
+		if (names == null) {
+			return mapMaterialized(mapper);
+		}
+		String[] originalNames = names;
+		int originalCount = count;
+		int expectedVersion = structuralVersion;
+		MapBindingSet result = null;
+		for (int i = 0; i < originalCount; i++) {
+			// LinkedHashMap checks structural modification on next(), not after the last callback.
+			if (structuralVersion != expectedVersion) {
+				throw new ConcurrentModificationException();
+			}
+			Binding binding = names == null ? materialized.getBinding(originalNames[i]) : null;
+			Value original = binding == null ? values[i] : binding.getValue();
+			Value mapped = mapper.apply(original);
+			// A callback can materialize and replace bindings, but the current pre-callback binding stays current.
+			Value comparison = binding == null ? original : binding.getValue();
+			if (mapped != comparison) {
+				if (result == null) {
+					materialize();
+					result = new MapBindingSet(size());
+					for (Binding current : materialized) {
+						result.addBinding(current);
+					}
+				}
+				result.setBinding(binding == null ? originalNames[i] : binding.getName(), mapped);
+			}
+		}
+		return result == null ? this : result;
+	}
+
+	private BindingSet mapMaterialized(UnaryOperator<Value> mapper) {
+		MapBindingSet result = null;
+		for (Binding binding : this) {
+			Value mapped = mapper.apply(binding.getValue());
+			if (mapped != binding.getValue()) {
+				if (result == null) {
+					result = new MapBindingSet(size());
+					for (Binding current : this) {
+						result.addBinding(current);
+					}
+				}
+				result.setBinding(binding.getName(), mapped);
+			}
+		}
+		return result == null ? this : result;
 	}
 
 	@Override
