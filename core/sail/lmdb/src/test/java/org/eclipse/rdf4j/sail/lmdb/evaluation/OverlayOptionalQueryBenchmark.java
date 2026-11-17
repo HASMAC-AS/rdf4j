@@ -29,7 +29,7 @@ import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
  * Args: groups (default 20; full 8000), fanout (10), measured iterations (3), overlay (true).
  * Thirty projected columns; groups * fanout^3 distinct output rows. The full fixture has approximately
  * 2.14 million triples and exactly 8 million output rows. Allocation counts cover the query thread only.
- * Two warm runs precede measurement; forced IR route and compiled binds are checked on every execution.
+ * Two warm runs precede measurement; forced route and (for IR) compiled binds are checked on every execution.
  */
 public final class OverlayOptionalQueryBenchmark {
 	private static final String NS = "urn:overlay-optional:";
@@ -39,6 +39,10 @@ public final class OverlayOptionalQueryBenchmark {
 		int fanout = args.length > 1 ? Integer.parseInt(args[1]) : 10;
 		int iterations = args.length > 2 ? Integer.parseInt(args[2]) : 3;
 		boolean overlay = args.length <= 3 || Boolean.parseBoolean(args[3]);
+		String forcedRoute = System.getProperty("overlay.benchmark.route", "irKernel");
+		if (!forcedRoute.equals("irKernel") && !forcedRoute.equals("orderedDistinct"))
+			throw new IllegalArgumentException("Unsupported benchmark route: " + forcedRoute);
+		Long expectedChecksum = Long.getLong("overlay.benchmark.expectedChecksum");
 		int warmups = Integer.getInteger("overlay.benchmark.warmups", 2);
 		if (warmups < 0) throw new IllegalArgumentException("Warmups must be nonnegative");
 		if (groups < 1 || fanout < 1 || iterations < 1) {
@@ -117,7 +121,7 @@ public final class OverlayOptionalQueryBenchmark {
 				long rows = 0, sum = 0;
 				try (var connection = repository.getConnection()) {
 					var query = (SailTupleQuery) connection.prepareTupleQuery(query());
-					query.setForcedLmdbExecutionStrategy("irKernel");
+					query.setForcedLmdbExecutionStrategy(forcedRoute);
 					try (var result = query.evaluate()) {
 						while (result.hasNext()) {
 							var row = result.next();
@@ -137,7 +141,8 @@ public final class OverlayOptionalQueryBenchmark {
 				allocated = allocated < 0 ? -1 : bean.getCurrentThreadAllocatedBytes() - allocated;
 				binds = LmdbNativeKernelExecution.COMPILED_BINDS.get() - binds;
 				if (rows != expectedRows || (checksum != null && checksum != sum)
-						|| !routes.equals(List.of("irKernel")) || binds < 1) {
+						|| (expectedChecksum != null && expectedChecksum != sum)
+						|| !routes.equals(List.of(forcedRoute)) || (forcedRoute.equals("irKernel") && binds < 1)) {
 					throw new IllegalStateException("Unexpected result/route: rows=" + rows + " checksum=" + sum
 							+ " routes=" + routes + " compiledBinds=" + binds);
 				}

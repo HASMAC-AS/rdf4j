@@ -57,3 +57,9 @@ Raw data: `measurements.csv` preserves the historical memo matrix; `budget-measu
 The same segmented+bulk candidate in an off/on/on/off series took 128.643 / 124.014 / 116.193 / 118.804 seconds. Means were 123.724 seconds off versus 120.103 on, a modest 2.93% reduction. System CPU decreased while user CPU increased; physical reads declined across the sequence. Earlier identical-candidate runs ranged from 103.253 to 158.900 seconds, so neither this small effect nor previous single-run bulk percentages are established general speedups. The deterministic benefit is avoiding a second index probe on eligible membership misses. All four runs preserve exact output, ledger cap and cleanup. See `SPILL-PROBE-ABBA.md` and `probe-abba-summary.csv`.
 
 Probe reuse remains default-off. Focused tests cover collisions, growth invalidation, failure cleanup and bulk on/off combinations. The earlier 5,030-test broad pass does not cover this later stage.
+
+## Existing ordered DISTINCT route
+
+On a 100,000-row fixture with a 4 MiB query cap and memo retained, the existing proven ordered route used bounded partition state and avoided spill. It nevertheless took 4.703 seconds versus compiled IR's 1.731 seconds, allocating 31.39 GB versus 395 MB cumulatively. Separate allocation profiling implicated repeated packed factor-tree setup and buffers. The 20,000-row ordered case also passed under a 1 MiB cap without spill or leaked budget.
+
+This is not a recommendation to replace compiled IR with the existing ordered route. Ordinary IR exports no ordering certificate, and its DISTINCT sinking rejects OPTIONAL. Safely exposing grouping from the final compiled producer could be valuable, but remains unimplemented and unproven. See `ORDERED-DISTINCT-EXPERIMENT.md`; no 8-million-row ordered run was attempted.
