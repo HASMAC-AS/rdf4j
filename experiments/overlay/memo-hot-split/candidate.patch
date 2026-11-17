@@ -1,0 +1,104 @@
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeValueMemo.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeValueMemo.java
+index 2bfa7d4ce7..510c77ad05 100644
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeValueMemo.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeValueMemo.java
+@@ -70,6 +70,25 @@ final class NativeValueMemo {
+ 		if (disabledReason != null)
+ 			return source == null ? null : source.lazyValue(id, mask);
+ 		int slot = references == null ? -1 : slot(id, mask, references.length);
++		Value value = findCachedValue(id, mask, slot);
++		probes++;
++		totalProbes++;
++		if (value != null) {
++			hits++;
++			totalHits++;
++			if (TEST_PROBE && testHitObserver != null)
++				testHitObserver.accept(this);
++		} else {
++			value = source.lazyValue(id, mask); // never initializes or decodes lexical content
++			if (!cacheMiss(value, id, mask))
++				return value;
++		}
++		if (probes == SAMPLE)
++			finishSample();
++		return value;
++	}
++
++	private Value findCachedValue(long id, int mask, int slot) {
+ 		WeakReference<Value> reference = slot < 0 ? null : references[slot];
+ 		Value value = reference == null ? null : reference.get();
+ 		boolean hit;
+@@ -81,43 +100,39 @@ final class NativeValueMemo {
+ 			hit = value instanceof LmdbValue nativeValue && ids[slot] == id && masks[slot] == mask
+ 					&& versions[slot] == nativeValue.getSemanticVersion();
+ 		}
+-		probes++;
+-		totalProbes++;
+-		if (hit) {
+-			hits++;
+-			totalHits++;
+-			if (TEST_PROBE && testHitObserver != null)
+-				testHitObserver.accept(this);
+-		} else {
+-			value = source.lazyValue(id, mask); // never initializes or decodes lexical content
+-			if (value instanceof LmdbValue nativeValue && nativeValue.getSemanticVersion() != LmdbValue.UNKNOWN_ID) {
+-				if (references == null && !resize(INITIAL))
+-					return value;
+-				slot = slot(id, mask, references.length);
+-				if (references[slot] == null)
+-					occupied++;
+-				if (ENTRY_LOCAL_METADATA) {
+-					references[slot] = new Entry(value, id, mask, nativeValue.getSemanticVersion());
+-				} else {
+-					ids[slot] = id;
+-					masks[slot] = (byte) mask;
+-					versions[slot] = nativeValue.getSemanticVersion();
+-					references[slot] = new WeakReference<>(value);
+-				}
++		return hit ? value : null;
++	}
++
++	/** False retains the original early return when the initial reservation is refused. */
++	private boolean cacheMiss(Value value, long id, int mask) {
++		if (value instanceof LmdbValue nativeValue && nativeValue.getSemanticVersion() != LmdbValue.UNKNOWN_ID) {
++			if (references == null && !resize(INITIAL))
++				return false;
++			int slot = slot(id, mask, references.length);
++			if (references[slot] == null)
++				occupied++;
++			if (ENTRY_LOCAL_METADATA) {
++				references[slot] = new Entry(value, id, mask, nativeValue.getSemanticVersion());
++			} else {
++				ids[slot] = id;
++				masks[slot] = (byte) mask;
++				versions[slot] = nativeValue.getSemanticVersion();
++				references[slot] = new WeakReference<>(value);
+ 			}
+ 		}
+-		if (probes == SAMPLE) {
+-			if (!alwaysAdmit && !sampled && hits < SAMPLE / 4) {
+-				disable("low-repetition");
+-			} else if (!fixedCapacity && references != null && references.length < MAXIMUM && hits >= SAMPLE / 2
+-					&& occupied >= references.length * 3 / 4) {
+-				// Conservative reconstructed policy: >=50% hits and >=75% occupied, at most one doubling/window.
+-				resize(references.length * 2);
+-			}
+-			sampled = true;
+-			probes = hits = 0;
++		return true;
++	}
++
++	private void finishSample() {
++		if (!alwaysAdmit && !sampled && hits < SAMPLE / 4) {
++			disable("low-repetition");
++		} else if (!fixedCapacity && references != null && references.length < MAXIMUM && hits >= SAMPLE / 2
++				&& occupied >= references.length * 3 / 4) {
++			// Conservative reconstructed policy: >=50% hits and >=75% occupied, at most one doubling/window.
++			resize(references.length * 2);
+ 		}
+-		return value;
++		sampled = true;
++		probes = hits = 0;
+ 	}
+ 
+ 	private static int slot(long id, int mask, int capacity) {
