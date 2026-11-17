@@ -28,7 +28,8 @@ class NativeKernelGroupedDistinctTest {
 				"rdf4j.lmdb.nativeQueryEngine.enabled", LmdbNativeJaninoCodegen.ENABLED_PROPERTY,
 				LmdbNativeJaninoCodegen.SYNCHRONOUS_PROPERTY, LmdbNativeJaninoCodegen.THRESHOLD_ROWS_PROPERTY,
 				LmdbNativeKernelInterpreter.ENABLED_PROPERTY, "rdf4j.lmdb.parallel.enabled",
-				"rdf4j.lmdb.irKernelParallel.enabled", "rdf4j.lmdb.valueOverlay.maxBytes" };
+				"rdf4j.lmdb.irKernelParallel.enabled", "rdf4j.lmdb.valueOverlay.maxBytes",
+				LmdbNativeKernelLowering.SCAN_SOURCES_PROPERTY };
 		Map<String, String> saved = new HashMap<>();
 		for (String property : properties)
 			saved.put(property, System.getProperty(property));
@@ -36,6 +37,8 @@ class NativeKernelGroupedDistinctTest {
 		var previousMemory = LmdbNativeHashJoin.queryMemoryOverride;
 		LmdbNativeHashJoin.queryMemoryOverride = memory;
 		try {
+			// This test targets the adjacency-root certificate, not the unrelated ScanQuad producer.
+			System.setProperty(LmdbNativeKernelLowering.SCAN_SOURCES_PROPERTY, "false");
 			System.setProperty("rdf4j.lmdb.nativeDistinct.kernelGrouping", "true");
 			System.setProperty("rdf4j.lmdb.nativeDistinct.widePrimitive", "true");
 			System.setProperty("rdf4j.lmdb.nativeValueMemo.enabled", "true");

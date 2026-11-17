@@ -11,8 +11,9 @@ Avoid global wide-key spill for repeated nested OPTIONAL expansions while retain
 - [x] Inspect actual fixture generated root.
 - [x] Capture smallest query spill failure.
 - [x] Implement conservative producer certificate checks.
-- [in_progress] Verify adversarial fallback, lifetime, replay and full-scale fixed-adjacency measurements.
-- [ ] Measure bounded compiled query benefit.
+- [x] Verify adversarial fallback, lifetime, replay and full-scale fixed-adjacency measurements.
+- [x] Measure bounded compiled query benefit.
+- [in_progress] Independent matched current-main baseline (separate worker coordinated by parent).
 
 ## Discoveries
 
@@ -55,3 +56,5 @@ The 8M witness declines because its real root is EnumerateAdjKeys. NativeProbe.a
 Red evidence: NativeKernelGroupingProofTest.fixedAdjacencyRootWithCanonicalUniqueKeysIsCertified, 1 test/1 failure, expected 4 actual -1, grouping-adjacency-red.log. Green initial selection: 12 tests/0 failures/0 errors, grouping-adjacency-green.log. Additional adversarial tests cover repeated/descending/aliased/sentinel keys, missing/unsupported view, per-snapshot recomputation, borrowed-view ownership, and cancellation before key reads.
 
 Current validation step includes the full-scale witness-bearing ABBA. No performance claim until every enabled fork consumes the certificate.
+
+Final outcome:57 focused tests passed after final formatting and full module test compilation. Map-growth replay rechecks producer and safely declines ScanQuad, never inheriting the old certificate. Four-fork8M comparison complete; see KERNEL-GROUPING-RESULTS.md. Current-main comparison is not yet available.

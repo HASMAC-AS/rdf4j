@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 final class NativeKernelGrouping {
 	static final String ENABLED_PROPERTY = "rdf4j.lmdb.nativeDistinct.kernelGrouping";
 	static final AtomicLong TRACKERS = new AtomicLong();
+	static final AtomicLong CHECKS = new AtomicLong();
 
 	private NativeKernelGrouping() {
 	}
@@ -63,6 +64,7 @@ final class NativeKernelGrouping {
 			LmdbNativeKernelBindings.BoundDomains domains, NativeTermAuthority authority,
 			NativeCancellationToken cancellation, boolean serialCompiled, boolean externalCallbacks,
 			NativeLmdbQuerySource.NativeAdjacency[] views) {
+		CHECKS.incrementAndGet();
 		if (!kernel.pipeline.isEmpty() && kernel.pipeline.get(0) instanceof LmdbNativeKernelIr.SipDomainProbe)
 			return rootSlot(kernel, emittedSlots, domains, authority, cancellation, serialCompiled, externalCallbacks);
 		if (!serialCompiled || externalCallbacks || authority == null || !authority.supportsCanonicalTermKeys()

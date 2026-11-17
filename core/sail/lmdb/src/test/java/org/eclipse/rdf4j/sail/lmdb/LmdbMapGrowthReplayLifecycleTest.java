@@ -14,9 +14,9 @@ package org.eclipse.rdf4j.sail.lmdb;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.lang.reflect.Field;
 import java.nio.file.Path;
@@ -581,11 +581,54 @@ class LmdbMapGrowthReplayLifecycleTest {
 		assertMemoReplay(dataDirectory, true);
 	}
 
+	@Test
+	@Timeout(value = 45, unit = TimeUnit.SECONDS)
+	@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "rdf4j.lmdb.nativeValueMemo.testProbe", matches = "true")
+	void compiledGroupedDistinctIsRecheckedAcrossMapGrowth(@TempDir Path dataDirectory) throws Exception {
+		String property = "rdf4j.lmdb.nativeDistinct.kernelGrouping";
+		String previous = System.getProperty(property);
+		String scanProperty = "rdf4j.lmdb.janinoCodegen.scanSources";
+		String previousScan = System.getProperty(scanProperty);
+		String hashProperty = "rdf4j.lmdb.janinoCodegen.hashJoin";
+		String previousHash = System.getProperty(hashProperty);
+		System.setProperty(hashProperty, "false");
+		System.setProperty(scanProperty, "false");
+		System.setProperty(property, "true");
+		try {
+			assertMemoReplay(dataDirectory, false, true);
+		} finally {
+			if (previousHash == null)
+				System.clearProperty(hashProperty);
+			else
+				System.setProperty(hashProperty, previousHash);
+			if (previousScan == null)
+				System.clearProperty(scanProperty);
+			else
+				System.setProperty(scanProperty, previousScan);
+			if (previous == null)
+				System.clearProperty(property);
+			else
+				System.setProperty(property, previous);
+		}
+	}
+
 	private void assertMemoReplay(Path dataDirectory, boolean failOnReplayOpen) throws Exception {
-		LmdbStore store = new LmdbStore(dataDirectory.toFile(), new LmdbStoreConfig("spoc,posc")
-				.setNativeEvaluationEnabled(true).setInlineLiterals(false).setForceSync(true)
-				.setTripleDBSize(INITIAL_MAP_SIZE).setValueDBSize(128L * 1024L * 1024L)
-				.setMapGrowthThreshold(GROWTH_THRESHOLD).setMapGrowthReadDrainTimeoutMillis(150).setAutoGrow(true));
+		assertMemoReplay(dataDirectory, failOnReplayOpen, false);
+	}
+
+	private void assertMemoReplay(Path dataDirectory, boolean failOnReplayOpen, boolean grouped) throws Exception {
+		var config = new LmdbStoreConfig("spoc,posc")
+				.setNativeEvaluationEnabled(true)
+				.setInlineLiterals(false)
+				.setForceSync(true)
+				.setTripleDBSize(INITIAL_MAP_SIZE)
+				.setValueDBSize(128L * 1024L * 1024L)
+				.setMapGrowthThreshold(GROWTH_THRESHOLD)
+				.setMapGrowthReadDrainTimeoutMillis(150)
+				.setAutoGrow(true);
+		if (grouped)
+			config.setDirectAdjacencyEnabled(true);
+		LmdbStore store = new LmdbStore(dataDirectory.toFile(), config);
 		SailRepository repository = new SailRepository(store);
 		ExecutorService executor = Executors.newFixedThreadPool(2);
 		java.util.concurrent.atomic.AtomicInteger observed = new java.util.concurrent.atomic.AtomicInteger();
@@ -596,12 +639,17 @@ class LmdbMapGrowthReplayLifecycleTest {
 				seed.begin();
 				for (int i = 0; i < 5000; i++) {
 					IRI subject = VF.createIRI("urn:memo-replay:row:" + i);
-					seed.add(subject, FIRST_PREDICATE, VF.createLiteral("repeated", VF.createIRI("urn:memo-replay:custom-datatype")));
-					seed.add(subject, SECOND_PREDICATE, VF.createLiteral("tag"));
+					seed.add(subject, FIRST_PREDICATE,
+							VF.createLiteral("repeated", VF.createIRI("urn:memo-replay:custom-datatype")));
+					seed.add(subject, SECOND_PREDICATE, grouped
+							? VF.createLiteral("repeated", VF.createIRI("urn:memo-replay:custom-datatype"))
+							: VF.createLiteral("tag"));
 					expected.add(subject.stringValue() + "/repeated");
 				}
 				seed.commit();
 			}
+			if (grouped)
+				assertTrue(store.awaitDirectAdjacencyReady(30, TimeUnit.SECONDS));
 			LmdbSailStore backingStore = store.getBackingStore();
 			TripleStore tripleStore = tripleStoreOf(store);
 			long initialMapSize = mapSize(tripleStore);
@@ -611,8 +659,9 @@ class LmdbMapGrowthReplayLifecycleTest {
 				try (var reader = repository.getConnection()) {
 					reader.begin(IsolationLevels.SNAPSHOT);
 					var tuple = (org.eclipse.rdf4j.repository.sail.SailTupleQuery) reader.prepareTupleQuery(
-							"SELECT DISTINCT ?s ?v WHERE { ?s <" + FIRST_PREDICATE + "> ?v . ?s <"
-								+ SECOND_PREDICATE + "> ?tag } ORDER BY ?v ?s LIMIT 200");
+							(grouped ? "SELECT DISTINCT ?s ?v ?tag WHERE { ?s <" : "SELECT DISTINCT ?s ?v WHERE { ?s <")
+									+ FIRST_PREDICATE + "> ?v . ?s <"
+									+ SECOND_PREDICATE + "> ?tag }" + (grouped ? "" : " ORDER BY ?v ?s LIMIT 200"));
 					tuple.setForcedLmdbExecutionStrategy("irKernel");
 					java.util.Set<String> output = new java.util.HashSet<>();
 					try (var result = tuple.evaluate()) {
@@ -643,9 +692,13 @@ class LmdbMapGrowthReplayLifecycleTest {
 				}
 			});
 			boolean hit = probe.awaitHit();
-			if (!hit && query.isDone()) query.get();
+			if (!hit && query.isDone())
+				query.get();
 			assertTrue(hit, "compiled evaluation must hit the real memo before returning output");
 			assertEquals(0, observed.get(), "never request replay after exposing a row");
+			// Permit a different producer on replay: an old certificate must never be inherited by a scan.
+			if (grouped)
+				System.setProperty("rdf4j.lmdb.janinoCodegen.scanSources", "true");
 			Future<?> writer = executor.submit(() -> {
 				try (SailConnection connection = store.getConnection()) {
 					connection.begin(IsolationLevels.SNAPSHOT);
@@ -663,20 +716,27 @@ class LmdbMapGrowthReplayLifecycleTest {
 				var failure = assertThrows(java.util.concurrent.ExecutionException.class,
 						() -> query.get(20, TimeUnit.SECONDS));
 				Throwable cause = failure;
-				while (cause.getCause() != null) cause = cause.getCause();
+				while (cause.getCause() != null)
+					cause = cause.getCause();
 				assertEquals("test replay open failure", cause.getMessage());
 				assertEquals(0, observed.get());
 			} else {
-				assertEquals(new java.util.HashSet<>(expected.stream().limit(200).toList()), query.get(20, TimeUnit.SECONDS));
-				assertEquals(200, observed.get(), "no duplicated or lost rows across replay");
+				assertEquals(new java.util.HashSet<>(expected.stream().limit(grouped ? 5000 : 200).toList()),
+						query.get(20, TimeUnit.SECONDS));
+				assertEquals(grouped ? 5000 : 200, observed.get(), "no duplicated or lost rows across replay");
+				if (grouped)
+					probe.assertGroupingRechecked();
 				probe.assertReplacementHit();
 			}
 			assertTrue(mapSize(tripleStore) > initialMapSize);
 			assertEquals(before.replayAccepted() + 1, backingStore.growthMetricsSnapshot().replayAccepted());
 		} finally {
 			executor.shutdownNow();
-			try { assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS)); }
-			finally { repository.shutDown(); }
+			try {
+				assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+			} finally {
+				repository.shutDown();
+			}
 		}
 	}
 

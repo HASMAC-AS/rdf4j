@@ -36,3 +36,7 @@ A separate throw-on-decline diagnostic ran only until bind-time certification (n
 - pending: rerun exact-result, resource-lifecycle and adversarial tests, then complete a fresh 8M ABBA only with successful grouping witnesses.
 
 No full module/repository test pass or merge-ready claim is made. The previous 100k speedup cannot be extrapolated to 8M.
+
+## Follow-on resolution
+
+The fixed-adjacency extension and final verification supersede the pending items above; see [KERNEL-GROUPING-RESULTS.md](KERNEL-GROUPING-RESULTS.md). The completed 8M ABBA has positive grouping witnesses in both ON forks. The test-only 100k no-hit was traced to asynchronous adjacency availability and unsupported ScanQuad selection; targeted readiness and producer-specific setup preserve all assertions. Final focused validation is 57/0/0/0. Broader main comparison remains separate.

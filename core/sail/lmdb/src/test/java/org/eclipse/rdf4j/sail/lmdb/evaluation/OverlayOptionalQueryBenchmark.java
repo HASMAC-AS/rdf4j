@@ -25,11 +25,11 @@ import org.eclipse.rdf4j.sail.lmdb.NativeQuerySourceAccess;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
 
 /**
- * Synthetic repeated nested OPTIONAL workload, not the user's private query. Standalone JVM only.
- * Args: groups (default 20; full 8000), fanout (10), measured iterations (3), overlay (true).
- * Thirty projected columns; groups * fanout^3 distinct output rows. The full fixture has approximately
- * 2.14 million triples and exactly 8 million output rows. Allocation counts cover the query thread only.
- * Two warm runs precede measurement; forced route and (for IR) compiled binds are checked on every execution.
+ * Synthetic repeated nested OPTIONAL workload, not the user's private query. Standalone JVM only. Args: groups (default
+ * 20; full 8000), fanout (10), measured iterations (3), overlay (true). Thirty projected columns; groups * fanout^3
+ * distinct output rows. The full fixture has approximately 2.14 million triples and exactly 8 million output rows.
+ * Allocation counts cover the query thread only. Two warm runs precede measurement; forced route and (for IR) compiled
+ * binds are checked on every execution.
  */
 public final class OverlayOptionalQueryBenchmark {
 	private static final String NS = "urn:overlay-optional:";
@@ -44,7 +44,8 @@ public final class OverlayOptionalQueryBenchmark {
 			throw new IllegalArgumentException("Unsupported benchmark route: " + forcedRoute);
 		Long expectedChecksum = Long.getLong("overlay.benchmark.expectedChecksum");
 		int warmups = Integer.getInteger("overlay.benchmark.warmups", 2);
-		if (warmups < 0) throw new IllegalArgumentException("Warmups must be nonnegative");
+		if (warmups < 0)
+			throw new IllegalArgumentException("Warmups must be nonnegative");
 		if (groups < 1 || fanout < 1 || iterations < 1) {
 			throw new IllegalArgumentException("All numeric arguments must be positive");
 		}
@@ -61,7 +62,8 @@ public final class OverlayOptionalQueryBenchmark {
 				LmdbNativePackedFtree.INITIAL_NODE_CAPACITY);
 		String fixture = System.getProperty("overlay.benchmark.fixture");
 		boolean reusable = fixture != null;
-		var directory = reusable ? new java.io.File(fixture) : Files.createTempDirectory("overlay-optional-query-").toFile();
+		var directory = reusable ? new java.io.File(fixture)
+				: Files.createTempDirectory("overlay-optional-query-").toFile();
 		var stamp = directory.toPath().resolve("benchmark-fixture.txt");
 		boolean existing = Files.exists(stamp);
 		if (reusable && directory.exists() && !directory.isDirectory())
@@ -72,22 +74,29 @@ public final class OverlayOptionalQueryBenchmark {
 		String prefix = groups + " " + fanout + " ";
 		if (existing && !Files.readString(stamp).startsWith(prefix))
 			throw new IllegalArgumentException("Fixture shape mismatch");
-		var config = new LmdbStoreConfig().setForceSync(false).setInlineLiterals(false)
-				.setNativeEvaluationEnabled(true).setDirectAdjacencyEnabled(true).setValueOverlayEnabled(overlay)
-				.setValueCacheSize(Integer.getInteger("overlay.benchmark.valueCacheSize", LmdbStoreConfig.VALUE_CACHE_SIZE));
+		var config = new LmdbStoreConfig().setForceSync(false)
+				.setInlineLiterals(false)
+				.setNativeEvaluationEnabled(true)
+				.setDirectAdjacencyEnabled(true)
+				.setValueOverlayEnabled(overlay)
+				.setValueCacheSize(
+						Integer.getInteger("overlay.benchmark.valueCacheSize", LmdbStoreConfig.VALUE_CACHE_SIZE));
 		SailRepository repository = new SailRepository(new LmdbStore(directory, config));
 		try {
 			repository.init();
 			long triples;
 			if (existing) {
-				try (var connection = repository.getConnection()) { triples = connection.size(); }
+				try (var connection = repository.getConnection()) {
+					triples = connection.size();
+				}
 				if (!Files.readString(stamp).equals(prefix + triples))
 					throw new IllegalStateException("Fixture cardinality changed");
 			} else {
 				triples = load(repository, groups, fanout);
 			}
 			repository.shutDown();
-			if (reusable && !existing) Files.writeString(stamp, prefix + triples);
+			if (reusable && !existing)
+				Files.writeString(stamp, prefix + triples);
 			// Reopen populated store so startup overlay warming sees the whole fixture, not an empty store.
 			LmdbStore store = new LmdbStore(directory, config);
 			repository = new SailRepository(store);
@@ -96,6 +105,8 @@ public final class OverlayOptionalQueryBenchmark {
 				throw new IllegalStateException("Overlay not ready: "
 						+ NativeQuerySourceAccess.valueOverlayMaintenanceStats(store));
 			}
+			if (!store.awaitDirectAdjacencyReady(120, TimeUnit.SECONDS))
+				throw new IllegalStateException("Direct adjacency not ready");
 			System.out.printf("groups=%d fanout=%d triples=%d overlay=%s maintenance=%s%n", groups, fanout,
 					triples, overlay, NativeQuerySourceAccess.valueOverlayMaintenanceStats(store));
 			var bean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
@@ -116,8 +127,10 @@ public final class OverlayOptionalQueryBenchmark {
 				long memoProbes = NativeValueMemo.PROBES.get(), memoHits = NativeValueMemo.HITS.get();
 				long primitive = NativeDistinctTracker.PRIMITIVE_ROWS.get();
 				long objects = NativeDistinctTracker.OBJECT_ROWS.get();
-				long admitted = NativeBudgetedWideDistinct.ADMITTED.get(), migrated = NativeBudgetedWideDistinct.MIGRATED.get();
-				long spillCreated = NativeExpressionDomain.SPILL_FILES_CREATED.get(), spillDeleted = NativeExpressionDomain.SPILL_FILES_DELETED.get();
+				long admitted = NativeBudgetedWideDistinct.ADMITTED.get(),
+						migrated = NativeBudgetedWideDistinct.MIGRATED.get();
+				long spillCreated = NativeExpressionDomain.SPILL_FILES_CREATED.get(),
+						spillDeleted = NativeExpressionDomain.SPILL_FILES_DELETED.get();
 				long budgetBefore = LmdbNativeHashJoin.queryMemory().usedBytes();
 				long allocated = bean.isThreadAllocatedMemoryEnabled() ? bean.getCurrentThreadAllocatedBytes() : -1;
 				long start = System.nanoTime();
@@ -153,7 +166,8 @@ public final class OverlayOptionalQueryBenchmark {
 				memoProbes = NativeValueMemo.PROBES.get() - memoProbes;
 				memoHits = NativeValueMemo.HITS.get() - memoHits;
 				if (Boolean.getBoolean(NativeValueMemo.ENABLED_PROPERTY) && (memoProbes == 0 || memoHits == 0))
-					throw new IllegalStateException("Memo was not exercised: probes=" + memoProbes + " hits=" + memoHits);
+					throw new IllegalStateException(
+							"Memo was not exercised: probes=" + memoProbes + " hits=" + memoHits);
 				primitive = NativeDistinctTracker.PRIMITIVE_ROWS.get() - primitive;
 				objects = NativeDistinctTracker.OBJECT_ROWS.get() - objects;
 				admitted = NativeBudgetedWideDistinct.ADMITTED.get() - admitted;
@@ -162,18 +176,26 @@ public final class OverlayOptionalQueryBenchmark {
 				spillDeleted = NativeExpressionDomain.SPILL_FILES_DELETED.get() - spillDeleted;
 				long budgetAfter = LmdbNativeHashJoin.queryMemory().usedBytes();
 				if (Boolean.getBoolean("rdf4j.lmdb.nativeDistinct.widePrimitive")
-						&& ((admitted > 0) != Boolean.parseBoolean(System.getProperty("overlay.benchmark.expectedBudgetedWide", "true"))))
+						&& ((admitted > 0) != Boolean
+								.parseBoolean(System.getProperty("overlay.benchmark.expectedBudgetedWide", "true"))))
 					throw new IllegalStateException("Unexpected budgeted wide DISTINCT path: admitted=" + admitted);
 				if (budgetAfter != budgetBefore || spillCreated != spillDeleted)
-					throw new IllegalStateException("Query leaked budget/spill resources: before=" + budgetBefore + " after=" + budgetAfter);
-				System.out.printf("budget admitted=%d migrated=%d spillCreated=%d spillDeleted=%d usedBefore=%d usedAfter=%d processPeak=%d globalLimit=%d perQueryLimit=%d%n",
-						admitted, migrated, spillCreated, spillDeleted, budgetBefore, budgetAfter, LmdbNativeHashJoin.queryMemory().peakUsedBytes(), LmdbNativeHashJoin.queryMemory().maxBytes(), LmdbNativeHashJoin.queryMemory().perQueryMaxBytes());
-				System.out.printf("run=%d overlay=%s rows=%d checksum=%d millis=%.3f threadAllocated=%d routes=%s compiledBinds=%d distinctPrimitive=%d distinctObjects=%d memoProbes=%d memoHits=%d%n",
-						run, overlay, rows, sum, nanos / 1e6, allocated, routes, binds, primitive, objects, memoProbes, memoHits);
+					throw new IllegalStateException(
+							"Query leaked budget/spill resources: before=" + budgetBefore + " after=" + budgetAfter);
+				System.out.printf(
+						"budget admitted=%d migrated=%d spillCreated=%d spillDeleted=%d usedBefore=%d usedAfter=%d processPeak=%d globalLimit=%d perQueryLimit=%d%n",
+						admitted, migrated, spillCreated, spillDeleted, budgetBefore, budgetAfter,
+						LmdbNativeHashJoin.queryMemory().peakUsedBytes(), LmdbNativeHashJoin.queryMemory().maxBytes(),
+						LmdbNativeHashJoin.queryMemory().perQueryMaxBytes());
+				System.out.printf(
+						"run=%d overlay=%s rows=%d checksum=%d millis=%.3f threadAllocated=%d routes=%s compiledBinds=%d distinctPrimitive=%d distinctObjects=%d memoProbes=%d memoHits=%d%n",
+						run, overlay, rows, sum, nanos / 1e6, allocated, routes, binds, primitive, objects, memoProbes,
+						memoHits);
 			}
 		} finally {
 			repository.shutDown();
-			if (!reusable) FileUtil.deleteDir(directory);
+			if (!reusable)
+				FileUtil.deleteDir(directory);
 		}
 	}
 
@@ -198,7 +220,8 @@ public final class OverlayOptionalQueryBenchmark {
 								continue; // Nested OPTIONAL's entire four-column suffix becomes unbound.
 							}
 							connection.add(node, vf.createIRI(NS, "a" + col), vf.createLiteral(
-									"Shared lexical prefix é 漢字 " + group + "/" + arm + "/" + member + "/" + col, "nb"));
+									"Shared lexical prefix é 漢字 " + group + "/" + arm + "/" + member + "/" + col,
+									"nb"));
 							triples++;
 						}
 					}
@@ -215,15 +238,29 @@ public final class OverlayOptionalQueryBenchmark {
 				+ NS + "label> ?label ; <" + NS + "seed> ?seed . ");
 		for (int arm = 0; arm < 3; arm++) {
 			select.append("?n").append(arm).append(' ');
-			body.append(" OPTIONAL { ?s <").append(NS).append("arm").append(arm).append("> ?n").append(arm)
+			body.append(" OPTIONAL { ?s <")
+					.append(NS)
+					.append("arm")
+					.append(arm)
+					.append("> ?n")
+					.append(arm)
 					.append(" . OPTIONAL { ");
 			for (int col = 0; col < 8; col++) {
 				select.append("?v").append(arm).append('_').append(col).append(' ');
 				if (col == 4) {
 					body.append(" OPTIONAL { ");
 				}
-				body.append("?n").append(arm).append(" <").append(NS).append('a').append(col).append("> ?v")
-						.append(arm).append('_').append(col).append(" . ");
+				body.append("?n")
+						.append(arm)
+						.append(" <")
+						.append(NS)
+						.append('a')
+						.append(col)
+						.append("> ?v")
+						.append(arm)
+						.append('_')
+						.append(col)
+						.append(" . ");
 			}
 			body.append(" } } } ");
 		}

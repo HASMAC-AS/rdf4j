@@ -149,6 +149,32 @@ class NativeKernelGroupingProofTest {
 	}
 
 	@Test
+	void mutableWildcardAdjacencyRootDeclines() {
+		var base = kernel();
+		var wildcard = new LmdbNativeKernelIr.EnumerateAdjKeys(0, true,
+				LmdbNativeKernelIr.Operand.col(2), 0, 1, -1, null, false, false, null);
+		var enumeration = new LmdbNativeKernelIr.Kernel(3, List.of(wildcard), base.terminal);
+		assertEquals(-1, NativeKernelGrouping.rootSlot(enumeration, new int[] { 4, 5, 6 },
+				new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]), identity(),
+				new NativeCancellationToken(), true, false,
+				new NativeLmdbQuerySource.NativeAdjacency[] { view(1, 2) }));
+	}
+
+	@Test
+	void scanRootDoesNotInheritAdjacencyCertificate() {
+		var base = kernel();
+		var scan = new LmdbNativeKernelIr.ScanQuad(0,
+				new LmdbNativeKernelIr.Operand[] { LmdbNativeKernelIr.Operand.col(0),
+						LmdbNativeKernelIr.Operand.col(1), LmdbNativeKernelIr.Operand.col(2),
+						LmdbNativeKernelIr.Operand.col(3) },
+				new int[] { 0, 1, 2, 3 });
+		assertEquals(-1, NativeKernelGrouping.rootSlot(new LmdbNativeKernelIr.Kernel(4, List.of(scan), base.terminal),
+				new int[] { 4, 5, 6 }, new LmdbNativeKernelBindings.BoundDomains(new long[0][], new int[0], new int[0]),
+				identity(), new NativeCancellationToken(), true, false,
+				new NativeLmdbQuerySource.NativeAdjacency[] { view(1, 2) }));
+	}
+
+	@Test
 	void adjacencyDuplicatesAliasesAndSentinelsDecline() {
 		for (long[] keys : new long[][] { { 1, 1 }, { 2, 1 }, { -1 }, { 0 } })
 			assertEquals(-1, proveAdjacency(view(keys), identity(), new NativeCancellationToken()));

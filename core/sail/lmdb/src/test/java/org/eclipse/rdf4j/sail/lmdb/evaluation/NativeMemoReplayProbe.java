@@ -21,9 +21,18 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 	private final IdentityHashMap<NativeValueMemo, Long> contexts = new IdentityHashMap<>();
 	private final long initialCompiled = LmdbNativeKernelExecution.COMPILED_BINDS.get();
 	private volatile long firstCompiled;
+	private final long initialGrouped = NativeKernelGrouping.TRACKERS.get();
+	private volatile long firstGrouped;
+	private volatile long firstGroupingChecks;
+	private final long initialBudget = LmdbNativeHashJoin.queryMemory().usedBytes();
+	private final long initialSpillCreated = NativeExpressionDomain.SPILL_FILES_CREATED.get();
+	private final long initialSpillDeleted = NativeExpressionDomain.SPILL_FILES_DELETED.get();
 	private final java.util.List<String> routes = new java.util.concurrent.CopyOnWriteArrayList<>();
 
-	public NativeMemoReplayProbe() { this(false); }
+	public NativeMemoReplayProbe() {
+		this(false);
+	}
+
 	public NativeMemoReplayProbe(boolean failOnReplayOpen) {
 		LmdbNativeDispatchLoop.observeSelections((target, label, id, record) -> {
 			routes.add(record.point() + ":" + id);
@@ -33,12 +42,17 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 		});
 		NativeValueMemo.testHitObserver = memo -> {
 			long compiled = LmdbNativeKernelExecution.COMPILED_BINDS.get();
-			synchronized (contexts) { contexts.putIfAbsent(memo, compiled); }
+			synchronized (contexts) {
+				contexts.putIfAbsent(memo, compiled);
+			}
 			if (first.compareAndSet(true, false)) {
 				firstCompiled = compiled;
+				firstGrouped = NativeKernelGrouping.TRACKERS.get();
+				firstGroupingChecks = NativeKernelGrouping.CHECKS.get();
 				entered.countDown();
 				try {
-					if (!release.await(20, TimeUnit.SECONDS)) throw new AssertionError("memo barrier timed out");
+					if (!release.await(20, TimeUnit.SECONDS))
+						throw new AssertionError("memo barrier timed out");
 				} catch (InterruptedException failure) {
 					Thread.currentThread().interrupt();
 					throw new AssertionError("memo barrier interrupted", failure);
@@ -46,18 +60,50 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 			}
 		};
 	}
-	public boolean awaitHit() throws InterruptedException { return entered.await(10, TimeUnit.SECONDS); }
-	public void release() { release.countDown(); }
+
+	public boolean awaitHit() throws InterruptedException {
+		return entered.await(10, TimeUnit.SECONDS);
+	}
+
+	public void release() {
+		release.countDown();
+	}
+
 	public void assertReplacementHit() {
 		synchronized (contexts) {
 			org.junit.jupiter.api.Assertions.assertTrue(firstCompiled > initialCompiled, "old attempt must compile");
 			org.junit.jupiter.api.Assertions.assertTrue(contexts.size() >= 2, "replacement must own a fresh memo");
-			System.out.println("memo replay contexts=" + contexts.size() + " routes=" + routes + " compiledBinds=" + (LmdbNativeKernelExecution.COMPILED_BINDS.get() - initialCompiled));
+			System.out.println("memo replay contexts=" + contexts.size() + " routes=" + routes + " compiledBinds="
+					+ (LmdbNativeKernelExecution.COMPILED_BINDS.get() - initialCompiled));
 			// Every successful replay proof requires a new compiled bind, not merely a new memo.
-			org.junit.jupiter.api.Assertions.assertTrue(contexts.values().stream().anyMatch(count -> count > firstCompiled),
-					"replacement memo hit must follow a new compiled bind; initial=" + initialCompiled + " first=" + firstCompiled
-							+ " contexts=" + contexts.values() + " routes=" + routes + " final=" + LmdbNativeKernelExecution.COMPILED_BINDS.get());
+			org.junit.jupiter.api.Assertions.assertTrue(
+					contexts.values().stream().anyMatch(count -> count > firstCompiled),
+					"replacement memo hit must follow a new compiled bind; initial=" + initialCompiled + " first="
+							+ firstCompiled
+							+ " contexts=" + contexts.values() + " routes=" + routes + " final="
+							+ LmdbNativeKernelExecution.COMPILED_BINDS.get());
 		}
 	}
-	@Override public void close() { release(); NativeValueMemo.testHitObserver = null; LmdbNativeDispatchLoop.observeSelections(null); }
+
+	public void assertGroupingRechecked() {
+		org.junit.jupiter.api.Assertions.assertEquals(initialBudget, LmdbNativeHashJoin.queryMemory().usedBytes(),
+				"replay releases query ledger");
+		org.junit.jupiter.api.Assertions.assertEquals(
+				NativeExpressionDomain.SPILL_FILES_CREATED.get() - initialSpillCreated,
+				NativeExpressionDomain.SPILL_FILES_DELETED.get() - initialSpillDeleted, "replay cleans spill files");
+		System.out.println("grouping replay firstTrackers=" + firstGrouped + " finalTrackers="
+				+ NativeKernelGrouping.TRACKERS.get() + " firstChecks=" + firstGroupingChecks + " finalChecks="
+				+ NativeKernelGrouping.CHECKS.get());
+		org.junit.jupiter.api.Assertions.assertTrue(firstGrouped > initialGrouped,
+				"initial attempt must consume grouping certificate");
+		org.junit.jupiter.api.Assertions.assertTrue(NativeKernelGrouping.CHECKS.get() > firstGroupingChecks,
+				"replay must recheck its newly bound producer, declining unsupported roots rather than reusing old proof");
+	}
+
+	@Override
+	public void close() {
+		release();
+		NativeValueMemo.testHitObserver = null;
+		LmdbNativeDispatchLoop.observeSelections(null);
+	}
 }

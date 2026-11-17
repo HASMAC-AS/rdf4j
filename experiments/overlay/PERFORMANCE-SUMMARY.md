@@ -79,3 +79,7 @@ A deterministic competing-query test now steals the 4,096-byte spill workspace b
 Checkpoint c8f2848 passed 5,048 executed evaluation tests (429 classes; zero failures/errors; five intentional skips). A fresh 1-million-row pre/post ABBA showed no demonstrated performance regression: pooled means 5.111/4.918 s, with substantial late-fork variance. See [post-review validation](POST-REVIEW-VALIDATION.md) for provenance, exact scope and caveats.
 
 Final safety fixes also preserve default-budget 8m spill performance: matched ABBA means112.644/112.671 s (effectively identical). Final-code native JFR samples are read-heavy. See [post-review spill validation](POST-REVIEW-SPILL.md).
+
+## Compiled producer-certified grouped DISTINCT
+
+The fixed-adjacency/SIP certificate completed an 8M-row OFF/ON/ON/OFF comparison at the 5GiB-heap default-equivalent 640MiB per-query cap: **116.284s mean OFF vs37.484s ON** (~67.8% lower). ON used ~7.34MB peak charged/zero spills versus ~671MB/20 spills OFF; every output checksum and compiled-route/memo/certificate witness passed, all resources were released. This is against the same experimental branch with grouping disabled, **not current main**. Final focused validation:57 tests, zero failures/errors/skips; direct map-growth replay safely rechecks and declines when its new producer is unsupported. [Details and limitations](KERNEL-GROUPING-RESULTS.md).
