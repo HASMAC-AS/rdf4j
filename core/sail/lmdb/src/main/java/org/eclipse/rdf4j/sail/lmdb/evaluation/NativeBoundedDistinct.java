@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelRuntime;
 /** Exact online scalar/full-mapping membership. Keys, exceptional term payloads and disk workspace share one ledger. */
 final class NativeBoundedDistinct implements AutoCloseable {
 	private final AggContext context;
+	private final NativeTermAuthority authority;
 	private final NativeCancellationToken cancellation;
 	private final LmdbQueryMemoryManager.QueryLedger ledger;
 	private final KernelRuntime.AggregateMemory memory;
@@ -38,7 +39,18 @@ final class NativeBoundedDistinct implements AutoCloseable {
 
 	NativeBoundedDistinct(AggContext context, int[] rowSlots, NativeCancellationToken cancellation,
 			LmdbQueryMemoryManager.QueryLedger ledger) {
+		this(context, context.termAuthority, rowSlots, cancellation, ledger);
+	}
+
+	NativeBoundedDistinct(NativeTermAuthority authority, int[] rowSlots, NativeCancellationToken cancellation,
+			LmdbQueryMemoryManager.QueryLedger ledger) {
+		this(null, authority, rowSlots, cancellation, ledger);
+	}
+
+	private NativeBoundedDistinct(AggContext context, NativeTermAuthority authority, int[] rowSlots,
+			NativeCancellationToken cancellation, LmdbQueryMemoryManager.QueryLedger ledger) {
 		this.context = context;
+		this.authority = authority;
 		this.cancellation = cancellation;
 		this.ledger = ledger;
 		this.memory = KernelRuntime.AggregateMemory.forLedger(ledger);
@@ -90,18 +102,18 @@ final class NativeBoundedDistinct implements AutoCloseable {
 		if (id == UNKNOWN || id == NULL_CONTEXT_ID) {
 			return UNKNOWN;
 		}
-		if (context.termAuthority != null && context.termAuthority.supportsCanonicalTermKeys()) {
-			return context.termAuthority.canonicalTermKey(id);
+		if (authority != null && authority.supportsCanonicalTermKeys()) {
+			return authority.canonicalTermKey(id);
 		}
-		if (context.termAuthority == null && context.source.hasCanonicalIds()) {
+		if (authority == null && (context == null || context.source.hasCanonicalIds())) {
 			return id;
 		}
-		Value value = context.value(id);
+		Value value = context == null ? authority.valueOf(id) : context.value(id);
 		if (value == null) {
 			throw new QueryEvaluationException("Unresolvable DISTINCT term: " + id);
 		}
 		if (terms == null) {
-			UnaryOperator<Value> representative = context.source instanceof SyntheticValueSource synthetic
+			UnaryOperator<Value> representative = context != null && context.source instanceof SyntheticValueSource synthetic
 					&& synthetic.executionContext() != null
 							? synthetic.executionContext()::authoritativeQueryScopedValue
 							: UnaryOperator.identity();

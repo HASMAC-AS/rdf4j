@@ -607,7 +607,8 @@ final class RowDistinctPlan implements SlotPlan {
 	}
 
 	private RowCursor distinct(RowCursor inner, RowState row) {
-		NativeDistinctTracker tracker = new NativeDistinctTracker(slots, row.termAuthority());
+		NativeDistinctTracker tracker = new NativeDistinctTracker(slots, row.termAuthority(),
+				NativeDistinctTracker.ledger(row), row.cancellation);
 		return new RowCursor() {
 			int probePollTick;
 
@@ -626,7 +627,9 @@ final class RowDistinctPlan implements SlotPlan {
 
 			@Override
 			public void close() {
-				inner.close();
+				Throwable failure = KernelRuntime.closeResource(inner, null);
+				failure = KernelRuntime.closeResource(tracker, failure);
+				if (failure != null) NativeContextClosingIteration.throwFailure(failure);
 			}
 		};
 	}

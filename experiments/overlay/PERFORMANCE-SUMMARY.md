@@ -1,5 +1,6 @@
 # Measured outcome: memo baseline, wide DISTINCT and readiness
 
+**Version note:** the8-million-row timings below are historical unbudgeted-wide results. The later bounded-wide implementation is separately measured below; do not attribute the old8-million timing to the new memory-safe route.
 All comparisons below keep the reconstructed weak per-iteration memo enabled. This is not the unavailable historical memo implementation. All experimental flags remain opt-in on this WIP branch.
 
 ## Exact-scale synthetic workload
@@ -40,3 +41,13 @@ A diagnostic real-map-growth test found the first attempt uses irKernel but repl
 
 ## Memory admission limitation
 Wide DISTINCT is still experimental and not fully query-budgeted. Eight million 30-column long keys alone consume1.92GB, before capacity slack and indexing. Array-limit guards are not memory admission; migration to HashMap can temporarily retain both representations. Bounded ledger admission/spill work follows this checkpoint. No ready-to-merge claim.
+
+## Bounded-wide checkpoint: matched1-million-row comparison
+
+Memo+partial-ready+wide enabled in both versions;4GiBheap,default512MiB per-query limit,2warmups then3measured queries per JVM; ABBA twoforks/version; same verified267k-triple fixture. Legacy unbudgeted mean4.485753s (fork means4.701464/4.270041); bounded mean4.207123s (4.210418/4.203828). This small sample is~6.2%lower, but fork drift means no definitive speedup claim. Budget accounting does not show a material runtime regression here.
+
+Newroute charges393,746,272Bpeak and releases to0 aftereachquery, no spill at this size. Legacy reports only~7MB because its wide-key table was unaccounted. Every run returns1mrows withchecksum-2986462905361302464 and compiledirKernel/memohit proof. Allocation varies by fork (bounded4.59–5.43GB vslegacy4.53GBcumulative); not a retained-memory measurement or reliable allocation win.
+
+Scope: bounded optimization is for opted-in wide SELECT DISTINCT with an actual ledger. Legacy aggregate/no-ledger/narrow paths are not newly memory-bounded. Width>64 is explicitly refused in bounded opt-in mode because the existing spill representation supports atmost64columns. See WIDE-BUDGET-CHECKPOINT.md. Actual constrained-budget spill throughput and new8m timings pending at this checkpoint.
+
+Actual constrained query: same1mrows/30columns with64MiB querycap (256MiBglobal), one cold query/no warmup,25.914588s. Peak61,512,000B stays below67,108,864B; one migration;17spillfiles created and17deleted;0bytesleft afterclose; exactchecksum/cardinality. This verifies real-query spill correctness/cleanup, not a matched speed comparison against the warm4.2s runs. Tight budgets clearly carry a substantial spill cost.8m default versus generous budget measurement is running.

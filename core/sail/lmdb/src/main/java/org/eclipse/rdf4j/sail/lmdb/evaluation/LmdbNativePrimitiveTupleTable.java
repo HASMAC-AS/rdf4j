@@ -425,7 +425,8 @@ final class PrimitiveTupleTable {
 
 /** DISTINCT tuple tracker; wide primitive keys remain an opt-in experiment. */
 @Experimental
-final class NativeDistinctTracker {
+final class NativeDistinctTracker implements AutoCloseable {
+	private NativeBudgetedWideDistinct budgeted;
 
 	static final AtomicLong PRIMITIVE_ROWS = new AtomicLong();
 	static final AtomicLong OBJECT_ROWS = new AtomicLong();
@@ -459,13 +460,41 @@ final class NativeDistinctTracker {
 
 	/** Package-private limit injection exercises fallback without allocating multi-gigabyte arrays. */
 	NativeDistinctTracker(int[] slots, NativeTermAuthority authority, int keyArrayLimit) {
+		this(slots, authority, keyArrayLimit, null, null);
+	}
+
+	NativeDistinctTracker(int[] slots, NativeTermAuthority authority,
+			org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.QueryLedger ledger,
+			NativeCancellationToken cancellation) {
+		this(slots, authority, PrimitiveTupleTable.MAX_ARRAY_LENGTH, ledger, cancellation);
+	}
+
+	static org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.QueryLedger ledger(RowState row) {
+		return row.memoryScope.ledger(LmdbNativeHashJoin.queryMemory());
+	}
+
+	static org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.QueryLedger ledger(NativeLmdbQuerySource source) {
+		return source instanceof SyntheticValueSource synthetic && synthetic.executionContext() != null
+				? synthetic.executionContext().memoryLedger() : null;
+	}
+
+	private NativeDistinctTracker(int[] slots, NativeTermAuthority authority, int keyArrayLimit,
+			org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.QueryLedger ledger,
+			NativeCancellationToken cancellation) {
 		this.keyArrayLimit = Math.max(0, Math.min(keyArrayLimit, PrimitiveTupleTable.MAX_ARRAY_LENGTH));
 		this.slots = slots;
 		this.authority = authority;
-		this.termCache = authority == null ? null : new NativeTermReferenceCache(authority);
 		boolean wide = Boolean.getBoolean("rdf4j.lmdb.nativeDistinct.widePrimitive");
+		if (wide && slots.length > 4 && ledger != null) {
+			this.termCache = null;
+			this.normalizedRow = null;
+			this.normalizedSlots = null;
+			this.budgeted = new NativeBudgetedWideDistinct(slots, authority, ledger, cancellation);
+			return;
+		}
+		this.termCache = authority == null ? null : new NativeTermReferenceCache(authority);
 		int initialRows = slots.length == 0 ? 0 : Math.min(256, this.keyArrayLimit / slots.length);
-		this.primitive = slots.length >= 1 && (slots.length <= 4 || wide) && initialRows >= 4
+		this.primitive = slots.length >= 1 && (slots.length <= 4 || wide && keyArrayLimit != PrimitiveTupleTable.MAX_ARRAY_LENGTH) && initialRows >= 4
 				? new PrimitiveTupleTable(slots.length, initialRows) : null;
 		this.objects = primitive == null && slots.length > 0 ? new HashMap<>() : null;
 		this.probe = objects == null ? null : new GroupKey(new long[slots.length]);
@@ -474,6 +503,11 @@ final class NativeDistinctTracker {
 	}
 
 	boolean add(long[] row) {
+		if (budgeted != null) {
+			boolean fresh = budgeted.add(row);
+			if (budgeted.primitiveActive()) primitiveRows++; else objectRows++;
+			return fresh;
+		}
 		ensurePrimitiveCapacity(1);
 		if (slots.length == 0) {
 			boolean fresh = !emptySeen;
@@ -509,6 +543,11 @@ final class NativeDistinctTracker {
 	}
 
 	boolean add(NativeBatch batch, int row) {
+		if (budgeted != null) {
+			boolean fresh = budgeted.add(batch, row);
+			if (budgeted.primitiveActive()) primitiveRows++; else objectRows++;
+			return fresh;
+		}
 		ensurePrimitiveCapacity(1);
 		if (slots.length == 0) {
 			boolean fresh = !emptySeen;
@@ -554,6 +593,14 @@ final class NativeDistinctTracker {
 	}
 
 	int selectBatch(NativeBatch batch, int[] selection, int count) {
+		if (budgeted != null) {
+			int accepted = 0;
+			for (int i = 0; i < count; i++) {
+				int row = selection[i];
+				if (add(batch, row)) selection[accepted++] = row;
+			}
+			return accepted;
+		}
 		ensurePrimitiveCapacity(count);
 		if (slots.length == 0) {
 			if (count == 0 || emptySeen) {
@@ -652,7 +699,16 @@ final class NativeDistinctTracker {
 		OBJECT_ROWS.addAndGet(objectRows);
 	}
 
+	@Override
+	public void close() {
+		if (budgeted != null) budgeted.close();
+		primitive = null;
+		objects = null;
+		probe = null;
+	}
+
 	void clear() {
+		if (budgeted != null) { budgeted.clear(); return; }
 		emptySeen = false;
 		if (primitive != null) {
 			primitive.clear();
@@ -821,7 +877,7 @@ final class NativeTermReferenceCache {
 
 /** DISTINCT tracker that uses a proven order frontier instead of retaining every projected tuple. */
 @Experimental
-final class NativeOrderedDistinctTracker {
+final class NativeOrderedDistinctTracker implements AutoCloseable {
 
 	final NativeTupleDistinctPlan plan;
 	final NativeTermAuthority authority;
@@ -835,12 +891,18 @@ final class NativeOrderedDistinctTracker {
 	}
 
 	NativeOrderedDistinctTracker(NativeTupleDistinctPlan plan, NativeTermAuthority authority) {
+		this(plan, authority, null, null);
+	}
+
+	NativeOrderedDistinctTracker(NativeTupleDistinctPlan plan, NativeTermAuthority authority,
+			org.eclipse.rdf4j.sail.lmdb.LmdbQueryMemoryManager.QueryLedger ledger,
+			NativeCancellationToken cancellation) {
 		this.plan = plan;
 		this.authority = authority;
 		this.residual = plan.strategy == NativeDistinctStrategy.GLOBAL_HASH
-				? new NativeDistinctTracker(plan.keySlots, authority)
+				? new NativeDistinctTracker(plan.keySlots, authority, ledger, cancellation)
 				: plan.strategy == NativeDistinctStrategy.PARTITIONED_HASH
-						? new NativeDistinctTracker(plan.residualSlots, authority)
+						? new NativeDistinctTracker(plan.residualSlots, authority, ledger, cancellation)
 						: null;
 		int previousWidth = plan.strategy == NativeDistinctStrategy.ADJACENT ? plan.keySlots.length
 				: plan.partitionSlots.length;
@@ -899,6 +961,11 @@ final class NativeOrderedDistinctTracker {
 		if (residual != null) {
 			residual.commitMetrics();
 		}
+	}
+
+	@Override
+	public void close() {
+		if (residual != null) residual.close();
 	}
 
 	private boolean transition(long[] row, int[] slots) {

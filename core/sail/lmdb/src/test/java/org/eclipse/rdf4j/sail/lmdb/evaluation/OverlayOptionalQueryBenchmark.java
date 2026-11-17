@@ -109,6 +109,9 @@ public final class OverlayOptionalQueryBenchmark {
 				long memoProbes = NativeValueMemo.PROBES.get(), memoHits = NativeValueMemo.HITS.get();
 				long primitive = NativeDistinctTracker.PRIMITIVE_ROWS.get();
 				long objects = NativeDistinctTracker.OBJECT_ROWS.get();
+				long admitted = NativeBudgetedWideDistinct.ADMITTED.get(), migrated = NativeBudgetedWideDistinct.MIGRATED.get();
+				long spillCreated = NativeExpressionDomain.SPILL_FILES_CREATED.get(), spillDeleted = NativeExpressionDomain.SPILL_FILES_DELETED.get();
+				long budgetBefore = LmdbNativeHashJoin.queryMemory().usedBytes();
 				long allocated = bean.isThreadAllocatedMemoryEnabled() ? bean.getCurrentThreadAllocatedBytes() : -1;
 				long start = System.nanoTime();
 				long rows = 0, sum = 0;
@@ -145,6 +148,18 @@ public final class OverlayOptionalQueryBenchmark {
 					throw new IllegalStateException("Memo was not exercised: probes=" + memoProbes + " hits=" + memoHits);
 				primitive = NativeDistinctTracker.PRIMITIVE_ROWS.get() - primitive;
 				objects = NativeDistinctTracker.OBJECT_ROWS.get() - objects;
+				admitted = NativeBudgetedWideDistinct.ADMITTED.get() - admitted;
+				migrated = NativeBudgetedWideDistinct.MIGRATED.get() - migrated;
+				spillCreated = NativeExpressionDomain.SPILL_FILES_CREATED.get() - spillCreated;
+				spillDeleted = NativeExpressionDomain.SPILL_FILES_DELETED.get() - spillDeleted;
+				long budgetAfter = LmdbNativeHashJoin.queryMemory().usedBytes();
+				if (Boolean.getBoolean("rdf4j.lmdb.nativeDistinct.widePrimitive")
+						&& ((admitted > 0) != Boolean.parseBoolean(System.getProperty("overlay.benchmark.expectedBudgetedWide", "true"))))
+					throw new IllegalStateException("Unexpected budgeted wide DISTINCT path: admitted=" + admitted);
+				if (budgetAfter != budgetBefore || spillCreated != spillDeleted)
+					throw new IllegalStateException("Query leaked budget/spill resources: before=" + budgetBefore + " after=" + budgetAfter);
+				System.out.printf("budget admitted=%d migrated=%d spillCreated=%d spillDeleted=%d usedBefore=%d usedAfter=%d processPeak=%d globalLimit=%d perQueryLimit=%d%n",
+						admitted, migrated, spillCreated, spillDeleted, budgetBefore, budgetAfter, LmdbNativeHashJoin.queryMemory().peakUsedBytes(), LmdbNativeHashJoin.queryMemory().maxBytes(), LmdbNativeHashJoin.queryMemory().perQueryMaxBytes());
 				System.out.printf("run=%d overlay=%s rows=%d checksum=%d millis=%.3f threadAllocated=%d routes=%s compiledBinds=%d distinctPrimitive=%d distinctObjects=%d memoProbes=%d memoHits=%d%n",
 						run, overlay, rows, sum, nanos / 1e6, allocated, routes, binds, primitive, objects, memoProbes, memoHits);
 			}

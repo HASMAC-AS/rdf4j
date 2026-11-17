@@ -1000,10 +1000,12 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 		FactorizedTail.MemoBudget budget = new FactorizedTail.MemoBudget(FactorizedTail.MEMO_BYPASSES, metrics);
 		NativeTopKBuffer best = new NativeTopKBuffer(sortLayout.liveToPlan.length, topK, comparator, budget);
 		best.buffer.cancellationPoll(row.cancellation::check);
-		NativeDistinctTracker topKDistinct = distinct ? new NativeDistinctTracker(sourceSlots, row.keyAuthority())
+		NativeDistinctTracker topKDistinct = distinct ? new NativeDistinctTracker(sourceSlots, row.keyAuthority(),
+				NativeDistinctTracker.ledger(row), row.cancellation)
 				: null;
 		long[] packed = new long[sortLayout.liveToPlan.length];
 		long ordinal = 0L;
+		Throwable failure = null;
 		try {
 			try (RowCursor cursor = openUnorderedInput(row).materializedRows()) {
 				while (row.advance(cursor)) {
@@ -1025,21 +1027,27 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 				return result;
 			}
 		} catch (IOException e) {
-			throw new QueryEvaluationException(e);
+			QueryEvaluationException wrapped = new QueryEvaluationException(e);
+			failure = wrapped;
+			throw wrapped;
+		} catch (RuntimeException | Error e) {
+			failure = e;
+			throw e;
 		} finally {
-			best.close();
-			if (topKDistinct != null) {
-				topKDistinct.commitMetrics();
-			}
+			if (topKDistinct != null) topKDistinct.commitMetrics();
+			Throwable closed = KernelRuntime.closeResource(best::close, failure);
+			closed = KernelRuntime.closeResource(topKDistinct, closed);
+			if (failure == null && closed != null) NativeContextClosingIteration.throwFailure(closed);
 		}
 	}
 
 	private List<BindingSet> evaluateReducingTopK(RowState row, AggContext values, PackedRowComparator comparator,
 			int topK, long emitCap, LmdbNativeAttemptMetrics sortMetrics) {
 		LmdbNativeAttemptMetrics metrics = sortMetrics == null ? LmdbNativeAttemptMetrics.direct() : sortMetrics;
-		NativeDistinctTracker topKDistinct = distinct ? new NativeDistinctTracker(sourceSlots, row.keyAuthority())
+		NativeDistinctTracker topKDistinct = distinct ? new NativeDistinctTracker(sourceSlots, row.keyAuthority(),
+				NativeDistinctTracker.ledger(row), row.cancellation)
 				: null;
-		try (NativeSpillSort snapshots = new NativeSpillSort(sortLayout.liveToPlan.length, sortLayout.keyWidth,
+		try (topKDistinct; NativeSpillSort snapshots = new NativeSpillSort(sortLayout.liveToPlan.length, sortLayout.keyWidth,
 				comparator, topK, metrics)) {
 			snapshots.cancellationPoll(row.cancellation::check);
 			long[] packed = new long[sortLayout.liveToPlan.length];
@@ -1385,10 +1393,10 @@ final class NativeRowsStep implements NativeResultStep, LmdbNativePhysicalPlan {
 		ArrayList<BindingSet> results = new ArrayList<>();
 		NativeDistinctTracker distinctRows = distinct && !distinctAlreadyApplied
 				? new NativeDistinctTracker(activeLayout.sourceSlots,
-						values.termAuthority)
+						values.termAuthority, NativeDistinctTracker.ledger(values.source), cancellation)
 				: null;
 		long[] snapshot = new long[activeLayout.liveToPlan.length];
-		try {
+		try (distinctRows) {
 			while (!cancellation.isCancellationRequested() && sortedRows.next(snapshot)) {
 				if (cancellation.isCancellationRequested()) {
 					break;
@@ -3886,9 +3894,11 @@ final class NativeRowsIteration implements CloseableIteration<BindingSet>, Coope
 		distinctHandledByCursor = unorderedInput.dedupMode == NativeUnorderedInput.DedupMode.HANDLED;
 		if (step.distinct) {
 			distinctRows = unorderedInput.dedupMode == NativeUnorderedInput.DedupMode.ORDERED
-					? new NativeOrderedDistinctTracker(distinctPlan, row.keyAuthority())
+					? new NativeOrderedDistinctTracker(distinctPlan, row.keyAuthority(),
+						NativeDistinctTracker.ledger(row), row.cancellation)
 					: new NativeOrderedDistinctTracker(
-							NativeTupleDistinctPlan.global(step.arg, step.sourceSlots), row.keyAuthority());
+							NativeTupleDistinctPlan.global(step.arg, step.sourceSlots), row.keyAuthority(),
+							NativeDistinctTracker.ledger(row), row.cancellation);
 		}
 		cursor = unorderedInput.cursor;
 		batchCursor = unorderedInput.batchCursor;
@@ -3977,6 +3987,7 @@ final class NativeRowsIteration implements CloseableIteration<BindingSet>, Coope
 		if (distinctRows != null) {
 			try {
 				distinctRows.commitMetrics();
+				distinctRows.close();
 			} catch (RuntimeException | Error problem) {
 				failure = KernelRuntime.closeResource(() -> {
 					throw problem;
