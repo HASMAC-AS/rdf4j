@@ -329,3 +329,27 @@ Command: /workspace/scratch/d0a0e51b9386/toolchain/maven-mvnd-1.0.6-linux-amd64/
 Report: /workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/retention-followup/contracts/validation/qualified-strong-lifetime-v1/target/surefire-reports
 Test set: org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
 Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.777 s -- in org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeIrFactorCoordinateTransportTest
+
+Weak-retention complete matched comparison (2026-11-17):
+Qualified source and evidence checkpoint published before timing: 9b262140b7e49eedd4521c3521a70938b02722cd, exact tree 8cc57a6458afc36e67eea65b7045ce01119602d1, sole parent 4e9af30d660dcc59b2e7148bb7cff00580441f29. Local equivalent eda3702a7fbf23a5a759f4409ecb54f570be3fea preserved on recovery/weak-retention-qualified-local-eda3702; remote commit fetched and adopted with the same index/source tree.
+Protocol SHA-256: e151245f589b655d7b2f8240998552486e84836d0895147ab7b8428d7fe111af
+Command (36 separately supervised invocations): python3 -B result-coordinate-evidence/retention-followup/benchmark/run_comparison.py next --cohort result-coordinate-evidence/retention-followup/comparison-v1 --slot-released
+Every terminal tool exit was observed as 0 before the following invocation. All 36 scheduled JVMs completed; no failure, partial, skipped or replacement fork. 468 queries = 288 warmups + 180 measurements.
+Command: python3 -B result-coordinate-evidence/retention-followup/benchmark/run_comparison.py audit --cohort result-coordinate-evidence/retention-followup/comparison-v1
+Report: result-coordinate-evidence/retention-followup/comparison-v1/audit.json
+Snippet: {"completedJvms": 36, "remainingJvms": 0, "complete": true, "action": "audit"}
+Command: python3 -B result-coordinate-evidence/retention-followup/benchmark/analyze_comparison.py --cohort result-coordinate-evidence/retention-followup/comparison-v1 --output result-coordinate-evidence/retention-followup/analysis-v1
+Report: result-coordinate-evidence/retention-followup/analysis-v1/results.json
+Snippet: {"complete": true, "counts": {"jvms": 36, "queries": 468, "warmups": 288, "measurements": 180, "pairedQueries": 468}, "output": "/workspace/scratch/73b19a6d6f5c/rdf4j/result-coordinate-evidence/retention-followup/analysis-v1"}
+All result/checksum/exact-bag, native AUTO/compiled measured route, matched adjacency, owner mapping, reservation arithmetic and ledger endpoint gates passed. Natural GC only; full-consumption timing only; historical, diagnostic and pilot timings excluded.
+Primary weak/ordinary median paired latency ratios: fanout 0.95830178032869; shared-tail 0.938526506677303. Allocation ratios: fanout 0.8391306145164835; shared-tail 0.8600038812155051.
+Primary weak/strong median paired latency ratios: fanout 0.988624397855372 (range 0.9084468553958278 to 1.088229496032437); shared-tail 0.9815907533700478 (range 0.8124777014304235 to 1.0554809699921495). These are descriptive observations without a significance or production-promotion claim.
+Strong and weak source calls were identical in every measured query: 33,386 fanout and 172,090 shared-tail. The 236 measured shared-tail weak collected-entry encounters replaced collision counts; they did not add source calls. Every enabled query retained a 4,096-slot table, with no resize, cutoff or admission refusal.
+
+Second independent raw comparison audit (2026-11-17):
+Source: result-coordinate-evidence/retention-followup/reviews/raw-comparison-audit-v1.py
+Report: result-coordinate-evidence/retention-followup/reviews/raw-comparison-audit-v1.json
+All verification fields true; 36 JVMs, 468 queries, 180 measured observations, 312 closed direct owners. Root compared every primary paired metric and every absolute median with the frozen analyzer: exact agreement. Audit code SHA matches its JSON receipt.
+Cross-round routes: all 18 forks per fixture match at every query ordinal; first warmup interpreted retry, remaining 12 queries compiled. Shared-tail has exactly one strong/weak source-call mismatch in warmup round 3 / iteration -7: weak 172091 vs strong 172090, one fewer weak hit; measured source counts always match. Measured weak collected encounters total 236; including warmups they total 633.
+Post hoc sensitivity requested after cohort completion, not a replacement or prespecified primary estimator: replacing only per-JVM inner medians with arithmetic means gives fanout weak/strong 1.0124013525396218, versus primary 0.988624397855372; shared-tail weak/strong 0.980153287. Fanout weak/ordinary mean-based median ratio 0.976230934, with fifth-round ratio 1.060929087. The report retains both this sensitivity and the unchanged primary estimates.
+Final delivery review re-read all 59 payload files, all four production sources and all seven prefix class members; archive, patch and manifest hashes match; git apply --check passed. No new Java or frozen-input mutation.

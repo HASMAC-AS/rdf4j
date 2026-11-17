@@ -13,8 +13,8 @@ The experimental memo reuses lazy RDF values across projected rows in one native
 - [x] (2026-11-17) Capture failing weak retention contract evidence.
 - [x] (2026-11-17) Implement and qualify minimal weak retention.
 - [x] (2026-11-17) Measure ownership and decoded payload retention.
-- [in_progress] Freeze and run matched latency comparison.
-- [ ] Publish verified source, patch, and findings.
+- [x] (2026-11-17) Freeze and run matched latency comparison.
+- [in_progress] Publish verified source, patch, and findings.
 
 ## Surprises & Discoveries
 
@@ -23,6 +23,12 @@ The previous checkout and common benchmark runtime are absent from the current w
 Both the `Value[]` and `InternalIdentity[]` arrays hold strong references in the existing memo. A weak value reference alone would leave the identity witness holding a revision and possibly its ValueStore, snapshot, and scope. The weak variant must capture primitive identity data and a weak owner witness. The ValueStore also has its own strong decoded-value caches, so actual query heap retention and memo-only reachability must be reported separately.
 
 The saved Maven dependency archive has two parts. Their verified SHA-256 values are `3670b130792d8f164479d474e6950ff2b3f24f59dc9db19b38757f6fee3f4b57` and `76870510dbd7d7ccd629705d60547e6ee6ff549f61f886c90c76de6be16f74b0`. Its contents will seed the workspace-local `.m2_repo`; the fresh source install will replace any snapshot jars needed by this checkout.
+
+The completed timing cohort encountered 236 cleared weak entries across 30 measured shared-tail weak queries, but strong and weak source-call and hit counts were identical in every measured query. The collection counter is incremented before key comparison; those encounters replaced different-key collision counts in aggregate. They must not be described as evidence of additional useful-key rematerialization. All enabled timing queries stayed at 4,096 slots with no cutoff or growth.
+
+Fanout weak/strong allocation ratios ranged from 1.000918 to 1.035967 despite a median of 1.001065. The raw counters do not establish the cause of that inter-fork allocation spread. Preserve it rather than attributing every byte difference to weak-entry overhead.
+
+The independent post-cohort sensitivity changes fanout weak/strong latency from 0.988624 with inner medians to 1.012401 with inner means. This post hoc calculation is not the frozen estimator; its sign reversal limits any latency-ranking claim. The independent audit also found one extra weak source call in one shared-tail warmup (round 3, iteration -7), while every measured query retained identical strong/weak hit and source-call counts. All 18 forks per fixture matched routes at each query ordinal across rounds.
 
 ## Decision Log
 
@@ -36,9 +42,13 @@ Decision: require a smallest in-repository failing test before altering the expe
 
 Decision: keep explicit-GC reachability diagnostics out of latency measurements. Rationale: a forced collection answers a lifetime question but changes the natural performance of a weak memo. Date/author: 2026-11-17, root.
 
+Decision: retain weak mode as an off-by-default experimental candidate and make reuse distance/admission the next question. Rationale: controlled lifetime evidence removes the memo-owned payload graph, while all six weak/ordinary latency pairs favored weak mode on both tested fixtures; weak/strong latency differences are small relative to the paired spread. The fixed fixtures did not exercise cutoff, growth or costly same-key loss after GC. Date/author: 2026-11-17, root.
+
 ## Outcomes & Retrospective
 
-Dependency recovery completed with 1,476 JARs. Both required root builds compiled and installed LMDB successfully; the full reactor remains blocked by missing Kotlin 2.3.21 in unrelated Spring modules (the online retry failed DNS). The weak-capable implementation is now qualified by 193 final-runtime tests, a real-source-cache diagnostic, four controlled memory JVMs with 24 passing checkpoints, and two full weak fixture pilots with 26 queries. The memory experiment establishes that weak retention releases the memo-owned graph while respecting consumer roots. The comparative latency study is frozen but has not launched. The prior completed study is recorded in `result-coordinate-evidence/direct-memo-followup/RESULTS.md`; it is context only for this new experiment.
+Dependency recovery completed with 1,476 JARs. Both required root builds compiled and installed LMDB successfully; the full reactor remains blocked by missing Kotlin 2.3.21 in unrelated Spring modules (the online retry failed DNS). The weak-capable implementation is qualified by 193 final-runtime tests, a real-source-cache diagnostic, four controlled memory JVMs with 24 passing checkpoints, and two full weak fixture pilots with 26 queries. The memory experiment establishes that weak retention releases the memo-owned graph while respecting consumer roots.
+
+All 36 individually supervised timing JVMs completed normally, with 468 queries, 180 measured observations and no replacement forks. The frozen audit and analyzer passed all result, route, adjacency, ownership mapping and endpoint-ledger checks. Median paired weak/ordinary latency ratios were 0.958302 on fanout and 0.938527 on shared-tail; allocation ratios were 0.839131 and 0.860004. Weak/strong latency ratios were 0.988624 and 0.981591, with ranges crossing 1. The complete implementation/source checkpoint was published before timing as `9b262140b7e49eedd4521c3521a70938b02722cd`. The final report is `RESULTS.md`; raw data and the prescribed estimates are in `comparison-v1` and `analysis-v1`. Independent raw and delivery reviews are complete; final publication and handoff are in progress. The prior completed study remains context only and was not pooled.
 
 ## Context and Orientation
 
@@ -129,3 +139,7 @@ Revision note (2026-11-17): All four controlled memory JVMs and 24 checkpoints p
 Revision note (2026-11-17): Both weak full-fixture pilots passed (26 queries, 26 owners), and runtime-v2/qualification.json combines the test, memory and pilot evidence. comparison-v1/protocol.json is now frozen for 36 JVMs; no primary timing process has launched. The next checkpoint will publish this qualified state before timing.
 
 Revision note (2026-11-17): Added actual qualification outcomes, exact reproduction and finite timing commands, and lossless evidence recovery instructions before the pre-timing checkpoint.
+
+Revision note (2026-11-17): Published and adopted the exact-tree qualified checkpoint before timing. Completed all 36 finite JVM invocations, each observed to exit zero before the next began. Audit and independent frozen analysis passed 468 queries and 180 measurements. Added primary ratios, allocation spread, collected-entry interpretation, source-delivery hashes and remaining scope in RESULTS.md. The only active plan step is final publication and handoff.
+
+Revision note (2026-11-17): The second raw audit reproduced all primary estimates, confirmed cross-round route equality, and supplied a separately labeled post hoc inner-mean sensitivity. Added its fanout sign reversal and the single warmup extra source call to the report. Delivery review reconfirmed the archive, patch and seven-class prefix and narrowed the statement about constrained-budget coverage. No new preservation archive or Java run was necessary.
