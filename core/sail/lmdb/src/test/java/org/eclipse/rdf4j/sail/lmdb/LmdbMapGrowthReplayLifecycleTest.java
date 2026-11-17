@@ -565,6 +565,84 @@ class LmdbMapGrowthReplayLifecycleTest {
 		}
 	}
 
+	/** Eager projection inside ORDER BY makes the hit barrier pre-exposure, not replay after an observed row. */
+	@Test
+	@Timeout(value = 45, unit = TimeUnit.SECONDS)
+	@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "rdf4j.lmdb.nativeValueMemo.testProbe", matches = "true")
+	void initiallyCompiledMemoIsRecreatedAcrossUnobservedMapGrowth(@TempDir Path dataDirectory) throws Exception {
+		LmdbStore store = new LmdbStore(dataDirectory.toFile(), new LmdbStoreConfig("spoc,posc")
+				.setNativeEvaluationEnabled(true).setInlineLiterals(false).setForceSync(true)
+				.setTripleDBSize(INITIAL_MAP_SIZE).setValueDBSize(128L * 1024L * 1024L)
+				.setMapGrowthThreshold(GROWTH_THRESHOLD).setMapGrowthReadDrainTimeoutMillis(150).setAutoGrow(true));
+		SailRepository repository = new SailRepository(store);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		java.util.concurrent.atomic.AtomicInteger observed = new java.util.concurrent.atomic.AtomicInteger();
+		try (var probe = new org.eclipse.rdf4j.sail.lmdb.evaluation.NativeMemoReplayProbe()) {
+			repository.init();
+			java.util.Set<String> expected = new java.util.TreeSet<>();
+			try (var seed = repository.getConnection()) {
+				seed.begin();
+				for (int i = 0; i < 5000; i++) {
+					IRI subject = VF.createIRI("urn:memo-replay:row:" + i);
+					seed.add(subject, FIRST_PREDICATE, VF.createLiteral("repeated", VF.createIRI("urn:memo-replay:custom-datatype")));
+					seed.add(subject, SECOND_PREDICATE, VF.createLiteral("tag"));
+					expected.add(subject.stringValue() + "/repeated");
+				}
+				seed.commit();
+			}
+			LmdbSailStore backingStore = store.getBackingStore();
+			TripleStore tripleStore = tripleStoreOf(store);
+			long initialMapSize = mapSize(tripleStore);
+			String namespace = hardGrowthNamespace(backingStore, initialMapSize);
+			MapGrowthMetrics.Snapshot before = backingStore.growthMetricsSnapshot();
+			Future<java.util.Set<String>> query = executor.submit(() -> {
+				try (var reader = repository.getConnection()) {
+					reader.begin(IsolationLevels.SNAPSHOT);
+					var tuple = (org.eclipse.rdf4j.repository.sail.SailTupleQuery) reader.prepareTupleQuery(
+							"SELECT DISTINCT ?s ?v WHERE { ?s <" + FIRST_PREDICATE + "> ?v . ?s <"
+								+ SECOND_PREDICATE + "> ?tag } ORDER BY ?v ?s LIMIT 200");
+					tuple.setForcedLmdbExecutionStrategy("irKernel");
+					java.util.Set<String> output = new java.util.HashSet<>();
+					try (var result = tuple.evaluate()) {
+						while (result.hasNext()) {
+							var row = result.next();
+							observed.incrementAndGet();
+							output.add(row.getValue("s").stringValue() + "/" + row.getValue("v").stringValue());
+						}
+					}
+					reader.commit();
+					return output;
+				}
+			});
+			boolean hit = probe.awaitHit();
+			if (!hit && query.isDone()) query.get();
+			assertTrue(hit, "compiled evaluation must hit the real memo before returning output");
+			assertEquals(0, observed.get(), "never request replay after exposing a row");
+			Future<?> writer = executor.submit(() -> {
+				try (SailConnection connection = store.getConnection()) {
+					connection.begin(IsolationLevels.SNAPSHOT);
+					addGrowthStatements(connection, 10_000, namespace);
+					connection.commit();
+				}
+				return null;
+			});
+			awaitStartedGrowthAdmissionClosure(backingStore, before, writer);
+			awaitReplayAccepted(backingStore, before, writer);
+			assertEquals(0, observed.get());
+			probe.release();
+			writer.get(20, TimeUnit.SECONDS);
+			assertEquals(new java.util.HashSet<>(expected.stream().limit(200).toList()), query.get(20, TimeUnit.SECONDS));
+			assertEquals(200, observed.get(), "no duplicated or lost rows across replay");
+			assertTrue(mapSize(tripleStore) > initialMapSize);
+			assertEquals(before.replayAccepted() + 1, backingStore.growthMetricsSnapshot().replayAccepted());
+			probe.assertReplacementHit();
+		} finally {
+			executor.shutdownNow();
+			try { assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS)); }
+			finally { repository.shutDown(); }
+		}
+	}
+
 	private static LmdbStore newStore(Path dataDirectory) {
 		return newStore(dataDirectory, false);
 	}

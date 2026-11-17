@@ -39,6 +39,8 @@ public final class OverlayOptionalQueryBenchmark {
 		int fanout = args.length > 1 ? Integer.parseInt(args[1]) : 10;
 		int iterations = args.length > 2 ? Integer.parseInt(args[2]) : 3;
 		boolean overlay = args.length <= 3 || Boolean.parseBoolean(args[3]);
+		int warmups = Integer.getInteger("overlay.benchmark.warmups", 2);
+		if (warmups < 0) throw new IllegalArgumentException("Warmups must be nonnegative");
 		if (groups < 1 || fanout < 1 || iterations < 1) {
 			throw new IllegalArgumentException("All numeric arguments must be positive");
 		}
@@ -50,15 +52,35 @@ public final class OverlayOptionalQueryBenchmark {
 		System.setProperty("rdf4j.lmdb.parallel.enabled", "false");
 		System.setProperty("rdf4j.lmdb.irKernelParallel.enabled", "false");
 		System.setProperty("rdf4j.lmdb.valueOverlay.maxBytes", "268435456");
-		var directory = Files.createTempDirectory("overlay-optional-query-").toFile();
+		String fixture = System.getProperty("overlay.benchmark.fixture");
+		boolean reusable = fixture != null;
+		var directory = reusable ? new java.io.File(fixture) : Files.createTempDirectory("overlay-optional-query-").toFile();
+		var stamp = directory.toPath().resolve("benchmark-fixture.txt");
+		boolean existing = Files.exists(stamp);
+		if (reusable && directory.exists() && !directory.isDirectory())
+			throw new IllegalArgumentException("Fixture must be a directory");
+		if (reusable && !existing && directory.exists() && directory.list().length != 0)
+			throw new IllegalArgumentException("Refusing unmarked nonempty fixture directory");
+		Files.createDirectories(directory.toPath());
+		String prefix = groups + " " + fanout + " ";
+		if (existing && !Files.readString(stamp).startsWith(prefix))
+			throw new IllegalArgumentException("Fixture shape mismatch");
 		var config = new LmdbStoreConfig().setForceSync(false).setInlineLiterals(false)
 				.setNativeEvaluationEnabled(true).setDirectAdjacencyEnabled(true).setValueOverlayEnabled(overlay)
 				.setValueCacheSize(Integer.getInteger("overlay.benchmark.valueCacheSize", LmdbStoreConfig.VALUE_CACHE_SIZE));
 		SailRepository repository = new SailRepository(new LmdbStore(directory, config));
 		try {
 			repository.init();
-			long triples = load(repository, groups, fanout);
+			long triples;
+			if (existing) {
+				try (var connection = repository.getConnection()) { triples = connection.size(); }
+				if (!Files.readString(stamp).equals(prefix + triples))
+					throw new IllegalStateException("Fixture cardinality changed");
+			} else {
+				triples = load(repository, groups, fanout);
+			}
 			repository.shutDown();
+			if (reusable && !existing) Files.writeString(stamp, prefix + triples);
 			// Reopen populated store so startup overlay warming sees the whole fixture, not an empty store.
 			LmdbStore store = new LmdbStore(directory, config);
 			repository = new SailRepository(store);
@@ -76,7 +98,7 @@ public final class OverlayOptionalQueryBenchmark {
 			long expectedRows = Math.multiplyExact((long) groups, Math.multiplyExact((long) fanout,
 					Math.multiplyExact((long) fanout, fanout)));
 			Long checksum = null;
-			for (int run = -2; run < iterations; run++) {
+			for (int run = -warmups; run < iterations; run++) {
 				List<String> routes = new ArrayList<>();
 				LmdbNativeDispatchLoop.observeSelections((target, label, id, record) -> {
 					if (record.point() == LmdbNativeDecisionPoint.ROW) {
@@ -128,7 +150,7 @@ public final class OverlayOptionalQueryBenchmark {
 			}
 		} finally {
 			repository.shutDown();
-			FileUtil.deleteDir(directory);
+			if (!reusable) FileUtil.deleteDir(directory);
 		}
 	}
 

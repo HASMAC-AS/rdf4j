@@ -40,3 +40,18 @@ Eight forks A/B/C/D/D/C/B/A,100krows,defaultcache256k,two warmups+six measured,f
 - Memo+both:572.794/504.393ms,overall538.593ms.
 
 This variance is too large for a firm speedup claim. Partial-ready reduces allocation; wide primitive increases allocated bytes due array growth, even though it may reduce retained table overhead. Combination is not additive in this first fixture. Longer/larger matched runs are required. Historical memo numbers remain separate.
+
+## Mirrored million-row matrix
+
+Same generated query at267,000triples/1,000,000outputrows, default256k globalcache,4GiB maxheap,2warmups+4measurements/fork,final3means, A/B/C/D/D/C/B/A:
+
+| Variant (memo always on) | Fork means ms | Combined mean ms |
+|---|---|---|
+| Memo baseline |6534.471,5820.259|6177.365|
+| +partial-ready |5368.513,5714.594|5541.554|
+| +wide primitive DISTINCT |4419.071,4548.301|4483.686|
+| +both |4986.875,4110.080|4548.478|
+
+Wide DISTINCT is27.4%faster in this fixture; partial-ready10.3%; combined26.4%. Combination is not demonstrated faster than wide alone. All1mrowcounts/checksums match, compiledIR verified. Each query has27.6m memo probes and~27.342m hits. Wide path reports1m primitive DISTINCT probes vs1m object probes baseline. Partial-ready consistently lowers thread allocation. Baseline allocation differs considerably acrossJVMs(4.81/5.77GB), so don't infer exact retained-memory savings from allocation counts.
+
+Next exact-scale synthetic comparison uses2.136mtriples/8mrows, one coldquery perJVM (no discarded querywarmups), mirrored forks and a verified reusablefixture. Timing excludes datasetload. This remains synthetic, not user'sprivatequery.

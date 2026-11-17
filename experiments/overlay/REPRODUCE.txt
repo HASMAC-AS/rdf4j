@@ -6,3 +6,5 @@ Experimental flag defaults false: -Drdf4j.lmdb.valueOverlay.typedMaterialization
 For recorded ABBA comparisons, freeze class outputs before edits as script paths indicate; scripts encode heap/workload/ordering.
 JFR files preserve raw profiles; print JSON ExecutionSample with JDK jfr tool, then summarize-profile.py. JSON not bundled to avoid hundreds of MB duplicates.
 RESULTS.md distinguishes valid micro timings from initially unexercised query path and final scalar hit proof. No production publication or enabled default.
+OptionalQueryBenchmark now accepts -Doverlay.benchmark.warmups=N (default2).
+-Doverlay.benchmark.fixture=/new/empty/path keeps and reuses a generated dataset. It refuses nonempty unmarked directories, validates requested groups/fanout and persisted triple count; never deletes configured persistent fixture. Default temporary fixture still deleted on exit. Reuse smoke passed twice with54identical rows and memo hitproof.
