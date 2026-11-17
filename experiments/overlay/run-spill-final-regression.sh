@@ -23,8 +23,13 @@ print('Evaluation test classes:', len(names))
 PY
 for selection in "$RESULTS"/shard-*.selection; do
  name=${selection%.selection}
+ if [[ -f "$RESULTS/PAUSE" ]]; then
+  echo "Paused before $name by request; remaining shards not run"
+  exit 0
+ fi
  (
  flock 9
+ touch "$name.started"
  set +e
  experiments/overlay/mvn.sh -o -pl core/sail/lmdb -Dtest="$(cat "$selection")" -DforkCount=1 -Drdf4j.lmdb.test.maxHeap=3G -Drdf4j.lmdb.nativeValueMemo.enabled=true -Drdf4j.lmdb.repository.partialReady=true -Drdf4j.lmdb.nativeDistinct.widePrimitive=true -Drdf4j.lmdb.expressionDomain.bulkIdRecordIo=true -Drdf4j.lmdb.expressionDomain.reuseMembershipMissSlot=true surefire:test > "$name.log" 2>&1
  status=$?
@@ -33,7 +38,7 @@ for selection in "$RESULTS"/shard-*.selection; do
  mkdir -p "$name-reports"
  while IFS= read -r class; do
   for report in "core/sail/lmdb/target/surefire-reports/$class.txt" "core/sail/lmdb/target/surefire-reports/TEST-$class.xml"; do
-   if [[ -f "$report" ]]; then cp "$report" "$name-reports/"; fi
+   if [[ -f "$report" && "$report" -nt "$name.started" ]]; then cp "$report" "$name-reports/"; fi
   done
  done < <(tr ',' '\n' < "$selection"; echo)
  ) 9>../native-benchmark.lock

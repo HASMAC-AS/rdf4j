@@ -58,20 +58,36 @@ class NativeWideDistinctLifecycleTest {
 	}
 	@Test
 	void spilledClearReopensWhileAnotherTrackerHoldsSharedBudget() throws Exception {
-		var manager=LmdbQueryMemoryManager.createForTesting(12_000,12_000);
-		try (var ledger=manager.openQuery();var executor=Executors.newFixedThreadPool(2)){
-			var barrier=new CyclicBarrier(2);
-			Callable<Boolean> run=()->{
-				try (var d=new NativeBudgetedWideDistinct(slots(),null,ledger,new NativeCancellationToken())){
-					for (int i=1;i<=100;i++)assertTrue(d.add(row(i)));
-					assertFalse(d.primitiveActive());barrier.await(10,TimeUnit.SECONDS);
-					for (int iteration=0;iteration<3;iteration++){
-						d.clear();assertTrue(d.add(row(1)));assertFalse(d.add(row(1)));barrier.await(10,TimeUnit.SECONDS);
-					}
-				}return true;
-			};
-			var a=executor.submit(run);var b=executor.submit(run);assertTrue(a.get());assertTrue(b.get());
-			assertEquals(0,ledger.usedBytes());assertTrue(manager.peakUsedBytes()<=12000);
+		var manager = LmdbQueryMemoryManager.createForTesting(12_000, 12_000);
+		try (var ledger = manager.openQuery(); var executor = Executors.newFixedThreadPool(2)) {
+			var barrier = new CyclicBarrier(2);
+			try (var first = new NativeBudgetedWideDistinct(slots(), null, ledger, new NativeCancellationToken());
+					var second = new NativeBudgetedWideDistinct(slots(), null, ledger, new NativeCancellationToken())) {
+				// Establish spilled owners before concurrency: transient admission arenas could
+				// legitimately consume the other owner's workspace and refuse its initial open.
+				for (int i = 1; i <= 100; i++) assertTrue(first.add(row(i)));
+				for (int i = 1; i <= 100; i++) assertTrue(second.add(row(i)));
+				assertFalse(first.primitiveActive());
+				assertFalse(second.primitiveActive());
+				var a = executor.submit(() -> clearTogether(first, barrier));
+				var b = executor.submit(() -> clearTogether(second, barrier));
+				assertTrue(a.get());
+				assertTrue(b.get());
+			}
+			assertEquals(0, ledger.usedBytes());
+			assertTrue(manager.peakUsedBytes() <= 12_000);
 		}
+	}
+
+	private boolean clearTogether(NativeBudgetedWideDistinct distinct, CyclicBarrier barrier) throws Exception {
+		for (int iteration = 0; iteration < 3; iteration++) {
+			distinct.clear();
+			// Re-admit both workspaces before either owner can grow a new tuple arena.
+			barrier.await(10, TimeUnit.SECONDS);
+			assertTrue(distinct.add(row(1)));
+			assertFalse(distinct.add(row(1)));
+			barrier.await(10, TimeUnit.SECONDS);
+		}
+		return true;
 	}
 }

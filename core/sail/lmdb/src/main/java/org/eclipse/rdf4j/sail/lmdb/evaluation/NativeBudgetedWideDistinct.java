@@ -125,15 +125,27 @@ final class NativeBudgetedWideDistinct implements AutoCloseable {
 	}
 
 	void clear() {
+		clear(null);
+	}
+
+	/** Test seam for a competing reservation between releasing and re-admitting spill workspace. */
+	void clear(Runnable afterWorkspaceReleased) {
 		check();
-		if (primitive != null) {
-			primitive.clear();
-		} else if (semantic != null) {
-			semantic.close();
-			semantic = new NativeBoundedDistinct(authority, identity, cancellation, ledger);
-		} else {
-			membership.close();
-			membership = newMembership();
+		try {
+			if (primitive != null) {
+				primitive.clear();
+			} else if (semantic != null) {
+				semantic.close();
+				semantic = new NativeBoundedDistinct(authority, identity, cancellation, ledger);
+			} else {
+				membership.close();
+				if (afterWorkspaceReleased != null) afterWorkspaceReleased.run();
+				membership = newMembership();
+			}
+		} catch (Throwable failure) {
+			// Clear has already discarded exact state. A failed re-admission cannot be resumed;
+			// retire this owner and release its remaining claims without hiding the primary failure.
+			NativeContextClosingIteration.throwFailure(KernelRuntime.closeResource(this, failure));
 		}
 	}
 
