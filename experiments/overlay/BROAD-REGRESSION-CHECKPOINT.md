@@ -16,3 +16,5 @@ All421 selected classes completed:5018tests,initial2failures,0errors,5skips. The
 Broader store/boundary/replay/value selection96top-level classes is underway via run-store-regression.sh, first759tests green with2diagnostic skips. Its results and new bounded-wide implementation must be reported separately.
 
 Store sweep completed1771tests across96classes,0failures,2diagnostic skips. Source changes occurred between shards: earlyshards used pre-budget callers; lastshards had budget wiring. A new423-class evaluation sweep on bounded-wide integration is underway separately; final completion not yet claimed.
+
+Bounded-flat integration evaluation sweep completed5030tests,0failures,0errors,5skips across423classes. The two earliest shards predated the finalscope/close compile; both were rerun afterward:467/0/0 and509/0/0, completing finalbounded-flat coverage for this selection. Logs budget-final-shard-00/01. This remains scoped evaluation coverage, not fullmodule verification. Default-off focused run:26tests,0failures/errors,11expected feature-gatedskips (15executed). Subsequent segmented/spill experiments require their own verification.

@@ -51,3 +51,12 @@ Newroute charges393,746,272Bpeak and releases to0 aftereachquery, no spill at th
 Scope: bounded optimization is for opted-in wide SELECT DISTINCT with an actual ledger. Legacy aggregate/no-ledger/narrow paths are not newly memory-bounded. Width>64 is explicitly refused in bounded opt-in mode because the existing spill representation supports atmost64columns. See WIDE-BUDGET-CHECKPOINT.md. Actual constrained-budget spill throughput and new8m timings pending at this checkpoint.
 
 Actual constrained query: same1mrows/30columns with64MiB querycap (256MiBglobal), one cold query/no warmup,25.914588s. Peak61,512,000B stays below67,108,864B; one migration;17spillfiles created and17deleted;0bytesleft afterclose; exactchecksum/cardinality. This verifies real-query spill correctness/cleanup, not a matched speed comparison against the warm4.2s runs. Tight budgets clearly carry a substantial spill cost.8m default versus generous budget measurement is running.
+
+## Final flat-table bounded baseline:8-million-row budget contrast
+
+Same2,136,000triples,8mDISTINCTrows,30columns,compiledIR,memo+partial-ready,5GiBheap,onecoldquery perfreshJVM/no discardedwarmups:
+
+- Generous3.5GiBquerycap (4GiBglobal):40.391800s;3,116,898,144Bpeak;8mprimitive probes;no spill.
+- Default640MiBquerycap (2.5GiBglobal):175.682105s;393,746,272Bpeak;1,048,576primitive then6,951,424spill probes;one migration;20spillfiles created/deleted.
+
+Both checksum-3441391656945048864,220.8mmemoprobes/~218.753mhits,and0budgetbytes afterclose. These single-run measurements establish a large memory/spill tradeoff, not a statistically established speedup. Do not recommend the default-budget flat-table version as a performance win for this workload. Its next growth would exceed the limit before using all640MiB, so it spills early. Segmentedpayload storage and batched spillI/O are the next experiments; no globalbudget policy change has been made.

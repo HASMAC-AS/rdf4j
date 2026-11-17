@@ -1,10 +1,28 @@
-Base: HASMAC/rdf4j 8fc7b0137164ffdc1f5d080b943fd362931137dd
-Apply final-prototype.patch, copy new test Java sources to same paths.
-Use JDK25 and Maven3.9.11. Build reactor dependencies with -DskipTests (test jars needed), then run tests by explicit -pl core/sail/lmdb, no -am for tests.
-Harness classes are under src/test/java; benchmark scripts expect compiled test/classes and dependency classpath at experiments/overlay/classpath.txt. Regenerate dependency classpath with Maven dependency:build-classpath.
-Experimental flag defaults false: -Drdf4j.lmdb.valueOverlay.typedMaterialization=true
-For recorded ABBA comparisons, freeze class outputs before edits as script paths indicate; scripts encode heap/workload/ordering.
-JFR files preserve raw profiles; print JSON ExecutionSample with JDK jfr tool, then summarize-profile.py. JSON not bundled to avoid hundreds of MB duplicates.
-RESULTS.md distinguishes valid micro timings from initially unexercised query path and final scalar hit proof. No production publication or enabled default.
-OptionalQueryBenchmark now accepts -Doverlay.benchmark.warmups=N (default2).
--Doverlay.benchmark.fixture=/new/empty/path keeps and reuses a generated dataset. It refuses nonempty unmarked directories, validates requested groups/fanout and persisted triple count; never deletes configured persistent fixture. Default temporary fixture still deleted on exit. Reuse smoke passed twice with54identical rows and memo hitproof.
+Source and toolchain
+--------------------
+The public dot/overlay-performance-experiments-20261117-8fc7b0 branch contains the source/tests; no separate patch is required. Original base: HASMAC-AS/rdf4j 8fc7b0137164ffdc1f5d080b943fd362931137dd. JDK25 and Maven3.9.11 were used. Experimental flags remain default-off.
+
+Build reactor dependencies with -DskipTests -DskipITs (test jars are needed). Never use -am while running tests. Then compile the LMDB module tests and generate its dependency classpath with dependency:build-classpath and an absolute -Dmdep.outputFile pointing to experiments/overlay/classpath.txt. The scripts expect the local toolchain under ../tools and Maven repository under ../m2; adapt those paths to your installation. mvn.sh generates local proxy settings from HTTPS_PROXY; use ordinary Maven settings instead when not behind this workspace proxy.
+
+Class snapshots for budget comparisons
+--------------------------------------
+Build historical checkpoint c4243aa233c1c273f27972407200a6cbd067d93d in a separate checkout and copy its core/sail/lmdb/target/classes to experiments/overlay/memo-combined-classes. This is the legacy unbudgeted-wide baseline, not the original unavailable memo implementation.
+Build the current bounded-wide checkpoint and copy core/sail/lmdb/target/classes to experiments/overlay/budgeted-wide-classes and experiments/overlay/budgeted-wide-final-classes. The final snapshot differs only in scoped ownership/error cleanup and declining optimization in legacy aggregate paths; the measured SELECT DISTINCT hot loop is unchanged.
+Use current compiled benchmark test classes for both variants. The legacy benchmark sets expectedBudgetedWide=false and asserts zero admissions; the bounded variant requires positive admission. Both verify exact row cardinality/checksum, compiled irKernel, memo hits, zero residual ledger bytes and matching spill file creation/deletion.
+
+run-budget-comparison.sh:1m rows,4GiBheap,2warmups+3measured/fork,legacy/budget/budget/legacy.
+run-budget-spill-query.sh:1m rows,64MiBquerybudget,onecoldquery,real spill/cleanup proof.
+run-budget-eight-million.sh:8m rows,5GiBheap,onecoldquery each with3.5GiB and default640MiBquerybudget.
+summarize-budget-results.py extracts raw warmup/measured data to budget-measurements.csv. Historical measurements.csv remains separate.
+
+Validation
+----------
+run-memo-growth-proof.sh proves real unobserved map-growth replay, fresh memo, compiled irKernel on both attempts, exact output, caller-context restoration.
+run-combined-tests.sh runs the original focused combination suite.
+run-broad-regression.sh [output-directory] runs compiled top-level evaluation test classes in40-class shards, preserving selections/logs/exits. Use a fresh output directory to retain prior evidence.
+run-store-regression.sh runs the broader store/boundary/value/replay selection. These selections are not the whole module. Reports in copied shard directories may include stale unrelated reports; selections and log summaries are authoritative.
+
+Fixtures and earlier experiments
+-------------------------------
+OverlayOptionalQueryBenchmark accepts -Doverlay.benchmark.warmups=N (default2). -Doverlay.benchmark.fixture=/new/empty/path keeps/reuses its generated dataset, refuses nonempty unmarked directories, validates groups/fanout and persisted triple count, and never deletes a configured persistent fixture. Default temporary fixtures are deleted on exit.
+Earlier overlay-only scripts use their named frozen class directories. RESULTS.md distinguishes valid micro timings, initial unexercised query integration, and final scalar hit proof. Typed overlay materialization remains unrecommended/default-off. Raw JFR files are retained locally and excluded from public artifacts because they can contain environment metadata; profile-summary.txt contains sanitized findings.
