@@ -1,0 +1,1 @@
+Assembly initially assumed the common harness was first in both existing classpaths; depth has its layer first. Corrected replacement by exact entry identity. Initial smoke stopped before starting Java because source IDs had not been written after the assembly failure. Empty smoke-base directory retained. No comparative timing was run.

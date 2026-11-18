@@ -12,14 +12,20 @@ Expected source effect: avoid repeated ThreadLocal map set/remove mutations, ret
 Base is immutable `5ac89b5c137030fea1aa6aa7160984423d7f4cd5`; depth adds only `0750336e71ab0ca0d216ce9c36483a6e9063337d`. Reconstruct candidate store family from exact incumbent source, NOT current source containing later cancellation changes. Compile and compare exact class-family manifests. New source and combined identities will be published independently from archival branch.
 
 ## Plan
-- [in_progress] Establish baseline contracts and bounded implementation
-- [todo] Independently review scope and retention correctness
-- [todo] Qualify exact layered routes and outputs
-- [todo] Measure prespecified factorial actual HTTP pipeline
-- [todo] Publish complete evidence and qualified decision
+- [done] Establish baseline contracts and bounded implementation
+- [done] Independently review scope and retention correctness
+- [done] Qualify exact layered routes and outputs
+- [done] Measure prespecified factorial actual HTTP pipeline
+- [in_progress] Publish complete evidence and qualified decision
 
 ## Ownership and coordination
 writer_guard_design owns baseline tests, implementation and first CPU/build window. native_token_path independently reviews source/memory/thread semantics. inventory owns runtime provenance and HTTP factorial after qualification. Coordinator reviews, integrates and publishes. Canonical experiments/overlay/native-benchmark.lock excludes timing/build/test overlap. No blanket staging/reset or lost artifacts. Test-first required before production edits; keep baseline failures and final results.
 
 ## Timing protocol
 Four balanced Latin-square blocks, four arms: base, depth, holder, depth+holder. Four fresh server JVMs per arm. Fixed 60 warmups and 30 measured full 100k-row requests per JVM, improving on prior 20/10 convergence limitation without outcome-driven trimming or reruns. Primary incremental contrast: holder+depth versus depth. Report all arm contrasts and factorial interaction using independent fork means, not requests as independent samples. Preserve early/middle/late windows as convergence diagnostics. Same actual Server→binary→Workbench→NDJSON frozen common runtime and writer/compact transport flags. Exact full-term validation before timing; route/memo/no-spill/budget witnesses for every request. Browser excluded after prior pre-navigation Unix-socket denial; no paint/IndexedDB claim. No causal or universally-fastest claim from profiles.
+
+## Source qualification checkpoint
+Published standalone holder source90fe4e32 and depth+holder edaff813, archival checkpoint3e95d89d. Each candidate passed110 integration cases and3 gated replay cases separately. Pristine104-class store family reproduced byte-identically; candidate105-class family adds the owner-free holder. Independent review approved current-thread/closing-thread semantics and static owner-free structure. Weak reachability tests passed on live worker. No speedup claim.
+
+## Final measured decision
+All 16 clean server forks completed, with 1,440 successful requests and four separate profiles. Depth averaged 480.126 ms versus 480.122 ms with holder: effectively no pooled increment, mixed blocks and wide uncertainty. No demonstrated holder benefit or synergy. Retain as an experiment, not an adoption recommendation. Longer warmup did not remove all measured-window drift. See ../read-resource-workbench/RESULTS.md and HTTP-PROFILES.md. No further clean rounds or post-hoc trimming.
