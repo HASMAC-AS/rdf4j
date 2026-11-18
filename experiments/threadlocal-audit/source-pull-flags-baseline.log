@@ -1,0 +1,67 @@
+10:07:36,693 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+10:07:36,694 |-INFO in ch.qos.logback.classic.util.ContextInitializer@76a36b71 - No custom configurators were discovered as a service.
+10:07:36,694 |-INFO in ch.qos.logback.classic.util.ContextInitializer@76a36b71 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+10:07:36,695 |-INFO in ch.qos.logback.classic.util.ContextInitializer@76a36b71 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+10:07:36,696 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/core/sail/lmdb/target/test-classes/logback-test.xml]
+10:07:36,737 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+10:07:36,737 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+10:07:36,773 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+10:07:36,778 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@184497d1 - No contradictions in caller extraction instruction were detected
+10:07:36,779 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+10:07:36,779 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+10:07:36,784 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+10:07:36,818 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+10:07:36,818 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+10:07:36,818 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+10:07:36,819 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+10:07:36,819 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+10:07:36,819 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@f9d87b - End of configuration.
+10:07:36,820 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@6ffab045 - Registering current configuration as safe fallback point
+10:07:36,822 |-INFO in ch.qos.logback.classic.util.ContextInitializer@76a36b71 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 125 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/lwjgl/lwjgl/3.4.2/lwjgl-3.4.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+
+Test run finished after 1902 ms
+[         9 containers found      ]
+[         0 containers skipped    ]
+[         9 containers started    ]
+[         0 containers aborted    ]
+[         9 containers successful ]
+[         0 containers failed     ]
+[        21 tests found           ]
+[         0 tests skipped         ]
+[        21 tests started         ]
+[         0 tests aborted         ]
+[        16 tests successful      ]
+[         5 tests failed          ]
+
+
+Failures (5):
+  JUnit Jupiter:RepositoryValueIterationTest:cancellationAndFatalErrorsDoNotWaitBehindBufferedRows(File)
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest', methodName = 'cancellationAndFatalErrorsDoNotWaitBehindBufferedRows', methodParameterTypes = 'java.io.File']
+    => org.opentest4j.AssertionFailedError: Expected java.lang.Throwable to be thrown, but nothing was thrown.
+       org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+       org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest.cancellationAndFatalErrorsDoNotWaitBehindBufferedRows(RepositoryValueIterationTest.java:401)
+  JUnit Jupiter:RepositoryValueIterationTest:multipleResultsBorrowTheTransactionReaderAndBufferedRowsSurviveItsCompletion(File)
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest', methodName = 'multipleResultsBorrowTheTransactionReaderAndBufferedRowsSurviveItsCompletion', methodParameterTypes = 'java.io.File']
+    => org.opentest4j.AssertionFailedError: Two results in one transaction must share its foreground reader ==> expected: <1> but was: <0>
+       org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+       org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest.multipleResultsBorrowTheTransactionReaderAndBufferedRowsSurviveItsCompletion(RepositoryValueIterationTest.java:347)
+  JUnit Jupiter:RepositoryValueIterationTest:sortedLaterDecodeFailureWaitsBehindValidRows(File)
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest', methodName = 'sortedLaterDecodeFailureWaitsBehindValidRows', methodParameterTypes = 'java.io.File']
+    => org.opentest4j.AssertionFailedError: Expected org.eclipse.rdf4j.sail.SailException to be thrown, but nothing was thrown.
+       org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+       org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest.sortedLaterDecodeFailureWaitsBehindValidRows(RepositoryValueIterationTest.java:382)
+  JUnit Jupiter:RepositoryValueIterationTest:parkedBatchReaderRenewsAcrossDictionaryMapGrowth(File)
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest', methodName = 'parkedBatchReaderRenewsAcrossDictionaryMapGrowth', methodParameterTypes = 'java.io.File']
+    => org.opentest4j.AssertionFailedError: Map renewal must keep the owned ordinary lease ==> expected: <1> but was: <0>
+       org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+       org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest.parkedBatchReaderRenewsAcrossDictionaryMapGrowth(RepositoryValueIterationTest.java:436)
+  JUnit Jupiter:RepositoryValueIterationTest:dictionaryWavesReadRootsInKeyOrderWithoutReadingAnotherRow(File)
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest', methodName = 'dictionaryWavesReadRootsInKeyOrderWithoutReadingAnotherRow', methodParameterTypes = 'java.io.File']
+    => org.opentest4j.AssertionFailedError: All distinct roots within the requested row must be batched ==> expected: <128> but was: <0>
+       org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+       org.eclipse.rdf4j.sail.lmdb.RepositoryValueIterationTest.dictionaryWavesReadRootsInKeyOrderWithoutReadingAnotherRow(RepositoryValueIterationTest.java:276)

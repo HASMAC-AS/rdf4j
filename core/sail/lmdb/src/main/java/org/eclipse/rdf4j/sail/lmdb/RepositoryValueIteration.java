@@ -137,8 +137,21 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 			return false;
 		}
 		// Iterator availability may run user callbacks or block. Never request a later row before this one escapes.
-		boolean available = sourceHasNext();
-		if (closed.get()) {
+		boolean available;
+		boolean closedAfterAvailability;
+		T sourceRow = null;
+		RepositoryValueIteration<?> previous = SOURCE_PULL.get();
+		SOURCE_PULL.set(this);
+		try {
+			available = source.hasNext();
+			closedAfterAvailability = closed.get();
+			if (available && !closedAfterAvailability) {
+				sourceRow = source.next();
+			}
+		} finally {
+			restoreSourcePull(previous);
+		}
+		if (closedAfterAvailability) {
 			return false;
 		}
 		if (!available) {
@@ -146,7 +159,8 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 			close();
 			return false;
 		}
-		T nextRow = extractor.snapshot(sourceNext());
+		// Snapshotting is value exposure, not source execution, and must see the restored owner.
+		T nextRow = extractor.snapshot(sourceRow);
 		if (closed.get()) {
 			return false;
 		}
@@ -180,26 +194,6 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 	/** A repository pull already owns cold values until its complete current-row wave finishes. */
 	boolean isPullingSource() {
 		return !closed.get() && SOURCE_PULL.get() == this;
-	}
-
-	private boolean sourceHasNext() {
-		RepositoryValueIteration<?> previous = SOURCE_PULL.get();
-		SOURCE_PULL.set(this);
-		try {
-			return source.hasNext();
-		} finally {
-			restoreSourcePull(previous);
-		}
-	}
-
-	private T sourceNext() {
-		RepositoryValueIteration<?> previous = SOURCE_PULL.get();
-		SOURCE_PULL.set(this);
-		try {
-			return source.next();
-		} finally {
-			restoreSourcePull(previous);
-		}
 	}
 
 	private static void restoreSourcePull(RepositoryValueIteration<?> previous) {
