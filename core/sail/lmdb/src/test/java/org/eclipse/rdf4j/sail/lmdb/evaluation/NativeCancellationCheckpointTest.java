@@ -1,0 +1,141 @@
+/*******************************************************************************
+ * Copyright (c) 2026 Eclipse RDF4J contributors.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Distribution License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *******************************************************************************/
+package org.eclipse.rdf4j.sail.lmdb.evaluation;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.catchThrowable;
+
+import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelQueryCancelledException;
+import org.junit.jupiter.api.Test;
+
+class NativeCancellationCheckpointTest {
+	@Test
+	void explicitTokenIsNotReplacedByConflictingAmbientToken() {
+		NativeCancellationToken owned = new NativeCancellationToken();
+		NativeCancellationToken unrelated = new NativeCancellationToken();
+		unrelated.requestCancellation();
+		NativeCancellationCheckpoint checkpoint = new NativeCancellationCheckpoint(owned, null);
+		try (var ignored = unrelated.enter()) {
+			assertThatCode(() -> checkpoint.poll(1024)).doesNotThrowAnyException();
+			owned.requestCancellation();
+			Throwable failure = catchThrowable(() -> checkpoint.poll(2048));
+			assertThat(failure).isInstanceOf(KernelQueryCancelledException.class);
+			assertThat(owned.owns((KernelQueryCancelledException) failure)).isTrue();
+		}
+	}
+
+	@Test
+	void captureRetainsOwnerAfterScopeRestoration() {
+		NativeCancellationToken token = new NativeCancellationToken();
+		NativeCancellationCheckpoint checkpoint;
+		try (var ignored = token.enter()) {
+			checkpoint = NativeCancellationCheckpoint.capture();
+		}
+		token.requestCancellation();
+		assertThat(catchThrowable(() -> checkpoint.checkQuery())).isInstanceOf(KernelQueryCancelledException.class);
+	}
+
+	@Test
+	void capturedChildObservesParentButSiblingStopDoesNotLeak() {
+		NativeCancellationToken parent = new NativeCancellationToken();
+		NativeCancellationToken child = new NativeCancellationToken(parent);
+		NativeCancellationToken sibling = new NativeCancellationToken(parent);
+		NativeCancellationCheckpoint checkpoint = new NativeCancellationCheckpoint(child, null);
+		sibling.requestCancellation();
+		assertThatCode(() -> checkpoint.poll(0)).doesNotThrowAnyException();
+		parent.requestCancellation();
+		Throwable failure = catchThrowable(() -> checkpoint.poll(1024));
+		assertThat(failure).isInstanceOf(KernelQueryCancelledException.class);
+		assertThat(child.owns((KernelQueryCancelledException) failure)).isTrue();
+	}
+
+	@Test
+	void maskedPollPreservesCadenceAndNullFallback() {
+		NativeCancellationToken token = new NativeCancellationToken();
+		NativeCancellationCheckpoint checkpoint = new NativeCancellationCheckpoint(token, null);
+		token.requestCancellation();
+		assertThatCode(() -> checkpoint.poll(1023)).doesNotThrowAnyException();
+		assertThat(catchThrowable(() -> checkpoint.poll(1024))).isInstanceOf(KernelQueryCancelledException.class);
+		assertThatCode(() -> new NativeCancellationCheckpoint(null, null).poll(0)).doesNotThrowAnyException();
+	}
+
+	@Test
+	void capturedProbePrecedesQueryCancellation() {
+		NativeCancellationToken token = new NativeCancellationToken();
+		token.requestCancellation();
+		NativeCancellationCheckpoint checkpoint;
+		try (var ignored = LmdbNativeProbeDeadline.enter(System.nanoTime() - 1)) {
+			checkpoint = new NativeCancellationCheckpoint(token, LmdbNativeProbeDeadline.currentOrNull());
+		}
+		assertThat(catchThrowable(() -> checkpoint.poll(0))).isSameAs(LmdbNativeProbeDeadlineExceeded.INSTANCE);
+	}
+
+	@Test
+	void capturedProbeObservesLaterTripAndIgnoresNestedDeadline() {
+		LmdbNativeProbeDeadline owned = LmdbNativeProbeDeadline.trippableOnly();
+		LmdbNativeProbeDeadline nested = LmdbNativeProbeDeadline.trippableOnly();
+		NativeCancellationCheckpoint checkpoint = new NativeCancellationCheckpoint(null, owned);
+		nested.trip();
+		try (var ignored = LmdbNativeProbeDeadline.enter(nested)) {
+			assertThatCode(() -> checkpoint.poll(1024)).doesNotThrowAnyException();
+			owned.tripCapacity();
+			assertThat(catchThrowable(() -> checkpoint.poll(2048)))
+					.isSameAs(LmdbNativeProbeDeadlineExceeded.INSTANCE);
+			assertThat(owned.capacityTripped()).isTrue();
+			assertThat(LmdbNativeProbeDeadline.currentOrNull()).isSameAs(nested);
+		}
+	}
+
+	@Test
+	void capturedSignalsWorkOnWorkerWithoutAmbientScope() throws Exception {
+		NativeCancellationToken token = new NativeCancellationToken();
+		NativeCancellationCheckpoint checkpoint = new NativeCancellationCheckpoint(token, null);
+		try (var executor = java.util.concurrent.Executors.newSingleThreadExecutor()) {
+			assertThat(executor.submit(() -> {
+				assertThat(NativeCancellationToken.current()).isNull();
+				checkpoint.poll(1024);
+				return true;
+			}).get()).isTrue();
+			token.requestCancellation();
+			Throwable failure = executor.submit(() -> catchThrowable(() -> checkpoint.poll(2048))).get();
+			assertThat(failure).isInstanceOf(KernelQueryCancelledException.class);
+			assertThat(token.owns((KernelQueryCancelledException) failure)).isTrue();
+		}
+	}
+
+	@Test
+	void workerCaptureFallsBackOnlyForMissingSignals() {
+		NativeCancellationToken ambient = new NativeCancellationToken();
+		NativeCancellationToken explicit = new NativeCancellationToken();
+		LmdbNativeProbeDeadline ambientProbe = LmdbNativeProbeDeadline.trippableOnly();
+		LmdbNativeProbeDeadline explicitProbe = LmdbNativeProbeDeadline.trippableOnly();
+		try (var queryScope = ambient.enter(); var probeScope = LmdbNativeProbeDeadline.enter(ambientProbe)) {
+			NativeCancellationCheckpoint fallback = NativeCancellationCheckpoint.captureMissing(null, null);
+			NativeCancellationCheckpoint supplied = NativeCancellationCheckpoint.captureMissing(explicit,
+					explicitProbe);
+			NativeCancellationCheckpoint queryOnly = NativeCancellationCheckpoint.captureMissing(explicit, null);
+			NativeCancellationCheckpoint probeOnly = NativeCancellationCheckpoint.captureMissing(null, explicitProbe);
+			ambient.requestCancellation();
+			assertThat(catchThrowable(fallback::checkQuery)).isInstanceOf(KernelQueryCancelledException.class);
+			assertThat(catchThrowable(probeOnly::checkQuery)).isInstanceOf(KernelQueryCancelledException.class);
+			assertThatCode(supplied::checkQuery).doesNotThrowAnyException();
+			assertThatCode(queryOnly::checkQuery).doesNotThrowAnyException();
+			ambientProbe.trip();
+			assertThat(catchThrowable(() -> fallback.poll(0))).isSameAs(LmdbNativeProbeDeadlineExceeded.INSTANCE);
+			assertThat(catchThrowable(() -> queryOnly.poll(0))).isSameAs(LmdbNativeProbeDeadlineExceeded.INSTANCE);
+			assertThatCode(() -> supplied.poll(0)).doesNotThrowAnyException();
+			assertThat(NativeCancellationToken.current()).isSameAs(ambient);
+			assertThat(LmdbNativeProbeDeadline.currentOrNull()).isSameAs(ambientProbe);
+		}
+	}
+
+}

@@ -4181,12 +4181,13 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 
 	private void coScan(RecordIterator rows, long[] stopBeforeSubject, LongHashSet acceptedPredicates,
 			NativeLmdbQuerySource.NativeProbe targetTypeProbe, Map<GroupKey, long[]> table) throws IOException {
-		coScan(rows, stopBeforeSubject, acceptedPredicates, targetTypeProbe, table, null);
+		coScan(rows, stopBeforeSubject, acceptedPredicates, targetTypeProbe, table, null,
+				NativeCancellationCheckpoint.capture());
 	}
 
 	private void coScan(RecordIterator rows, long[] stopBeforeSubject, LongHashSet acceptedPredicates,
 			NativeLmdbQuerySource.NativeProbe targetTypeProbe, Map<GroupKey, long[]> table,
-			AtomicReference<Throwable> workerFailure) throws IOException {
+			AtomicReference<Throwable> workerFailure, NativeCancellationCheckpoint cancellation) throws IOException {
 		GroupKey probeKey = new GroupKey(new long[2]);
 		long[] batch = new long[BATCH_ROWS * 4];
 		long currentSubject = 0;
@@ -4197,13 +4198,13 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 		int filled;
 		int pollTick = 0;
 		scan: while (workerFailure == null || workerFailure.get() == null) {
-			pollCancellation(++pollTick);
+			cancellation.poll(++pollTick);
 			filled = rows.fill(batch, BATCH_ROWS);
 			if (filled <= 0) {
 				break;
 			}
 			for (int i = 0; i < filled; i++) {
-				pollCancellation(++pollTick);
+				cancellation.poll(++pollTick);
 				if (peerStopped(workerFailure, pollTick)) {
 					break scan;
 				}
@@ -4214,7 +4215,7 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 				if (!inRun || subject != currentSubject) {
 					if (inRun) {
 						flushRun(runPredicates, runObjects, runSize, acceptedPredicates, targetTypeProbe, table,
-								probeKey, workerFailure);
+								probeKey, workerFailure, cancellation);
 						if (workerFailure != null && workerFailure.get() != null) {
 							break scan;
 						}
@@ -4237,18 +4238,18 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 		}
 		if (inRun && (workerFailure == null || workerFailure.get() == null)) {
 			flushRun(runPredicates, runObjects, runSize, acceptedPredicates, targetTypeProbe, table, probeKey,
-					workerFailure);
+					workerFailure, cancellation);
 		}
 	}
 
 	private void flushRun(long[] runPredicates, long[] runObjects, int runSize, LongHashSet acceptedPredicates,
 			NativeLmdbQuerySource.NativeProbe targetTypeProbe, Map<GroupKey, long[]> table, GroupKey probeKey,
-			AtomicReference<Throwable> workerFailure)
+			AtomicReference<Throwable> workerFailure, NativeCancellationCheckpoint cancellation)
 			throws IOException {
 		int typeCount = 0;
 		int pollTick = 0;
 		for (int i = 0; i < runSize; i++) {
-			pollCancellation(++pollTick);
+			cancellation.poll(++pollTick);
 			if (peerStopped(workerFailure, pollTick)) {
 				return;
 			}
@@ -4262,7 +4263,7 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 		long[] subjectTypes = new long[typeCount];
 		int t = 0;
 		for (int i = 0; i < runSize; i++) {
-			pollCancellation(++pollTick);
+			cancellation.poll(++pollTick);
 			if (peerStopped(workerFailure, pollTick)) {
 				return;
 			}
@@ -4271,7 +4272,7 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 			}
 		}
 		for (int i = 0; i < runSize; i++) {
-			pollCancellation(++pollTick);
+			cancellation.poll(++pollTick);
 			if (peerStopped(workerFailure, pollTick)) {
 				return;
 			}
@@ -4284,13 +4285,13 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 				try (RecordIterator targetTypes = targetTypeProbe.open(object, objectTypePredicate, UNKNOWN, UNKNOWN)) {
 					long[] targetTypeRow;
 					while ((targetTypeRow = targetTypes.next()) != null) {
-						pollCancellation(++pollTick);
+						cancellation.poll(++pollTick);
 						if (peerStopped(workerFailure, pollTick)) {
 							return;
 						}
 						long targetType = targetTypeRow[TripleIndex.OBJ_IDX];
 						for (long subjectType : subjectTypes) {
-							pollCancellation(++pollTick);
+							cancellation.poll(++pollTick);
 							if (peerStopped(workerFailure, pollTick)) {
 								return;
 							}
@@ -4300,7 +4301,7 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 				}
 			} else {
 				for (long subjectType : subjectTypes) {
-					pollCancellation(++pollTick);
+					cancellation.poll(++pollTick);
 					if (peerStopped(workerFailure, pollTick)) {
 						return;
 					}
@@ -4383,11 +4384,13 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 									NativeLmdbQuerySource.NativeProbe targetTypes = linkageMode()
 											? workerSource.newProbe()
 											: null) {
+								NativeCancellationCheckpoint cancellation = NativeCancellationCheckpoint
+										.captureMissing(queryCancellation, probeParent);
 								Integer range;
 								int pollTick = 0;
 								while (workerFailure.get() == null && (range = queue.poll()) != null) {
-									NativeCancellationToken.checkCurrent();
-									pollCancellation(++pollTick);
+									cancellation.checkQuery();
+									cancellation.poll(++pollTick);
 									long[] lo = range == 0 ? null : splits[range - 1];
 									long[] hi = range == splits.length ? null : splits[range];
 									try (RecordIterator rows = workerSource.lmdbStatements(StatementOrder.S, UNKNOWN,
@@ -4395,7 +4398,8 @@ final class LmdbNativeTypeMatrix implements QueryEvaluationStep {
 										if (lo != null && !rows.seekForward(lo[0], 0, 0, 0)) {
 											continue;
 										}
-										coScan(rows, hi, acceptedPredicates, targetTypes, local, workerFailure);
+										coScan(rows, hi, acceptedPredicates, targetTypes, local, workerFailure,
+												cancellation);
 									}
 								}
 							} catch (IOException | RuntimeException | Error failure) {

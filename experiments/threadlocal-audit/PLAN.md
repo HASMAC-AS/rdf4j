@@ -10,9 +10,9 @@ Trace actual regular RDF4J, native interpreted, and Janino query paths. Separate
 
 - [x] Recover published experiment at ba74f478 in a separate checkout.
 - [x] Inventory repository-owned paths and provision JDK25/Maven.
-- [in_progress] Qualify baseline cancellation and lifecycle tests.
-- [ ] Implement explicit propagation with adversarial tests.
-- [ ] Compare regular/native/compiled matched runs.
+- [x] Qualify baseline cancellation tests with real co-scan route witnesses.
+- [x] Implement explicit propagation with adversarial tests; final worker-fallback candidate passed 181 safety tests.
+- [in_progress] Compare regular/native/compiled matched runs.
 - [ ] Publish selective verified evidence and conclusions.
 
 ## Context and Orientation
@@ -39,4 +39,10 @@ From repository root use JDK25 and Maven3.9.11, workspace-local `.m2_repo`. Run 
 
 ## Outcomes & Retrospective
 
-The source inventory is complete. Cold root quick build compiled production through LMDB, then failed as expected because new checkpoint contract tests name the not-yet-implemented class. This red compile is preserved in maven-build.log. Baseline existing tests and implementation remain underway. No throughput improvement claimed.
+The source inventory is published at 77c8b2c. Cold root quick build compiled production through LMDB, then failed as expected because new checkpoint contract tests named the not-yet-implemented class. Tightened baseline tests passed 4/4 with original TypeMatrix bytecode. Initial candidate passed 11 focused tests and 180 tests across cancellation, close, worker, replay/map-growth and lifecycle suites. Review-driven null worker-scope fallback preservation is implemented and final safety suite passed 181 tests. No throughput improvement claimed. The root reactor has not completed beyond LMDB; all passing test counts are module-scoped, not whole-repository coverage.
+
+## 2026-11-18 validation detail
+
+The original serial co-scan fixture could choose an adjacency-prefix route and pass with zero co-scan rows. A new probe-trip assertion exposed this. The tightened fixture declines prefix plans and requires positive read counts; both original and candidate pass it. Parallel inheritance with a null parent is a no-op, so explicit polling must preserve any existing worker ambient signal by capturing missing references once at the worker boundary. No repeated loop lookup is needed.
+
+Spotless reformatted 26 pre-existing files during root bootstrap. They remain outside the patch. A token comparison (excluding comments/whitespace, sorting imports) confirmed identical body tokens and imports; bootstrap-formatting.patch preserves the original formatter output.

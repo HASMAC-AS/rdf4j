@@ -71,7 +71,7 @@ class LmdbNativeTypeMatrixCancellationTest {
 	@Test
 	void serialCoScanStopsOnQueryCancellation() {
 		NativeCancellationToken token = new NativeCancellationToken();
-		SerialSource source = new SerialSource(token);
+		SerialSource source = new CoScanSource(token, token::requestCancellation);
 		LmdbNativeTypeMatrix matrix = new LmdbNativeTypeMatrix(source, SUBJECT_TYPE_PREDICATE,
 				NativeLmdbQuerySource.UNKNOWN_ID, 0, new String[] { "type", "predicate" }, new String[] { "count" },
 				new MaskedFilter[0], 0, NativeSlotLayout.empty(), null, null, null);
@@ -81,7 +81,9 @@ class LmdbNativeTypeMatrixCancellationTest {
 
 		assertThat(failure).isInstanceOf(KernelQueryCancelledException.class);
 		assertThat(token.owns((KernelQueryCancelledException) failure)).isTrue();
-		assertThat(source.statementsRead.get()).as("co-scan must stop at its next poll").isLessThan(ROWS);
+		assertThat(source.statementsRead.get()).as("co-scan must stop at its next poll")
+				.isGreaterThanOrEqualTo(CANCEL_AFTER)
+				.isLessThan(ROWS);
 	}
 
 	@Test
@@ -114,6 +116,45 @@ class LmdbNativeTypeMatrixCancellationTest {
 		}
 	}
 
+	@Test
+	void serialAndParallelCoScanStopOnCapturedProbe() {
+		String previousThreads = System.getProperty("rdf4j.lmdb.parallel.threads");
+		String previousMaxTasks = System.getProperty("rdf4j.lmdb.parallel.maxTasks");
+		String previousThreshold = System.getProperty(LmdbNativeParallelPrefixRuns.PARALLEL_MIN_ESTIMATE_PROPERTY);
+		try {
+			System.setProperty("rdf4j.lmdb.parallel.threads", "2");
+			System.setProperty("rdf4j.lmdb.parallel.maxTasks", "2");
+			System.setProperty(LmdbNativeParallelPrefixRuns.PARALLEL_MIN_ESTIMATE_PROPERTY, "0");
+			for (boolean parallel : new boolean[] { false, true }) {
+				NativeCancellationToken token = new NativeCancellationToken();
+				LmdbNativeProbeDeadline probe = LmdbNativeProbeDeadline.trippableOnly();
+				SerialSource source = parallel
+						? new ParallelFixture(new AtomicInteger(), token, probe::trip)
+						: new CoScanSource(token, probe::trip);
+				LmdbNativeTypeMatrix matrix = new LmdbNativeTypeMatrix(source, SUBJECT_TYPE_PREDICATE,
+						NativeLmdbQuerySource.UNKNOWN_ID, 0, new String[] { "type", "predicate" },
+						new String[] { "count" }, new MaskedFilter[0], 0, NativeSlotLayout.empty(), null, null, null);
+				Throwable failure = assertTimeoutPreemptively(BOUND, () -> {
+					try (var ignored = LmdbNativeProbeDeadline.enter(probe)) {
+						return catchThrowable(() -> evaluate(matrix, source, token));
+					}
+				});
+				assertThat(failure).as("parallel=%s", parallel).isSameAs(LmdbNativeProbeDeadlineExceeded.INSTANCE);
+				assertThat(catchThrowable(token::check)).as("probe must not cancel query").isNull();
+				if (source instanceof ParallelFixture workers) {
+					assertThat(workers.workers).isNotEmpty().allSatisfy(worker -> assertThat(worker.closed).isTrue());
+					assertThat(workers.read.get()).isGreaterThanOrEqualTo(CANCEL_AFTER).isLessThan(2 * ROWS);
+				} else {
+					assertThat(source.statementsRead.get()).isGreaterThanOrEqualTo(CANCEL_AFTER).isLessThan(ROWS);
+				}
+			}
+		} finally {
+			restoreProperty("rdf4j.lmdb.parallel.threads", previousThreads);
+			restoreProperty("rdf4j.lmdb.parallel.maxTasks", previousMaxTasks);
+			restoreProperty(LmdbNativeParallelPrefixRuns.PARALLEL_MIN_ESTIMATE_PROPERTY, previousThreshold);
+		}
+	}
+
 	private static void evaluate(LmdbNativeTypeMatrix matrix, NativeLmdbQuerySource source,
 			NativeCancellationToken token) {
 		try (CloseableIteration<BindingSet> result = matrix.evaluate(EmptyBindingSet.getInstance(), source, token)) {
@@ -133,10 +174,16 @@ class LmdbNativeTypeMatrixCancellationTest {
 
 	private static class SerialSource implements NativeLmdbQuerySource {
 		final NativeCancellationToken token;
+		final Runnable stopAction;
 		final AtomicInteger statementsRead = new AtomicInteger();
 		PrefixCursor prefixCursor;
 
 		SerialSource(NativeCancellationToken token) {
+			this(token, token::requestCancellation);
+		}
+
+		SerialSource(NativeCancellationToken token, Runnable stopAction) {
+			this.stopAction = stopAction;
 			this.token = token;
 		}
 
@@ -166,7 +213,7 @@ class LmdbNativeTypeMatrixCancellationTest {
 						return null;
 					}
 					if (statementsRead.incrementAndGet() == CANCEL_AFTER) {
-						token.requestCancellation();
+						stopAction.run();
 					}
 					int row = index++;
 					return row == 0 ? new long[] { 1L, SUBJECT_TYPE_PREDICATE, 10L, 0L }
@@ -219,6 +266,18 @@ class LmdbNativeTypeMatrixCancellationTest {
 		}
 	}
 
+	/** Declines adjacency routing so the serial test must reach the co-scan loop. */
+	private static final class CoScanSource extends SerialSource {
+		CoScanSource(NativeCancellationToken token, Runnable stopAction) {
+			super(token, stopAction);
+		}
+
+		@Override
+		public LmdbPrefixRunPlan prefixRunPlan(int[] fields, long subj, long pred, long obj, long context) {
+			return null;
+		}
+	}
+
 	private static final class ParallelFixture extends SerialSource implements NativeLmdbQuerySource.ParallelSource {
 		private static final Object ID_SPACE = new Object();
 		final AtomicInteger read;
@@ -226,7 +285,11 @@ class LmdbNativeTypeMatrixCancellationTest {
 		volatile boolean closed;
 
 		ParallelFixture(AtomicInteger read, NativeCancellationToken token) {
-			super(token);
+			this(read, token, token::requestCancellation);
+		}
+
+		ParallelFixture(AtomicInteger read, NativeCancellationToken token, Runnable stopAction) {
+			super(token, stopAction);
 			this.read = read;
 		}
 
@@ -263,7 +326,7 @@ class LmdbNativeTypeMatrixCancellationTest {
 		public NativeLmdbQuerySource.ParallelSource[] openParallelSources(int count) {
 			ParallelFixture[] opened = new ParallelFixture[count];
 			for (int i = 0; i < count; i++) {
-				opened[i] = new ParallelFixture(read, token);
+				opened[i] = new ParallelFixture(read, token, stopAction);
 			}
 			workers = List.of(opened);
 			return opened;
@@ -280,7 +343,7 @@ class LmdbNativeTypeMatrixCancellationTest {
 						return null;
 					}
 					if (read.incrementAndGet() == CANCEL_AFTER) {
-						token.requestCancellation();
+						stopAction.run();
 					}
 					int row = index++;
 					return row == 0 ? new long[] { 1L, SUBJECT_TYPE_PREDICATE, 10L, 0L }
