@@ -4247,7 +4247,8 @@ class LmdbSailStore implements SailStore {
 	// so the next set() would allocate a new one on every transaction.
 	private final ThreadLocal<PublicationContext> publicationContext = new ThreadLocal<>();
 	private final ThreadLocal<ReadView> activeReadView = new ThreadLocal<>();
-	private final ThreadLocal<ReadResourceContext> activeReadResourceContext = new ThreadLocal<>();
+	private final ThreadLocal<ReadResourceState> activeReadResourceContext = ThreadLocal
+			.withInitial(ReadResourceState::new);
 	private volatile long namespaceGeneration;
 	private final Object writerOwnerMonitor = new Object();
 	private final IdentityHashMap<WriterLease, Boolean> activeWriterLeases = new IdentityHashMap<>();
@@ -4859,6 +4860,11 @@ class LmdbSailStore implements SailStore {
 		}
 	}
 
+	/** Empty per-thread state must not retain its enclosing store or a completed resource frame. */
+	private static final class ReadResourceState {
+		private ReadResourceContext current;
+	}
+
 	/** Scoped ownership of already-admitted read views when the active admission is intentionally unbound. */
 	final class ReadResourceContext implements SailClosable {
 		private final ReadResourceContext previous;
@@ -4888,28 +4894,26 @@ class LmdbSailStore implements SailStore {
 			if (closed) {
 				return;
 			}
-			if (activeReadResourceContext.get() != this) {
+			ReadResourceState state = activeReadResourceContext.get();
+			if (state.current != this) {
 				throw new IllegalStateException("LMDB read-resource contexts must close in nesting order");
 			}
 			closed = true;
-			if (previous == null) {
-				activeReadResourceContext.remove();
-			} else {
-				activeReadResourceContext.set(previous);
-			}
+			state.current = previous;
 		}
 	}
 
 	SailClosable enterReadResourceContext(Supplier<? extends Iterable<ReadViewLease>> ownedViews) {
-		ReadResourceContext previous = activeReadResourceContext.get();
+		ReadResourceState state = activeReadResourceContext.get();
+		ReadResourceContext previous = state.current;
 		ReadResourceContext installed = new ReadResourceContext(previous,
 				Objects.requireNonNull(ownedViews, "ownedViews"));
-		activeReadResourceContext.set(installed);
+		state.current = installed;
 		return installed;
 	}
 
 	List<ReadViewLease> currentReadResourceViews() {
-		ReadResourceContext current = activeReadResourceContext.get();
+		ReadResourceContext current = activeReadResourceContext.get().current;
 		return current == null ? List.of() : current.readViews();
 	}
 
@@ -7281,7 +7285,7 @@ class LmdbSailStore implements SailStore {
 				beforeSketchRefreshReadForTest();
 			}
 			boolean borrowedReadView = activeReadView.get() != null;
-			ReadResourceContext resourceContext = activeReadResourceContext.get();
+			ReadResourceContext resourceContext = activeReadResourceContext.get().current;
 			List<ReadViewLease> resourceViews = resourceContext == null ? List.of() : resourceContext.readViews();
 			ReadViewLease borrowedResourceView = !borrowedReadView && resourceViews.size() == 1
 					? resourceViews.get(0)
