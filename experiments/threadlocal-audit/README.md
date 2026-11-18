@@ -28,3 +28,7 @@ The four-arm follow-up is complete: baseline, SOURCE_PULL-only, no-writer-guard-
 ## Completed owned-record cancellation experiment
 
 The default-off candidate is checkpointed at `7ac1650`. Both ON/OFF selected safety suites passed 213 tests. All 60 matched timing forks and 15 separate profiles are complete: the qualified owned fast path was slower, not a performance recommendation. Warm-state trace checks prove it ran. See [full evidence](record-cancellation/RESULTS.md), [implementation safety](record-cancellation/IMPLEMENTATION.md), and [next scope design](OBSERVED-READ-DESIGN.md). No main/Workbench/concurrent-QPS or whole-repository claim.
+
+## Completed holder-depth experiment
+
+The isolated holder-depth change improves this fixture's native routes: full latency fell 7.63% interpreted and 4.69% Janino, with four favorable paired blocks each. Regular results are mixed; cancellation combinations show no demonstrated synergy. See [matched evidence](read-depth/RESULTS.md) and [scope-safety limitations](read-depth/IMPLEMENTATION.md). Depth-only source is `0750336e`; combined source is `bb0e3df7`. Resource/replay restoration remains a design, not an implemented optimization. This is not a full repository or release-readiness claim.
