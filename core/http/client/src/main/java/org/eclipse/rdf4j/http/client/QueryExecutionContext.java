@@ -535,11 +535,8 @@ public final class QueryExecutionContext {
 	}
 
 	private static void setExternalValueInitializer(Consumer<Value> initializer) {
-		if (initializer == null) {
-			EXTERNAL_VALUE_INITIALIZER.remove();
-		} else {
-			EXTERNAL_VALUE_INITIALIZER.set(initializer);
-		}
+		// Keep the one static-key slot warm without retaining a previous consumer when the scope is empty.
+		EXTERNAL_VALUE_INITIALIZER.set(initializer);
 	}
 
 	private static void setReplayContext(ReplaySafepoint safepoint, boolean deferral) {

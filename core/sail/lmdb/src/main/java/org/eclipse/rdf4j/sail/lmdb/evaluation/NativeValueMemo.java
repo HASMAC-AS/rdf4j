@@ -37,6 +37,7 @@ final class NativeValueMemo {
 	// Test-only pre-exposure replay barrier. Static-final false gate is removed from ordinary hot paths by JIT.
 	private static final boolean TEST_PROBE = Boolean.getBoolean("rdf4j.lmdb.nativeValueMemo.testProbe");
 	static volatile java.util.function.Consumer<NativeValueMemo> testHitObserver;
+	static volatile java.util.function.Consumer<NativeValueMemo> testPopulatedAccessObserver;
 	static final int INITIAL = 4096, MAXIMUM = 65536, SAMPLE = 8192;
 	private final NativeLmdbQuerySource source;
 	private final KernelRuntime.MemoryAccount memory;
@@ -86,8 +87,11 @@ final class NativeValueMemo {
 		if (hit) {
 			hits++;
 			totalHits++;
-			if (TEST_PROBE && testHitObserver != null)
-				testHitObserver.accept(this);
+			if (TEST_PROBE) {
+				var observer = testHitObserver;
+				if (observer != null)
+					observer.accept(this);
+			}
 		} else {
 			value = source.lazyValue(id, mask); // never initializes or decodes lexical content
 			if (value instanceof LmdbValue nativeValue && nativeValue.getSemanticVersion() != LmdbValue.UNKNOWN_ID) {
@@ -116,6 +120,11 @@ final class NativeValueMemo {
 			}
 			sampled = true;
 			probes = hits = 0;
+		}
+		if (TEST_PROBE && references != null && occupied > 0) {
+			var observer = testPopulatedAccessObserver;
+			if (observer != null)
+				observer.accept(this);
 		}
 		return value;
 	}
