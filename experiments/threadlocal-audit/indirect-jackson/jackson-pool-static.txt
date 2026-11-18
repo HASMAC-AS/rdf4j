@@ -1,0 +1,543 @@
+
+CLASS tools/jackson/core/util/JsonRecyclerPools
+METHOD <init> ()V
+  1 0xb7 java/lang/Object.<init>.()V
+METHOD defaultPool ()Ltools/jackson/core/util/RecyclerPool;
+  0 0xb8 tools/jackson/core/util/JsonRecyclerPools.newConcurrentDequePool.()Ltools/jackson/core/util/RecyclerPool;
+METHOD threadLocalPool ()Ltools/jackson/core/util/RecyclerPool;
+  0 0xb2 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool;
+METHOD nonRecyclingPool ()Ltools/jackson/core/util/RecyclerPool;
+  0 0xb2 tools/jackson/core/util/JsonRecyclerPools$NonRecyclingPool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$NonRecyclingPool;
+METHOD sharedConcurrentDequePool ()Ltools/jackson/core/util/RecyclerPool;
+  0 0xb2 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool;
+METHOD newConcurrentDequePool ()Ltools/jackson/core/util/RecyclerPool;
+  0 0xb8 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.construct.()Ltools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool;
+METHOD sharedBoundedPool ()Ltools/jackson/core/util/RecyclerPool;
+  0 0xb2 tools/jackson/core/util/JsonRecyclerPools$BoundedPool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$BoundedPool;
+METHOD newBoundedPool (I)Ltools/jackson/core/util/RecyclerPool;
+  1 0xb8 tools/jackson/core/util/JsonRecyclerPools$BoundedPool.construct.(I)Ltools/jackson/core/util/JsonRecyclerPools$BoundedPool;
+
+CLASS tools/jackson/core/json/JsonFactory
+METHOD <init> ()V
+  1 0xb8 tools/jackson/core/StreamReadConstraints.defaults.()Ltools/jackson/core/StreamReadConstraints;
+  4 0xb8 tools/jackson/core/StreamWriteConstraints.defaults.()Ltools/jackson/core/StreamWriteConstraints;
+  7 0xb8 tools/jackson/core/ErrorReportConfiguration.defaults.()Ltools/jackson/core/ErrorReportConfiguration;
+  10 0xb2 tools/jackson/core/json/JsonFactory.DEFAULT_JSON_PARSER_FEATURE_FLAGS.I
+  13 0xb2 tools/jackson/core/json/JsonFactory.DEFAULT_JSON_GENERATOR_FEATURE_FLAGS.I
+  16 0xb7 tools/jackson/core/base/TextualTSFactory.<init>.(Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;II)V
+  20 0xb8 tools/jackson/core/sym/ByteQuadsCanonicalizer.createRoot.()Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  23 0xb5 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  27 0xb2 tools/jackson/core/json/JsonFactory.DEFAULT_ROOT_VALUE_SEPARATOR.Ltools/jackson/core/SerializableString;
+  30 0xb5 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  35 0xb5 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  40 0xb5 tools/jackson/core/json/JsonFactory._maximumNonEscapedChar.I
+  46 0xb5 tools/jackson/core/json/JsonFactory._quoteChar.C
+  51 0xb8 tools/jackson/core/sym/CharsToNameCanonicalizer.createRoot.(Ltools/jackson/core/TokenStreamFactory;)Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  54 0xb5 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+METHOD <init> (Ltools/jackson/core/json/JsonFactory;)V
+  2 0xb7 tools/jackson/core/base/TextualTSFactory.<init>.(Ltools/jackson/core/base/TextualTSFactory;)V
+  6 0xb8 tools/jackson/core/sym/ByteQuadsCanonicalizer.createRoot.()Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  9 0xb5 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  14 0xb4 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  17 0xb5 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  22 0xb4 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  25 0xb5 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  30 0xb4 tools/jackson/core/json/JsonFactory._maximumNonEscapedChar.I
+  33 0xb5 tools/jackson/core/json/JsonFactory._maximumNonEscapedChar.I
+  38 0xb4 tools/jackson/core/json/JsonFactory._quoteChar.C
+  41 0xb5 tools/jackson/core/json/JsonFactory._quoteChar.C
+  46 0xb8 tools/jackson/core/sym/CharsToNameCanonicalizer.createRoot.(Ltools/jackson/core/TokenStreamFactory;)Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  49 0xb5 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+METHOD <init> (Ltools/jackson/core/json/JsonFactoryBuilder;)V
+  2 0xb7 tools/jackson/core/base/TextualTSFactory.<init>.(Ltools/jackson/core/base/DecorableTSFactory$DecorableTSFBuilder;)V
+  6 0xb8 tools/jackson/core/sym/ByteQuadsCanonicalizer.createRoot.()Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  9 0xb5 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  14 0xb6 tools/jackson/core/json/JsonFactoryBuilder.rootValueSeparator.()Ltools/jackson/core/SerializableString;
+  17 0xb5 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  22 0xb6 tools/jackson/core/json/JsonFactoryBuilder.characterEscapes.()Ltools/jackson/core/io/CharacterEscapes;
+  25 0xb5 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  30 0xb6 tools/jackson/core/json/JsonFactoryBuilder.highestNonEscapedChar.()I
+  33 0xb5 tools/jackson/core/json/JsonFactory._maximumNonEscapedChar.I
+  38 0xb6 tools/jackson/core/json/JsonFactoryBuilder.quoteChar.()C
+  41 0xb5 tools/jackson/core/json/JsonFactory._quoteChar.C
+  46 0xb8 tools/jackson/core/sym/CharsToNameCanonicalizer.createRoot.(Ltools/jackson/core/TokenStreamFactory;)Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  49 0xb5 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+METHOD rebuild ()Ltools/jackson/core/json/JsonFactoryBuilder;
+  0 0xbb tools/jackson/core/json/JsonFactoryBuilder
+  5 0xb7 tools/jackson/core/json/JsonFactoryBuilder.<init>.(Ltools/jackson/core/json/JsonFactory;)V
+METHOD builder ()Ltools/jackson/core/json/JsonFactoryBuilder;
+  0 0xbb tools/jackson/core/json/JsonFactoryBuilder
+  4 0xb7 tools/jackson/core/json/JsonFactoryBuilder.<init>.()V
+METHOD builderWithJackson2Defaults ()Ltools/jackson/core/json/JsonFactoryBuilder;
+  0 0xb8 tools/jackson/core/json/JsonFactory.builder.()Ltools/jackson/core/json/JsonFactoryBuilder;
+  3 0xb6 tools/jackson/core/json/JsonFactoryBuilder.configureForJackson2.()Ltools/jackson/core/json/JsonFactoryBuilder;
+METHOD copy ()Ltools/jackson/core/json/JsonFactory;
+  0 0xbb tools/jackson/core/json/JsonFactory
+  5 0xb7 tools/jackson/core/json/JsonFactory.<init>.(Ltools/jackson/core/json/JsonFactory;)V
+METHOD snapshot ()Ltools/jackson/core/TokenStreamFactory;
+METHOD readResolve ()Ljava/lang/Object;
+  0 0xbb tools/jackson/core/json/JsonFactory
+  5 0xb7 tools/jackson/core/json/JsonFactory.<init>.(Ltools/jackson/core/json/JsonFactory;)V
+METHOD version ()Ltools/jackson/core/Version;
+  0 0xb2 tools/jackson/core/json/PackageVersion.VERSION.Ltools/jackson/core/Version;
+METHOD canParseAsync ()Z
+METHOD isEnabled (Ltools/jackson/core/json/JsonReadFeature;)Z
+  1 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  5 0xb6 tools/jackson/core/json/JsonReadFeature.getMask.()I
+METHOD isEnabled (Ltools/jackson/core/json/JsonWriteFeature;)Z
+  1 0xb4 tools/jackson/core/json/JsonFactory._formatWriteFeatures.I
+  5 0xb6 tools/jackson/core/json/JsonWriteFeature.getMask.()I
+METHOD canUseSchema (Ltools/jackson/core/FormatSchema;)Z
+METHOD getFormatName ()Ljava/lang/String;
+METHOD getFormatReadFeatureType ()Ljava/lang/Class;
+METHOD getFormatWriteFeatureType ()Ljava/lang/Class;
+METHOD getCharacterEscapes ()Ltools/jackson/core/io/CharacterEscapes;
+  1 0xb4 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+METHOD getRootValueSeparator ()Ljava/lang/String;
+  1 0xb4 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  12 0xb4 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  15 0xb9 tools/jackson/core/SerializableString.getValue.()Ljava/lang/String;
+METHOD createNonBlockingByteArrayParser (Ltools/jackson/core/ObjectReadContext;)Ltools/jackson/core/JsonParser;
+  2 0xb6 tools/jackson/core/json/JsonFactory._createNonBlockingContext.(Ljava/lang/Object;)Ltools/jackson/core/io/IOContext;
+  7 0xb4 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  11 0xb4 tools/jackson/core/json/JsonFactory._factoryFeatures.I
+  14 0xb6 tools/jackson/core/sym/ByteQuadsCanonicalizer.makeChildOrPlaceholder.(I)Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  18 0xbb tools/jackson/core/json/async/NonBlockingByteArrayJsonParser
+  26 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  29 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  36 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  39 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  45 0xb7 tools/jackson/core/json/async/NonBlockingByteArrayJsonParser.<init>.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;IILtools/jackson/core/sym/ByteQuadsCanonicalizer;)V
+METHOD createNonBlockingByteBufferParser (Ltools/jackson/core/ObjectReadContext;)Ltools/jackson/core/JsonParser;
+  2 0xb6 tools/jackson/core/json/JsonFactory._createNonBlockingContext.(Ljava/lang/Object;)Ltools/jackson/core/io/IOContext;
+  7 0xb4 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  11 0xb4 tools/jackson/core/json/JsonFactory._factoryFeatures.I
+  14 0xb6 tools/jackson/core/sym/ByteQuadsCanonicalizer.makeChildOrPlaceholder.(I)Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  18 0xbb tools/jackson/core/json/async/NonBlockingByteBufferJsonParser
+  26 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  29 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  36 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  39 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  45 0xb7 tools/jackson/core/json/async/NonBlockingByteBufferJsonParser.<init>.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;IILtools/jackson/core/sym/ByteQuadsCanonicalizer;)V
+METHOD _createNonBlockingContext (Ljava/lang/Object;)Ltools/jackson/core/io/IOContext;
+  0 0xbb tools/jackson/core/io/IOContext
+  5 0xb4 tools/jackson/core/json/JsonFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  9 0xb4 tools/jackson/core/json/JsonFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  13 0xb4 tools/jackson/core/json/JsonFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  17 0xb6 tools/jackson/core/json/JsonFactory._getBufferRecycler.()Ltools/jackson/core/util/BufferRecycler;
+  21 0xb8 tools/jackson/core/io/ContentReference.rawReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  25 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  28 0xb7 tools/jackson/core/io/IOContext.<init>.(Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;Ltools/jackson/core/util/BufferRecycler;Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)V
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  0 0xbb tools/jackson/core/json/ByteSourceJsonBootstrapper
+  6 0xb7 tools/jackson/core/json/ByteSourceJsonBootstrapper.<init>.(Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)V
+  12 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  15 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  22 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  25 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  31 0xb4 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  35 0xb4 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  39 0xb4 tools/jackson/core/json/JsonFactory._factoryFeatures.I
+  42 0xb6 tools/jackson/core/json/ByteSourceJsonBootstrapper.constructParser.(Ltools/jackson/core/ObjectReadContext;IILtools/jackson/core/sym/ByteQuadsCanonicalizer;Ltools/jackson/core/sym/CharsToNameCanonicalizer;I)Ltools/jackson/core/JsonParser;
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+  0 0xbb tools/jackson/core/json/ReaderBasedJsonParser
+  8 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  11 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  18 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  21 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  28 0xb4 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  31 0xb6 tools/jackson/core/sym/CharsToNameCanonicalizer.makeChild.()Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  34 0xb7 tools/jackson/core/json/ReaderBasedJsonParser.<init>.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;IILjava/io/Reader;Ltools/jackson/core/sym/CharsToNameCanonicalizer;)V
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[CIIZ)Ltools/jackson/core/JsonParser;
+  6 0xb6 tools/jackson/core/json/JsonFactory._checkRangeBoundsForCharArray.([CII)V
+  10 0xb4 tools/jackson/core/json/JsonFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  16 0xb6 tools/jackson/core/StreamReadConstraints.validateDocumentLength.(J)V
+  19 0xbb tools/jackson/core/json/ReaderBasedJsonParser
+  27 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  30 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  37 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  40 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  47 0xb4 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  50 0xb6 tools/jackson/core/sym/CharsToNameCanonicalizer.makeChild.()Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  63 0xb7 tools/jackson/core/json/ReaderBasedJsonParser.<init>.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;IILjava/io/Reader;Ltools/jackson/core/sym/CharsToNameCanonicalizer;[CIIZ)V
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[BII)Ltools/jackson/core/JsonParser;
+  6 0xb6 tools/jackson/core/json/JsonFactory._checkRangeBoundsForByteArray.([BII)V
+  10 0xb4 tools/jackson/core/json/JsonFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  16 0xb6 tools/jackson/core/StreamReadConstraints.validateDocumentLength.(J)V
+  19 0xbb tools/jackson/core/json/ByteSourceJsonBootstrapper
+  29 0xb7 tools/jackson/core/json/ByteSourceJsonBootstrapper.<init>.(Ltools/jackson/core/io/IOContext;[BII)V
+  35 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  38 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  45 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  48 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  54 0xb4 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  58 0xb4 tools/jackson/core/json/JsonFactory._rootCharSymbols.Ltools/jackson/core/sym/CharsToNameCanonicalizer;
+  62 0xb4 tools/jackson/core/json/JsonFactory._factoryFeatures.I
+  65 0xb6 tools/jackson/core/json/ByteSourceJsonBootstrapper.constructParser.(Ltools/jackson/core/ObjectReadContext;IILtools/jackson/core/sym/ByteQuadsCanonicalizer;Ltools/jackson/core/sym/CharsToNameCanonicalizer;I)Ltools/jackson/core/JsonParser;
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/DataInput;)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/json/ByteSourceJsonBootstrapper.skipUTF8BOM.(Ljava/io/DataInput;)I
+  7 0xb4 tools/jackson/core/json/JsonFactory._byteSymbolCanonicalizer.Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  11 0xb4 tools/jackson/core/json/JsonFactory._factoryFeatures.I
+  14 0xb6 tools/jackson/core/sym/ByteQuadsCanonicalizer.makeChildOrPlaceholder.(I)Ltools/jackson/core/sym/ByteQuadsCanonicalizer;
+  20 0xb4 tools/jackson/core/json/JsonFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  23 0xb6 tools/jackson/core/StreamReadConstraints.hasMaxDocumentLength.()Z
+  29 0xbb tools/jackson/core/json/UTF8DataInputWithDocLengthJsonParser
+  37 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  40 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  47 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  50 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  60 0xb7 tools/jackson/core/json/UTF8DataInputWithDocLengthJsonParser.<init>.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;IILjava/io/DataInput;Ltools/jackson/core/sym/ByteQuadsCanonicalizer;I)V
+  64 0xbb tools/jackson/core/json/UTF8DataInputJsonParser
+  72 0xb4 tools/jackson/core/json/JsonFactory._streamReadFeatures.I
+  75 0xb9 tools/jackson/core/ObjectReadContext.getStreamReadFeatures.(I)I
+  82 0xb4 tools/jackson/core/json/JsonFactory._formatReadFeatures.I
+  85 0xb9 tools/jackson/core/ObjectReadContext.getFormatReadFeatures.(I)I
+  95 0xb7 tools/jackson/core/json/UTF8DataInputJsonParser.<init>.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;IILjava/io/DataInput;Ltools/jackson/core/sym/ByteQuadsCanonicalizer;I)V
+METHOD _createGenerator (Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  2 0xb4 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  5 0xb9 tools/jackson/core/ObjectWriteContext.getRootValueSeparator.(Ltools/jackson/core/SerializableString;)Ltools/jackson/core/SerializableString;
+  13 0xb9 tools/jackson/core/ObjectWriteContext.getCharacterEscapes.()Ltools/jackson/core/io/CharacterEscapes;
+  26 0xb4 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  32 0xb4 tools/jackson/core/json/JsonFactory._maximumNonEscapedChar.I
+  37 0xbb tools/jackson/core/json/WriterBasedJsonGenerator
+  45 0xb4 tools/jackson/core/json/JsonFactory._streamWriteFeatures.I
+  48 0xb9 tools/jackson/core/ObjectWriteContext.getStreamWriteFeatures.(I)I
+  55 0xb4 tools/jackson/core/json/JsonFactory._formatWriteFeatures.I
+  58 0xb9 tools/jackson/core/ObjectWriteContext.getFormatWriteFeatures.(I)I
+  67 0xb9 tools/jackson/core/ObjectWriteContext.getPrettyPrinter.()Ltools/jackson/core/PrettyPrinter;
+  77 0xb4 tools/jackson/core/json/JsonFactory._quoteChar.C
+  80 0xb7 tools/jackson/core/json/WriterBasedJsonGenerator.<init>.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;IILjava/io/Writer;Ltools/jackson/core/SerializableString;Ltools/jackson/core/PrettyPrinter;Ltools/jackson/core/io/CharacterEscapes;IC)V
+METHOD _createUTF8Generator (Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+  2 0xb4 tools/jackson/core/json/JsonFactory._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  5 0xb9 tools/jackson/core/ObjectWriteContext.getRootValueSeparator.(Ltools/jackson/core/SerializableString;)Ltools/jackson/core/SerializableString;
+  13 0xb9 tools/jackson/core/ObjectWriteContext.getCharacterEscapes.()Ltools/jackson/core/io/CharacterEscapes;
+  26 0xb4 tools/jackson/core/json/JsonFactory._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  32 0xb4 tools/jackson/core/json/JsonFactory._maximumNonEscapedChar.I
+  37 0xbb tools/jackson/core/json/UTF8JsonGenerator
+  45 0xb4 tools/jackson/core/json/JsonFactory._streamWriteFeatures.I
+  48 0xb9 tools/jackson/core/ObjectWriteContext.getStreamWriteFeatures.(I)I
+  55 0xb4 tools/jackson/core/json/JsonFactory._formatWriteFeatures.I
+  58 0xb9 tools/jackson/core/ObjectWriteContext.getFormatWriteFeatures.(I)I
+  69 0xb9 tools/jackson/core/ObjectWriteContext.getPrettyPrinter.()Ltools/jackson/core/PrettyPrinter;
+  77 0xb4 tools/jackson/core/json/JsonFactory._quoteChar.C
+  80 0xb7 tools/jackson/core/json/UTF8JsonGenerator.<init>.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;IILjava/io/OutputStream;Ltools/jackson/core/SerializableString;Ltools/jackson/core/io/CharacterEscapes;Ltools/jackson/core/PrettyPrinter;IC)V
+METHOD constructNameMatcher (Ljava/util/List;Z)Ltools/jackson/core/sym/PropertyNameMatcher;
+  2 0xb8 tools/jackson/core/sym/BinaryNameMatcher.constructFrom.(Ljava/util/List;Z)Ltools/jackson/core/sym/BinaryNameMatcher;
+METHOD constructCINameMatcher (Ljava/util/List;ZLjava/util/Locale;)Ltools/jackson/core/sym/PropertyNameMatcher;
+  3 0xb8 tools/jackson/core/sym/BinaryNameMatcher.constructCaseInsensitive.(Ljava/util/Locale;Ljava/util/List;Z)Ltools/jackson/core/sym/BinaryNameMatcher;
+METHOD rebuild ()Ltools/jackson/core/TSFBuilder;
+  1 0xb6 tools/jackson/core/json/JsonFactory.rebuild.()Ltools/jackson/core/json/JsonFactoryBuilder;
+METHOD copy ()Ltools/jackson/core/TokenStreamFactory;
+  1 0xb6 tools/jackson/core/json/JsonFactory.copy.()Ltools/jackson/core/json/JsonFactory;
+METHOD snapshot ()Ljava/lang/Object;
+  1 0xb6 tools/jackson/core/json/JsonFactory.snapshot.()Ltools/jackson/core/TokenStreamFactory;
+METHOD <clinit> ()V
+  0 0xb8 tools/jackson/core/json/JsonReadFeature.collectDefaults.()I
+  3 0xb3 tools/jackson/core/json/JsonFactory.DEFAULT_JSON_PARSER_FEATURE_FLAGS.I
+  6 0xb8 tools/jackson/core/json/JsonWriteFeature.collectDefaults.()I
+  9 0xb3 tools/jackson/core/json/JsonFactory.DEFAULT_JSON_GENERATOR_FEATURE_FLAGS.I
+  12 0xb2 tools/jackson/core/util/DefaultPrettyPrinter.DEFAULT_ROOT_VALUE_SEPARATOR.Ltools/jackson/core/io/SerializedString;
+  15 0xb3 tools/jackson/core/json/JsonFactory.DEFAULT_ROOT_VALUE_SEPARATOR.Ltools/jackson/core/SerializableString;
+
+CLASS tools/jackson/core/TokenStreamFactory
+METHOD <init> (Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;II)V
+  1 0xb7 java/lang/Object.<init>.()V
+  6 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  9 0xc0 tools/jackson/core/StreamReadConstraints
+  12 0xb5 tools/jackson/core/TokenStreamFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  17 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  20 0xc0 tools/jackson/core/StreamWriteConstraints
+  23 0xb5 tools/jackson/core/TokenStreamFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  28 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  31 0xc0 tools/jackson/core/ErrorReportConfiguration
+  34 0xb5 tools/jackson/core/TokenStreamFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  38 0xb8 tools/jackson/core/util/JsonRecyclerPools.defaultPool.()Ltools/jackson/core/util/RecyclerPool;
+  41 0xb5 tools/jackson/core/TokenStreamFactory._recyclerPool.Ltools/jackson/core/util/RecyclerPool;
+  45 0xb2 tools/jackson/core/TokenStreamFactory.DEFAULT_FACTORY_FEATURE_FLAGS.I
+  48 0xb5 tools/jackson/core/TokenStreamFactory._factoryFeatures.I
+  52 0xb2 tools/jackson/core/TokenStreamFactory.DEFAULT_STREAM_READ_FEATURE_FLAGS.I
+  55 0xb5 tools/jackson/core/TokenStreamFactory._streamReadFeatures.I
+  59 0xb2 tools/jackson/core/TokenStreamFactory.DEFAULT_STREAM_WRITE_FEATURE_FLAGS.I
+  62 0xb5 tools/jackson/core/TokenStreamFactory._streamWriteFeatures.I
+  68 0xb5 tools/jackson/core/TokenStreamFactory._formatReadFeatures.I
+  74 0xb5 tools/jackson/core/TokenStreamFactory._formatWriteFeatures.I
+METHOD <init> (Ltools/jackson/core/TSFBuilder;)V
+  1 0xb7 java/lang/Object.<init>.()V
+  6 0xb4 tools/jackson/core/TSFBuilder._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  9 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  12 0xc0 tools/jackson/core/StreamReadConstraints
+  15 0xb5 tools/jackson/core/TokenStreamFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  20 0xb4 tools/jackson/core/TSFBuilder._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  23 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  26 0xc0 tools/jackson/core/StreamWriteConstraints
+  29 0xb5 tools/jackson/core/TokenStreamFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  34 0xb4 tools/jackson/core/TSFBuilder._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  37 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  40 0xc0 tools/jackson/core/ErrorReportConfiguration
+  43 0xb5 tools/jackson/core/TokenStreamFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  47 0xb4 tools/jackson/core/TSFBuilder._recyclerPool.Ltools/jackson/core/util/RecyclerPool;
+  55 0xb8 tools/jackson/core/util/JsonRecyclerPools.defaultPool.()Ltools/jackson/core/util/RecyclerPool;
+  61 0xb5 tools/jackson/core/TokenStreamFactory._recyclerPool.Ltools/jackson/core/util/RecyclerPool;
+  66 0xb6 tools/jackson/core/TSFBuilder.factoryFeaturesMask.()I
+  69 0xb5 tools/jackson/core/TokenStreamFactory._factoryFeatures.I
+  74 0xb6 tools/jackson/core/TSFBuilder.streamReadFeaturesMask.()I
+  77 0xb5 tools/jackson/core/TokenStreamFactory._streamReadFeatures.I
+  82 0xb6 tools/jackson/core/TSFBuilder.streamWriteFeaturesMask.()I
+  85 0xb5 tools/jackson/core/TokenStreamFactory._streamWriteFeatures.I
+  90 0xb6 tools/jackson/core/TSFBuilder.formatReadFeaturesMask.()I
+  93 0xb5 tools/jackson/core/TokenStreamFactory._formatReadFeatures.I
+  98 0xb6 tools/jackson/core/TSFBuilder.formatWriteFeaturesMask.()I
+  101 0xb5 tools/jackson/core/TokenStreamFactory._formatWriteFeatures.I
+METHOD <init> (Ltools/jackson/core/TokenStreamFactory;)V
+  1 0xb7 java/lang/Object.<init>.()V
+  6 0xb4 tools/jackson/core/TokenStreamFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  9 0xb5 tools/jackson/core/TokenStreamFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  14 0xb4 tools/jackson/core/TokenStreamFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  17 0xb5 tools/jackson/core/TokenStreamFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  22 0xb4 tools/jackson/core/TokenStreamFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  25 0xb5 tools/jackson/core/TokenStreamFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  30 0xb4 tools/jackson/core/TokenStreamFactory._recyclerPool.Ltools/jackson/core/util/RecyclerPool;
+  33 0xb5 tools/jackson/core/TokenStreamFactory._recyclerPool.Ltools/jackson/core/util/RecyclerPool;
+  38 0xb4 tools/jackson/core/TokenStreamFactory._factoryFeatures.I
+  41 0xb5 tools/jackson/core/TokenStreamFactory._factoryFeatures.I
+  46 0xb4 tools/jackson/core/TokenStreamFactory._streamReadFeatures.I
+  49 0xb5 tools/jackson/core/TokenStreamFactory._streamReadFeatures.I
+  54 0xb4 tools/jackson/core/TokenStreamFactory._streamWriteFeatures.I
+  57 0xb5 tools/jackson/core/TokenStreamFactory._streamWriteFeatures.I
+  62 0xb4 tools/jackson/core/TokenStreamFactory._formatReadFeatures.I
+  65 0xb5 tools/jackson/core/TokenStreamFactory._formatReadFeatures.I
+  70 0xb4 tools/jackson/core/TokenStreamFactory._formatWriteFeatures.I
+  73 0xb5 tools/jackson/core/TokenStreamFactory._formatWriteFeatures.I
+METHOD copy ()Ltools/jackson/core/TokenStreamFactory;
+METHOD snapshot ()Ltools/jackson/core/TokenStreamFactory;
+METHOD rebuild ()Ltools/jackson/core/TSFBuilder;
+METHOD requiresPropertyOrdering ()Z
+METHOD canHandleBinaryNatively ()Z
+METHOD canParseAsync ()Z
+METHOD getFormatReadFeatureType ()Ljava/lang/Class;
+METHOD getFormatWriteFeatureType ()Ljava/lang/Class;
+METHOD canUseSchema (Ltools/jackson/core/FormatSchema;)Z
+METHOD getFormatName ()Ljava/lang/String;
+METHOD version ()Ltools/jackson/core/Version;
+METHOD isEnabled (Ltools/jackson/core/TokenStreamFactory$Feature;)Z
+  1 0xb4 tools/jackson/core/TokenStreamFactory._factoryFeatures.I
+  5 0xb6 tools/jackson/core/TokenStreamFactory$Feature.getMask.()I
+METHOD isEnabled (Ltools/jackson/core/StreamReadFeature;)Z
+  1 0xb4 tools/jackson/core/TokenStreamFactory._streamReadFeatures.I
+  5 0xb6 tools/jackson/core/StreamReadFeature.getMask.()I
+METHOD isEnabled (Ltools/jackson/core/StreamWriteFeature;)Z
+  1 0xb4 tools/jackson/core/TokenStreamFactory._streamWriteFeatures.I
+  5 0xb6 tools/jackson/core/StreamWriteFeature.getMask.()I
+METHOD getFactoryFeatures ()I
+  1 0xb4 tools/jackson/core/TokenStreamFactory._factoryFeatures.I
+METHOD getStreamReadFeatures ()I
+  1 0xb4 tools/jackson/core/TokenStreamFactory._streamReadFeatures.I
+METHOD getStreamWriteFeatures ()I
+  1 0xb4 tools/jackson/core/TokenStreamFactory._streamWriteFeatures.I
+METHOD getFormatReadFeatures ()I
+  1 0xb4 tools/jackson/core/TokenStreamFactory._formatReadFeatures.I
+METHOD getFormatWriteFeatures ()I
+  1 0xb4 tools/jackson/core/TokenStreamFactory._formatWriteFeatures.I
+METHOD streamReadConstraints ()Ltools/jackson/core/StreamReadConstraints;
+  1 0xb4 tools/jackson/core/TokenStreamFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+METHOD streamWriteConstraints ()Ltools/jackson/core/StreamWriteConstraints;
+  1 0xb4 tools/jackson/core/TokenStreamFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+METHOD errorReportConfiguration ()Ltools/jackson/core/ErrorReportConfiguration;
+  1 0xb4 tools/jackson/core/TokenStreamFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+METHOD constructNameMatcher (Ljava/util/List;Z)Ltools/jackson/core/sym/PropertyNameMatcher;
+  3 0xb8 tools/jackson/core/sym/SimpleNameMatcher.constructFrom.(Ljava/util/Locale;Ljava/util/List;Z)Ltools/jackson/core/sym/SimpleNameMatcher;
+METHOD constructCINameMatcher (Ljava/util/List;ZLjava/util/Locale;)Ltools/jackson/core/sym/PropertyNameMatcher;
+  3 0xb8 tools/jackson/core/sym/SimpleNameMatcher.constructCaseInsensitive.(Ljava/util/Locale;Ljava/util/List;Z)Ltools/jackson/core/sym/SimpleNameMatcher;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/File;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/nio/file/Path;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;[B)Ltools/jackson/core/JsonParser;
+  6 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;[BII)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;[BII)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/lang/String;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;[C)Ltools/jackson/core/JsonParser;
+  6 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;[CII)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;[CII)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ljava/io/File;)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  5 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;Ljava/io/File;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  5 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  5 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+METHOD createParser ([B)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  8 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;[BII)Ltools/jackson/core/JsonParser;
+METHOD createParser ([BII)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  7 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;[BII)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ljava/lang/String;)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  5 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;Ljava/lang/String;)Ltools/jackson/core/JsonParser;
+METHOD createParser ([C)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  8 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;[CII)Ltools/jackson/core/JsonParser;
+METHOD createParser ([CII)Ltools/jackson/core/JsonParser;
+  1 0xb8 tools/jackson/core/ObjectReadContext.empty.()Ltools/jackson/core/ObjectReadContext;
+  7 0xb6 tools/jackson/core/TokenStreamFactory.createParser.(Ltools/jackson/core/ObjectReadContext;[CII)Ltools/jackson/core/JsonParser;
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/DataInput;)Ltools/jackson/core/JsonParser;
+METHOD createNonBlockingByteArrayParser (Ltools/jackson/core/ObjectReadContext;)Ltools/jackson/core/JsonParser;
+  2 0xb6 tools/jackson/core/TokenStreamFactory.getFormatName.()Ljava/lang/String;
+  11 0xbd java/lang/Object
+  14 0xb6 tools/jackson/core/TokenStreamFactory._unsupported.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;
+  17 0xc0 tools/jackson/core/JsonParser
+METHOD createNonBlockingByteBufferParser (Ltools/jackson/core/ObjectReadContext;)Ltools/jackson/core/JsonParser;
+  2 0xb6 tools/jackson/core/TokenStreamFactory.getFormatName.()Ljava/lang/String;
+  11 0xbd java/lang/Object
+  14 0xb6 tools/jackson/core/TokenStreamFactory._unsupported.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;
+  17 0xc0 tools/jackson/core/JsonParser
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+  3 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  6 0xb6 tools/jackson/core/TokenStreamFactory.createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/File;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/nio/file/Path;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/DataOutput;)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/TokenStreamFactory._createDataOutputWrapper.(Ljava/io/DataOutput;)Ljava/io/OutputStream;
+  7 0xb6 tools/jackson/core/TokenStreamFactory.createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+  1 0xb8 tools/jackson/core/ObjectWriteContext.empty.()Ltools/jackson/core/ObjectWriteContext;
+  6 0xb6 tools/jackson/core/TokenStreamFactory.createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+  1 0xb8 tools/jackson/core/ObjectWriteContext.empty.()Ltools/jackson/core/ObjectWriteContext;
+  5 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  8 0xb6 tools/jackson/core/TokenStreamFactory.createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+METHOD createGenerator (Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  1 0xb8 tools/jackson/core/ObjectWriteContext.empty.()Ltools/jackson/core/ObjectWriteContext;
+  5 0xb6 tools/jackson/core/TokenStreamFactory.createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+METHOD _getBufferRecycler ()Ltools/jackson/core/util/BufferRecycler;
+  1 0xb6 tools/jackson/core/TokenStreamFactory._getRecyclerPool.()Ltools/jackson/core/util/RecyclerPool;
+  4 0xb9 tools/jackson/core/util/RecyclerPool.acquireAndLinkPooled.()Ltools/jackson/core/util/RecyclerPool$WithPool;
+  9 0xc0 tools/jackson/core/util/BufferRecycler
+METHOD _getRecyclerPool ()Ltools/jackson/core/util/RecyclerPool;
+  1 0xb4 tools/jackson/core/TokenStreamFactory._recyclerPool.Ltools/jackson/core/util/RecyclerPool;
+METHOD _createContext (Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  4 0xb6 tools/jackson/core/TokenStreamFactory._createContext.(Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)Ltools/jackson/core/io/IOContext;
+METHOD _createContext (Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)Ltools/jackson/core/io/IOContext;
+  12 0xb6 tools/jackson/core/io/ContentReference.getRawContent.()Ljava/lang/Object;
+  19 0xc1 tools/jackson/core/util/BufferRecycler$Gettable
+  27 0xc0 tools/jackson/core/util/BufferRecycler$Gettable
+  34 0xb9 tools/jackson/core/util/BufferRecycler$Gettable.bufferRecycler.()Ltools/jackson/core/util/BufferRecycler;
+  59 0xb6 tools/jackson/core/TokenStreamFactory._getBufferRecycler.()Ltools/jackson/core/util/BufferRecycler;
+  64 0xbb tools/jackson/core/io/IOContext
+  69 0xb4 tools/jackson/core/TokenStreamFactory._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  73 0xb4 tools/jackson/core/TokenStreamFactory._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  77 0xb4 tools/jackson/core/TokenStreamFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  85 0xb7 tools/jackson/core/io/IOContext.<init>.(Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;Ltools/jackson/core/util/BufferRecycler;Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)V
+  97 0xb6 tools/jackson/core/io/IOContext.markBufferRecyclerReleased.()Ltools/jackson/core/io/IOContext;
+METHOD _createContentReference (Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+METHOD _createContentReference (Ljava/lang/Object;II)Ltools/jackson/core/io/ContentReference;
+METHOD _createDataOutputWrapper (Ljava/io/DataOutput;)Ljava/io/OutputStream;
+  0 0xbb tools/jackson/core/io/DataOutputAsStream
+  5 0xb7 tools/jackson/core/io/DataOutputAsStream.<init>.(Ljava/io/DataOutput;)V
+METHOD _optimizedStreamFromURL (Ljava/net/URL;)Ljava/io/InputStream;
+  3 0xb6 java/net/URL.getProtocol.()Ljava/lang/String;
+  6 0xb6 java/lang/String.equals.(Ljava/lang/Object;)Z
+  13 0xb6 java/net/URL.getHost.()Ljava/lang/String;
+  22 0xb6 java/lang/String.length.()I
+  29 0xb6 java/net/URL.getPath.()Ljava/lang/String;
+  36 0xb6 java/lang/String.indexOf.(I)I
+  42 0xbb java/io/FileInputStream
+  47 0xb6 java/net/URL.getPath.()Ljava/lang/String;
+  50 0xb7 java/io/FileInputStream.<init>.(Ljava/lang/String;)V
+  59 0xb6 tools/jackson/core/TokenStreamFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  64 0xb6 java/net/URL.openStream.()Ljava/io/InputStream;
+  71 0xb6 tools/jackson/core/TokenStreamFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _fileInputStream (Ljava/io/File;)Ljava/io/InputStream;
+  0 0xbb java/io/FileInputStream
+  5 0xb7 java/io/FileInputStream.<init>.(Ljava/io/File;)V
+  12 0xb6 tools/jackson/core/TokenStreamFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _pathInputStream (Ljava/nio/file/Path;)Ljava/io/InputStream;
+  2 0xbd java/nio/file/OpenOption
+  5 0xb8 java/nio/file/Files.newInputStream.(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/InputStream;
+  12 0xb6 tools/jackson/core/TokenStreamFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _fileOutputStream (Ljava/io/File;)Ljava/io/OutputStream;
+  0 0xbb java/io/FileOutputStream
+  5 0xb7 java/io/FileOutputStream.<init>.(Ljava/io/File;)V
+  12 0xb6 tools/jackson/core/TokenStreamFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _pathOutputStream (Ljava/nio/file/Path;)Ljava/io/OutputStream;
+  2 0xbd java/nio/file/OpenOption
+  5 0xb8 java/nio/file/Files.newOutputStream.(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/OutputStream;
+  12 0xb6 tools/jackson/core/TokenStreamFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _checkRangeBoundsForByteArray ([BII)V
+  8 0xb6 tools/jackson/core/TokenStreamFactory._reportRangeError.(Ljava/lang/String;)Ljava/lang/Object;
+  45 0xbd java/lang/Object
+  51 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  58 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  66 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  70 0xb8 java/lang/String.format.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
+  73 0xb6 tools/jackson/core/TokenStreamFactory._reportRangeError.(Ljava/lang/String;)Ljava/lang/Object;
+METHOD _checkRangeBoundsForCharArray ([CII)V
+  8 0xb6 tools/jackson/core/TokenStreamFactory._reportRangeError.(Ljava/lang/String;)Ljava/lang/Object;
+  45 0xbd java/lang/Object
+  51 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  58 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  66 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  70 0xb8 java/lang/String.format.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
+  73 0xb6 tools/jackson/core/TokenStreamFactory._reportRangeError.(Ljava/lang/String;)Ljava/lang/Object;
+METHOD _reportRangeError (Ljava/lang/String;)Ljava/lang/Object;
+  0 0xbb tools/jackson/core/exc/StreamReadException
+  5 0xc0 tools/jackson/core/JsonParser
+  9 0xb7 tools/jackson/core/exc/StreamReadException.<init>.(Ltools/jackson/core/JsonParser;Ljava/lang/String;)V
+METHOD _wrapIOFailure (Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  2 0xb8 tools/jackson/core/exc/JacksonIOException.construct.(Ljava/io/IOException;Ljava/io/Closeable;)Ltools/jackson/core/exc/JacksonIOException;
+METHOD _unsupported ()Ljava/lang/Object;
+  5 0xbd java/lang/Object
+  11 0xb6 tools/jackson/core/TokenStreamFactory.getFormatName.()Ljava/lang/String;
+  15 0xb6 tools/jackson/core/TokenStreamFactory._unsupported.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;
+METHOD _unsupported (Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;
+  0 0xbb java/lang/UnsupportedOperationException
+  6 0xb8 java/lang/String.format.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
+  9 0xb7 java/lang/UnsupportedOperationException.<init>.(Ljava/lang/String;)V
+METHOD snapshot ()Ljava/lang/Object;
+  1 0xb6 tools/jackson/core/TokenStreamFactory.snapshot.()Ltools/jackson/core/TokenStreamFactory;
+METHOD <clinit> ()V
+  0 0xbb tools/jackson/core/ObjectWriteContext$Base
+  4 0xb7 tools/jackson/core/ObjectWriteContext$Base.<init>.()V
+  7 0xb3 tools/jackson/core/TokenStreamFactory.EMPTY_WRITE_CONTEXT.Ltools/jackson/core/ObjectWriteContext;
+  10 0xb8 tools/jackson/core/TokenStreamFactory$Feature.collectDefaults.()I
+  13 0xb3 tools/jackson/core/TokenStreamFactory.DEFAULT_FACTORY_FEATURE_FLAGS.I
+  16 0xb8 tools/jackson/core/StreamReadFeature.collectDefaults.()I
+  19 0xb3 tools/jackson/core/TokenStreamFactory.DEFAULT_STREAM_READ_FEATURE_FLAGS.I
+  22 0xb8 tools/jackson/core/StreamWriteFeature.collectDefaults.()I
+  25 0xb3 tools/jackson/core/TokenStreamFactory.DEFAULT_STREAM_WRITE_FEATURE_FLAGS.I
+
+CLASS tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool
+METHOD <init> ()V
+  1 0xb7 tools/jackson/core/util/RecyclerPool$ThreadLocalPoolBase.<init>.()V
+METHOD acquirePooled ()Ltools/jackson/core/util/BufferRecycler;
+  0 0xb2 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool._recyclerRef.Ljava/lang/ThreadLocal;
+  3 0xb6 java/lang/ThreadLocal.get.()Ljava/lang/Object;
+  6 0xc0 java/lang/ref/SoftReference
+  19 0xb6 java/lang/ref/SoftReference.get.()Ljava/lang/Object;
+  22 0xc0 tools/jackson/core/util/BufferRecycler
+  30 0xbb tools/jackson/core/util/BufferRecycler
+  34 0xb7 tools/jackson/core/util/BufferRecycler.<init>.()V
+  38 0xbb java/lang/ref/SoftReference
+  43 0xb7 java/lang/ref/SoftReference.<init>.(Ljava/lang/Object;)V
+  47 0xb2 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool._recyclerRef.Ljava/lang/ThreadLocal;
+  51 0xb6 java/lang/ThreadLocal.set.(Ljava/lang/Object;)V
+METHOD readResolve ()Ljava/lang/Object;
+  0 0xb2 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool;
+METHOD acquirePooled ()Ltools/jackson/core/util/RecyclerPool$WithPool;
+  1 0xb6 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool.acquirePooled.()Ltools/jackson/core/util/BufferRecycler;
+METHOD <clinit> ()V
+  0 0xbb tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool
+  4 0xb7 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool.<init>.()V
+  7 0xb3 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool;
+  10 0xbb java/lang/ThreadLocal
+  14 0xb7 java/lang/ThreadLocal.<init>.()V
+  17 0xb3 tools/jackson/core/util/JsonRecyclerPools$ThreadLocalPool._recyclerRef.Ljava/lang/ThreadLocal;
+
+CLASS tools/jackson/core/util/BufferRecyclers
+METHOD <init> ()V
+  1 0xb7 java/lang/Object.<init>.()V

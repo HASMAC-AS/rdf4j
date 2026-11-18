@@ -1,0 +1,1679 @@
+
+CLASS tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase
+METHOD <init> (I)V
+  2 0xb7 tools/jackson/core/util/RecyclerPool$StatefulImplBase.<init>.(I)V
+  6 0xbb java/util/concurrent/ConcurrentLinkedDeque
+  10 0xb7 java/util/concurrent/ConcurrentLinkedDeque.<init>.()V
+  13 0xb5 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.pool.Ljava/util/Deque;
+METHOD acquirePooled ()Ltools/jackson/core/util/RecyclerPool$WithPool;
+  1 0xb4 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.pool.Ljava/util/Deque;
+  4 0xb9 java/util/Deque.pollFirst.()Ljava/lang/Object;
+  9 0xc0 tools/jackson/core/util/RecyclerPool$WithPool
+  18 0xb6 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.createPooled.()Ltools/jackson/core/util/RecyclerPool$WithPool;
+METHOD releasePooled (Ltools/jackson/core/util/RecyclerPool$WithPool;)V
+  1 0xb4 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.pool.Ljava/util/Deque;
+  5 0xb9 java/util/Deque.offerLast.(Ljava/lang/Object;)Z
+METHOD pooledCount ()I
+  1 0xb4 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.pool.Ljava/util/Deque;
+  4 0xb9 java/util/Deque.size.()I
+METHOD clear ()Z
+  1 0xb4 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.pool.Ljava/util/Deque;
+  4 0xb9 java/util/Deque.clear.()V
+
+CLASS tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool
+METHOD <init> (I)V
+  2 0xb7 tools/jackson/core/util/RecyclerPool$ConcurrentDequePoolBase.<init>.(I)V
+METHOD construct ()Ltools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool;
+  0 0xbb tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool
+  5 0xb7 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.<init>.(I)V
+METHOD createPooled ()Ltools/jackson/core/util/BufferRecycler;
+  0 0xbb tools/jackson/core/util/BufferRecycler
+  4 0xb7 tools/jackson/core/util/BufferRecycler.<init>.()V
+METHOD readResolve ()Ljava/lang/Object;
+  1 0xb2 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool;
+  4 0xb6 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool._resolveToShared.(Ltools/jackson/core/util/RecyclerPool$StatefulImplBase;)Ljava/util/Optional;
+  12 0xb6 java/util/Optional.orElseGet.(Ljava/util/function/Supplier;)Ljava/lang/Object;
+METHOD createPooled ()Ltools/jackson/core/util/RecyclerPool$WithPool;
+  1 0xb6 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.createPooled.()Ltools/jackson/core/util/BufferRecycler;
+METHOD lambda$readResolve$0 ()Ltools/jackson/core/util/RecyclerPool$StatefulImplBase;
+  0 0xb8 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.construct.()Ltools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool;
+METHOD <clinit> ()V
+  0 0xbb tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool
+  5 0xb7 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.<init>.(I)V
+  8 0xb3 tools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool.GLOBAL.Ltools/jackson/core/util/JsonRecyclerPools$ConcurrentDequePool;
+
+CLASS tools/jackson/core/util/RecyclerPool
+METHOD acquireAndLinkPooled ()Ltools/jackson/core/util/RecyclerPool$WithPool;
+  1 0xb9 tools/jackson/core/util/RecyclerPool.acquirePooled.()Ltools/jackson/core/util/RecyclerPool$WithPool;
+  7 0xb9 tools/jackson/core/util/RecyclerPool$WithPool.withPool.(Ltools/jackson/core/util/RecyclerPool;)Ltools/jackson/core/util/RecyclerPool$WithPool;
+METHOD acquirePooled ()Ltools/jackson/core/util/RecyclerPool$WithPool;
+METHOD releasePooled (Ltools/jackson/core/util/RecyclerPool$WithPool;)V
+METHOD clear ()Z
+METHOD pooledCount ()I
+
+CLASS tools/jackson/core/util/BufferRecycler
+METHOD <init> ()V
+  3 0xb7 tools/jackson/core/util/BufferRecycler.<init>.(II)V
+METHOD <init> (II)V
+  1 0xb7 java/lang/Object.<init>.()V
+  5 0xbb java/util/concurrent/atomic/AtomicReferenceArray
+  10 0xb7 java/util/concurrent/atomic/AtomicReferenceArray.<init>.(I)V
+  13 0xb5 tools/jackson/core/util/BufferRecycler._byteBuffers.Ljava/util/concurrent/atomic/AtomicReferenceArray;
+  17 0xbb java/util/concurrent/atomic/AtomicReferenceArray
+  22 0xb7 java/util/concurrent/atomic/AtomicReferenceArray.<init>.(I)V
+  25 0xb5 tools/jackson/core/util/BufferRecycler._charBuffers.Ljava/util/concurrent/atomic/AtomicReferenceArray;
+METHOD isLinkedWithPool ()Z
+  1 0xb4 tools/jackson/core/util/BufferRecycler._pool.Ltools/jackson/core/util/RecyclerPool;
+METHOD allocByteBuffer (I)[B
+  3 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(II)[B
+METHOD allocByteBuffer (II)[B
+  2 0xb6 tools/jackson/core/util/BufferRecycler.byteBufferLength.(I)I
+  14 0xb4 tools/jackson/core/util/BufferRecycler._byteBuffers.Ljava/util/concurrent/atomic/AtomicReferenceArray;
+  19 0xb6 java/util/concurrent/atomic/AtomicReferenceArray.getAndSet.(ILjava/lang/Object;)Ljava/lang/Object;
+  22 0xc0 [B
+  41 0xb6 tools/jackson/core/util/BufferRecycler.balloc.(I)[B
+METHOD releaseByteBuffer (I[B)V
+  1 0xb4 tools/jackson/core/util/BufferRecycler._byteBuffers.Ljava/util/concurrent/atomic/AtomicReferenceArray;
+  11 0xb6 java/util/concurrent/atomic/AtomicReferenceArray.accumulateAndGet.(ILjava/lang/Object;Ljava/util/function/BinaryOperator;)Ljava/lang/Object;
+METHOD allocCharBuffer (I)[C
+  3 0xb6 tools/jackson/core/util/BufferRecycler.allocCharBuffer.(II)[C
+METHOD allocCharBuffer (II)[C
+  2 0xb6 tools/jackson/core/util/BufferRecycler.charBufferLength.(I)I
+  14 0xb4 tools/jackson/core/util/BufferRecycler._charBuffers.Ljava/util/concurrent/atomic/AtomicReferenceArray;
+  19 0xb6 java/util/concurrent/atomic/AtomicReferenceArray.getAndSet.(ILjava/lang/Object;)Ljava/lang/Object;
+  22 0xc0 [C
+  41 0xb6 tools/jackson/core/util/BufferRecycler.calloc.(I)[C
+METHOD releaseCharBuffer (I[C)V
+  1 0xb4 tools/jackson/core/util/BufferRecycler._charBuffers.Ljava/util/concurrent/atomic/AtomicReferenceArray;
+  11 0xb6 java/util/concurrent/atomic/AtomicReferenceArray.accumulateAndGet.(ILjava/lang/Object;Ljava/util/function/BinaryOperator;)Ljava/lang/Object;
+METHOD byteBufferLength (I)I
+  0 0xb2 tools/jackson/core/util/BufferRecycler.BYTE_BUFFER_LENGTHS.[I
+METHOD charBufferLength (I)I
+  0 0xb2 tools/jackson/core/util/BufferRecycler.CHAR_BUFFER_LENGTHS.[I
+METHOD balloc (I)[B
+METHOD calloc (I)[C
+METHOD withPool (Ltools/jackson/core/util/RecyclerPool;)Ltools/jackson/core/util/BufferRecycler;
+  1 0xb4 tools/jackson/core/util/BufferRecycler._pool.Ltools/jackson/core/util/RecyclerPool;
+  7 0xbb java/lang/IllegalStateException
+  12 0xb8 java/lang/String.valueOf.(Ljava/lang/Object;)Ljava/lang/String;
+  20 0xb7 java/lang/IllegalStateException.<init>.(Ljava/lang/String;)V
+  26 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  29 0xc0 tools/jackson/core/util/RecyclerPool
+  32 0xb5 tools/jackson/core/util/BufferRecycler._pool.Ltools/jackson/core/util/RecyclerPool;
+METHOD releaseToPool ()V
+  1 0xb4 tools/jackson/core/util/BufferRecycler._pool.Ltools/jackson/core/util/RecyclerPool;
+  8 0xb4 tools/jackson/core/util/BufferRecycler._pool.Ltools/jackson/core/util/RecyclerPool;
+  14 0xb5 tools/jackson/core/util/BufferRecycler._pool.Ltools/jackson/core/util/RecyclerPool;
+  19 0xb9 tools/jackson/core/util/RecyclerPool.releasePooled.(Ltools/jackson/core/util/RecyclerPool$WithPool;)V
+METHOD withPool (Ltools/jackson/core/util/RecyclerPool;)Ltools/jackson/core/util/RecyclerPool$WithPool;
+  2 0xb6 tools/jackson/core/util/BufferRecycler.withPool.(Ltools/jackson/core/util/RecyclerPool;)Ltools/jackson/core/util/BufferRecycler;
+METHOD lambda$releaseCharBuffer$1 ([C[C)[C
+METHOD lambda$releaseByteBuffer$0 ([B[B)[B
+METHOD <clinit> ()V
+  27 0xb3 tools/jackson/core/util/BufferRecycler.BYTE_BUFFER_LENGTHS.[I
+  57 0xb3 tools/jackson/core/util/BufferRecycler.CHAR_BUFFER_LENGTHS.[I
+
+CLASS tools/jackson/core/io/IOContext
+METHOD <init> (Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;Ltools/jackson/core/util/BufferRecycler;Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)V
+  1 0xb7 java/lang/Object.<init>.()V
+  6 0xb5 tools/jackson/core/io/IOContext._releaseRecycler.Z
+  11 0xb5 tools/jackson/core/io/IOContext._closed.Z
+  16 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  19 0xc0 tools/jackson/core/StreamReadConstraints
+  22 0xb5 tools/jackson/core/io/IOContext._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  27 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  30 0xc0 tools/jackson/core/StreamWriteConstraints
+  33 0xb5 tools/jackson/core/io/IOContext._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+  38 0xb8 java/util/Objects.requireNonNull.(Ljava/lang/Object;)Ljava/lang/Object;
+  41 0xc0 tools/jackson/core/ErrorReportConfiguration
+  44 0xb5 tools/jackson/core/io/IOContext._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  50 0xb5 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  56 0xb5 tools/jackson/core/io/IOContext._contentReference.Ltools/jackson/core/io/ContentReference;
+  62 0xb5 tools/jackson/core/io/IOContext._managedResource.Z
+  68 0xb5 tools/jackson/core/io/IOContext._encoding.Ltools/jackson/core/JsonEncoding;
+METHOD markBufferRecyclerReleased ()Ltools/jackson/core/io/IOContext;
+  2 0xb5 tools/jackson/core/io/IOContext._releaseRecycler.Z
+METHOD encodingWriter (Ljava/io/Writer;)Ljava/io/Writer;
+  0 0xbb tools/jackson/core/io/IOContext$EncodingWriter
+  5 0xb7 tools/jackson/core/io/IOContext$EncodingWriter.<init>.(Ljava/io/Writer;)V
+  11 0xb5 tools/jackson/core/io/IOContext._encodingWriter.Ltools/jackson/core/io/IOContext$EncodingWriter;
+METHOD streamReadConstraints ()Ltools/jackson/core/StreamReadConstraints;
+  1 0xb4 tools/jackson/core/io/IOContext._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+METHOD streamWriteConstraints ()Ltools/jackson/core/StreamWriteConstraints;
+  1 0xb4 tools/jackson/core/io/IOContext._streamWriteConstraints.Ltools/jackson/core/StreamWriteConstraints;
+METHOD errorReportConfiguration ()Ltools/jackson/core/ErrorReportConfiguration;
+  1 0xb4 tools/jackson/core/io/IOContext._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+METHOD setEncoding (Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/io/IOContext;
+  2 0xb5 tools/jackson/core/io/IOContext._encoding.Ltools/jackson/core/JsonEncoding;
+METHOD getEncoding ()Ltools/jackson/core/JsonEncoding;
+  1 0xb4 tools/jackson/core/io/IOContext._encoding.Ltools/jackson/core/JsonEncoding;
+METHOD isResourceManaged ()Z
+  1 0xb4 tools/jackson/core/io/IOContext._managedResource.Z
+METHOD contentReference ()Ltools/jackson/core/io/ContentReference;
+  1 0xb4 tools/jackson/core/io/IOContext._contentReference.Ltools/jackson/core/io/ContentReference;
+METHOD bufferRecycler ()Ltools/jackson/core/util/BufferRecycler;
+  1 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+METHOD constructTextBuffer ()Ltools/jackson/core/util/TextBuffer;
+  0 0xbb tools/jackson/core/util/TextBuffer
+  5 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  8 0xb7 tools/jackson/core/util/TextBuffer.<init>.(Ltools/jackson/core/util/BufferRecycler;)V
+METHOD constructReadConstrainedTextBuffer ()Ltools/jackson/core/util/TextBuffer;
+  0 0xbb tools/jackson/core/util/ReadConstrainedTextBuffer
+  5 0xb4 tools/jackson/core/io/IOContext._streamReadConstraints.Ltools/jackson/core/StreamReadConstraints;
+  9 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  12 0xb7 tools/jackson/core/util/ReadConstrainedTextBuffer.<init>.(Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/util/BufferRecycler;)V
+METHOD allocReadIOBuffer ()[B
+  2 0xb4 tools/jackson/core/io/IOContext._readIOBuffer.[B
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  14 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(I)[B
+  18 0xb5 tools/jackson/core/io/IOContext._readIOBuffer.[B
+METHOD allocReadIOBuffer (I)[B
+  2 0xb4 tools/jackson/core/io/IOContext._readIOBuffer.[B
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  15 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(II)[B
+  19 0xb5 tools/jackson/core/io/IOContext._readIOBuffer.[B
+METHOD allocWriteEncodingBuffer ()[B
+  2 0xb4 tools/jackson/core/io/IOContext._writeEncodingBuffer.[B
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  14 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(I)[B
+  18 0xb5 tools/jackson/core/io/IOContext._writeEncodingBuffer.[B
+METHOD allocWriteEncodingBuffer (I)[B
+  2 0xb4 tools/jackson/core/io/IOContext._writeEncodingBuffer.[B
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  15 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(II)[B
+  19 0xb5 tools/jackson/core/io/IOContext._writeEncodingBuffer.[B
+METHOD allocBase64Buffer ()[B
+  2 0xb4 tools/jackson/core/io/IOContext._base64Buffer.[B
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  14 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(I)[B
+  18 0xb5 tools/jackson/core/io/IOContext._base64Buffer.[B
+METHOD allocBase64Buffer (I)[B
+  2 0xb4 tools/jackson/core/io/IOContext._base64Buffer.[B
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  15 0xb6 tools/jackson/core/util/BufferRecycler.allocByteBuffer.(II)[B
+  19 0xb5 tools/jackson/core/io/IOContext._base64Buffer.[B
+METHOD allocTokenBuffer ()[C
+  2 0xb4 tools/jackson/core/io/IOContext._tokenCBuffer.[C
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  14 0xb6 tools/jackson/core/util/BufferRecycler.allocCharBuffer.(I)[C
+  18 0xb5 tools/jackson/core/io/IOContext._tokenCBuffer.[C
+METHOD allocTokenBuffer (I)[C
+  2 0xb4 tools/jackson/core/io/IOContext._tokenCBuffer.[C
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  15 0xb6 tools/jackson/core/util/BufferRecycler.allocCharBuffer.(II)[C
+  19 0xb5 tools/jackson/core/io/IOContext._tokenCBuffer.[C
+METHOD allocConcatBuffer ()[C
+  2 0xb4 tools/jackson/core/io/IOContext._concatCBuffer.[C
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  14 0xb6 tools/jackson/core/util/BufferRecycler.allocCharBuffer.(I)[C
+  18 0xb5 tools/jackson/core/io/IOContext._concatCBuffer.[C
+METHOD allocNameCopyBuffer (I)[C
+  2 0xb4 tools/jackson/core/io/IOContext._nameCopyBuffer.[C
+  5 0xb6 tools/jackson/core/io/IOContext._verifyAlloc.(Ljava/lang/Object;)V
+  10 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  15 0xb6 tools/jackson/core/util/BufferRecycler.allocCharBuffer.(II)[C
+  19 0xb5 tools/jackson/core/io/IOContext._nameCopyBuffer.[C
+METHOD releaseReadIOBuffer ([B)V
+  7 0xb4 tools/jackson/core/io/IOContext._readIOBuffer.[B
+  10 0xb6 tools/jackson/core/io/IOContext._verifyRelease.([B[B)V
+  15 0xb5 tools/jackson/core/io/IOContext._readIOBuffer.[B
+  19 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  24 0xb6 tools/jackson/core/util/BufferRecycler.releaseByteBuffer.(I[B)V
+METHOD releaseWriteEncodingBuffer ([B)V
+  7 0xb4 tools/jackson/core/io/IOContext._writeEncodingBuffer.[B
+  10 0xb6 tools/jackson/core/io/IOContext._verifyRelease.([B[B)V
+  15 0xb5 tools/jackson/core/io/IOContext._writeEncodingBuffer.[B
+  19 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  24 0xb6 tools/jackson/core/util/BufferRecycler.releaseByteBuffer.(I[B)V
+METHOD releaseBase64Buffer ([B)V
+  7 0xb4 tools/jackson/core/io/IOContext._base64Buffer.[B
+  10 0xb6 tools/jackson/core/io/IOContext._verifyRelease.([B[B)V
+  15 0xb5 tools/jackson/core/io/IOContext._base64Buffer.[B
+  19 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  24 0xb6 tools/jackson/core/util/BufferRecycler.releaseByteBuffer.(I[B)V
+METHOD releaseTokenBuffer ([C)V
+  7 0xb4 tools/jackson/core/io/IOContext._tokenCBuffer.[C
+  10 0xb6 tools/jackson/core/io/IOContext._verifyRelease.([C[C)V
+  15 0xb5 tools/jackson/core/io/IOContext._tokenCBuffer.[C
+  19 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  24 0xb6 tools/jackson/core/util/BufferRecycler.releaseCharBuffer.(I[C)V
+METHOD releaseConcatBuffer ([C)V
+  7 0xb4 tools/jackson/core/io/IOContext._concatCBuffer.[C
+  10 0xb6 tools/jackson/core/io/IOContext._verifyRelease.([C[C)V
+  15 0xb5 tools/jackson/core/io/IOContext._concatCBuffer.[C
+  19 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  24 0xb6 tools/jackson/core/util/BufferRecycler.releaseCharBuffer.(I[C)V
+METHOD releaseNameCopyBuffer ([C)V
+  7 0xb4 tools/jackson/core/io/IOContext._nameCopyBuffer.[C
+  10 0xb6 tools/jackson/core/io/IOContext._verifyRelease.([C[C)V
+  15 0xb5 tools/jackson/core/io/IOContext._nameCopyBuffer.[C
+  19 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  24 0xb6 tools/jackson/core/util/BufferRecycler.releaseCharBuffer.(I[C)V
+METHOD _verifyAlloc (Ljava/lang/Object;)V
+  4 0xbb java/lang/IllegalStateException
+  10 0xb7 java/lang/IllegalStateException.<init>.(Ljava/lang/String;)V
+METHOD _verifyRelease ([B[B)V
+  13 0xb6 tools/jackson/core/io/IOContext.wrongBuf.()Ljava/lang/IllegalArgumentException;
+METHOD _verifyRelease ([C[C)V
+  13 0xb6 tools/jackson/core/io/IOContext.wrongBuf.()Ljava/lang/IllegalArgumentException;
+METHOD wrongBuf ()Ljava/lang/IllegalArgumentException;
+  0 0xbb java/lang/IllegalArgumentException
+  6 0xb7 java/lang/IllegalArgumentException.<init>.(Ljava/lang/String;)V
+METHOD close ()V
+  1 0xb4 tools/jackson/core/io/IOContext._closed.Z
+  9 0xb5 tools/jackson/core/io/IOContext._closed.Z
+  13 0xb4 tools/jackson/core/io/IOContext._encodingWriter.Ltools/jackson/core/io/IOContext$EncodingWriter;
+  23 0xb5 tools/jackson/core/io/IOContext._encodingWriter.Ltools/jackson/core/io/IOContext$EncodingWriter;
+  27 0xb6 tools/jackson/core/io/IOContext$EncodingWriter.flushPending.()V
+  31 0xb4 tools/jackson/core/io/IOContext._releaseRecycler.Z
+  39 0xb5 tools/jackson/core/io/IOContext._releaseRecycler.Z
+  43 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  46 0xb6 tools/jackson/core/util/BufferRecycler.releaseToPool.()V
+  54 0xb4 tools/jackson/core/io/IOContext._releaseRecycler.Z
+  62 0xb5 tools/jackson/core/io/IOContext._releaseRecycler.Z
+  66 0xb4 tools/jackson/core/io/IOContext._bufferRecycler.Ltools/jackson/core/util/BufferRecycler;
+  69 0xb6 tools/jackson/core/util/BufferRecycler.releaseToPool.()V
+
+CLASS tools/jackson/core/base/TextualTSFactory
+METHOD <init> (Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;II)V
+  8 0xb7 tools/jackson/core/base/DecorableTSFactory.<init>.(Ltools/jackson/core/StreamReadConstraints;Ltools/jackson/core/StreamWriteConstraints;Ltools/jackson/core/ErrorReportConfiguration;II)V
+METHOD <init> (Ltools/jackson/core/base/DecorableTSFactory$DecorableTSFBuilder;)V
+  2 0xb7 tools/jackson/core/base/DecorableTSFactory.<init>.(Ltools/jackson/core/base/DecorableTSFactory$DecorableTSFBuilder;)V
+METHOD <init> (Ltools/jackson/core/base/TextualTSFactory;)V
+  2 0xb7 tools/jackson/core/base/DecorableTSFactory.<init>.(Ltools/jackson/core/base/DecorableTSFactory;)V
+METHOD canHandleBinaryNatively ()Z
+METHOD canUseCharArrays ()Z
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/File;)Ltools/jackson/core/JsonParser;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  7 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  19 0xb6 tools/jackson/core/base/TextualTSFactory._fileInputStream.(Ljava/io/File;)Ljava/io/InputStream;
+  32 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ljava/io/InputStream;
+  46 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  58 0xb8 tools/jackson/core/base/TextualTSFactory._closeOnFailedConstruction.(Ljava/io/Closeable;Ljava/io/Closeable;Ljava/lang/RuntimeException;)V
+  64 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/nio/file/Path;)Ltools/jackson/core/JsonParser;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  7 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  19 0xb6 tools/jackson/core/base/TextualTSFactory._pathInputStream.(Ljava/nio/file/Path;)Ljava/io/InputStream;
+  32 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ljava/io/InputStream;
+  46 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  58 0xb8 tools/jackson/core/base/TextualTSFactory._closeOnFailedConstruction.(Ljava/io/Closeable;Ljava/io/Closeable;Ljava/lang/RuntimeException;)V
+  64 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  7 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  17 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ljava/io/InputStream;
+  20 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  29 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  7 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  17 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/Reader;)Ljava/io/Reader;
+  20 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+  29 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;[BII)Ltools/jackson/core/JsonParser;
+  6 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;II)Ltools/jackson/core/io/ContentReference;
+  10 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  19 0xb4 tools/jackson/core/base/TextualTSFactory._inputDecorator.Ltools/jackson/core/io/InputDecorator;
+  26 0xb4 tools/jackson/core/base/TextualTSFactory._inputDecorator.Ltools/jackson/core/io/InputDecorator;
+  35 0xb6 tools/jackson/core/io/InputDecorator.decorate.(Ltools/jackson/core/io/IOContext;[BII)Ljava/io/InputStream;
+  51 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+  63 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[BII)Ltools/jackson/core/JsonParser;
+  73 0xb8 tools/jackson/core/base/TextualTSFactory._closeOnFailedConstruction.(Ljava/io/Closeable;Ljava/lang/RuntimeException;)V
+  80 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/lang/String;)Ltools/jackson/core/JsonParser;
+  1 0xb6 java/lang/String.length.()I
+  6 0xb4 tools/jackson/core/base/TextualTSFactory._inputDecorator.Ltools/jackson/core/io/InputDecorator;
+  19 0xb6 tools/jackson/core/base/TextualTSFactory.canUseCharArrays.()Z
+  27 0xbb java/io/StringReader
+  32 0xb7 java/io/StringReader.<init>.(Ljava/lang/String;)V
+  35 0xb6 tools/jackson/core/base/TextualTSFactory.createParser.(Ltools/jackson/core/ObjectReadContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+  42 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  46 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  54 0xb6 tools/jackson/core/io/IOContext.allocTokenBuffer.(I)[C
+  65 0xb6 java/lang/String.getChars.(II[CI)V
+  77 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[CIIZ)Ltools/jackson/core/JsonParser;
+  87 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;[CII)Ltools/jackson/core/JsonParser;
+  1 0xb4 tools/jackson/core/base/TextualTSFactory._inputDecorator.Ltools/jackson/core/io/InputDecorator;
+  9 0xbb java/io/CharArrayReader
+  17 0xb7 java/io/CharArrayReader.<init>.([CII)V
+  20 0xb6 tools/jackson/core/base/TextualTSFactory.createParser.(Ltools/jackson/core/ObjectReadContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+  30 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;II)Ltools/jackson/core/io/ContentReference;
+  34 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  48 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[CIIZ)Ltools/jackson/core/JsonParser;
+  58 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createParser (Ltools/jackson/core/ObjectReadContext;Ljava/io/DataInput;)Ltools/jackson/core/JsonParser;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  7 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  17 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/DataInput;)Ljava/io/DataInput;
+  20 0xb6 tools/jackson/core/base/TextualTSFactory._createParser.(Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/DataInput;)Ltools/jackson/core/JsonParser;
+  29 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/InputStream;)Ltools/jackson/core/JsonParser;
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/Reader;)Ltools/jackson/core/JsonParser;
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[BII)Ltools/jackson/core/JsonParser;
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;[CIIZ)Ltools/jackson/core/JsonParser;
+METHOD _createParser (Ltools/jackson/core/ObjectReadContext;Ltools/jackson/core/io/IOContext;Ljava/io/DataInput;)Ltools/jackson/core/JsonParser;
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  8 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)Ltools/jackson/core/io/IOContext;
+  14 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  29 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ljava/io/OutputStream;
+  32 0xb6 tools/jackson/core/base/TextualTSFactory._createUTF8Generator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+  35 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  54 0xb6 tools/jackson/core/base/TextualTSFactory._createWriter.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ljava/io/Writer;
+  57 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ljava/io/Writer;
+  60 0xb6 tools/jackson/core/io/IOContext.encodingWriter.(Ljava/io/Writer;)Ljava/io/Writer;
+  63 0xb6 tools/jackson/core/base/TextualTSFactory._createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  66 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  76 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  7 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;Z)Ltools/jackson/core/io/IOContext;
+  18 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ljava/io/Writer;
+  21 0xb6 tools/jackson/core/base/TextualTSFactory._createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  24 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  33 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/io/File;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  8 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)Ltools/jackson/core/io/IOContext;
+  21 0xb6 tools/jackson/core/base/TextualTSFactory._fileOutputStream.(Ljava/io/File;)Ljava/io/OutputStream;
+  31 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  42 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ljava/io/OutputStream;
+  58 0xb6 tools/jackson/core/base/TextualTSFactory._createUTF8Generator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+  61 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  71 0xb6 tools/jackson/core/base/TextualTSFactory._createWriter.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ljava/io/Writer;
+  85 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ljava/io/Writer;
+  98 0xb6 tools/jackson/core/io/IOContext.encodingWriter.(Ljava/io/Writer;)Ljava/io/Writer;
+  114 0xb6 tools/jackson/core/base/TextualTSFactory._createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  117 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  129 0xb8 tools/jackson/core/base/TextualTSFactory._closeOnFailedConstruction.(Ljava/io/Closeable;Ljava/io/Closeable;Ljava/lang/RuntimeException;)V
+  136 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD createGenerator (Ltools/jackson/core/ObjectWriteContext;Ljava/nio/file/Path;Ltools/jackson/core/JsonEncoding;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/base/TextualTSFactory._createContentReference.(Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  8 0xb6 tools/jackson/core/base/TextualTSFactory._createContext.(Ltools/jackson/core/io/ContentReference;ZLtools/jackson/core/JsonEncoding;)Ltools/jackson/core/io/IOContext;
+  21 0xb6 tools/jackson/core/base/TextualTSFactory._pathOutputStream.(Ljava/nio/file/Path;)Ljava/io/OutputStream;
+  31 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  42 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ljava/io/OutputStream;
+  58 0xb6 tools/jackson/core/base/TextualTSFactory._createUTF8Generator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+  61 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  71 0xb6 tools/jackson/core/base/TextualTSFactory._createWriter.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ljava/io/Writer;
+  85 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ljava/io/Writer;
+  98 0xb6 tools/jackson/core/io/IOContext.encodingWriter.(Ljava/io/Writer;)Ljava/io/Writer;
+  114 0xb6 tools/jackson/core/base/TextualTSFactory._createGenerator.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+  117 0xb6 tools/jackson/core/base/TextualTSFactory._decorate.(Ltools/jackson/core/JsonGenerator;)Ltools/jackson/core/JsonGenerator;
+  129 0xb8 tools/jackson/core/base/TextualTSFactory._closeOnFailedConstruction.(Ljava/io/Closeable;Ljava/io/Closeable;Ljava/lang/RuntimeException;)V
+  136 0xb8 tools/jackson/core/base/TextualTSFactory._releaseOnFailedConstruction.(Ltools/jackson/core/io/IOContext;Ljava/lang/RuntimeException;)V
+METHOD _createContentReference (Ljava/lang/Object;)Ltools/jackson/core/io/ContentReference;
+  3 0xb4 tools/jackson/core/base/TextualTSFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  6 0xb8 tools/jackson/core/io/ContentReference.construct.(ZLjava/lang/Object;Ltools/jackson/core/ErrorReportConfiguration;)Ltools/jackson/core/io/ContentReference;
+METHOD _createContentReference (Ljava/lang/Object;II)Ltools/jackson/core/io/ContentReference;
+  5 0xb4 tools/jackson/core/base/TextualTSFactory._errorReportConfiguration.Ltools/jackson/core/ErrorReportConfiguration;
+  8 0xb8 tools/jackson/core/io/ContentReference.construct.(ZLjava/lang/Object;IILtools/jackson/core/ErrorReportConfiguration;)Ltools/jackson/core/io/ContentReference;
+METHOD _createGenerator (Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/Writer;)Ltools/jackson/core/JsonGenerator;
+METHOD _createUTF8Generator (Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)Ltools/jackson/core/JsonGenerator;
+METHOD _createWriter (Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;Ltools/jackson/core/JsonEncoding;)Ljava/io/Writer;
+  1 0xb2 tools/jackson/core/JsonEncoding.UTF8.Ltools/jackson/core/JsonEncoding;
+  7 0xbb tools/jackson/core/io/UTF8Writer
+  13 0xb7 tools/jackson/core/io/UTF8Writer.<init>.(Ltools/jackson/core/io/IOContext;Ljava/io/OutputStream;)V
+  17 0xbb java/io/OutputStreamWriter
+  23 0xb6 tools/jackson/core/JsonEncoding.getJavaName.()Ljava/lang/String;
+  26 0xb7 java/io/OutputStreamWriter.<init>.(Ljava/io/OutputStream;Ljava/lang/String;)V
+  35 0xb6 tools/jackson/core/base/TextualTSFactory._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+
+CLASS tools/jackson/core/json/UTF8JsonGenerator
+METHOD <init> (Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;IILjava/io/OutputStream;Ltools/jackson/core/SerializableString;Ltools/jackson/core/io/CharacterEscapes;Ltools/jackson/core/PrettyPrinter;IC)V
+  14 0xb7 tools/jackson/core/json/JsonGeneratorBase.<init>.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;IILtools/jackson/core/SerializableString;Ltools/jackson/core/PrettyPrinter;Ltools/jackson/core/io/CharacterEscapes;I)V
+  20 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  27 0xb5 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  32 0xb5 tools/jackson/core/json/UTF8JsonGenerator._bufferRecyclable.Z
+  37 0xb6 tools/jackson/core/io/IOContext.allocWriteEncodingBuffer.()[B
+  40 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  45 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  49 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  54 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  59 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  64 0xb6 tools/jackson/core/io/IOContext.allocConcatBuffer.()[C
+  67 0xb5 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  72 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  76 0xb5 tools/jackson/core/json/UTF8JsonGenerator._charBufferLength.I
+  82 0xb6 tools/jackson/core/json/UTF8JsonGenerator.setCharacterEscapes.(Ltools/jackson/core/io/CharacterEscapes;)Ltools/jackson/core/JsonGenerator;
+METHOD <init> (Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;IILjava/io/OutputStream;Ltools/jackson/core/SerializableString;Ltools/jackson/core/io/CharacterEscapes;Ltools/jackson/core/PrettyPrinter;IC[BIZ)V
+  14 0xb7 tools/jackson/core/json/JsonGeneratorBase.<init>.(Ltools/jackson/core/ObjectWriteContext;Ltools/jackson/core/io/IOContext;IILtools/jackson/core/SerializableString;Ltools/jackson/core/PrettyPrinter;Ltools/jackson/core/io/CharacterEscapes;I)V
+  20 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  27 0xb5 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  33 0xb5 tools/jackson/core/json/UTF8JsonGenerator._bufferRecyclable.Z
+  39 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  45 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  50 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  54 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  59 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  64 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  69 0xb6 tools/jackson/core/io/IOContext.allocConcatBuffer.()[C
+  72 0xb5 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  77 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  81 0xb5 tools/jackson/core/json/UTF8JsonGenerator._charBufferLength.I
+  87 0xb6 tools/jackson/core/json/UTF8JsonGenerator.setCharacterEscapes.(Ltools/jackson/core/io/CharacterEscapes;)Ltools/jackson/core/JsonGenerator;
+METHOD setCharacterEscapes (Ltools/jackson/core/io/CharacterEscapes;)Ltools/jackson/core/JsonGenerator;
+  2 0xb5 tools/jackson/core/json/UTF8JsonGenerator._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  11 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  14 0xb2 tools/jackson/core/json/JsonWriteFeature.ESCAPE_FORWARD_SLASHES.Ltools/jackson/core/json/JsonWriteFeature;
+  18 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  21 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  24 0xb8 tools/jackson/core/io/CharTypes.get7BitOutputEscapes.(IZ)[I
+  27 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  35 0xb6 tools/jackson/core/io/CharacterEscapes.getEscapeCodesForAscii.()[I
+  38 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+METHOD streamWriteOutputTarget ()Ljava/lang/Object;
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+METHOD streamWriteOutputBuffered ()I
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeName (Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  9 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writePPName.(Ljava/lang/String;)V
+  15 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  19 0xb6 tools/jackson/core/json/JsonWriteContext.writeName.(Ljava/lang/String;)I
+  31 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  45 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  52 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  56 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  61 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  67 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  74 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgUnqNames.Z
+  83 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.(Ljava/lang/String;Z)V
+  89 0xb6 java/lang/String.length.()I
+  95 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBufferLength.I
+  104 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.(Ljava/lang/String;Z)V
+  110 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  114 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  121 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  125 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  130 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  136 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  140 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  146 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  153 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  159 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  166 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  173 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.(Ljava/lang/String;II)V
+  183 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.(Ljava/lang/String;II)V
+  187 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  191 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  198 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  202 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  207 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  213 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  217 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeName (Ltools/jackson/core/SerializableString;)Ltools/jackson/core/JsonGenerator;
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  9 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writePPName.(Ltools/jackson/core/SerializableString;)V
+  15 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  19 0xb9 tools/jackson/core/SerializableString.getValue.()Ljava/lang/String;
+  24 0xb6 tools/jackson/core/json/JsonWriteContext.writeName.(Ljava/lang/String;)I
+  36 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  46 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  50 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  57 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  61 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  66 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  72 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgUnqNames.Z
+  87 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeUnq.(Ltools/jackson/core/SerializableString;)V
+  93 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  97 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  104 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  108 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  113 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  119 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  123 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  129 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  133 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  136 0xb9 tools/jackson/core/SerializableString.appendQuotedUTF8.([BI)I
+  148 0xb9 tools/jackson/core/SerializableString.asQuotedUTF8.()[B
+  153 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  161 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  166 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  170 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  174 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  181 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  185 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  190 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  196 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  200 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD _writeUnq (Ltools/jackson/core/SerializableString;)V
+  2 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  6 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  9 0xb9 tools/jackson/core/SerializableString.appendQuotedUTF8.([BI)I
+  21 0xb9 tools/jackson/core/SerializableString.asQuotedUTF8.()[B
+  26 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  39 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeStartArray ()Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  12 0xb6 tools/jackson/core/json/JsonWriteContext.createChildArrayContext.(Ljava/lang/Object;)Ltools/jackson/core/json/JsonWriteContext;
+  15 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteConstraints.()Ltools/jackson/core/StreamWriteConstraints;
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  26 0xb6 tools/jackson/core/json/JsonWriteContext.getNestingDepth.()I
+  29 0xb6 tools/jackson/core/StreamWriteConstraints.validateNestingDepth.(I)V
+  33 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  44 0xb9 tools/jackson/core/PrettyPrinter.writeStartArray.(Ltools/jackson/core/JsonGenerator;)V
+  53 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  64 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  68 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  73 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeStartArray (Ljava/lang/Object;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  12 0xb6 tools/jackson/core/json/JsonWriteContext.createChildArrayContext.(Ljava/lang/Object;)Ltools/jackson/core/json/JsonWriteContext;
+  15 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteConstraints.()Ltools/jackson/core/StreamWriteConstraints;
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  26 0xb6 tools/jackson/core/json/JsonWriteContext.getNestingDepth.()I
+  29 0xb6 tools/jackson/core/StreamWriteConstraints.validateNestingDepth.(I)V
+  33 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  44 0xb9 tools/jackson/core/PrettyPrinter.writeStartArray.(Ltools/jackson/core/JsonGenerator;)V
+  53 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  64 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  68 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  73 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeStartArray (Ljava/lang/Object;I)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  12 0xb6 tools/jackson/core/json/JsonWriteContext.createChildArrayContext.(Ljava/lang/Object;)Ltools/jackson/core/json/JsonWriteContext;
+  15 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteConstraints.()Ltools/jackson/core/StreamWriteConstraints;
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  26 0xb6 tools/jackson/core/json/JsonWriteContext.getNestingDepth.()I
+  29 0xb6 tools/jackson/core/StreamWriteConstraints.validateNestingDepth.(I)V
+  33 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  44 0xb9 tools/jackson/core/PrettyPrinter.writeStartArray.(Ltools/jackson/core/JsonGenerator;)V
+  53 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  64 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  68 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  73 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeEndArray ()Ltools/jackson/core/JsonGenerator;
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  4 0xb6 tools/jackson/core/json/JsonWriteContext.inArray.()Z
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  15 0xb6 tools/jackson/core/json/JsonWriteContext.typeDesc.()Ljava/lang/String;
+  23 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  28 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  43 0xb6 tools/jackson/core/json/JsonWriteContext.getEntryCount.()I
+  46 0xb9 tools/jackson/core/PrettyPrinter.writeEndArray.(Ltools/jackson/core/JsonGenerator;I)V
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  59 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  66 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  75 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  81 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  89 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  92 0xb6 tools/jackson/core/json/JsonWriteContext.clearAndGetParent.()Ltools/jackson/core/json/JsonWriteContext;
+  95 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+METHOD writeStartObject ()Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  12 0xb6 tools/jackson/core/json/JsonWriteContext.createChildObjectContext.(Ljava/lang/Object;)Ltools/jackson/core/json/JsonWriteContext;
+  15 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteConstraints.()Ltools/jackson/core/StreamWriteConstraints;
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  26 0xb6 tools/jackson/core/json/JsonWriteContext.getNestingDepth.()I
+  29 0xb6 tools/jackson/core/StreamWriteConstraints.validateNestingDepth.(I)V
+  33 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  44 0xb9 tools/jackson/core/PrettyPrinter.writeStartObject.(Ltools/jackson/core/JsonGenerator;)V
+  53 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  64 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  68 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  73 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeStartObject (Ljava/lang/Object;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  11 0xb6 tools/jackson/core/json/JsonWriteContext.createChildObjectContext.(Ljava/lang/Object;)Ltools/jackson/core/json/JsonWriteContext;
+  16 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteConstraints.()Ltools/jackson/core/StreamWriteConstraints;
+  20 0xb6 tools/jackson/core/json/JsonWriteContext.getNestingDepth.()I
+  23 0xb6 tools/jackson/core/StreamWriteConstraints.validateNestingDepth.(I)V
+  28 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  32 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  39 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  43 0xb9 tools/jackson/core/PrettyPrinter.writeStartObject.(Ltools/jackson/core/JsonGenerator;)V
+  52 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  56 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  63 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  67 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  72 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  78 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeStartObject (Ljava/lang/Object;I)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  11 0xb6 tools/jackson/core/json/JsonWriteContext.createChildObjectContext.(Ljava/lang/Object;)Ltools/jackson/core/json/JsonWriteContext;
+  16 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteConstraints.()Ltools/jackson/core/StreamWriteConstraints;
+  20 0xb6 tools/jackson/core/json/JsonWriteContext.getNestingDepth.()I
+  23 0xb6 tools/jackson/core/StreamWriteConstraints.validateNestingDepth.(I)V
+  28 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  32 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  39 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  43 0xb9 tools/jackson/core/PrettyPrinter.writeStartObject.(Ltools/jackson/core/JsonGenerator;)V
+  52 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  56 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  63 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  67 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  72 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  78 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeEndObject ()Ltools/jackson/core/JsonGenerator;
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  4 0xb6 tools/jackson/core/json/JsonWriteContext.inObject.()Z
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  15 0xb6 tools/jackson/core/json/JsonWriteContext.typeDesc.()Ljava/lang/String;
+  23 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  28 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  43 0xb6 tools/jackson/core/json/JsonWriteContext.getEntryCount.()I
+  46 0xb9 tools/jackson/core/PrettyPrinter.writeEndObject.(Ltools/jackson/core/JsonGenerator;I)V
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  59 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  66 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  75 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  81 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  89 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  92 0xb6 tools/jackson/core/json/JsonWriteContext.clearAndGetParent.()Ltools/jackson/core/json/JsonWriteContext;
+  95 0xb5 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+METHOD _writePPName (Ljava/lang/String;)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  5 0xb6 tools/jackson/core/json/JsonWriteContext.writeName.(Ljava/lang/String;)I
+  17 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  27 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  31 0xb9 tools/jackson/core/PrettyPrinter.writeObjectEntrySeparator.(Ltools/jackson/core/JsonGenerator;)V
+  40 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  44 0xb9 tools/jackson/core/PrettyPrinter.beforeObjectEntries.(Ltools/jackson/core/JsonGenerator;)V
+  50 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgUnqNames.Z
+  59 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.(Ljava/lang/String;Z)V
+  64 0xb6 java/lang/String.length.()I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBufferLength.I
+  79 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.(Ljava/lang/String;Z)V
+  84 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  88 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  95 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  99 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  104 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  110 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  114 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  122 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  126 0xb6 java/lang/String.getChars.(II[CI)V
+  131 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  138 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  144 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  151 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  156 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  161 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.([CII)V
+  169 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  174 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.([CII)V
+  178 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  182 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  189 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  193 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  198 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  204 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  208 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD _writePPName (Ltools/jackson/core/SerializableString;)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  5 0xb9 tools/jackson/core/SerializableString.getValue.()Ljava/lang/String;
+  10 0xb6 tools/jackson/core/json/JsonWriteContext.writeName.(Ljava/lang/String;)I
+  22 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  32 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  36 0xb9 tools/jackson/core/PrettyPrinter.writeObjectEntrySeparator.(Ltools/jackson/core/JsonGenerator;)V
+  45 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  49 0xb9 tools/jackson/core/PrettyPrinter.beforeObjectEntries.(Ltools/jackson/core/JsonGenerator;)V
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgUnqNames.Z
+  72 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  76 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  83 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  87 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  92 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  98 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  102 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  108 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  112 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  115 0xb9 tools/jackson/core/SerializableString.appendQuotedUTF8.([BI)I
+  129 0xb9 tools/jackson/core/SerializableString.asQuotedUTF8.()[B
+  134 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  142 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  148 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  156 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  160 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  167 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  171 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  176 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  182 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  186 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeString (Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  11 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeNull.()V
+  17 0xb6 java/lang/String.length.()I
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  32 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.(Ljava/lang/String;Z)V
+  38 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  44 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  51 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  78 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.(Ljava/lang/String;II)V
+  82 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  86 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  93 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  97 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  102 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  108 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  112 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeString (Ljava/io/Reader;I)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  13 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  16 0xc0 tools/jackson/core/JsonGenerator
+  32 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  38 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  42 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  49 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  53 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  58 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  64 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  68 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  80 0xb8 java/lang/Math.min.(II)I
+  91 0xb6 java/io/Reader.read.([CII)I
+  104 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  117 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  123 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  130 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  139 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.([CII)V
+  151 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  155 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  162 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  166 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  171 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  177 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  181 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  197 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+METHOD writeString ([CII)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  11 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  18 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  27 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  33 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  37 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  43 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  50 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  56 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  63 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  70 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.([CII)V
+  80 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegments.([CII)V
+  84 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  88 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  95 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  99 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  104 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  110 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  114 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeString (Ltools/jackson/core/SerializableString;)Ltools/jackson/core/JsonGenerator;
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  11 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  18 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  27 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  33 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  37 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  43 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  47 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  50 0xb9 tools/jackson/core/SerializableString.appendQuotedUTF8.([BI)I
+  62 0xb9 tools/jackson/core/SerializableString.asQuotedUTF8.()[B
+  67 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  75 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  80 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  84 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  88 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  95 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  99 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  104 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  110 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  114 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeRawUTF8String ([BII)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._checkRangeBoundsForByteArray.([BII)V
+  10 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  14 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  18 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  25 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  40 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  44 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  52 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([BII)V
+  56 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  67 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  71 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  76 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  82 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  86 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeUTF8String ([BII)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._checkRangeBoundsForByteArray.([BII)V
+  10 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  14 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  18 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  25 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  40 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  44 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  50 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  60 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeUTF8Segment.([BII)V
+  70 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeUTF8Segments.([BII)V
+  74 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  78 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  85 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  89 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  94 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  100 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  104 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeRaw (Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  1 0xb6 java/lang/String.length.()I
+  6 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  21 0xb6 java/lang/String.getChars.(II[CI)V
+  28 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.([CII)Ltools/jackson/core/JsonGenerator;
+  39 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;II)Ltools/jackson/core/JsonGenerator;
+METHOD writeRaw (Ljava/lang/String;II)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._checkRangeBoundsForString.(Ljava/lang/String;II)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  32 0xb6 java/lang/String.getChars.(II[CI)V
+  40 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.([CII)Ltools/jackson/core/JsonGenerator;
+  49 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  61 0xb8 java/lang/Math.min.(II)I
+  79 0xb8 java/lang/Math.min.(II)I
+  93 0xb6 java/lang/String.getChars.(II[CI)V
+  97 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  104 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  111 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  154 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeRawSegment.([CII)V
+METHOD writeRaw (Ltools/jackson/core/SerializableString;)Ltools/jackson/core/JsonGenerator;
+  2 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  6 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  9 0xb9 tools/jackson/core/SerializableString.appendUnquotedUTF8.([BI)I
+  21 0xb9 tools/jackson/core/SerializableString.asUnquotedUTF8.()[B
+  26 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  39 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeRawValue (Ltools/jackson/core/SerializableString;)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  9 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  13 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  16 0xb9 tools/jackson/core/SerializableString.appendUnquotedUTF8.([BI)I
+  28 0xb9 tools/jackson/core/SerializableString.asUnquotedUTF8.()[B
+  33 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  46 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeRaw ([CII)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._checkRangeBoundsForCharArray.([CII)V
+  15 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  41 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeSegmentedRaw.([CII)V
+  47 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  75 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  80 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  86 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  124 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  129 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  135 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  150 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  155 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  161 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  184 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputRawMultiByteChar.(I[CII)I
+METHOD writeRaw (C)Ltools/jackson/core/JsonGenerator;
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  14 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  18 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  31 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  37 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  56 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  62 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  78 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  84 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  105 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputRawMultiByteChar.(I[CII)I
+METHOD _writeSegmentedRaw ([CII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  39 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  48 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  61 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  84 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  90 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  97 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  120 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  126 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  144 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  150 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  174 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputRawMultiByteChar.(I[CII)I
+METHOD _writeRawSegment ([CII)V
+  21 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  26 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  32 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  75 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  81 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  96 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  101 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  107 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  130 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputRawMultiByteChar.(I[CII)I
+METHOD writeBinary (Ltools/jackson/core/Base64Variant;[BII)Ltools/jackson/core/JsonGenerator;
+  5 0xb6 tools/jackson/core/json/UTF8JsonGenerator._checkRangeBoundsForByteArray.([BII)V
+  12 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  16 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  20 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  27 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  31 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  36 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  42 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  46 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  58 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBinary.(Ltools/jackson/core/Base64Variant;[BII)V
+  62 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  73 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  77 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  82 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  88 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  92 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeBinary (Ltools/jackson/core/Base64Variant;Ljava/io/InputStream;I)I
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  28 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  34 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  38 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  47 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  54 0xb8 java/lang/Math.min.(II)I
+  57 0xb6 tools/jackson/core/io/IOContext.allocBase64Buffer.(I)[B
+  64 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  67 0xb6 tools/jackson/core/io/IOContext.allocBase64Buffer.()[B
+  81 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBinary.(Ltools/jackson/core/Base64Variant;Ljava/io/InputStream;[B)I
+  95 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBinary.(Ltools/jackson/core/Base64Variant;Ljava/io/InputStream;[BI)I
+  114 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  122 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  127 0xb6 tools/jackson/core/io/IOContext.releaseBase64Buffer.([B)V
+  136 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  141 0xb6 tools/jackson/core/io/IOContext.releaseBase64Buffer.([B)V
+  148 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  152 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  159 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  163 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  168 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  174 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  178 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeNumber (S)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  15 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  22 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  26 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  34 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedShort.(S)V
+  42 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  46 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  49 0xb8 tools/jackson/core/io/NumberOutput.outputInt.(I[BI)I
+  52 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeQuotedShort (S)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  15 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  24 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  30 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  45 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  48 0xb8 tools/jackson/core/io/NumberOutput.outputInt.(I[BI)I
+  51 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeNumber (I)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  15 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  22 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  26 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  34 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedInt.(I)V
+  42 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  46 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  49 0xb8 tools/jackson/core/io/NumberOutput.outputInt.(I[BI)I
+  52 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeQuotedInt (I)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  15 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  24 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  30 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  45 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  48 0xb8 tools/jackson/core/io/NumberOutput.outputInt.(I[BI)I
+  51 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeNumber (J)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  16 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedLong.(J)V
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  36 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  42 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  46 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  49 0xb8 tools/jackson/core/io/NumberOutput.outputLong.(J[BI)I
+  52 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeQuotedLong (J)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  15 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  24 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  30 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  45 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  48 0xb8 tools/jackson/core/io/NumberOutput.outputLong.(J[BI)I
+  51 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeNumber (Ljava/math/BigInteger;)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  12 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeNull.()V
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  27 0xb6 java/math/BigInteger.toString.()Ljava/lang/String;
+  30 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedRaw.(Ljava/lang/String;)V
+  38 0xb6 java/math/BigInteger.toString.()Ljava/lang/String;
+  41 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+METHOD writeNumber (D)Ltools/jackson/core/JsonGenerator;
+  1 0xb2 tools/jackson/core/StreamWriteFeature.USE_FAST_DOUBLE_WRITER.Ltools/jackson/core/StreamWriteFeature;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator.isEnabled.(Ltools/jackson/core/StreamWriteFeature;)Z
+  9 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  16 0xb8 tools/jackson/core/io/NumberOutput.notFinite.(D)Z
+  22 0xb2 tools/jackson/core/json/JsonWriteFeature.WRITE_NAN_AS_STRINGS.Ltools/jackson/core/json/JsonWriteFeature;
+  26 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  29 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  38 0xb8 tools/jackson/core/io/NumberOutput.toString.(DZ)Ljava/lang/String;
+  41 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeString.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  51 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  59 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  73 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  79 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  83 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  86 0xb8 tools/jackson/core/io/NumberOutput.outputDouble.(D[BI)I
+  89 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  97 0xb8 tools/jackson/core/io/NumberOutput.toString.(DZ)Ljava/lang/String;
+  100 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+METHOD writeNumber (F)Ltools/jackson/core/JsonGenerator;
+  1 0xb2 tools/jackson/core/StreamWriteFeature.USE_FAST_DOUBLE_WRITER.Ltools/jackson/core/StreamWriteFeature;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator.isEnabled.(Ltools/jackson/core/StreamWriteFeature;)Z
+  9 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  16 0xb8 tools/jackson/core/io/NumberOutput.notFinite.(F)Z
+  22 0xb2 tools/jackson/core/json/JsonWriteFeature.WRITE_NAN_AS_STRINGS.Ltools/jackson/core/json/JsonWriteFeature;
+  26 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  29 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  38 0xb8 tools/jackson/core/io/NumberOutput.toString.(FZ)Ljava/lang/String;
+  41 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeString.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  51 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  59 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  66 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  73 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  79 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  83 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  86 0xb8 tools/jackson/core/io/NumberOutput.outputFloat.(F[BI)I
+  89 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  97 0xb8 tools/jackson/core/io/NumberOutput.toString.(FZ)Ljava/lang/String;
+  100 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+METHOD writeNumber (Ljava/math/BigDecimal;)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  12 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeNull.()V
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  28 0xb6 tools/jackson/core/json/UTF8JsonGenerator._asString.(Ljava/math/BigDecimal;)Ljava/lang/String;
+  31 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedRaw.(Ljava/lang/String;)V
+  40 0xb6 tools/jackson/core/json/UTF8JsonGenerator._asString.(Ljava/math/BigDecimal;)Ljava/lang/String;
+  43 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+METHOD writeNumber (Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  12 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeNull.()V
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  27 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedRaw.(Ljava/lang/String;)V
+  35 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+METHOD writeNumber ([CII)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgNumbersAsStrings.Z
+  18 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeQuotedRaw.([CII)V
+  28 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.([CII)Ltools/jackson/core/JsonGenerator;
+METHOD _writeQuotedRaw (Ljava/lang/String;)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  5 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  12 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  16 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  21 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  27 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  31 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  37 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.(Ljava/lang/String;)Ltools/jackson/core/JsonGenerator;
+  42 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  46 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  53 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  62 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  68 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  72 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD _writeQuotedRaw ([CII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  5 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  12 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  16 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  21 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  27 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  31 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  39 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeRaw.([CII)Ltools/jackson/core/JsonGenerator;
+  44 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  48 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  55 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  59 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  64 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  74 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD writeBoolean (Z)Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  14 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  21 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  28 0xb2 tools/jackson/core/json/UTF8JsonGenerator.TRUE_BYTES.[B
+  34 0xb2 tools/jackson/core/json/UTF8JsonGenerator.FALSE_BYTES.[B
+  44 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  48 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  52 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  62 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD writeNull ()Ltools/jackson/core/JsonGenerator;
+  4 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyValueWrite.(Ljava/lang/String;)V
+  8 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeNull.()V
+METHOD _verifyValueWrite (Ljava/lang/String;)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._streamWriteContext.Ltools/jackson/core/json/JsonWriteContext;
+  4 0xb6 tools/jackson/core/json/JsonWriteContext.writeValue.()I
+  9 0xb4 tools/jackson/core/json/UTF8JsonGenerator._prettyPrinter.Ltools/jackson/core/PrettyPrinter;
+  18 0xb6 tools/jackson/core/json/UTF8JsonGenerator._verifyPrettyValueWrite.(Ljava/lang/String;I)V
+  74 0xb4 tools/jackson/core/json/UTF8JsonGenerator._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  81 0xb4 tools/jackson/core/json/UTF8JsonGenerator._rootValueSeparator.Ltools/jackson/core/SerializableString;
+  84 0xb9 tools/jackson/core/SerializableString.asUnquotedUTF8.()[B
+  100 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeBytes.([B)V
+  106 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportCantWriteValueExpectName.(Ljava/lang/String;)V
+  111 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  115 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  122 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  126 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  131 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  137 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD flush ()V
+  1 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  5 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  12 0xb2 tools/jackson/core/StreamWriteFeature.FLUSH_PASSED_TO_STREAM.Ltools/jackson/core/StreamWriteFeature;
+  15 0xb6 tools/jackson/core/json/UTF8JsonGenerator.isEnabled.(Ltools/jackson/core/StreamWriteFeature;)Z
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  25 0xb6 java/io/OutputStream.flush.()V
+  34 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _closeInput ()V
+  3 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  10 0xb2 tools/jackson/core/StreamWriteFeature.AUTO_CLOSE_CONTENT.Ltools/jackson/core/StreamWriteFeature;
+  13 0xb6 tools/jackson/core/json/UTF8JsonGenerator.isEnabled.(Ltools/jackson/core/StreamWriteFeature;)Z
+  20 0xb6 tools/jackson/core/json/UTF8JsonGenerator.streamWriteContext.()Ltools/jackson/core/TokenStreamContext;
+  25 0xb6 tools/jackson/core/TokenStreamContext.inArray.()Z
+  32 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeEndArray.()Ltools/jackson/core/JsonGenerator;
+  40 0xb6 tools/jackson/core/TokenStreamContext.inObject.()Z
+  47 0xb6 tools/jackson/core/json/UTF8JsonGenerator.writeEndObject.()Ltools/jackson/core/JsonGenerator;
+  55 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  66 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  77 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  80 0xb6 tools/jackson/core/io/IOContext.isResourceManaged.()Z
+  87 0xb2 tools/jackson/core/StreamWriteFeature.AUTO_CLOSE_TARGET.Ltools/jackson/core/StreamWriteFeature;
+  90 0xb6 tools/jackson/core/json/UTF8JsonGenerator.isEnabled.(Ltools/jackson/core/StreamWriteFeature;)Z
+  97 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  100 0xb6 java/io/OutputStream.close.()V
+  107 0xb2 tools/jackson/core/StreamWriteFeature.FLUSH_PASSED_TO_STREAM.Ltools/jackson/core/StreamWriteFeature;
+  110 0xb6 tools/jackson/core/json/UTF8JsonGenerator.isEnabled.(Ltools/jackson/core/StreamWriteFeature;)Z
+  117 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  120 0xb6 java/io/OutputStream.flush.()V
+  129 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  139 0xb6 tools/jackson/core/JacksonException.addSuppressed.(Ljava/lang/Throwable;)V
+METHOD _releaseBuffers ()V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  10 0xb4 tools/jackson/core/json/UTF8JsonGenerator._bufferRecyclable.Z
+  18 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  26 0xb6 tools/jackson/core/io/IOContext.releaseWriteEncodingBuffer.([B)V
+  30 0xb4 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  40 0xb5 tools/jackson/core/json/UTF8JsonGenerator._charBuffer.[C
+  44 0xb4 tools/jackson/core/json/UTF8JsonGenerator._ioContext.Ltools/jackson/core/io/IOContext;
+  48 0xb6 tools/jackson/core/io/IOContext.releaseConcatBuffer.([C)V
+METHOD _writeBytes ([B)V
+  4 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  10 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  17 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  28 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  34 0xb6 java/io/OutputStream.write.([BII)V
+  43 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  51 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  59 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  64 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  69 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeBytes ([BII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  14 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  25 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  31 0xb6 java/io/OutputStream.write.([BII)V
+  42 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  50 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  54 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  58 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  63 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  68 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeStringSegments (Ljava/lang/String;Z)V
+  5 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  9 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  16 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  20 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  25 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  31 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+  40 0xb6 java/lang/String.length.()I
+  52 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  56 0xb8 java/lang/Math.min.(II)I
+  75 0xb6 java/lang/String.charAt.(I)C
+  78 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  88 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  95 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  102 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  111 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.(Ljava/lang/String;II)V
+  134 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  138 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  145 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  149 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  154 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  160 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  164 0xb4 tools/jackson/core/json/UTF8JsonGenerator._quoteChar.B
+METHOD _writeStringSegments ([CII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  5 0xb8 java/lang/Math.min.(II)I
+  24 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  48 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  56 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.([CII)V
+METHOD _writeStringSegments (Ljava/lang/String;II)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  5 0xb8 java/lang/Math.min.(II)I
+  23 0xb6 java/lang/String.charAt.(I)C
+  26 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  36 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  43 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  50 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  58 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment.(Ljava/lang/String;II)V
+METHOD _writeStringSegment ([CII)V
+  5 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  11 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  17 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  70 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb4 tools/jackson/core/json/UTF8JsonGenerator._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  89 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeCustomStringSegment2.([CII)V
+  96 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  106 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment2.([CII)V
+  116 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegmentASCII2.([CII)V
+METHOD _writeStringSegment (Ljava/lang/String;II)V
+  5 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  11 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  17 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  29 0xb6 java/lang/String.charAt.(I)C
+  72 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  81 0xb4 tools/jackson/core/json/UTF8JsonGenerator._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  91 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeCustomStringSegment2.(Ljava/lang/String;II)V
+  98 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  108 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegment2.(Ljava/lang/String;II)V
+  118 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeStringSegmentASCII2.(Ljava/lang/String;II)V
+METHOD _writeStringSegment2 ([CII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  123 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  180 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  186 0xb2 tools/jackson/core/json/JsonWriteFeature.COMBINE_UNICODE_SURROGATES_IN_UTF8.Ltools/jackson/core/json/JsonWriteFeature;
+  190 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  193 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  220 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isEndOfSurrogatePair.(I)Z
+  236 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputSurrogatePair.(CCI)I
+  249 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar.(II)I
+  260 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeStringSegment2 (Ljava/lang/String;II)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  50 0xb6 java/lang/String.charAt.(I)C
+  125 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  182 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  188 0xb2 tools/jackson/core/json/JsonWriteFeature.COMBINE_UNICODE_SURROGATES_IN_UTF8.Ltools/jackson/core/json/JsonWriteFeature;
+  192 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  195 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  217 0xb6 java/lang/String.charAt.(I)C
+  224 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isEndOfSurrogatePair.(I)Z
+  240 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputSurrogatePair.(CCI)I
+  253 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar.(II)I
+  264 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeStringSegmentASCII2 ([CII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  129 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  149 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  209 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar.(II)I
+  220 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeStringSegmentASCII2 (Ljava/lang/String;II)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  56 0xb6 java/lang/String.charAt.(I)C
+  131 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  151 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  211 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar.(II)I
+  222 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeCustomStringSegment2 ([CII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  54 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  154 0xb6 tools/jackson/core/io/CharacterEscapes.getEscapeSequence.(I)Ltools/jackson/core/SerializableString;
+  167 0xb8 java/lang/Integer.toHexString.(I)Ljava/lang/String;
+  175 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  189 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeCustomEscape.([BILtools/jackson/core/SerializableString;I)I
+  202 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  222 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  234 0xb6 tools/jackson/core/io/CharacterEscapes.getEscapeSequence.(I)Ltools/jackson/core/SerializableString;
+  254 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeCustomEscape.([BILtools/jackson/core/SerializableString;I)I
+  311 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  317 0xb2 tools/jackson/core/json/JsonWriteFeature.COMBINE_UNICODE_SURROGATES_IN_UTF8.Ltools/jackson/core/json/JsonWriteFeature;
+  321 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  324 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  351 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isEndOfSurrogatePair.(I)Z
+  367 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputSurrogatePair.(CCI)I
+  380 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar.(II)I
+  391 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeCustomStringSegment2 (Ljava/lang/String;II)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  12 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  29 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  41 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  54 0xb4 tools/jackson/core/json/UTF8JsonGenerator._maximumNonEscapedChar.I
+  60 0xb4 tools/jackson/core/json/UTF8JsonGenerator._characterEscapes.Ltools/jackson/core/io/CharacterEscapes;
+  75 0xb6 java/lang/String.charAt.(I)C
+  156 0xb6 tools/jackson/core/io/CharacterEscapes.getEscapeSequence.(I)Ltools/jackson/core/SerializableString;
+  169 0xb8 java/lang/Integer.toHexString.(I)Ljava/lang/String;
+  177 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  191 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeCustomEscape.([BILtools/jackson/core/SerializableString;I)I
+  204 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  224 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  236 0xb6 tools/jackson/core/io/CharacterEscapes.getEscapeSequence.(I)Ltools/jackson/core/SerializableString;
+  256 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeCustomEscape.([BILtools/jackson/core/SerializableString;I)I
+  313 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  319 0xb2 tools/jackson/core/json/JsonWriteFeature.COMBINE_UNICODE_SURROGATES_IN_UTF8.Ltools/jackson/core/json/JsonWriteFeature;
+  323 0xb4 tools/jackson/core/json/UTF8JsonGenerator._formatWriteFeatures.I
+  326 0xb6 tools/jackson/core/json/JsonWriteFeature.enabledIn.(I)Z
+  348 0xb6 java/lang/String.charAt.(I)C
+  355 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isEndOfSurrogatePair.(I)Z
+  371 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputSurrogatePair.(CCI)I
+  384 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputMultiByteChar.(II)I
+  395 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeCustomEscape ([BILtools/jackson/core/SerializableString;I)I
+  1 0xb9 tools/jackson/core/SerializableString.asUnquotedUTF8.()[B
+  24 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  31 0xb6 tools/jackson/core/json/UTF8JsonGenerator._handleLongCustomEscape.([BII[BI)I
+  42 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+METHOD _handleLongCustomEscape ([BII[BI)I
+  15 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  19 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  23 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  43 0xb6 java/io/OutputStream.write.([BII)V
+  54 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+  67 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  88 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  92 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  96 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeUTF8Segments ([BII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputMaxContiguous.I
+  5 0xb8 java/lang/Math.min.(II)I
+  24 0xb8 tools/jackson/core/json/UTF8JsonGenerator._isStartOfSurrogatePair.(I)Z
+  38 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeUTF8Segment.([BII)V
+METHOD _writeUTF8Segment ([BII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  47 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeUTF8Segment2.([BII)V
+  55 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  61 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  68 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  74 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  78 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  82 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  87 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  92 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeUTF8Segment2 ([BII)V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  14 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  21 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  25 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  31 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  37 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEscapes.[I
+  130 0xb6 tools/jackson/core/json/UTF8JsonGenerator._writeGenericEscape.(II)I
+  141 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeBinary (Ltools/jackson/core/Base64Variant;[BII)V
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  16 0xb6 tools/jackson/core/Base64Variant.getMaxLineLength.()I
+  30 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  39 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  91 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  95 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  98 0xb6 tools/jackson/core/Base64Variant.encodeBase64Chunk.(I[BI)I
+  101 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  113 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  118 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  124 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  131 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  136 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  142 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  149 0xb6 tools/jackson/core/Base64Variant.getMaxLineLength.()I
+  171 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  180 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  225 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  229 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  232 0xb6 tools/jackson/core/Base64Variant.encodeBase64Partial.(II[BI)I
+  235 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeBinary (Ltools/jackson/core/Base64Variant;Ljava/io/InputStream;[BI)I
+  11 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  20 0xb6 tools/jackson/core/Base64Variant.getMaxLineLength.()I
+  49 0xb6 tools/jackson/core/json/UTF8JsonGenerator._readMore.(Ljava/io/InputStream;[BIII)I
+  73 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  82 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  140 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  144 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  147 0xb6 tools/jackson/core/Base64Variant.encodeBase64Chunk.(I[BI)I
+  150 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  162 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  167 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  173 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  180 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  185 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  191 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  198 0xb6 tools/jackson/core/Base64Variant.getMaxLineLength.()I
+  222 0xb6 tools/jackson/core/json/UTF8JsonGenerator._readMore.(Ljava/io/InputStream;[BIII)I
+  236 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  245 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  299 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  303 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  306 0xb6 tools/jackson/core/Base64Variant.encodeBase64Partial.(II[BI)I
+  309 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeBinary (Ltools/jackson/core/Base64Variant;Ljava/io/InputStream;[B)I
+  14 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  23 0xb6 tools/jackson/core/Base64Variant.getMaxLineLength.()I
+  46 0xb6 tools/jackson/core/json/UTF8JsonGenerator._readMore.(Ljava/io/InputStream;[BIII)I
+  70 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  79 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  137 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  141 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  144 0xb6 tools/jackson/core/Base64Variant.encodeBase64Chunk.(I[BI)I
+  147 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  159 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  164 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  170 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  177 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  182 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  188 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  195 0xb6 tools/jackson/core/Base64Variant.getMaxLineLength.()I
+  213 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  222 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  280 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  284 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  287 0xb6 tools/jackson/core/Base64Variant.encodeBase64Partial.(II[BI)I
+  290 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _readMore (Ljava/io/InputStream;[BIII)I
+  21 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  34 0xb8 java/lang/Math.min.(II)I
+  60 0xb6 java/io/InputStream.read.([BII)I
+  73 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD _outputRawMultiByteChar (I[CII)I
+  29 0xbd java/lang/Object
+  35 0xb8 java/lang/Integer.valueOf.(I)Ljava/lang/Integer;
+  39 0xb8 java/lang/String.format.(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
+  42 0xb6 tools/jackson/core/json/UTF8JsonGenerator._reportError.(Ljava/lang/String;)Ljava/lang/Object;
+  54 0xb6 tools/jackson/core/json/UTF8JsonGenerator._outputSurrogates.(II)V
+  62 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  71 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  77 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  94 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  100 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  120 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  126 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _outputSurrogates (II)V
+  3 0xb6 tools/jackson/core/json/UTF8JsonGenerator._decodeSurrogate.(II)I
+  8 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  14 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  21 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  25 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  34 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  40 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  57 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  63 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  83 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  89 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  109 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  115 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _outputSurrogatePair (CCI)I
+  21 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  43 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  65 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  87 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+METHOD _outputMultiByteChar (II)I
+  1 0xb6 tools/jackson/core/json/UTF8JsonGenerator.getHexBytes.()[B
+  6 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+METHOD _writeNull ()V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  7 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputEnd.I
+  14 0xb6 tools/jackson/core/json/UTF8JsonGenerator._flushBuffer.()V
+  17 0xb2 tools/jackson/core/json/UTF8JsonGenerator.NULL_BYTES.[B
+  22 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  26 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  30 0xb8 java/lang/System.arraycopy.(Ljava/lang/Object;ILjava/lang/Object;II)V
+  35 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  40 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+METHOD _writeGenericEscape (II)I
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  6 0xb6 tools/jackson/core/json/UTF8JsonGenerator.getHexBytes.()[B
+METHOD _flushBuffer ()V
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  11 0xb5 tools/jackson/core/json/UTF8JsonGenerator._outputTail.I
+  15 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputStream.Ljava/io/OutputStream;
+  19 0xb4 tools/jackson/core/json/UTF8JsonGenerator._outputBuffer.[B
+  24 0xb6 java/io/OutputStream.write.([BII)V
+  33 0xb6 tools/jackson/core/json/UTF8JsonGenerator._wrapIOFailure.(Ljava/io/IOException;)Ltools/jackson/core/JacksonException;
+METHOD getHexBytes ()[B
+  1 0xb4 tools/jackson/core/json/UTF8JsonGenerator._cfgWriteHexUppercase.Z
+  7 0xb2 tools/jackson/core/json/UTF8JsonGenerator.HEX_BYTES_UPPER.[B
+  13 0xb2 tools/jackson/core/json/UTF8JsonGenerator.HEX_BYTES_LOWER.[B
+METHOD _isStartOfSurrogatePair (I)Z
+METHOD _isEndOfSurrogatePair (I)Z
+METHOD <clinit> ()V
+  1 0xb8 tools/jackson/core/io/CharTypes.copyHexBytes.(Z)[B
+  4 0xb3 tools/jackson/core/json/UTF8JsonGenerator.HEX_BYTES_UPPER.[B
+  8 0xb8 tools/jackson/core/io/CharTypes.copyHexBytes.(Z)[B
+  11 0xb3 tools/jackson/core/json/UTF8JsonGenerator.HEX_BYTES_LOWER.[B
+  37 0xb3 tools/jackson/core/json/UTF8JsonGenerator.NULL_BYTES.[B
+  63 0xb3 tools/jackson/core/json/UTF8JsonGenerator.TRUE_BYTES.[B
+  94 0xb3 tools/jackson/core/json/UTF8JsonGenerator.FALSE_BYTES.[B

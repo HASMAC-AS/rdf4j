@@ -1,0 +1,41 @@
+{
+  "commonEvidence": {
+    "experiments/threadlocal-audit/depth-workbench/application-manifest.json": "ecbc02e94e66cc63b8e207fc58715736f8153f80f5449b1944724da18645ed09",
+    "experiments/threadlocal-audit/depth-workbench/lmdb-runtime-manifest.json": "b8ad565bf5b5b3fe83855aa49c0be9f11983326486b49f94340823729709dcd0",
+    "experiments/threadlocal-audit/depth-workbench/frozen-harness-manifest.json": "874463be83db07d20da1e035b7d5efea4a645d2f5e93a3768087ecd82478776c",
+    "experiments/threadlocal-audit/depth-workbench/writer-source-identity.json": "92621c203c4af55cb56d77389120c68f5cbf954c902a39726467b138149f0f21",
+    "experiments/threadlocal-audit/depth-workbench/fixture-manifest.json": "bfd352b6f5350d74dc76a0a49f7ffd17522cf1865e153e729941190aaddb84a7",
+    "experiments/threadlocal-audit/depth-workbench/client.mjs": "f199e438a9c937aa053e832fa76cc8612b58d16836f922df499d2c48e77f15ad",
+    "experiments/threadlocal-audit/depth-workbench/query.mjs": "f4076e22ee606cfb868adb94476bf7618e27ac8023a8052cf099e483582b83de"
+  },
+  "warmups": 60,
+  "measurements": 30,
+  "blocks": [
+    [
+      "base",
+      "stack",
+      "both",
+      "ordered"
+    ],
+    [
+      "stack",
+      "ordered",
+      "base",
+      "both"
+    ],
+    [
+      "ordered",
+      "both",
+      "stack",
+      "base"
+    ],
+    [
+      "both",
+      "base",
+      "ordered",
+      "stack"
+    ]
+  ],
+  "primaryContrast": "both versus stack",
+  "interactionScope": "qualified depth+serializer stack as whole, no independent depth/serializer attribution"
+}

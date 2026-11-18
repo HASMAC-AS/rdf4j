@@ -7,14 +7,17 @@ Continue the authorized throughput/latency investigation after compact serialize
 Keep the complete original source getValue phase before any RDF lexical getter/packing and keep complete row packing before output. Do not pass original BindingSet directly. Only a concrete compact Workbench writer may accept an ordered list after unique/non-null/aligned declared names are proven. Preserve arbitrary Java-object builder conversion, generic/legacy/download fallback, duplicate/null-name behavior, synchronous list/row ownership, reused input rows, blank-node origin negotiation, cancellation/progress/heartbeat locking, record caps and exact flush/disconnect semantics. No serializer or scope changes folded into this patch.
 
 ## Plan
-- [in_progress] Establish bounded design and baseline contracts
-- [todo] Implement guarded ordered-values query path
-- [todo] Independently review and qualify exact outputs
-- [todo] Measure matched standalone and combined configurations
-- [todo] Publish complete evidence and next recommendation
+- [done] Establish bounded design and baseline contracts
+- [done] Implement guarded ordered-values query path
+- [done] Independently review and qualify exact outputs
+- [done] Measure matched standalone and combined configurations
+- [in_progress] Publish complete evidence and next recommendation
 
 ## Source and timing identities
 Standalone baseline is5ac89b5. Qualified combined comparison stack isd94617b3 (depth+typed serializer), not a proven universally fastest configuration. Compare baseline, qualified stack, ordered alone, qualified stack+ordered. The second factor is the existing stack as a whole; do not attribute its interaction specifically to depth or serializer. No holder, null-initializer restoration, record cancellation or test seam in measured layers. Reconstruct exact class-family baselines before modifying; preserve old evidence. Candidate source/test commits pending qualification.
 
 ## Coordination
 writer_guard_design owns first CPU/build/test window and minimal implementation. native_token_path independently reviews semantics. inventory prepares provenance and prespecified HTTP protocol read-only until handoff. Coordinator publishes and reports. Canonical benchmark lock excludes overlap. No production edits before baseline/TDD evidence; no outcome-driven timing reruns or trimming. First-row latency tradeoffs matter alongside full completion/throughput.
+
+## Final measured outcome
+Adding ordered values to the qualified stack averaged 2.12% lower completion latency with mixed pairs and uncertainty spanning zero. Do not promote the bypass. The existing depth+serializer stack independently beat baseline by 14.31% within this matched series, all four pairs favorable, while first-row changes remain uncertain. Profiles confirm the intended ordered path executed, not an established incremental speedup. All observations and measured-window drift retained. See ../ordered-workbench/RESULTS.md. Next authorized validation, after publication, broadens in-memory workloads for the depth+serializer stack only.
