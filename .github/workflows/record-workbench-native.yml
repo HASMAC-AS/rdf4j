@@ -1,0 +1,90 @@
+name: Native RDF4J Workbench motion capture
+
+on:
+  push:
+    branches:
+      - chatgpt/workbench-native-recording-m2
+    paths:
+      - .github/workbench-reel/**
+      - .github/workflows/record-workbench-native.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-workbench-recording:
+    name: Record live SPARQL execution and native graph expansion
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/workbench-reel
+            .github/workflows/record-workbench-native.yml
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch and verify the official milestone WARs
+        working-directory: .github/workbench-reel
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tools server workbench evidence
+          base=https://repo.maven.apache.org/maven2
+          curl --fail --location --retry 4 -o workbench.war "$base/org/eclipse/rdf4j/rdf4j-http-workbench/6.2.0-M2/rdf4j-http-workbench-6.2.0-M2.war"
+          curl --fail --location --retry 4 -o server.war "$base/org/eclipse/rdf4j/rdf4j-http-server/6.2.0-M2/rdf4j-http-server-6.2.0-M2.war"
+          echo "baa9fe094b6e2e7ae9f253bc2c51a5c4c60f085c50681b50e7e0c6d305bf961c  workbench.war" | sha256sum -c -
+          echo "f8371e91204a3eb609bb1d1e21d830eea67442c3c3410ee43ad65593de2fe41b  server.war" | sha256sum -c -
+          unzip -q workbench.war -d workbench
+          unzip -q server.war -d server
+          grep -F 'version=6.2.0-M2' workbench/META-INF/maven/org.eclipse.rdf4j/rdf4j-http-workbench/pom.properties
+          curl --fail --location --retry 4 -o tools/tomcat-embed-core-11.0.27.jar "$base/org/apache/tomcat/embed/tomcat-embed-core/11.0.27/tomcat-embed-core-11.0.27.jar"
+          curl --fail --location --retry 4 -o tools/tomcat-annotations-api-11.0.27.jar "$base/org/apache/tomcat/tomcat-annotations-api/11.0.27/tomcat-annotations-api-11.0.27.jar"
+
+      - name: Install native screen capture tools
+        working-directory: .github/workbench-reel
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --no-save playwright@1.62.1
+          npx playwright install --with-deps chromium
+          ffmpeg -version | head -1
+
+      - name: Execute real Workbench queries and record native graph layout
+        working-directory: .github/workbench-reel
+        shell: bash
+        run: node capture.cjs
+
+      - name: Cut authentic screen recordings to a 15-second film
+        working-directory: .github/workbench-reel
+        shell: bash
+        run: |
+          set -euo pipefail
+          ffprobe -v error -show_entries format=duration -of csv=p=0 evidence/query-native.webm
+          ffprobe -v error -show_entries format=duration -of csv=p=0 evidence/graph-native.webm
+          ffmpeg -hide_banner -loglevel warning -y \
+            -i evidence/query-native.webm -i evidence/graph-native.webm \
+            -filter_complex "[0:v]trim=start=1:duration=4,setpts=PTS-STARTPTS,fps=30,scale=1920:1080:flags=lanczos,setsar=1[q];[1:v]trim=start=1:duration=11,setpts=PTS-STARTPTS,fps=30,scale=1920:1080:flags=lanczos,setsar=1[g];[q][g]concat=n=2:v=1:a=0,format=yuv420p[v]" \
+            -map "[v]" -c:v libx264 -crf 18 -preset medium -movflags +faststart -t 15 evidence/RDF4J_Workbench_Real_Recordings_15s.mp4
+          ffprobe -v error -show_entries stream=width,height,r_frame_rate,nb_frames -show_entries format=duration -of json evidence/RDF4J_Workbench_Real_Recordings_15s.mp4 > evidence/encoded-verification.json
+          cat evidence/encoded-verification.json
+
+      - name: Upload raw browser recordings, evidence and final cut
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rdf4j-6.2-m2-authentic-workbench-video
+          path: .github/workbench-reel/evidence/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 2
