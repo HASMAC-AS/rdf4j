@@ -1,0 +1,60 @@
+13:53:23,289 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+13:53:23,290 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6c67e137 - No custom configurators were discovered as a service.
+13:53:23,290 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6c67e137 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+13:53:23,291 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6c67e137 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+13:53:23,293 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/harness-test-dependencies/logback-test.xml]
+13:53:23,344 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+13:53:23,344 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+13:53:23,389 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+13:53:23,396 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@2c9399a4 - No contradictions in caller extraction instruction were detected
+13:53:23,397 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+13:53:23,397 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+13:53:23,404 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+13:53:23,443 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+13:53:23,443 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+13:53:23,443 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+13:53:23,444 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+13:53:23,444 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+13:53:23,445 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@191ae03f - End of configuration.
+13:53:23,445 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@9635fa - Registering current configuration as safe fallback point
+13:53:23,448 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6c67e137 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 154 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+ORIGIN org.eclipse.rdf4j.sail.lmdb.LmdbSailStore file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/resource-holder/baseline-compiled/
+ORIGIN org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/resource-holder/baseline-compiled/
+ORIGIN org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+ORIGIN org.eclipse.rdf4j.http.client.QueryExecutionContext file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/eclipse/rdf4j/rdf4j-http-client/6.2.0-SNAPSHOT/rdf4j-http-client-6.2.0-SNAPSHOT.jar
+ORIGIN org.eclipse.rdf4j.sail.lmdb.LmdbRecordIterator file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+ORIGIN org.eclipse.rdf4j.sail.lmdb.ValueStore file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+ORIGIN org.eclipse.rdf4j.sail.lmdb.evaluation.NativeValueMemo file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+BEGIN org.eclipse.rdf4j.sail.lmdb.LmdbReadResourceHolderTest
+TEST_ORIGIN org.eclipse.rdf4j.sail.lmdb.LmdbReadResourceHolderTest file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/resource-holder/test-layer/
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/lwjgl/lwjgl/3.4.2/lwjgl-3.4.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+13:53:25.002 [rdf4j-lmdb-term-index-maintenance] WARN  Triple-term index maintenance failed; committed indexes remain active
+java.io.IOException: Interrupted while acquiring read lock
+	at org.eclipse.rdf4j.sail.lmdb.TxnManager.acquireReadBarrier(TxnManager.java:762)
+	at org.eclipse.rdf4j.sail.lmdb.TxnManager.acquireMetadataReadBarrier(TxnManager.java:771)
+	at org.eclipse.rdf4j.sail.lmdb.ValueStore.occupiedBytes(ValueStore.java:8660)
+	at org.eclipse.rdf4j.sail.lmdb.ValueStore.requiresResizeForEstimatedWrite(ValueStore.java:8656)
+	at org.eclipse.rdf4j.sail.lmdb.ValueStore.runTermIndexMaintenance(ValueStore.java:3980)
+	at org.eclipse.rdf4j.sail.lmdb.ValueStore.lambda$startTermIndexMaintenanceWorker$0(ValueStore.java:3846)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+Caused by: java.lang.InterruptedException
+	at org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager.spinWaitAtReadLock(StampedLongAdderLockManager.java:219)
+	at org.eclipse.rdf4j.common.concurrent.locks.StampedLongAdderLockManager.readLock(StampedLongAdderLockManager.java:76)
+	at org.eclipse.rdf4j.sail.lmdb.TxnManager.acquireReadBarrierInterruptibly(TxnManager.java:781)
+	at org.eclipse.rdf4j.sail.lmdb.TxnManager.acquireReadBarrier(TxnManager.java:759)
+	... 6 common frames omitted
+RESULT org.eclipse.rdf4j.sail.lmdb.LmdbReadResourceHolderTest found=8 passed=7 failed=1 skipped=0 aborted=0 millis=1699
+
+Failures (1):
+  JUnit Jupiter:LmdbReadResourceHolderTest:scopeMutatesOnlyOwnerFreeHolderHead()
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.LmdbReadResourceHolderTest', methodName = 'scopeMutatesOnlyOwnerFreeHolderHead', methodParameterTypes = '']
+    => org.opentest4j.AssertionFailedError: expected: <[]> but was: <[set]>
+       org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+       org.eclipse.rdf4j.sail.lmdb.LmdbReadResourceHolderTest.assertNoThreadLocalMutation(LmdbReadResourceHolderTest.java:262)
+       org.eclipse.rdf4j.sail.lmdb.LmdbReadResourceHolderTest.scopeMutatesOnlyOwnerFreeHolderHead(LmdbReadResourceHolderTest.java:35)
+TOTAL found=8 passed=7 failed=1 skipped=0 aborted=0 failedClasses=1

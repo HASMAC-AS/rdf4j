@@ -1,0 +1,111 @@
+Compiled from "LmdbSailStore.java"
+final class org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceState {
+  private org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext current;
+
+  private org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceState();
+    Code:
+         0: aload_0
+         1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+         4: return
+}
+Compiled from "LmdbSailStore.java"
+final class org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext implements org.eclipse.rdf4j.sail.base.SailClosable {
+  private final org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext previous;
+
+  private final java.util.function.Supplier<? extends java.lang.Iterable<org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadViewLease>> ownedViews;
+
+  private boolean closed;
+
+  final org.eclipse.rdf4j.sail.lmdb.LmdbSailStore this$0;
+
+  private org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext(org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext, java.util.function.Supplier<? extends java.lang.Iterable<org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadViewLease>>);
+    Code:
+         0: aload_0
+         1: aload_1
+         2: dup
+         3: invokestatic  #1                  // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;)Ljava/lang/Object;
+         6: pop
+         7: putfield      #7                  // Field this$0:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore;
+        10: aload_0
+        11: invokespecial #13                 // Method java/lang/Object."<init>":()V
+        14: aload_0
+        15: aload_2
+        16: putfield      #19                 // Field previous:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceContext;
+        19: aload_0
+        20: aload_3
+        21: putfield      #23                 // Field ownedViews:Ljava/util/function/Supplier;
+        24: return
+
+  private java.util.List<org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadViewLease> readViews();
+    Code:
+         0: new           #27                 // class java/util/IdentityHashMap
+         3: dup
+         4: invokespecial #29                 // Method java/util/IdentityHashMap."<init>":()V
+         7: astore_1
+         8: aload_0
+         9: astore_2
+        10: aload_2
+        11: ifnull        86
+        14: aload_2
+        15: getfield      #23                 // Field ownedViews:Ljava/util/function/Supplier;
+        18: invokeinterface #30,  1           // InterfaceMethod java/util/function/Supplier.get:()Ljava/lang/Object;
+        23: checkcast     #36                 // class java/lang/Iterable
+        26: ldc           #38                 // String owned read views
+        28: invokestatic  #40                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+        31: checkcast     #36                 // class java/lang/Iterable
+        34: invokeinterface #43,  1           // InterfaceMethod java/lang/Iterable.iterator:()Ljava/util/Iterator;
+        39: astore_3
+        40: aload_3
+        41: invokeinterface #47,  1           // InterfaceMethod java/util/Iterator.hasNext:()Z
+        46: ifeq          78
+        49: aload_3
+        50: invokeinterface #53,  1           // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+        55: checkcast     #56                 // class org/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadViewLease
+        58: astore        4
+        60: aload         4
+        62: ifnull        75
+        65: aload_1
+        66: aload         4
+        68: getstatic     #58                 // Field java/lang/Boolean.TRUE:Ljava/lang/Boolean;
+        71: invokevirtual #64                 // Method java/util/IdentityHashMap.put:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+        74: pop
+        75: goto          40
+        78: aload_2
+        79: getfield      #19                 // Field previous:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceContext;
+        82: astore_2
+        83: goto          10
+        86: aload_1
+        87: invokevirtual #68                 // Method java/util/IdentityHashMap.keySet:()Ljava/util/Set;
+        90: invokestatic  #72                 // InterfaceMethod java/util/List.copyOf:(Ljava/util/Collection;)Ljava/util/List;
+        93: areturn
+
+  public void close();
+    Code:
+         0: aload_0
+         1: getfield      #78                 // Field closed:Z
+         4: ifeq          8
+         7: return
+         8: aload_0
+         9: getfield      #7                  // Field this$0:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore;
+        12: getfield      #82                 // Field org/eclipse/rdf4j/sail/lmdb/LmdbSailStore.activeReadResourceContext:Ljava/lang/ThreadLocal;
+        15: invokevirtual #88                 // Method java/lang/ThreadLocal.get:()Ljava/lang/Object;
+        18: checkcast     #91                 // class org/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceState
+        21: astore_1
+        22: aload_1
+        23: getfield      #93                 // Field org/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceState.current:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceContext;
+        26: aload_0
+        27: if_acmpeq     40
+        30: new           #96                 // class java/lang/IllegalStateException
+        33: dup
+        34: ldc           #98                 // String LMDB read-resource contexts must close in nesting order
+        36: invokespecial #100                // Method java/lang/IllegalStateException."<init>":(Ljava/lang/String;)V
+        39: athrow
+        40: aload_0
+        41: iconst_1
+        42: putfield      #78                 // Field closed:Z
+        45: aload_1
+        46: aload_0
+        47: getfield      #19                 // Field previous:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceContext;
+        50: putfield      #93                 // Field org/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceState.current:Lorg/eclipse/rdf4j/sail/lmdb/LmdbSailStore$ReadResourceContext;
+        53: return
+}
