@@ -12,8 +12,8 @@ Trace actual regular RDF4J, native interpreted, and Janino query paths. Separate
 - [x] Inventory repository-owned paths and provision JDK25/Maven.
 - [x] Qualify baseline cancellation tests with real co-scan route witnesses.
 - [x] Implement explicit propagation with adversarial tests; final worker-fallback candidate passed 181 safety tests.
-- [in_progress] Compare regular/native/compiled matched runs.
-- [ ] Publish selective verified evidence and conclusions.
+- [x] Compare regular/native/compiled matched runs and separate profiles; no gain established.
+- [x] Publish selective verified evidence and conclusions.
 
 ## Context and Orientation
 
@@ -46,3 +46,7 @@ The source inventory is published at 77c8b2c. Cold root quick build compiled pro
 The original serial co-scan fixture could choose an adjacency-prefix route and pass with zero co-scan rows. A new probe-trip assertion exposed this. The tightened fixture declines prefix plans and requires positive read counts; both original and candidate pass it. Parallel inheritance with a null parent is a no-op, so explicit polling must preserve any existing worker ambient signal by capturing missing references once at the worker boundary. No repeated loop lookup is needed.
 
 Spotless reformatted 26 pre-existing files during root bootstrap. They remain outside the patch. A token comparison (excluding comments/whitespace, sorting imports) confirmed identical body tokens and imports; bootstrap-formatting.patch preserves the original formatter output.
+
+## Measurement outcome
+
+The 3-warmup/5-measurement pilot was rejected for gain claims because unchanged controls showed large JIT/warmup deltas. The prespecified replacement used 20 warmups, 10 measurements, four independent forks per arm in every regime. Co-scan observed means were 8.61 ms baseline and 9.40 ms candidate, with inconsistent paired effects; all samples remain included. Profiles instead prioritize per-pull context binding/restoration. See RESULTS.md for scope, uncertainty and exact evidence. The prototype is preserved for further investigation/combination, not recommended as a demonstrated speedup.

@@ -13,6 +13,10 @@ The first candidate only changes type-matrix co-scan/flush-run cancellation poll
 
 ## Performance scope
 
-No measured gain is claimed yet. `ThreadLocalQueryBenchmark` compares regular, interpreted and Janino repository-query controls on a narrow, heap-only/no-spill fixture. `ThreadLocalCoScanBenchmark` directly exercises the changed aggregate operator and verifies it against generic query results. These are different measurements; a compiled-IR control does not prove the co-scan optimization ran. Neither is Workbench HTTP/browser latency.
+**No performance benefit was demonstrated.** The steady-state co-scan candidate mean was 9.40 ms versus 8.61 ms baseline, with inconsistent fork effects. Do not interpret it as a performance-neutral or faster change. See [RESULTS.md](RESULTS.md) for all retained samples and scope. `ThreadLocalQueryBenchmark` compares regular, interpreted and Janino repository-query controls on a narrow, heap-only/no-spill fixture. `ThreadLocalCoScanBenchmark` directly exercises the changed aggregate operator and verifies it against generic query results. These are different measurements; a compiled-IR control does not prove the co-scan optimization ran. Neither is Workbench HTTP/browser latency.
 
 `BENCHMARK-PLAN.md` records the intended matched protocol. `run-matched.sh` requires explicitly frozen A/B classpaths and a shared benchmark lock. The recovered executor has fresh JDK25/Maven and no historical binary baseline. Never compare its new times directly to yesterday's results. `baseline-type-matrix` is the valid original-class overlay; the incomplete `baseline-classes` directory is explicitly invalid.
+
+## Next direction
+
+Separate JFR profiles point to per-pull context binding/restoration and read/value scopes rather than masked co-scan polling. These sample shares are not recoverable wall-time percentages. [NEXT-CANDIDATES.md](NEXT-CANDIDATES.md) lists safe boundaries and tests. [RECORD-CANCELLATION-DESIGN.md](RECORD-CANCELLATION-DESIGN.md) explains a direct cooperative record-iterator flag with explicit parent/probe references, forwarding and per-logical-open ownership. That design is not yet implemented.
