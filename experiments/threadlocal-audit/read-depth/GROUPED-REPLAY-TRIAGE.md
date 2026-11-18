@@ -42,3 +42,7 @@ This is a **hypothesis**, not a proved runtime trace. Confirm actual slot masks,
 - Do not remove duplicate-value reuse or disable current optimizations just to make a formerly convenient memo-hit barrier early again without labeling the changed route.
 - Do not add ORDER BY blindly: it may suppress or change compiled grouping and test another execution path.
 - Do not infer safe grouped replay from the two non-grouped passes or from identical failure on D/AD. The grouped qualification remains incomplete until a valid pre-exposure scenario runs through the later counters, result equality, budget and spill cleanup assertions.
+
+## Subsequent grouped-fixture qualification
+
+The later [resource-restoration investigation](../resource-restoration/GROUPED-FIXTURE.md) confirmed the delayed memo-hit and availability-observation assumptions and repaired the Sail-level fixture without changing its query or weakening replay assertions. Its final gated selection passes all three cases on the incumbent, depth-only, and depth-plus-resource configurations with the separately identified test seam. This follow-up does not rewrite the historical outcomes or make the earlier selected suite a full repository pass.

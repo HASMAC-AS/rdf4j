@@ -199,3 +199,7 @@ The next read-scope candidate is still resource/context restoration and replay o
 ## Evidence
 
 `PLAN.md`, exact source identities/class hashes/layer audit, qualification logs/summary, all matched raw logs/commands/GC and profile summaries retain the protocol and every observation. The 11.54 MB raw runtime manifest is retained locally; `runtime-manifest-deduplicated.json` losslessly reconstructs it byte-for-byte (1.45 MB). `deduplicate-manifest.py` verifies structure and original SHA. Profile recordings, full samples and large class/fixture trees remain local. `GROUPED-REPLAY-TRIAGE.md` records the shared gated-test limitation.
+
+## Subsequent grouped-fixture qualification
+
+The later [resource-restoration investigation](../resource-restoration/GROUPED-FIXTURE.md) confirmed the delayed memo-hit and availability-observation assumptions and repaired the Sail-level fixture without changing its query or weakening replay assertions. Its final gated selection passes all three cases on the incumbent, depth-only, and depth-plus-resource configurations with the separately identified test seam. This follow-up does not rewrite the historical outcomes or make the earlier selected suite a full repository pass.

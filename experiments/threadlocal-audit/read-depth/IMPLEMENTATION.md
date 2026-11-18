@@ -61,3 +61,7 @@ Source/classes are frozen and hash-verified, diff check clean. No publication or
 
 ### Grouped fixture triage correction
 The expected-zero/actual-one assertion at line 698 checks the number of consumed rows at the memo-hit barrier, **not a replay-request counter**. It fails before the test submits the growth writer. These logs therefore establish incomplete grouped replay qualification, not an observed replay-safety violation. See GROUPED-REPLAY-TRIAGE.md. Same-row duplicate-value reuse bypassing a memo lookup is a plausible explanation for a later first hit; runtime confirmation is still needed. The assertion and source were not weakened.
+
+## Subsequent grouped-fixture qualification
+
+The later [resource-restoration investigation](../resource-restoration/GROUPED-FIXTURE.md) confirmed the delayed memo-hit and availability-observation assumptions and repaired the Sail-level fixture without changing its query or weakening replay assertions. Its final gated selection passes all three cases on the incumbent, depth-only, and depth-plus-resource configurations with the separately identified test seam. This follow-up does not rewrite the historical outcomes or make the earlier selected suite a full repository pass.
