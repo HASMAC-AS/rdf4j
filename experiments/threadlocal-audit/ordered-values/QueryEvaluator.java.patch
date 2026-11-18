@@ -1,0 +1,56 @@
+--- QueryEvaluator.java
++++ QueryEvaluator.java
+@@ -31,6 +31,7 @@
+ import org.eclipse.rdf4j.http.client.query.AbstractHTTPQuery;
+ import org.eclipse.rdf4j.http.protocol.Protocol;
+ import org.eclipse.rdf4j.model.Statement;
++import org.eclipse.rdf4j.model.Value;
+ import org.eclipse.rdf4j.query.BindingSet;
+ import org.eclipse.rdf4j.query.BooleanQuery;
+ import org.eclipse.rdf4j.query.GraphQuery;
+@@ -361,7 +362,7 @@
+ 					String[] names = result.getBindingNames().toArray(new String[0]);
+ 					builder.start(names);
+ 					builder.link(List.of(INFO));
+-					List<Object> values = new ArrayList<>(names.length);
++					List<Value> values = new ArrayList<>(names.length);
+ 					while (result.hasNext()) {
+ 						if (knownTotal != null && emitted == batch.getSize()) {
+ 							rowBeyondWindow = true;
+@@ -761,7 +762,7 @@
+ 		addWorkbenchMetadata(builder, req, responseQueryText);
+ 		addQueryDurationMetadata(builder, responseQueryText, queryDurationMillis);
+ 		addTotalResultCountMetadata(builder, totalResultCount, responseQueryText);
+-		final List<Object> values = new ArrayList<>(names.length);
++		final List<Value> values = new ArrayList<>(names.length);
+ 		if (paged && (writeCookie || req.isParameterPresent(ACCEPT))) {
+ 			// Unknown-total paging evaluates the full query; downloads also need their
+ 			// result cap applied locally when a total count is already known.
+@@ -774,13 +775,16 @@
+ 		builder.end();
+ 	}
+ 
+-	private void addResult(final TupleResultBuilder builder, final String[] names, final List<Object> values,
++	private void addResult(final TupleResultBuilder builder, final String[] names, final List<Value> values,
+ 			BindingSet set) throws QueryResultHandlerException {
+ 		values.clear();
+ 		for (int i = 0; i < names.length; i++) {
+ 			values.add(set.getValue(names[i]));
+ 		}
+-		builder.result(values.toArray());
++		// Preserve virtual result(...) dispatch for custom builders; only the concrete query builder owns this route.
++		if (builder.getClass() != TupleResultBuilder.class || !builder.queryResultValues(values)) {
++			builder.result(values.toArray());
++		}
+ 	}
+ 
+ 	/***
+@@ -798,7 +802,7 @@
+ 			final String[] names = result.getBindingNames().toArray(new String[0]);
+ 			builder.variables(names);
+ 			builder.link(List.of(INFO));
+-			final List<Object> values = new ArrayList<>();
++			final List<Value> values = new ArrayList<>();
+ 			while (result.hasNext()) {
+ 				final BindingSet set = result.next();
+ 				addResult(builder, names, values, set);

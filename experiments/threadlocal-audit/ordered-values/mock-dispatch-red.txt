@@ -1,0 +1,199 @@
+-------------------------------------------------------------------------------
+Test set: org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest
+-------------------------------------------------------------------------------
+Tests run: 20, Failures: 5, Errors: 0, Skipped: 0, Time elapsed: 1.404 s <<< FAILURE! -- in org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest
+org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldUseDedicatedDownloadLimitWhenDownloadingTupleResults -- Time elapsed: 0.021 s <<< FAILURE!
+Wanted but not invoked:
+tupleResultBuilder.result(
+    <any java.lang.Object[]>
+);
+-> at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+
+However, there were exactly 7 interactions with this mock:
+tupleResultBuilder.repositoryOrigins(
+    Mock for RepositoryConnection, hashCode: 1883380232
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal(QueryEvaluator.java:296)
+
+tupleResultBuilder.namespaces([]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.writeNamespaces(QueryEvaluator.java:977)
+
+tupleResultBuilder.start("s");
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:760)
+
+tupleResultBuilder.link([info]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:761)
+
+tupleResultBuilder.queryResultValues(
+    ["two"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.queryResultValues(
+    ["two"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.end();
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:775)
+
+
+	at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+	at org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldUseDedicatedDownloadLimitWhenDownloadingTupleResults(QueryEvaluatorTest.java:418)
+
+org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldApplyConfiguredDefaultDownloadCapWithoutChangingAuthoredLimitOrOffset -- Time elapsed: 0.005 s <<< FAILURE!
+Wanted but not invoked:
+tupleResultBuilder.result(
+    <any java.lang.Object[]>
+);
+-> at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+
+However, there were exactly 6 interactions with this mock:
+tupleResultBuilder.repositoryOrigins(
+    Mock for RepositoryConnection, hashCode: 836498875
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal(QueryEvaluator.java:296)
+
+tupleResultBuilder.namespaces([]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.writeNamespaces(QueryEvaluator.java:977)
+
+tupleResultBuilder.start("s");
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:760)
+
+tupleResultBuilder.link([info]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:761)
+
+tupleResultBuilder.queryResultValues(
+    ["second"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.end();
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:775)
+
+
+	at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+	at org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldApplyConfiguredDefaultDownloadCapWithoutChangingAuthoredLimitOrOffset(QueryEvaluatorTest.java:546)
+
+org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldApplyAnExplicitDownloadCapWhenKnownTotalAndAuthoredLimitArePresent -- Time elapsed: 0.004 s <<< FAILURE!
+Wanted but not invoked:
+tupleResultBuilder.result(
+    <any java.lang.Object[]>
+);
+-> at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+
+However, there were exactly 7 interactions with this mock:
+tupleResultBuilder.repositoryOrigins(
+    Mock for RepositoryConnection, hashCode: 1748373433
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal(QueryEvaluator.java:296)
+
+tupleResultBuilder.namespaces([]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.writeNamespaces(QueryEvaluator.java:977)
+
+tupleResultBuilder.start("s");
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:760)
+
+tupleResultBuilder.link([info]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:761)
+
+tupleResultBuilder.queryResultValues(
+    ["second"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.queryResultValues(
+    ["second"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.end();
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:775)
+
+
+	at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+	at org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldApplyAnExplicitDownloadCapWhenKnownTotalAndAuthoredLimitArePresent(QueryEvaluatorTest.java:644)
+
+org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldDownloadAllResultsFromTheBeginningWhenNoDownloadLimitIsSelected -- Time elapsed: 0.004 s <<< FAILURE!
+Wanted but not invoked:
+tupleResultBuilder.result(
+    <any java.lang.Object[]>
+);
+-> at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+
+However, there were exactly 8 interactions with this mock:
+tupleResultBuilder.repositoryOrigins(
+    Mock for RepositoryConnection, hashCode: 1428242559
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal(QueryEvaluator.java:296)
+
+tupleResultBuilder.namespaces([]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.writeNamespaces(QueryEvaluator.java:977)
+
+tupleResultBuilder.start("s");
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:760)
+
+tupleResultBuilder.link([info]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:761)
+
+tupleResultBuilder.queryResultValues(
+    ["third"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.queryResultValues(
+    ["third"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.queryResultValues(
+    ["third"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.end();
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:775)
+
+
+	at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+	at org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldDownloadAllResultsFromTheBeginningWhenNoDownloadLimitIsSelected(QueryEvaluatorTest.java:513)
+
+org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldApplyAnExplicitDownloadCapWithoutRewritingAuthoredLimitAndOffset -- Time elapsed: 0.004 s <<< FAILURE!
+Wanted but not invoked:
+tupleResultBuilder.result(
+    <any java.lang.Object[]>
+);
+-> at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+
+However, there were exactly 7 interactions with this mock:
+tupleResultBuilder.repositoryOrigins(
+    Mock for RepositoryConnection, hashCode: 961648587
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal(QueryEvaluator.java:296)
+
+tupleResultBuilder.namespaces([]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.writeNamespaces(QueryEvaluator.java:977)
+
+tupleResultBuilder.start("s");
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:760)
+
+tupleResultBuilder.link([info]);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:761)
+
+tupleResultBuilder.queryResultValues(
+    ["second"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.queryResultValues(
+    ["second"]
+);
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult(QueryEvaluator.java:786)
+
+tupleResultBuilder.end();
+-> at org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateTupleQuery(QueryEvaluator.java:775)
+
+
+	at org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result(TupleResultBuilder.java:243)
+	at org.eclipse.rdf4j.workbench.util.QueryEvaluatorTest.shouldApplyAnExplicitDownloadCapWithoutRewritingAuthoredLimitAndOffset(QueryEvaluatorTest.java:578)
+
