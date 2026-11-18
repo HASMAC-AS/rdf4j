@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/../../.."
+exec 9>experiments/overlay/native-benchmark.lock; flock 9
+mapfile -t FLAGS < experiments/threadlocal-audit/best-flags.txt
+for regime in interpreted janino; do
+ ../toolchain/jdk-25.0.5+8/bin/java --enable-native-access=ALL-UNNAMED -Xms2g -Xmx3g "${FLAGS[@]}" \
+  -Drdf4j.lmdb.queryMemory.perQueryMaxBytes=671088640 -Drdf4j.lmdb.recordCancellation.owned=true \
+  -Drdf4j.lmdb.recordCancellation.trace=true -Daudit.adjacency=false -Daudit.shape=narrow "-Daudit.regime=$regime" \
+  -Doverlay.benchmark.warmups=0 -cp "experiments/threadlocal-audit/record-cancellation/diagnostics-layered-01/harness:$(cat experiments/threadlocal-audit/record-cancellation/cp-b-layered.txt)" \
+  org.eclipse.rdf4j.sail.lmdb.evaluation.RecordCancellationQueryBenchmark 100 10 1 true \
+  > "experiments/threadlocal-audit/record-cancellation/target100-$regime.log" 2>&1
+done

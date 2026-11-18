@@ -4,11 +4,13 @@ import collections,json,pathlib,sys
 out={}
 patterns={
  'threadlocal_map':('java.lang.ThreadLocal','java/lang/ThreadLocal'),
- 'cancellation_probe':('NativeCancellation','CancellationSignal','LmdbNativeProbeDeadline','pollCancellation'),
+ 'cancellation_probe':('NativeCancellation','NativeRecordCancellation','CancellationSignal','LmdbNativeProbeDeadline','pollCancellation'),
  'lifetime_read_replay':('RepositoryValueIteration','ValueResolutionScope','QueryExecutionContext','ReadExposureScope','CapturedReadContext'),
  'value_decode_memo':('NativeValueMemo','LmdbNativeValueCodec','ValueStore','LmdbValue','CompressedValueOverlay'),
  'binding_copy':('BindingSet','Binding.getValue'),
  'native_ir':('KernelInterpreter','KernelRowCursor','codegen','Janino'),
+ 'record_owner':('NativeRecordCancellation.check','LmdbRecordIterator.checkRecordCancellation','LmdbRecordIterator.bindCancellation','LmdbRecordIterator.reset'),
+ 'record_scan':('LmdbRecordIterator','RetainedNativeProbe','LmdbNativeKernelScanner'),
  'memory_stack':('org.lwjgl.system.MemoryStack',),
  'distinct':('Distinct','TupleTable'),
 }

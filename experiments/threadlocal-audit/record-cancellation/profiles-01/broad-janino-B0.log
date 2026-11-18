@@ -1,0 +1,215 @@
+adjacencyEnabled=true
+origin org.eclipse.rdf4j.sail.lmdb.evaluation.RecordCancellationQueryBenchmark file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/profiles-01/harness/
+origin org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeTypeMatrix file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+origin org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+origin org.eclipse.rdf4j.sail.lmdb.ValueStore file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/candidate-layer/
+origin org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeKernelExecution file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/candidate-layer/
+origin org.eclipse.rdf4j.common.iteration.CancellationSignal file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/eclipse/rdf4j/rdf4j-common-iterator/6.2.0-SNAPSHOT/rdf4j-common-iterator-6.2.0-SNAPSHOT.jar
+origin org.eclipse.rdf4j.sail.lmdb.LmdbRecordIterator file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/candidate-layer/
+packedSettings vectorRows=2048 rootBatchRows=1024 initialNodeRows=2048
+11:40:50,380 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+11:40:50,382 |-INFO in ch.qos.logback.classic.util.ContextInitializer@72057ecf - No custom configurators were discovered as a service.
+11:40:50,382 |-INFO in ch.qos.logback.classic.util.ContextInitializer@72057ecf - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:40:50,383 |-INFO in ch.qos.logback.classic.util.ContextInitializer@72057ecf - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:40:50,384 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/harness-test-dependencies/logback-test.xml]
+11:40:50,440 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+11:40:50,440 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+11:40:50,498 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+11:40:50,505 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@1afd44cb - No contradictions in caller extraction instruction were detected
+11:40:50,507 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+11:40:50,507 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+11:40:50,513 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+11:40:50,556 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+11:40:50,556 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+11:40:50,556 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+11:40:50,557 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+11:40:50,557 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+11:40:50,557 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@6973b51b - End of configuration.
+11:40:50,558 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@1ab3a8c8 - Registering current configuration as safe fallback point
+11:40:50,560 |-INFO in ch.qos.logback.classic.util.ContextInitializer@72057ecf - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 175 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/lwjgl/lwjgl/3.4.2/lwjgl-3.4.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+11:40:51.987 [main] WARN  Adjacency base fold fold[1] failed; the index keeps serving
+java.util.concurrent.CancellationException: paged adjacency consolidation interrupted
+	at org.eclipse.rdf4j.sail.lmdb.LmdbPagedCsfConsolidator.checkCancellation(LmdbPagedCsfConsolidator.java:35)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbPagedCsfConsolidator$LatestRows.lambda$collect$0(LmdbPagedCsfConsolidator.java:296)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:307)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:308)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:308)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:308)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:308)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:306)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:308)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbAdjacencyOverlaySet.forEachLatestRow(LmdbAdjacencyOverlaySet.java:285)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbPagedCsfConsolidator$LatestRows.collect(LmdbPagedCsfConsolidator.java:295)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbPagedCsfConsolidator.consolidate(LmdbPagedCsfConsolidator.java:90)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbDirectAdjacencyStore$IndexOps.fold(LmdbDirectAdjacencyStore.java:1685)
+	at org.eclipse.rdf4j.sail.lmdb.LmdbDirectAdjacencyStore$IndexOps.fold(LmdbDirectAdjacencyStore.java:1314)
+	at org.eclipse.rdf4j.sail.lmdb.AdjacencyApplier.lambda$considerCompaction$3(AdjacencyApplier.java:960)
+	at org.eclipse.rdf4j.sail.lmdb.ExecutorAdjacencyWorkerPool$Task.run(ExecutorAdjacencyWorkerPool.java:81)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+strategyFactory=org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeEvaluationStrategyFactory nativeEnabled=true genericCollectionSyncThreshold=0
+groups=100 fanout=10 triples=26700 overlay=true maintenance=MaintenanceStats[scheduled=false, active=false, refusals=0, discarded=0, lastFailure=null]
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-20 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=1299985694 prepareNs=53078893 evaluateNs=282645086 firstRowNs=683149894 thousandRowsNs=740812553 consumeNs=1299843900 closeNs=141794 rowsPerSec=76923.923 compiled=1 interpreted=0 opened=1
+run=-20 overlay=true rows=100000 checksum=1899306305404719472 millis=1299.986 threadAllocated=256501448 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-19 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=433120373 prepareNs=4865511 evaluateNs=24110578 firstRowNs=40083046 thousandRowsNs=54579027 consumeNs=432970388 closeNs=149985 rowsPerSec=230882.697 compiled=1 interpreted=0 opened=1
+run=-19 overlay=true rows=100000 checksum=1899306305404719472 millis=433.120 threadAllocated=180453744 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-18 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=367269781 prepareNs=3283261 evaluateNs=60909313 firstRowNs=75115651 thousandRowsNs=79731593 consumeNs=367167568 closeNs=102213 rowsPerSec=272279.412 compiled=1 interpreted=0 opened=1
+run=-18 overlay=true rows=100000 checksum=1899306305404719472 millis=367.270 threadAllocated=175274320 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-17 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=302738688 prepareNs=2720476 evaluateNs=13421578 firstRowNs=21935666 thousandRowsNs=29272496 consumeNs=302613861 closeNs=124827 rowsPerSec=330317.875 compiled=1 interpreted=0 opened=1
+run=-17 overlay=true rows=100000 checksum=1899306305404719472 millis=302.739 threadAllocated=178143960 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-16 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=288071539 prepareNs=3299957 evaluateNs=11884889 firstRowNs=20274191 thousandRowsNs=23474578 consumeNs=287967923 closeNs=103616 rowsPerSec=347135.994 compiled=1 interpreted=0 opened=1
+run=-16 overlay=true rows=100000 checksum=1899306305404719472 millis=288.072 threadAllocated=175691080 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-15 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=284461757 prepareNs=2372323 evaluateNs=12424682 firstRowNs=19377965 thousandRowsNs=21987454 consumeNs=284334146 closeNs=127611 rowsPerSec=351541.104 compiled=1 interpreted=0 opened=1
+run=-15 overlay=true rows=100000 checksum=1899306305404719472 millis=284.462 threadAllocated=175181408 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-14 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=204189132 prepareNs=17096368 evaluateNs=11655486 firstRowNs=33325203 thousandRowsNs=35368512 consumeNs=204030914 closeNs=158218 rowsPerSec=489742.030 compiled=1 interpreted=0 opened=1
+run=-14 overlay=true rows=100000 checksum=1899306305404719472 millis=204.189 threadAllocated=175142440 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-13 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=180277306 prepareNs=2187235 evaluateNs=11087392 firstRowNs=17411390 thousandRowsNs=18980537 consumeNs=180174923 closeNs=102383 rowsPerSec=554700.989 compiled=1 interpreted=0 opened=1
+run=-13 overlay=true rows=100000 checksum=1899306305404719472 millis=180.277 threadAllocated=175143680 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-12 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=196763739 prepareNs=2079143 evaluateNs=9699879 firstRowNs=15432810 thousandRowsNs=17621567 consumeNs=196664200 closeNs=99539 rowsPerSec=508223.723 compiled=1 interpreted=0 opened=1
+run=-12 overlay=true rows=100000 checksum=1899306305404719472 millis=196.764 threadAllocated=175091944 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-11 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=186692443 prepareNs=1873073 evaluateNs=9026067 firstRowNs=14601540 thousandRowsNs=16260342 consumeNs=186569828 closeNs=122615 rowsPerSec=535640.320 compiled=1 interpreted=0 opened=1
+run=-11 overlay=true rows=100000 checksum=1899306305404719472 millis=186.692 threadAllocated=175095240 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-10 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=449476737 prepareNs=1830059 evaluateNs=10794644 firstRowNs=17060374 thousandRowsNs=18988069 consumeNs=448459259 closeNs=1017478 rowsPerSec=222480.925 compiled=1 interpreted=0 opened=1
+run=-10 overlay=true rows=100000 checksum=1899306305404719472 millis=449.477 threadAllocated=175088704 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-9 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=389144190 prepareNs=4492728 evaluateNs=31809866 firstRowNs=46567581 thousandRowsNs=53158020 consumeNs=389024119 closeNs=120071 rowsPerSec=256974.157 compiled=1 interpreted=0 opened=1
+run=-9 overlay=true rows=100000 checksum=1899306305404719472 millis=389.144 threadAllocated=175088456 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-8 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=236975787 prepareNs=32003598 evaluateNs=23321217 firstRowNs=61114461 thousandRowsNs=63061776 consumeNs=236820613 closeNs=155174 rowsPerSec=421984.040 compiled=1 interpreted=0 opened=1
+run=-8 overlay=true rows=100000 checksum=1899306305404719472 millis=236.976 threadAllocated=175085104 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-7 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=195185985 prepareNs=2831072 evaluateNs=9579448 firstRowNs=15597537 thousandRowsNs=17371932 consumeNs=194779174 closeNs=406811 rowsPerSec=512331.866 compiled=1 interpreted=0 opened=1
+run=-7 overlay=true rows=100000 checksum=1899306305404719472 millis=195.186 threadAllocated=175086584 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-6 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=186876309 prepareNs=1888396 evaluateNs=11251749 firstRowNs=17329928 thousandRowsNs=20077345 consumeNs=186759283 closeNs=117026 rowsPerSec=535113.309 compiled=1 interpreted=0 opened=1
+run=-6 overlay=true rows=100000 checksum=1899306305404719472 millis=186.876 threadAllocated=175088552 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-5 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=183782292 prepareNs=1617490 evaluateNs=10532588 firstRowNs=16575175 thousandRowsNs=19340118 consumeNs=183682241 closeNs=100051 rowsPerSec=544122.064 compiled=1 interpreted=0 opened=1
+run=-5 overlay=true rows=100000 checksum=1899306305404719472 millis=183.782 threadAllocated=175085064 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-4 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=208262310 prepareNs=1848146 evaluateNs=11275015 firstRowNs=17067414 thousandRowsNs=19845557 consumeNs=208126817 closeNs=135493 rowsPerSec=480163.694 compiled=1 interpreted=0 opened=1
+run=-4 overlay=true rows=100000 checksum=1899306305404719472 millis=208.262 threadAllocated=175085104 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-3 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=195354883 prepareNs=2210861 evaluateNs=9965597 firstRowNs=15627812 thousandRowsNs=17955658 consumeNs=195250526 closeNs=104357 rowsPerSec=511888.920 compiled=1 interpreted=0 opened=1
+run=-3 overlay=true rows=100000 checksum=1899306305404719472 millis=195.355 threadAllocated=175085008 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-2 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=420157616 prepareNs=2110930 evaluateNs=14023123 firstRowNs=20120801 thousandRowsNs=22890501 consumeNs=419804436 closeNs=353180 rowsPerSec=238005.920 compiled=1 interpreted=0 opened=1
+run=-2 overlay=true rows=100000 checksum=1899306305404719472 millis=420.158 threadAllocated=175089176 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=-1 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=297312388 prepareNs=2610761 evaluateNs=26784049 firstRowNs=38472914 thousandRowsNs=46947162 consumeNs=297186289 closeNs=126099 rowsPerSec=336346.564 compiled=1 interpreted=0 opened=1
+run=-1 overlay=true rows=100000 checksum=1899306305404719472 millis=297.312 threadAllocated=175074728 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=0 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=227457114 prepareNs=1738862 evaluateNs=11376506 firstRowNs=17570710 thousandRowsNs=20702814 consumeNs=227323033 closeNs=134081 rowsPerSec=439643.317 compiled=1 interpreted=0 opened=1
+run=0 overlay=true rows=100000 checksum=1899306305404719472 millis=227.457 threadAllocated=175073768 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=1 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=275493512 prepareNs=1881556 evaluateNs=11702537 firstRowNs=18030311 thousandRowsNs=21482626 consumeNs=275394714 closeNs=98798 rowsPerSec=362984.955 compiled=1 interpreted=0 opened=1
+run=1 overlay=true rows=100000 checksum=1899306305404719472 millis=275.494 threadAllocated=175078896 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=2 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=235175958 prepareNs=1471140 evaluateNs=9091695 firstRowNs=13522300 thousandRowsNs=15270997 consumeNs=235068827 closeNs=107131 rowsPerSec=425213.533 compiled=1 interpreted=0 opened=1
+run=2 overlay=true rows=100000 checksum=1899306305404719472 millis=235.176 threadAllocated=175058968 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=3 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=189333329 prepareNs=1572192 evaluateNs=6900534 firstRowNs=11102135 thousandRowsNs=12793235 consumeNs=189233580 closeNs=99749 rowsPerSec=528169.026 compiled=1 interpreted=0 opened=1
+run=3 overlay=true rows=100000 checksum=1899306305404719472 millis=189.333 threadAllocated=175058928 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=4 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=179058868 prepareNs=1216507 evaluateNs=7469079 firstRowNs=11438921 thousandRowsNs=13628590 consumeNs=178931737 closeNs=127131 rowsPerSec=558475.551 compiled=1 interpreted=0 opened=1
+run=4 overlay=true rows=100000 checksum=1899306305404719472 millis=179.059 threadAllocated=175058144 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=5 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=231545800 prepareNs=1523528 evaluateNs=8066025 firstRowNs=12636449 thousandRowsNs=14317614 consumeNs=231446801 closeNs=98999 rowsPerSec=431880.000 compiled=1 interpreted=0 opened=1
+run=5 overlay=true rows=100000 checksum=1899306305404719472 millis=231.546 threadAllocated=175058264 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=6 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=181500385 prepareNs=1282707 evaluateNs=7055768 firstRowNs=11208545 thousandRowsNs=12778453 consumeNs=181400415 closeNs=99970 rowsPerSec=550963.019 compiled=1 interpreted=0 opened=1
+run=6 overlay=true rows=100000 checksum=1899306305404719472 millis=181.500 threadAllocated=175058104 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=7 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=173698095 prepareNs=1161845 evaluateNs=7820835 firstRowNs=11806852 thousandRowsNs=13363100 consumeNs=173561249 closeNs=136846 rowsPerSec=575711.553 compiled=1 interpreted=0 opened=1
+run=7 overlay=true rows=100000 checksum=1899306305404719472 millis=173.698 threadAllocated=175058296 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=8 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=185209005 prepareNs=1157859 evaluateNs=7503420 firstRowNs=11243297 thousandRowsNs=12778202 consumeNs=185104088 closeNs=104917 rowsPerSec=539930.550 compiled=1 interpreted=0 opened=1
+run=8 overlay=true rows=100000 checksum=1899306305404719472 millis=185.209 threadAllocated=175053568 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=9 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=190515526 prepareNs=1155175 evaluateNs=8414578 firstRowNs=12451792 thousandRowsNs=14213648 consumeNs=190244158 closeNs=271368 rowsPerSec=524891.604 compiled=1 interpreted=0 opened=1
+run=9 overlay=true rows=100000 checksum=1899306305404719472 millis=190.516 threadAllocated=175050680 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=10 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=193181248 prepareNs=1307774 evaluateNs=7718803 firstRowNs=12017839 thousandRowsNs=14897645 consumeNs=193084733 closeNs=96515 rowsPerSec=517648.587 compiled=1 interpreted=0 opened=1
+run=10 overlay=true rows=100000 checksum=1899306305404719472 millis=193.181 threadAllocated=175050064 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=11 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=190744273 prepareNs=1529698 evaluateNs=8664133 firstRowNs=13288202 thousandRowsNs=15269258 consumeNs=190563642 closeNs=180631 rowsPerSec=524262.136 compiled=1 interpreted=0 opened=1
+run=11 overlay=true rows=100000 checksum=1899306305404719472 millis=190.744 threadAllocated=175050664 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=12 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=185122587 prepareNs=1045841 evaluateNs=7223318 firstRowNs=11213842 thousandRowsNs=12802728 consumeNs=184993973 closeNs=128614 rowsPerSec=540182.598 compiled=1 interpreted=0 opened=1
+run=12 overlay=true rows=100000 checksum=1899306305404719472 millis=185.123 threadAllocated=175059872 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=13 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=198770741 prepareNs=1129851 evaluateNs=7426303 firstRowNs=11205774 thousandRowsNs=13243863 consumeNs=198657651 closeNs=113090 rowsPerSec=503092.153 compiled=1 interpreted=0 opened=1
+run=13 overlay=true rows=100000 checksum=1899306305404719472 millis=198.771 threadAllocated=175049856 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=14 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=180833201 prepareNs=911853 evaluateNs=7410167 firstRowNs=11266244 thousandRowsNs=12792182 consumeNs=180625668 closeNs=207533 rowsPerSec=552995.796 compiled=1 interpreted=0 opened=1
+run=14 overlay=true rows=100000 checksum=1899306305404719472 millis=180.833 threadAllocated=175049824 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=15 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=179041807 prepareNs=1161541 evaluateNs=6522022 firstRowNs=10596785 thousandRowsNs=12919557 consumeNs=178854004 closeNs=187803 rowsPerSec=558528.769 compiled=1 interpreted=0 opened=1
+run=15 overlay=true rows=100000 checksum=1899306305404719472 millis=179.042 threadAllocated=175034712 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=16 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=191619468 prepareNs=1432710 evaluateNs=8861053 firstRowNs=13751865 thousandRowsNs=16047736 consumeNs=191521490 closeNs=97978 rowsPerSec=521867.642 compiled=1 interpreted=0 opened=1
+run=16 overlay=true rows=100000 checksum=1899306305404719472 millis=191.619 threadAllocated=175035776 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=17 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=179919489 prepareNs=1182442 evaluateNs=8263532 firstRowNs=11767463 thousandRowsNs=13618173 consumeNs=179828632 closeNs=90857 rowsPerSec=555804.157 compiled=1 interpreted=0 opened=1
+run=17 overlay=true rows=100000 checksum=1899306305404719472 millis=179.919 threadAllocated=175024784 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=18 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=201375980 prepareNs=971845 evaluateNs=7466045 firstRowNs=11527547 thousandRowsNs=13475454 consumeNs=201280656 closeNs=95324 rowsPerSec=496583.555 compiled=1 interpreted=0 opened=1
+run=18 overlay=true rows=100000 checksum=1899306305404719472 millis=201.376 threadAllocated=175023744 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=19 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=200686566 prepareNs=1344797 evaluateNs=9064745 firstRowNs=13440370 thousandRowsNs=16082614 consumeNs=200585333 closeNs=101233 rowsPerSec=498289.457 compiled=1 interpreted=0 opened=1
+run=19 overlay=true rows=100000 checksum=1899306305404719472 millis=200.687 threadAllocated=175027112 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=20 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=232075337 prepareNs=983152 evaluateNs=7288627 firstRowNs=11145812 thousandRowsNs=12870141 consumeNs=231952472 closeNs=122865 rowsPerSec=430894.559 compiled=1 interpreted=0 opened=1
+run=20 overlay=true rows=100000 checksum=1899306305404719472 millis=232.075 threadAllocated=175023768 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=21 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=210294599 prepareNs=1760834 evaluateNs=9756588 firstRowNs=14943807 thousandRowsNs=17725641 consumeNs=210033345 closeNs=261254 rowsPerSec=475523.387 compiled=1 interpreted=0 opened=1
+run=21 overlay=true rows=100000 checksum=1899306305404719472 millis=210.295 threadAllocated=175018344 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=22 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=200367755 prepareNs=1126137 evaluateNs=8682048 firstRowNs=13670998 thousandRowsNs=16963341 consumeNs=200269897 closeNs=97858 rowsPerSec=499082.300 compiled=1 interpreted=0 opened=1
+run=22 overlay=true rows=100000 checksum=1899306305404719472 millis=200.368 threadAllocated=175018288 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=23 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=214402220 prepareNs=1678610 evaluateNs=7012050 firstRowNs=11961210 thousandRowsNs=13971020 consumeNs=214278143 closeNs=124077 rowsPerSec=466413.081 compiled=1 interpreted=0 opened=1
+run=23 overlay=true rows=100000 checksum=1899306305404719472 millis=214.402 threadAllocated=175021504 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=24 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=170796297 prepareNs=987158 evaluateNs=7132222 firstRowNs=10479097 thousandRowsNs=11998798 consumeNs=170688545 closeNs=107752 rowsPerSec=585492.787 compiled=1 interpreted=0 opened=1
+run=24 overlay=true rows=100000 checksum=1899306305404719472 millis=170.796 threadAllocated=175012304 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=25 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=171612738 prepareNs=1092868 evaluateNs=5948767 firstRowNs=8913397 thousandRowsNs=10460529 consumeNs=171522883 closeNs=89855 rowsPerSec=582707.328 compiled=1 interpreted=0 opened=1
+run=25 overlay=true rows=100000 checksum=1899306305404719472 millis=171.613 threadAllocated=175015664 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=26 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=179588686 prepareNs=745955 evaluateNs=6745848 firstRowNs=9864240 thousandRowsNs=11442038 consumeNs=179495025 closeNs=93661 rowsPerSec=556827.951 compiled=1 interpreted=0 opened=1
+run=26 overlay=true rows=100000 checksum=1899306305404719472 millis=179.589 threadAllocated=175012392 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=27 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=203219729 prepareNs=1313129 evaluateNs=8036695 firstRowNs=12052428 thousandRowsNs=14120175 consumeNs=203132878 closeNs=86851 rowsPerSec=492078.208 compiled=1 interpreted=0 opened=1
+run=27 overlay=true rows=100000 checksum=1899306305404719472 millis=203.220 threadAllocated=175012344 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=28 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=216372325 prepareNs=1083974 evaluateNs=9328702 firstRowNs=13224735 thousandRowsNs=15959798 consumeNs=216283561 closeNs=88764 rowsPerSec=462166.314 compiled=1 interpreted=0 opened=1
+run=28 overlay=true rows=100000 checksum=1899306305404719472 millis=216.372 threadAllocated=175013168 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483
+budget admitted=1 migrated=0 spillCreated=0 spillDeleted=0 usedBefore=0 usedAfter=0 processPeak=361024 globalLimit=1610612736 perQueryLimit=671088640
+audit regime=janino shape=narrow run=29 rows=100000 checksum=1899306305404719472 checksum2=3694550068168048289 totalNs=186573527 prepareNs=827978 evaluateNs=6989097 firstRowNs=10141844 thousandRowsNs=11862889 consumeNs=186378373 closeNs=195154 rowsPerSec=535981.720 compiled=1 interpreted=0 opened=1
+run=29 overlay=true rows=100000 checksum=1899306305404719472 millis=186.574 threadAllocated=175008928 routes=[irKernel] compiledBinds=1 distinctPrimitive=100000 distinctObjects=0 memoProbes=600000 memoHits=596483

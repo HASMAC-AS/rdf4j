@@ -24,3 +24,7 @@ Separate JFR profiles point to per-pull context binding/restoration and read/val
 ## Follow-up: per-pull scope and writer guard
 
 The four-arm follow-up is complete: baseline, SOURCE_PULL-only, no-writer-guard-only and both, across regular/interpreted/Janino routes. Guard-only and combined each passed the same 330 selected safety tests. All 48 timing forks and 12 separate profiles passed route/result/resource checks. Guard-only Janino is promising (4.65% lower pooled mean), but its small-sample interval includes no improvement; no established gain or synergy. The combined arm was not best on regular or Janino. See [the complete four-arm report](source-pull/FOUR-ARM-RESULTS.md). No main, Workbench or whole-repository validation claim is made.
+
+## Completed owned-record cancellation experiment
+
+The default-off candidate is checkpointed at `7ac1650`. Both ON/OFF selected safety suites passed 213 tests. All 60 matched timing forks and 15 separate profiles are complete: the qualified owned fast path was slower, not a performance recommendation. Warm-state trace checks prove it ran. See [full evidence](record-cancellation/RESULTS.md), [implementation safety](record-cancellation/IMPLEMENTATION.md), and [next scope design](OBSERVED-READ-DESIGN.md). No main/Workbench/concurrent-QPS or whole-repository claim.
