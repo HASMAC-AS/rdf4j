@@ -1,0 +1,76 @@
+# Holder depth through actual RDF4J Server and Workbench
+
+**The embedded-query improvement did not become a demonstrated end-to-end Workbench HTTP improvement on this fixture.** Full 100k-row response EOF averaged 488.23 ms for the prior incumbent and 496.62 ms for depth, 1.72% slower with depth. Paired signs were mixed and the descriptive interval includes benefit and regression. First received rows were essentially unchanged. Do not present this as an end-to-end speedup or as proof of a universal regression.
+
+## What actually ran
+
+Actual on-disk LMDB → native compiled IR → actual RDF4J server tuple controller and pinned binary writer → loopback HTTP → actual Workbench Java binary parser and QueryServlet/QueryEvaluator → Workbench v2 NDJSON → streaming Node JSON decoder/counting client. Server and Workbench share one Spring Boot JVM, while Node runs separately. This is not a replacement server or an in-process serialization sink.
+
+The earlier embedded experiments already used real on-disk LMDB, not mocked storage. Both earlier and current RDF data are synthetic. This experiment adds the real server/Workbench delivery path and transfers the entire 100,000-row window; it is not a production-user workload or external-network benchmark.
+
+## Exact comparison and common stack
+
+- Base: immutable prior combined D, published source state `5ac89b5c137030fea1aa6aa7160984423d7f4cd5`.
+- Depth: identical base plus only the validated 20-class LmdbStoreConnection family at `0750336e71ab0ca0d216ce9c36483a6e9063337d`.
+- Resource-restoration, record-cancellation and test-only grouped-memo observer classes are excluded.
+- Common writer: PR #6440 production source pinned to `fca5653c2da8df975fac5760b457c436f3e12dc6`, compiled into an isolated complete binary-module copy.
+- Common transport: improved-hash compact snapshots ON, identity-preserving mapping ON, sequential lookup hint OFF. Memo/IR/partial-ready and other inherited flags identical. Grouped value waves remain OFF.
+
+The original Boot binary/runtime and frontend dependencies were absent after recovery. The real SHACL/server-spring/federation/server/Workbench/Boot modules and frontend assets were reconstructed using explicit module builds and official dependencies. Frozen incumbent API/query/HTTP dependencies override corresponding rebuilt application jars; exact jar and LMDB class hashes, loaded origins and commands are retained. This is a reconstructed common application runtime, not a claim of byte-identical historical Boot reproduction. The common browser assets built successfully, but browser execution did not.
+
+## Fixture, output and route qualification
+
+A separate copy of the marked 100-group/fanout-10 LMDB fixture contains 26,700 triples. The exact embedded narrow OPTIONAL/DISTINCT query projects six slots and returns 100,000 rows. Every query requests the full 100,000-row window, no known-total shortcut, and Workbench consumes/counts the complete result.
+
+Before timing, one full-window validation per arm checked every projected term, uniqueness, count and exact RDF-term dual checksums `1899306305404719472` and `3694550068168048289`, matching the embedded query. Timed trials JSON-decode and count all rows but do not compute those expensive full-term checksums. Every request checks terminal completion/count, compiled IR binds, memo hits, no native spill, returned ledger and actual binary MIME `application/x-binary-rdf-results-table;charset=UTF-8`. Loaded holder/memo/context/writer origins and transport flags were verified. Narrow DISTINCT need not use a grouped tracker; no unsupported grouped-path claim is made.
+
+## Browser limitation
+
+One normal system-Chromium/Playwright smoke was attempted. Chromium aborted before navigation with `process_singleton_posix.cc: socket() failed: Operation not permitted`, alongside crashpad-directory warnings. No escalation, workaround or retry was attempted. There is **no measured browser DOM, paint, IndexedDB, row-worker or rendered-UI latency**. Frontend compilation and successful HTTP query execution do not imply browser rendering passed.
+
+## Prespecified matched protocol
+
+Eight fresh server JVMs in four paired blocks: base/depth, depth/base, base/depth, depth/base. Each server reaches repository/adjacency/overlay readiness, then runs 20 warmups and 10 measured sequential full-window requests. All 240 requests completed and passed witnesses; 80 measured requests contribute to independent fork means. Every request uses a new Node client process/session; Node startup, session GET and metrics requests are outside the timed POST→EOF interval. Server startup/readiness is also excluded.
+
+JDK 25.0.5, -Xms2g/-Xmx5g, native per-query cap 640 MiB; identical GC-only logging, no JFR profiling during timing. Canonical benchmark lock and coordinated window prevented overlapping builds/tests. Every observation is retained; no trimming, outcome-driven warmup change or additional timing round. Sequential request throughput is not concurrent QPS. First query after JVM readiness is retained separately, not called cold OS-cache or machine-restart performance.
+
+Primary latency is response EOF after all rows and completion metadata; first received rows, headers, last window and terminal marker remain separate. First received rows is not first iterator result or DOM paint. This six-column/full-100k workload is not the historical 8M×30-column query that emitted only a 1M window; do not compare its seconds to the old roughly 66–80-second totals.
+
+## Means and matched uncertainty
+
+| Metric | Base ms | Depth ms | Latency reduction | Paired block reductions | Descriptive 95% interval |
+|---|---:|---:|---:|---|---|
+| Response headers | 39.272 | 39.773 | -1.27% | +10.61%, -15.83%, +2.35%, -5.91% | -21.35% to +14.72% |
+| First received rows | 42.746 | 42.953 | -0.48% | +9.77%, -14.25%, +4.41%, -5.07% | -19.04% to +14.52% |
+| Full 100k window | 486.439 | 494.394 | -1.64% | +0.90%, -5.88%, +1.36%, -3.07% | -7.23% to +3.68% |
+| Terminal completed record | 487.195 | 495.419 | -1.69% | +0.91%, -6.06%, +1.33%, -3.07% | -7.39% to +3.73% |
+| Response EOF (primary) | 488.235 | 496.617 | -1.72% | +0.93%, -6.18%, +1.29%, -3.05% | -7.48% to +3.75% |
+
+Positive reduction favors depth. Four independent server-fork means per arm, not 40 independent request iterations, are the units. Intervals use four paired log ratios and t(3)=3.182 with normal/independent-block assumptions, exploratory and unadjusted for multiple comparisons. EOF throughput change is -1.69%; no capacity or cross-workload guarantee follows.
+
+## Every fork and convergence
+
+- matched-01-base: EOF 499.733 ms (request range 366.891–566.959), first rows 48.507 ms; first query EOF 2521.006 ms; whole-JVM GC 19 pauses, 283.9 ms total, 39.3 ms maximum.
+- matched-02-depth: EOF 495.072 ms (request range 371.979–613.974), first rows 43.768 ms; first query EOF 2152.379 ms; whole-JVM GC 19 pauses, 211.1 ms total, 24.2 ms maximum.
+- matched-03-depth: EOF 513.444 ms (request range 437.479–618.052), first rows 44.002 ms; first query EOF 1877.548 ms; whole-JVM GC 19 pauses, 222.8 ms total, 37.2 ms maximum.
+- matched-04-base: EOF 483.555 ms (request range 412.770–588.461), first rows 38.515 ms; first query EOF 2023.488 ms; whole-JVM GC 20 pauses, 245.6 ms total, 26.3 ms maximum.
+- matched-05-base: EOF 490.280 ms (request range 386.513–644.347), first rows 44.036 ms; first query EOF 2130.791 ms; whole-JVM GC 20 pauses, 244.8 ms total, 31.5 ms maximum.
+- matched-06-depth: EOF 483.971 ms (request range 400.452–559.187), first rows 42.093 ms; first query EOF 1846.078 ms; whole-JVM GC 19 pauses, 185.5 ms total, 23.7 ms maximum.
+- matched-07-depth: EOF 493.978 ms (request range 406.460–614.600), first rows 41.949 ms; first query EOF 1966.775 ms; whole-JVM GC 19 pauses, 272.4 ms total, 94.6 ms maximum.
+- matched-08-base: EOF 479.371 ms (request range 397.114–580.505), first rows 39.926 ms; first query EOF 2026.888 ms; whole-JVM GC 21 pauses, 210.2 ms total, 58.1 ms maximum.
+- base measured-index mean EOF ms: 491.48, 471.08, 504.91, 486.24, 531.36, 495.51, 480.20, 450.58, 488.65, 482.35.
+- depth measured-index mean EOF ms: 527.07, 542.47, 552.04, 494.10, 479.93, 492.22, 495.50, 502.56, 438.35, 441.92.
+
+Depth measured-index means trend lower late in the window, with substantial request variability. This further limits a precise steady-state claim; the fixed warmup/measurement protocol was not changed after seeing it. GC logs include startup/warmups and do not assign pauses to individual requests without a timestamp join. Server heap-used metrics before/after requests are retained, not allocation totals or retained-heap measurements. Process RSS was not collected in this runner; the earlier plan mentioned it, but no such claim is made here.
+
+## Interpretation and next decision
+
+The holder-depth change remains independently behavior-tested and showed an embedded native-query signal, but it is not currently supported as an end-to-end Workbench throughput/latency win. Additional transport/parser/Workbench/client work can dilute or interact with an engine-only benefit; this run did not profile those contributions, so no causal bottleneck breakdown is claimed. Keep the exact artifact and evidence available rather than promoting a speedup from the embedded percentages alone. The separate broader correctness selection subsequently completed 1,705 passing tests with three documented gated skips and no failures across 107 classes. This is scoped coverage, not a full repository pass.
+
+## Separate diagnostic follow-up
+
+HTTP-PROFILES.md reports two separate JVM recordings with corrected full-stack exports. They retain the negative clean result and identify read-resource/fused scopes and Workbench JSON serialization as investigation candidates; they do not supply a new timing comparison or a causal wall-time decomposition.
+
+## Reproduction and evidence
+
+`run-matched.sh` fixes eight-server order; `run.py` records exact commands and per-request witnesses. `summary.json` and `summarize.py` retain every request/fork. `application-manifest.json`, `lmdb-runtime-manifest.json`, `frozen-harness-manifest.json` and fixture manifest document common runtime/layers/data. All build failures and corrections, two validation runs, the single blocked browser attempt and complete measured/warmup logs are preserved. Large frozen application jars/classes, node_modules and fixture copies remain local. No production source code was changed for this investigation.
