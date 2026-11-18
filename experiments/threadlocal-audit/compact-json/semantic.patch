@@ -1,0 +1,84 @@
+diff --git a/tools/workbench/src/main/java/org/eclipse/rdf4j/workbench/util/WorkbenchPageResultWriter.java b/tools/workbench/src/main/java/org/eclipse/rdf4j/workbench/util/WorkbenchPageResultWriter.java
+index 95a1a92d..755bc643 100644
+--- a/tools/workbench/src/main/java/org/eclipse/rdf4j/workbench/util/WorkbenchPageResultWriter.java
++++ b/tools/workbench/src/main/java/org/eclipse/rdf4j/workbench/util/WorkbenchPageResultWriter.java
+@@ -44,7 +44,9 @@ import org.eclipse.rdf4j.rio.RioSetting;
+ import org.eclipse.rdf4j.rio.WriterConfig;
+ 
+ import tools.jackson.core.JacksonException;
++import tools.jackson.core.JsonGenerator;
+ import tools.jackson.databind.ObjectMapper;
++import tools.jackson.databind.util.ClassUtil;
+ 
+ /** Writes Workbench page data as a line-oriented stream of structured records. */
+ public final class WorkbenchPageResultWriter implements QueryResultWriter {
+@@ -525,6 +527,60 @@ public final class WorkbenchPageResultWriter implements QueryResultWriter {
+ 		throw new IllegalArgumentException("Unsupported RDF value in Workbench query data: " + value.getClass());
+ 	}
+ 
++	/** Writes only the already materialized compact schema, retaining Jackson validation and escaping. */
++	private static void writePackedRow(OutputStream output, List<Object> values) {
++		JsonGenerator generator = JSON_MAPPER.createGenerator(output);
++		try {
++			generator.writeStartArray(values, values.size());
++			for (int i = 0; i < values.size(); i++) {
++				try {
++					writePackedValue(generator, (Object[]) values.get(i));
++				} catch (JacksonException failure) {
++					throw failure.prependPath(values, i);
++				}
++			}
++			generator.writeEndArray();
++		} catch (Exception failure) {
++			// Match ObjectMapper.writeValue: do not auto-complete partial JSON on failure, and retain suppressed
++			// close failures. A plain try-with-resources would change malformed/failed oversized-row output.
++			ClassUtil.closeOnFailAndThrowAsJacksonE(generator, failure);
++			return;
++		}
++		generator.close();
++	}
++
++	private static void writePackedValue(JsonGenerator generator, Object[] value) {
++		if (value == null) {
++			generator.writeNull();
++			return;
++		}
++		generator.writeStartArray(value, value.length);
++		int kind = (Integer) value[0];
++		try {
++			generator.writeNumber(kind);
++		} catch (JacksonException failure) {
++			throw failure.prependPath(value[0], 0);
++		}
++		for (int i = 1; i < value.length; i++) {
++			Object field = value[i];
++			try {
++				if (kind == 3) {
++					writePackedValue(generator, (Object[]) field);
++				} else if (field == null) {
++					generator.writeNull();
++				} else if (field instanceof Boolean reference) {
++					generator.writeBoolean(reference);
++				} else {
++					generator.writeString((String) field);
++				}
++			} catch (JacksonException failure) {
++				// Match ObjectArraySerializer's reference chain without its normal-path dynamic dispatch.
++				throw failure.prependPath(field, i);
++			}
++		}
++		generator.writeEndArray();
++	}
++
+ 	/** Stores at most one record and one capped serialized row, independent of the result fetch bound. */
+ 	private final class CompactRows {
+ 		private final ByteArrayOutputStream record = new ByteArrayOutputStream();
+@@ -535,7 +591,7 @@ public final class WorkbenchPageResultWriter implements QueryResultWriter {
+ 		private void add(List<Object> values) throws IOException, QueryResultHandlerException {
+ 			row.reset();
+ 			try {
+-				JSON_MAPPER.writeValue(row, values);
++				writePackedRow(row, values);
+ 			} catch (JacksonException failure) {
+ 				// An oversized row streams to the response from inside Jackson, which wraps a failed write (a client
+ 				// disconnect, an invalidated heartbeat stream) in an unchecked exception. Report the I/O failure
