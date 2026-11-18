@@ -5923,6 +5923,81 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 				: org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView.takeOwnership(record);
 	}
 
+	/** Snapshot-bound form used before repository result exposure; no current-revision lookup is substituted. */
+	org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView getRecordView(ReadSnapshot snapshot, long id)
+			throws IOException {
+		return withRecordSnapshot(snapshot, (stack, txn) -> {
+			try (ValueOverlayRegistry.SnapshotLease overlay = borrowValueOverlay(txn)) {
+				return copyRecordView(stack, txn, id, overlay, MDBVal.malloc(stack), MDBVal.malloc(stack));
+			}
+		});
+	}
+
+	/** Copies a bounded group of current-row dictionary misses under one snapshot and overlay admission. */
+	void getRecordViews(ReadSnapshot snapshot, long[] ids, int offset, int length,
+			org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView[] target, int targetOffset)
+			throws IOException {
+		Objects.checkFromIndexSize(offset, length, ids.length);
+		Objects.checkFromIndexSize(targetOffset, length, target.length);
+		withRecordSnapshot(snapshot, (stack, txn) -> {
+			try (ValueOverlayRegistry.SnapshotLease overlay = borrowValueOverlay(txn)) {
+				MDBVal key = MDBVal.malloc(stack);
+				MDBVal value = MDBVal.malloc(stack);
+				for (int index = 0; index < length; index++) {
+					target[targetOffset + index] = copyRecordView(stack, txn, ids[offset + index], overlay, key,
+							value);
+				}
+				return null;
+			}
+		});
+	}
+
+	private org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView copyRecordView(MemoryStack stack,
+			long txn, long id, ValueOverlayRegistry.SnapshotLease overlay, MDBVal key, MDBVal value)
+			throws IOException {
+		if (id == 0 || id == LmdbValue.UNKNOWN_ID || ValueIds.isInlined(id)
+				|| ValueIds.getIdType(id) == ValueIds.T_TRIPLE) {
+			return null;
+		}
+		byte[] record = overlay == null ? null : overlay.get(id);
+		if (record == null) {
+			LmdbUtil.setMDBValData(key, id2data(idBuffer(stack), id).flip());
+			int rc = mdb_get(txn, dbi, key, value);
+			if (rc == MDB_NOTFOUND) {
+				return null;
+			}
+			E(rc);
+			record = new byte[Math.toIntExact(LmdbUtil.mdbValSize(value))];
+			LmdbUtil.copyMemoryToByteArray(LmdbUtil.mdbValDataAddress(value), record, record.length);
+		}
+		return org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView.takeOwnership(record);
+	}
+
+	private <T> T withRecordSnapshot(ReadSnapshot snapshot, Transaction<T> operation) throws IOException {
+		if (snapshot.valueStore() != this) {
+			throw new IllegalArgumentException("Read snapshot belongs to a different ValueStore");
+		}
+		long stamp = txnManager.acquireReadBarrier();
+		try {
+			synchronized (snapshot.txnRef()) {
+				snapshot.ensureValid();
+				if (!snapshot.dictionaryDetached()) {
+					return withBorrowedReadContext(snapshot.txnRef().get(), snapshot.hasStableIds()
+							? (ValueStoreRevision.Lazy) snapshot.revision()
+							: null, true, operation);
+				}
+			}
+		} finally {
+			txnManager.lockManager().unlockRead(stamp);
+		}
+		// A detached snapshot retains its paired stable-ID horizon. Admit the fresh dictionary reader only after
+		// leaving the detached transaction monitor and map-operation guard, exactly as the value resolver does.
+		return readTransaction(env, (stack, txn) -> {
+			snapshot.ensureValid();
+			return operation.exec(stack, txn);
+		});
+	}
+
 	/**
 	 * Callback-scoped typed/UTF-8 access. Covered records are decoded selectively from their compressed pages. The
 	 * callback must not retain its record. Unsupported/missing overlay records use this same native transaction; that

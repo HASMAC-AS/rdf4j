@@ -31,14 +31,18 @@ import org.eclipse.rdf4j.http.client.QueryExecutionContext;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.TripleTerm;
 import org.eclipse.rdf4j.model.Value;
+import org.eclipse.rdf4j.query.EncodedValueSource;
 import org.eclipse.rdf4j.query.QueryInterruptedException;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.SailClosable;
 import org.eclipse.rdf4j.sail.features.SailResultValueExtractor;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.NativeEncodedBindingSet;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet;
+import org.eclipse.rdf4j.sail.lmdb.evaluation.NativeResultEncoder;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 
 /** Repository-only, demand-driven materialization retaining ID capabilities through complete value waves. */
-final class RepositoryValueIteration<T> implements CloseableIteration<T>, CooperativeCancellation {
+final class RepositoryValueIteration<T> implements CloseableIteration<T>, CooperativeCancellation, EncodedValueSource {
 
 	private static final int WAVE_VALUES = 1024;
 	private static final ThreadLocal<RepositoryValueIteration<?>> SOURCE_PULL = new ThreadLocal<>();
@@ -65,6 +69,8 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 	private boolean drainClaimed;
 	private T row;
 	private boolean rowReady;
+	private boolean sourceConsumed;
+	private NativeResultEncoder nativeEncoder;
 
 	RepositoryValueIteration(CloseableIteration<? extends T> source, SailResultValueExtractor<T> extractor,
 			ValueStore store, ValueResolutionScope transactionScope, Consumer<RepositoryValueIteration<?>> onClose) {
@@ -75,6 +81,27 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 		this.onClose = onClose;
 		// Admission happens before even hasNext can exhaust the inner standalone operation.
 		scopes.put(store, store.openResultValueResolutionScope());
+	}
+
+	@Override
+	public synchronized boolean enableEncodedValues() {
+		if (closed.get() || sourceConsumed || extractor != (Object) SailResultValueExtractor.BINDING_SETS) {
+			return false;
+		}
+		if (nativeEncoder == null) {
+			nativeEncoder = new NativeResultEncoder();
+		}
+		return true;
+	}
+
+	/** Native rows are converted only inside their explicitly negotiated owning exposure's existing source pull. */
+	static NativeEncodedBindingSet encodeNativeRow(NativeProjectedBindingSet row) {
+		RepositoryValueIteration<?> exposure = SOURCE_PULL.get();
+		if (exposure == null || exposure.nativeEncoder == null) {
+			return null;
+		}
+		exposure.checkActive();
+		return exposure.nativeEncoder.encode(row);
 	}
 
 	@Override
@@ -142,18 +169,35 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 			close();
 			return false;
 		}
-		T nextRow = extractor.snapshot(sourceNext());
+		T nextRow = sourceNext();
+		NativeEncodedBindingSet encoded = nativeEncoder != null && nextRow instanceof NativeEncodedBindingSet nativeRow
+				? nativeRow
+				: null;
+		if (encoded == null) {
+			nextRow = extractor.snapshot(nextRow);
+		}
 		if (closed.get()) {
 			return false;
 		}
+		if (encoded != null && !encoded.hasFallbackValues()) {
+			checkActive();
+			row = nextRow;
+			rowReady = true;
+			return true;
+		}
 		List<Value> roots = new ArrayList<>();
 		boolean[] prepared = { true };
-		extractor.extract(nextRow, root -> {
+		Consumer<Value> collectRoot = root -> {
 			if (root != null) {
 				roots.add(root);
 				prepared[0] &= isPrepared(root);
 			}
-		});
+		};
+		if (encoded != null) {
+			encoded.visitFallbackValues(collectRoot);
+		} else {
+			extractor.extract(nextRow, collectRoot);
+		}
 		// Rows whose values are already resolved need neither owner scopes nor dictionary waves.
 		if (!prepared[0]) {
 			Map<Value, Boolean> capturedOwners = new IdentityHashMap<>();
@@ -346,6 +390,7 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 				return false;
 			}
 			activeCalls++;
+			sourceConsumed = true;
 			activeThread = Thread.currentThread();
 			return true;
 		}
@@ -459,6 +504,10 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 			scopes.clear();
 			row = null;
 			rowReady = false;
+			if (nativeEncoder != null) {
+				nativeEncoder.clear();
+				nativeEncoder = null;
+			}
 		}
 		Throwable failure = null;
 		for (ValueResolutionScope scope : retired) {

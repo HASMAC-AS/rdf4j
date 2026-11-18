@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.sail.lmdb.ValueIds;
 import org.eclipse.rdf4j.sail.lmdb.ValuePosition;
 import org.eclipse.rdf4j.sail.lmdb.ValueStore;
 import org.eclipse.rdf4j.sail.lmdb.factor.BorrowedFactorBatch;
+import org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView;
 
 /**
  * LMDB-local bridge used by the native query compilers. This internal interface lets the root LMDB store integrate with
@@ -81,6 +82,27 @@ public interface NativeLmdbQuerySource {
 	/** Materializes a value using the complete static position mask of its lexical binding. */
 	default Value lazyValue(long id, int positionMask) throws QueryEvaluationException {
 		return lazyValue(id);
+	}
+
+	/**
+	 * Owned lexical bytes from this source's admitted dictionary snapshot. A view never borrows transaction memory.
+	 * Unsupported, synthetic, inline and triple terms return null and retain ordinary value materialization.
+	 */
+	default ValueStoreRecordView recordView(long id) throws QueryEvaluationException {
+		return null;
+	}
+
+	/**
+	 * Bounded current-row dictionary access. Transactional sources override this to admit one reader/overlay for the
+	 * complete batch; it never advances a statement or result iterator. Every populated view owns its bytes.
+	 */
+	default void recordViews(long[] ids, int offset, int length, ValueStoreRecordView[] target, int targetOffset)
+			throws QueryEvaluationException {
+		Objects.checkFromIndexSize(offset, length, ids.length);
+		Objects.checkFromIndexSize(targetOffset, length, target.length);
+		for (int index = 0; index < length; index++) {
+			target[targetOffset + index] = recordView(ids[offset + index]);
+		}
 	}
 
 	/**

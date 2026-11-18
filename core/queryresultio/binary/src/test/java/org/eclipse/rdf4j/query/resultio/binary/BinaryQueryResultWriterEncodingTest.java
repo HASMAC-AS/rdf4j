@@ -49,6 +49,7 @@ import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 import org.eclipse.rdf4j.query.impl.ListBindingSet;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.resultio.helpers.QueryResultCollector;
+import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -58,6 +59,12 @@ class BinaryQueryResultWriterEncodingTest {
 	private static final ValueFactory VF = SimpleValueFactory.getInstance();
 	private static final String XSD_NAMESPACE = "http://www.w3.org/2001/XMLSchema#";
 	private static final List<String> ONE_COLUMN = List.of("value");
+
+	private static BinaryQueryResultWriter typedWriter(OutputStream output) {
+		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		writer.getWriterConfig().set(BasicWriterSettings.XSD_STRING_TO_PLAIN_LITERAL, false);
+		return writer;
+	}
 
 	@TestFactory
 	Stream<DynamicTest> writesLiteralAsStandardUtf8WithByteLength() {
@@ -120,7 +127,7 @@ class BinaryQueryResultWriterEncodingTest {
 	@TestFactory
 	Stream<DynamicTest> rejectsMalformedSurrogatesInLiteralLabels() {
 		return malformedStrings().map(test -> DynamicTest.dynamicTest(test.description(), () -> {
-			BinaryQueryResultWriter writer = new BinaryQueryResultWriter(new ByteArrayOutputStream());
+			BinaryQueryResultWriter writer = typedWriter(new ByteArrayOutputStream());
 			writer.startQueryResult(ONE_COLUMN);
 			BindingSet row = new ListBindingSet(ONE_COLUMN, VF.createLiteral(test.value()));
 
@@ -133,7 +140,7 @@ class BinaryQueryResultWriterEncodingTest {
 	@TestFactory
 	Stream<DynamicTest> rejectsMalformedSurrogatesInColumnNames() {
 		return malformedStrings().map(test -> DynamicTest.dynamicTest(test.description(), () -> {
-			BinaryQueryResultWriter writer = new BinaryQueryResultWriter(new ByteArrayOutputStream());
+			BinaryQueryResultWriter writer = typedWriter(new ByteArrayOutputStream());
 
 			TupleQueryResultHandlerException failure = assertThrows(TupleQueryResultHandlerException.class,
 					() -> writer.startQueryResult(List.of(test.value())));
@@ -169,7 +176,7 @@ class BinaryQueryResultWriterEncodingTest {
 	Stream<DynamicTest> encodesValidTextAfterRejectingMalformedText() {
 		return malformedStrings().map(test -> DynamicTest.dynamicTest(test.description(), () -> {
 			ByteArrayOutputStream output = new ByteArrayOutputStream();
-			BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+			BinaryQueryResultWriter writer = typedWriter(output);
 			assertMalformedInput(assertThrows(CharacterCodingException.class,
 					() -> writer.error(QueryErrorType.QUERY_EVALUATION_ERROR, test.value())));
 			assertArrayEquals(new byte[] { 126, 2 }, output.toByteArray(),
@@ -305,7 +312,7 @@ class BinaryQueryResultWriterEncodingTest {
 										}
 									});
 									ByteArrayOutputStream output = new ByteArrayOutputStream();
-									BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+									BinaryQueryResultWriter writer = typedWriter(output);
 									writer.startQueryResult(ONE_COLUMN);
 									for (BindingSet row : rows) {
 										writer.handleSolution(row);
@@ -423,7 +430,7 @@ class BinaryQueryResultWriterEncodingTest {
 				List.of(CoreDatatype.GEO.WKT_LITERAL, CoreDatatype.RDF.XMLLITERAL, CoreDatatype.RDF.HTML,
 						CoreDatatype.RDF.JSON, CoreDatatype.XSD.INTEGER, CoreDatatype.XSD.STRING));
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		for (List<CoreDatatype> order : orders) {
 			output.reset();
 			BindingSet[] rows = new BindingSet[order.size()];
@@ -456,8 +463,8 @@ class BinaryQueryResultWriterEncodingTest {
 	void interleavedWritersKeepTheirDatatypeNamespaceIdsIndependent() throws Exception {
 		ByteArrayOutputStream firstOutput = new ByteArrayOutputStream();
 		ByteArrayOutputStream secondOutput = new ByteArrayOutputStream();
-		BinaryQueryResultWriter firstWriter = new BinaryQueryResultWriter(firstOutput);
-		BinaryQueryResultWriter secondWriter = new BinaryQueryResultWriter(secondOutput);
+		BinaryQueryResultWriter firstWriter = typedWriter(firstOutput);
+		BinaryQueryResultWriter secondWriter = typedWriter(secondOutput);
 		String precedingNamespace = "http://example.org/preceding/";
 		BindingSet preceding = new ListBindingSet(ONE_COLUMN, VF.createIRI(precedingNamespace, "item"));
 		BindingSet first = new ListBindingSet(ONE_COLUMN, VF.createLiteral("first"));
@@ -528,7 +535,7 @@ class BinaryQueryResultWriterEncodingTest {
 		String secondNamespace = "http://example.org/second/";
 		MutableDatatypeIRI datatype = new MutableDatatypeIRI(firstNamespace + "one");
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		Literal firstLiteral = VF.createLiteral("first", datatype);
 		assertEquals(CoreDatatype.NONE, firstLiteral.getCoreDatatype());
 		writer.startQueryResult(ONE_COLUMN);
@@ -556,7 +563,7 @@ class BinaryQueryResultWriterEncodingTest {
 	void makesCompletedRowsVisibleBeforeEndQueryResult() throws Exception {
 		List<String> names = List.of("left", "right", "missing");
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(names);
 		writer.handleSolution(primingRow(names));
 		writer.handleSolution(new ListBindingSet(names, VF.createLiteral("one"), VF.createLiteral("two"), null));
@@ -621,7 +628,7 @@ class BinaryQueryResultWriterEncodingTest {
 	void encodesErrorMessagesAsUtf8() throws Exception {
 		String message = "Invalid \u0000 value: blåbær \ud83d\ude80";
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(ONE_COLUMN);
 		writer.error(QueryErrorType.QUERY_EVALUATION_ERROR, message);
 		byte[] expected = expectedStream(ONE_COLUMN, out -> {
@@ -652,7 +659,7 @@ class BinaryQueryResultWriterEncodingTest {
 			}
 		}
 		ObservedOutput output = new ObservedOutput();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(ONE_COLUMN);
 		writer.handleSolution(new ListBindingSet(ONE_COLUMN, VF.createLiteral("value")));
 		writer.endQueryResult();
@@ -675,7 +682,7 @@ class BinaryQueryResultWriterEncodingTest {
 					for (int acceptedBytes : new int[] { 0, 1, 4, 5, 5 + payloadLength / 2, 5 + payloadLength,
 							6 + payloadLength, 9 + payloadLength }) {
 						FailingOutput output = new FailingOutput();
-						BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+						BinaryQueryResultWriter writer = typedWriter(output);
 						writer.startQueryResult(ONE_COLUMN);
 						writer.handleSolution(new ListBindingSet(ONE_COLUMN, VF.createLiteral("warmup")));
 						output.failAfter(acceptedBytes);
@@ -694,7 +701,7 @@ class BinaryQueryResultWriterEncodingTest {
 	@Test
 	void propagatesOutputFailureFromALargeColumnName() {
 		FailingOutput output = new FailingOutput();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		// Magic, version, column count, string length, then a prefix of the UTF-8 payload.
 		output.failAfter(4 + 4 + 4 + 4 + 4096);
 
@@ -708,7 +715,7 @@ class BinaryQueryResultWriterEncodingTest {
 	@Test
 	void propagatesOutputFailureFromALargeErrorMessage() {
 		FailingOutput output = new FailingOutput();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		output.failAfter(1 + 1 + 4 + 4096);
 
 		IOException failure = assertThrows(IOException.class,
@@ -722,7 +729,7 @@ class BinaryQueryResultWriterEncodingTest {
 	void propagatesEndMarkerAndFlushFailuresWithoutClosingTheSuppliedStream() throws Exception {
 		for (boolean failOnFlush : new boolean[] { false, true }) {
 			FailingOutput output = new FailingOutput();
-			BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+			BinaryQueryResultWriter writer = typedWriter(output);
 			writer.startQueryResult(ONE_COLUMN);
 			writer.handleSolution(new ListBindingSet(ONE_COLUMN, VF.createLiteral("value")));
 			output.failOnFlush = failOnFlush;
@@ -746,7 +753,7 @@ class BinaryQueryResultWriterEncodingTest {
 		BindingSet row = new ListBindingSet(names, VF.createBNode("before"), VF.createLiteral(label),
 				VF.createIRI(namespace, "after"), null);
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(names);
 		BindingSet prime = primingRow(names);
 		writer.handleSolution(prime);
@@ -839,7 +846,7 @@ class BinaryQueryResultWriterEncodingTest {
 				.map(kind -> DynamicTest.dynamicTest(kind, () -> {
 					List<String> names = List.of("first", "failing");
 					ByteArrayOutputStream output = new ByteArrayOutputStream();
-					BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+					BinaryQueryResultWriter writer = typedWriter(output);
 					RuntimeException getterFailure = new IllegalStateException("Injected getter failure");
 					Error getterError = new AssertionError("Injected getter error");
 					Literal later = new SimpleLiteral("\ud800") {
@@ -888,7 +895,7 @@ class BinaryQueryResultWriterEncodingTest {
 	void propagatesFinalRowWriteFailureWithoutRetryOrLeakingBytesIntoAnError() throws Exception {
 		List<String> names = List.of("first", "last");
 		ControlledOutput output = new ControlledOutput();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		Literal last = new SimpleLiteral("last") {
 			@Override
 			public String getLabel() {
@@ -924,7 +931,7 @@ class BinaryQueryResultWriterEncodingTest {
 						flushBeforeWrite ? "flush then write" : "write before flush", () -> {
 							List<String> names = List.of("first", "reentrant", "last");
 							ControlledOutput output = new ControlledOutput();
-							BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+							BinaryQueryResultWriter writer = typedWriter(output);
 							String injectedNamespace = "urn:externally-written:";
 							ByteArrayOutputStream injected = new ByteArrayOutputStream();
 							writeNamespace(new DataOutputStream(injected), 1, injectedNamespace);
@@ -977,7 +984,7 @@ class BinaryQueryResultWriterEncodingTest {
 	@Test
 	void closingTheOutputViewFlushesAndClosesOnlyOnce() throws Exception {
 		ControlledOutput output = new ControlledOutput();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(ONE_COLUMN);
 
 		writer.getOutputStream().close();
@@ -993,7 +1000,7 @@ class BinaryQueryResultWriterEncodingTest {
 				.map(sameFailure -> DynamicTest.dynamicTest(
 						sameFailure ? "same flush and close exception" : "distinct flush and close exceptions", () -> {
 							ControlledOutput output = new ControlledOutput();
-							BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+							BinaryQueryResultWriter writer = typedWriter(output);
 							writer.startQueryResult(ONE_COLUMN);
 							output.flushFailure = new IOException("Injected flush failure");
 							output.closeFailure = sameFailure ? output.flushFailure
@@ -1047,7 +1054,7 @@ class BinaryQueryResultWriterEncodingTest {
 		String secondNamespace = "urn:mutable:second:";
 		MutableIRI iri = new MutableIRI(firstNamespace + "one");
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(ONE_COLUMN);
 		writer.handleSolution(new ListBindingSet(ONE_COLUMN, iri));
 		writer.handleSolution(new ListBindingSet(ONE_COLUMN, VF.createBNode("gap")));
@@ -1078,7 +1085,7 @@ class BinaryQueryResultWriterEncodingTest {
 			namespaces.add("urn:namespace:" + "x".repeat(index * 8) + ":");
 		}
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		for (boolean reversed : new boolean[] { false, true }) {
 			List<String> order = reversed ? namespaces.reversed() : namespaces;
 			BindingSet[] rows = new BindingSet[order.size() * 2];
@@ -1148,7 +1155,7 @@ class BinaryQueryResultWriterEncodingTest {
 				new StringCase("low surrogate after dense BMP", "中".repeat(1365) + "\udc00"))
 				.map(test -> DynamicTest.dynamicTest(test.description(), () -> {
 					ByteArrayOutputStream output = new ByteArrayOutputStream();
-					BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+					BinaryQueryResultWriter writer = typedWriter(output);
 					assertMalformedInput(assertThrows(CharacterCodingException.class,
 							() -> writer.error(QueryErrorType.QUERY_EVALUATION_ERROR, test.value())));
 
@@ -1161,7 +1168,7 @@ class BinaryQueryResultWriterEncodingTest {
 		List<String> suppliedNames = new ArrayList<>(List.of("left", "right", "missing"));
 		List<String> originalNames = List.copyOf(suppliedNames);
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(suppliedNames);
 		suppliedNames.set(0, "right");
 		suppliedNames.set(1, "left");
@@ -1200,7 +1207,7 @@ class BinaryQueryResultWriterEncodingTest {
 
 	private static byte[] serialize(List<String> names, BindingSet... rows) throws Exception {
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		BinaryQueryResultWriter writer = new BinaryQueryResultWriter(output);
+		BinaryQueryResultWriter writer = typedWriter(output);
 		writer.startQueryResult(names);
 		for (BindingSet row : rows) {
 			writer.handleSolution(row);
@@ -1279,7 +1286,7 @@ class BinaryQueryResultWriterEncodingTest {
 		void write(DataOutputStream out) throws IOException;
 	}
 
-	private record StringCase(String description, String value) {
+	record StringCase(String description, String value) {
 	}
 
 	private static class ControlledOutput extends OutputStream {

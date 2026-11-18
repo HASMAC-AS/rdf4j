@@ -295,6 +295,9 @@ public class QueryResults extends Iterations {
 
 		try (tqr) {
 			handler.startQueryResult(tqr.getBindingNames());
+			if (handler instanceof EncodedTupleQueryResultHandler && tqr instanceof EncodedValueSource encoded) {
+				encoded.enableEncodedValues();
+			}
 
 			while (tqr.hasNext()) {
 				BindingSet bindingSet = tqr.next();

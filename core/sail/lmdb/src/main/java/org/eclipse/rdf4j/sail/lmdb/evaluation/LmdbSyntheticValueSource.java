@@ -32,6 +32,7 @@ import org.eclipse.rdf4j.sail.lmdb.LmdbPrefixRunCursor;
 import org.eclipse.rdf4j.sail.lmdb.LmdbPrefixRunPlan;
 import org.eclipse.rdf4j.sail.lmdb.LmdbRootScanPartition;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
+import org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView;
 
 /**
  * Query source over a compiled plan's synthetic id spaces. Two lifetimes share this class:
@@ -437,6 +438,30 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 			return planConstant;
 		}
 		return delegate.lazyValue(id, positionMask);
+	}
+
+	@Override
+	public ValueStoreRecordView recordView(long id) {
+		return synthetic(id) ? null : delegate.recordView(id);
+	}
+
+	@Override
+	public void recordViews(long[] ids, int offset, int length, ValueStoreRecordView[] target, int targetOffset) {
+		java.util.Objects.checkFromIndexSize(offset, length, ids.length);
+		java.util.Objects.checkFromIndexSize(targetOffset, length, target.length);
+		int runStart = 0;
+		for (int index = 0; index < length; index++) {
+			if (synthetic(ids[offset + index])) {
+				if (runStart < index) {
+					delegate.recordViews(ids, offset + runStart, index - runStart, target, targetOffset + runStart);
+				}
+				target[targetOffset + index] = null;
+				runStart = index + 1;
+			}
+		}
+		if (runStart < length) {
+			delegate.recordViews(ids, offset + runStart, length - runStart, target, targetOffset + runStart);
+		}
 	}
 
 	@Override

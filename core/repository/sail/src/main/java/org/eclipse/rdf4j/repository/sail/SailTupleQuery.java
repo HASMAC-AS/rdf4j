@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.InterruptingTimeLimit;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.EncodedValueSource;
 import org.eclipse.rdf4j.query.Query;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryInterruptedException;
@@ -69,9 +70,11 @@ public class SailTupleQuery extends SailQuery implements TupleQuery {
 				}
 			}
 			endEvaluationTimeLimit(timeLimit);
+			EncodedValueSource encodedSource = bindingsIter instanceof EncodedValueSource source ? source : null;
 			bindingsIter = enforceMaxQueryTime(bindingsIter, timeLimit);
 
-			return new IteratingTupleQueryResult(new ArrayList<>(tupleExpr.getBindingNames()), bindingsIter);
+			return new IteratingTupleQueryResult(new ArrayList<>(tupleExpr.getBindingNames()), bindingsIter,
+					encodedSource);
 		} catch (Throwable e) {
 			QueryInterruptedException timeout;
 			try {

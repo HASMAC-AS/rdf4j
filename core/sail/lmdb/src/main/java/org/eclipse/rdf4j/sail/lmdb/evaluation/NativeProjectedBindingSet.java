@@ -28,13 +28,14 @@ import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.AbstractBindingSet;
 import org.eclipse.rdf4j.query.Binding;
+import org.eclipse.rdf4j.query.IndexedBindingSet;
 import org.eclipse.rdf4j.query.impl.SimpleBinding;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 
 /** Immutable projected native ids that materialize RDF values only when a caller reads a binding. */
 @Experimental
 @InternalUseOnly
-public final class NativeProjectedBindingSet extends AbstractBindingSet {
+public final class NativeProjectedBindingSet extends AbstractBindingSet implements IndexedBindingSet {
 
 	static final String ENABLED_PROPERTY = "rdf4j.lmdb.nativeLazyResults.enabled";
 	static final AtomicLong CREATED = new AtomicLong();
@@ -206,6 +207,31 @@ public final class NativeProjectedBindingSet extends AbstractBindingSet {
 	@Override
 	public int size() {
 		return size;
+	}
+
+	@Override
+	public int getBindingCount() {
+		return names.length;
+	}
+
+	@Override
+	public String getBindingName(int index) {
+		return names[index];
+	}
+
+	@Override
+	public Value getValue(int index) {
+		return isBound(ids[index]) ? value(index) : null;
+	}
+
+	@Override
+	public boolean hasBinding(int index) {
+		return isBound(ids[index]);
+	}
+
+	@Override
+	public Object getBindingLayoutIdentity() {
+		return names;
 	}
 
 	@Override

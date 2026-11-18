@@ -50,6 +50,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleNamespace;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.Dataset;
+import org.eclipse.rdf4j.query.EncodedValueSource;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryInterruptedException;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
@@ -275,11 +276,34 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 		synchronized (repositoryValueIterations) {
 			if (!repositoryExposureClosed) {
 				repositoryValueIterations.add(exposure);
-				return super.registerIteration(exposure);
+				CloseableIteration<T> registered = super.registerIteration(exposure);
+				return extractor == (Object) SailResultValueExtractor.BINDING_SETS
+						? new EncodedExposureIteration<>(registered, exposure)
+						: registered;
 			}
 		}
 		exposure.close();
 		throw new SailException("Cannot expose values from a closed LMDB connection");
+	}
+
+	/** Keeps per-result negotiation visible through cleanup-registration wrappers without bypassing their close. */
+	private static final class EncodedExposureIteration<E> extends IterationWrapper<E> implements EncodedValueSource {
+		private final RepositoryValueIteration<E> exposure;
+
+		private EncodedExposureIteration(CloseableIteration<E> registered, RepositoryValueIteration<E> exposure) {
+			super(registered);
+			this.exposure = exposure;
+		}
+
+		@Override
+		public boolean enableEncodedValues() {
+			return !isClosed() && exposure.enableEncodedValues();
+		}
+
+		@Override
+		public boolean requestCancellation() {
+			return !isClosed() && exposure.requestCancellation();
+		}
 	}
 
 	@Override
@@ -1069,6 +1093,10 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 			public BindingSet next() {
 				BindingSet row = super.next();
 				if (row instanceof NativeProjectedBindingSet nativeRow) {
+					BindingSet encoded = RepositoryValueIteration.encodeNativeRow(nativeRow);
+					if (encoded != null) {
+						return encoded;
+					}
 					// Capture this row while its native source is live. Sail callbacks still receive lazy values;
 					// the repository exposure scope initializes them without speculatively requesting later rows.
 					nativeRow.collectMaterializationValues(ignored -> {

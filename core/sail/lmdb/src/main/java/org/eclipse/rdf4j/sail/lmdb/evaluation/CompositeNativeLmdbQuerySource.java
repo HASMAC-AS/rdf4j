@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.sail.lmdb.LmdbPrefixRunPlan;
 import org.eclipse.rdf4j.sail.lmdb.LmdbRootScanPartition;
 import org.eclipse.rdf4j.sail.lmdb.RecordIterator;
 import org.eclipse.rdf4j.sail.lmdb.TripleIndex;
+import org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView;
 
 @Experimental
 final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
@@ -87,6 +88,16 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 	@Override
 	public Value lazyValue(long id, int positionMask) throws QueryEvaluationException {
 		return sources.get(0).lazyValue(id, positionMask);
+	}
+
+	@Override
+	public ValueStoreRecordView recordView(long id) {
+		return sources.get(0).recordView(id);
+	}
+
+	@Override
+	public void recordViews(long[] ids, int offset, int length, ValueStoreRecordView[] target, int targetOffset) {
+		sources.get(0).recordViews(ids, offset, length, target, targetOffset);
 	}
 
 	@Override
@@ -1261,6 +1272,16 @@ final class CompositeNativeLmdbQuerySource implements NativeLmdbQuerySource {
 		@Override
 		public Value lazyValue(long id, int positionMask) throws QueryEvaluationException {
 			return delegate.lazyValue(id, positionMask);
+		}
+
+		@Override
+		public ValueStoreRecordView recordView(long id) {
+			return delegate.recordView(id);
+		}
+
+		@Override
+		public void recordViews(long[] ids, int offset, int length, ValueStoreRecordView[] target, int targetOffset) {
+			delegate.recordViews(ids, offset, length, target, targetOffset);
 		}
 
 		@Override

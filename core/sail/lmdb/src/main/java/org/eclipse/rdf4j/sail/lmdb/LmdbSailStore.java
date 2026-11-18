@@ -14087,6 +14087,25 @@ class LmdbSailStore implements SailStore {
 		}
 
 		@Override
+		public org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView recordView(long id) {
+			try {
+				return valueStore.getRecordView(lease.readView.valueSnapshot(), id);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
+			}
+		}
+
+		@Override
+		public void recordViews(long[] ids, int offset, int length,
+				org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView[] target, int targetOffset) {
+			try {
+				valueStore.getRecordViews(lease.readView.valueSnapshot(), ids, offset, length, target, targetOffset);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
+			}
+		}
+
+		@Override
 		public Object valueLookupScope() {
 			try {
 				return txn.valueLookupScope(valueStore.valueLookupScope(lease.readView.valueSnapshot()));
@@ -15600,6 +15619,25 @@ class LmdbSailStore implements SailStore {
 				}
 				LmdbNativeExpressionCompiler.LAZY_VALUE_CALLS.incrementAndGet();
 				return valueStore.getLazyValue(readView.valueSnapshot(), id, positionMask);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
+			}
+		}
+
+		@Override
+		public org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView recordView(long id) {
+			try {
+				return valueStore.getRecordView(readView.valueSnapshot(), id);
+			} catch (IOException e) {
+				throw new QueryEvaluationException(e);
+			}
+		}
+
+		@Override
+		public void recordViews(long[] ids, int offset, int length,
+				org.eclipse.rdf4j.sail.lmdb.valueoverlay.ValueStoreRecordView[] target, int targetOffset) {
+			try {
+				valueStore.getRecordViews(readView.valueSnapshot(), ids, offset, length, target, targetOffset);
 			} catch (IOException e) {
 				throw new QueryEvaluationException(e);
 			}
