@@ -21,6 +21,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +90,8 @@ public final class WorkbenchPageResultWriter implements QueryResultWriter {
 	private final Map<String, Object> terminalMetadata = new LinkedHashMap<>();
 
 	private boolean started;
+
+	private boolean orderedQueryColumns;
 
 	private boolean emptyStartPending;
 
@@ -242,6 +245,8 @@ public final class WorkbenchPageResultWriter implements QueryResultWriter {
 			this.bindingNames.addAll(bindingNames);
 			emptyStartPending = bindingNames.isEmpty();
 		}
+		orderedQueryColumns = compactRows != null && !this.bindingNames.contains(null)
+				&& new HashSet<>(this.bindingNames).size() == this.bindingNames.size();
 		try {
 			if (!emptyStartPending) {
 				writeBindingNames();
@@ -253,6 +258,34 @@ public final class WorkbenchPageResultWriter implements QueryResultWriter {
 
 	@Override
 	public synchronized void handleSolution(BindingSet bindingSet) throws TupleQueryResultHandlerException {
+		beginRow();
+		List<Object> row = new ArrayList<>(bindingNames.size());
+		for (String name : bindingNames) {
+			Value value = bindingSet.getValue(name);
+			row.add(value == null ? null : compactRows == null ? term(value) : packedTerm(value));
+		}
+		commitPackedRow(row);
+	}
+
+	/** Only the query evaluator's privately owned, fully populated scratch row may use this synchronous route. */
+	synchronized boolean tryOrderedQueryValues(List<String> columns, List<Value> values)
+			throws TupleQueryResultHandlerException {
+		// Builder columns can alias a caller's mutable array. Recheck alignment after all source getters, not just
+		// at start. Invalid or legacy shapes retain the original BindingSet construction and lookup semantics.
+		if (compactRows == null || !orderedQueryColumns || values.size() != bindingNames.size()
+				|| !bindingNames.equals(columns)) {
+			return false;
+		}
+		beginRow();
+		List<Object> row = new ArrayList<>(bindingNames.size());
+		for (Value value : values) {
+			row.add(value == null ? null : packedTerm(value));
+		}
+		commitPackedRow(row);
+		return true;
+	}
+
+	private void beginRow() throws TupleQueryResultHandlerException {
 		ensureOpen();
 		if (!started) {
 			throw new IllegalStateException("Workbench page result has not started");
@@ -265,11 +298,9 @@ public final class WorkbenchPageResultWriter implements QueryResultWriter {
 			}
 		}
 		dataStarted = true;
-		List<Object> row = new ArrayList<>(bindingNames.size());
-		for (String name : bindingNames) {
-			Value value = bindingSet.getValue(name);
-			row.add(value == null ? null : compactRows == null ? term(value) : packedTerm(value));
-		}
+	}
+
+	private void commitPackedRow(List<Object> row) throws TupleQueryResultHandlerException {
 		if (compactRows != null) {
 			try {
 				compactRows.add(row);
