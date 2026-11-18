@@ -1,0 +1,55 @@
+Picked up JAVA_TOOL_OPTIONS: -Drdf4j.lmdb.nativeValueMemo.testProbe=true -Drdf4j.lmdb.nativeValueMemo.enabled=true -Drdf4j.lmdb.janinoCodegen.synchronous=true
+12:01:47,153 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+12:01:47,154 |-INFO in ch.qos.logback.classic.util.ContextInitializer@5d25e6bb - No custom configurators were discovered as a service.
+12:01:47,154 |-INFO in ch.qos.logback.classic.util.ContextInitializer@5d25e6bb - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+12:01:47,155 |-INFO in ch.qos.logback.classic.util.ContextInitializer@5d25e6bb - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+12:01:47,156 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/core/sail/lmdb/target/test-classes/logback-test.xml]
+12:01:47,194 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+12:01:47,194 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+12:01:47,231 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+12:01:47,236 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@ce5a68e - No contradictions in caller extraction instruction were detected
+12:01:47,237 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+12:01:47,237 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+12:01:47,241 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+12:01:47,265 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+12:01:47,265 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+12:01:47,265 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+12:01:47,266 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+12:01:47,266 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+12:01:47,267 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@9d157ff - End of configuration.
+12:01:47,267 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@2f162cc0 - Registering current configuration as safe fallback point
+12:01:47,268 |-INFO in ch.qos.logback.classic.util.ContextInitializer@5d25e6bb - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 112 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+origin org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/read-depth/layer/
+origin org.eclipse.rdf4j.sail.lmdb.ValueStore file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+origin org.eclipse.rdf4j.sail.lmdb.LmdbRecordIterator file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/experiments/threadlocal-audit/record-cancellation/baseline-classes/
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/lwjgl/lwjgl/3.4.2/lwjgl-3.4.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+memo replay contexts=2 routes=[ROW:irKernel, ROW:irKernel] compiledBinds=2
+12:01:50.971 [pool-2-thread-1] WARN  Rolling back transaction due to connection close
+12:01:51.537 [pool-3-thread-1] WARN  Rolling back transaction due to connection close
+
+Test run finished after 4023 ms
+[         4 containers found      ]
+[         0 containers skipped    ]
+[         4 containers started    ]
+[         0 containers aborted    ]
+[         4 containers successful ]
+[         0 containers failed     ]
+[         3 tests found           ]
+[         0 tests skipped         ]
+[         3 tests started         ]
+[         0 tests aborted         ]
+[         2 tests successful      ]
+[         1 tests failed          ]
+
+
+Failures (1):
+  JUnit Jupiter:LmdbMapGrowthReplayLifecycleTest:compiledGroupedDistinctIsRecheckedAcrossMapGrowth(Path)
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.LmdbMapGrowthReplayLifecycleTest', methodName = 'compiledGroupedDistinctIsRecheckedAcrossMapGrowth', methodParameterTypes = 'java.nio.file.Path']
+    => org.opentest4j.AssertionFailedError: never request replay after exposing a row ==> expected: <0> but was: <1>
+       org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:601)
+       org.eclipse.rdf4j.sail.lmdb.LmdbMapGrowthReplayLifecycleTest.assertMemoReplay(LmdbMapGrowthReplayLifecycleTest.java:698)
+       org.eclipse.rdf4j.sail.lmdb.LmdbMapGrowthReplayLifecycleTest.compiledGroupedDistinctIsRecheckedAcrossMapGrowth(LmdbMapGrowthReplayLifecycleTest.java:598)
