@@ -1,0 +1,47 @@
+@prefix ex: <https://example.org/knowledge/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+ex:RDF4J rdfs:label "RDF4J"; ex:category "Framework"; ex:connectsTo ex:SPARQL, ex:RDF, ex:Java, ex:LMDB, ex:SHACL, ex:Workbench .
+ex:SPARQL rdfs:label "SPARQL"; ex:category "Query language"; ex:connectsTo ex:RDF, ex:Federation, ex:QueryPlans .
+ex:RDF rdfs:label "RDF"; ex:category "Data model"; ex:connectsTo ex:KnowledgeGraphs, ex:Turtle, ex:JSONLD, ex:NQuads .
+ex:Java rdfs:label "Java"; ex:category "Runtime"; ex:connectsTo ex:RDF4J, ex:ConcurrentQueries .
+ex:LMDB rdfs:label "LMDB"; ex:category "Storage"; ex:connectsTo ex:Indexes, ex:Transactions, ex:QueryPlans .
+ex:SHACL rdfs:label "SHACL"; ex:category "Validation"; ex:connectsTo ex:Shapes, ex:RDF .
+ex:Workbench rdfs:label "Workbench"; ex:category "Workspace"; ex:connectsTo ex:SPARQL, ex:GraphExplorer, ex:QueryPlans .
+ex:Federation rdfs:label "Federation"; ex:category "Query engine"; ex:connectsTo ex:Endpoints, ex:KnowledgeGraphs .
+ex:QueryPlans rdfs:label "Query plans"; ex:category "Optimization"; ex:connectsTo ex:Indexes, ex:Joins .
+ex:KnowledgeGraphs rdfs:label "Knowledge graphs"; ex:category "Connected data"; ex:connectsTo ex:Entities, ex:Relationships .
+ex:Turtle rdfs:label "Turtle"; ex:category "RDF format"; ex:connectsTo ex:RDF .
+ex:JSONLD rdfs:label "JSON-LD"; ex:category "RDF format"; ex:connectsTo ex:RDF .
+ex:NQuads rdfs:label "N-Quads"; ex:category "RDF format"; ex:connectsTo ex:RDF .
+ex:ConcurrentQueries rdfs:label "Concurrent queries"; ex:category "Execution"; ex:connectsTo ex:Transactions .
+ex:Indexes rdfs:label "Indexes"; ex:category "Storage"; ex:connectsTo ex:Joins .
+ex:Transactions rdfs:label "Transactions"; ex:category "Consistency"; ex:connectsTo ex:RDF .
+ex:Shapes rdfs:label "Shapes"; ex:category "Validation"; ex:connectsTo ex:Entities .
+ex:GraphExplorer rdfs:label "Graph explorer"; ex:category "Visualization"; ex:connectsTo ex:Entities, ex:Relationships .
+ex:Endpoints rdfs:label "Endpoints"; ex:category "Integration"; ex:connectsTo ex:SPARQL .
+ex:Joins rdfs:label "Joins"; ex:category "Query execution"; ex:connectsTo ex:SPARQL .
+ex:Entities rdfs:label "Entities"; ex:category "Graph"; ex:connectsTo ex:Relationships .
+ex:Relationships rdfs:label "Relationships"; ex:category "Graph"; ex:connectsTo ex:KnowledgeGraphs .
+ex:RDF4J a ex:Platform .
+ex:Workbench a ex:Tool .
+ex:GraphExplorer a ex:Tool .
+ex:Java a ex:Platform .
+ex:LMDB a ex:StorageEngine .
+ex:Indexes a ex:StorageEngine .
+ex:Transactions a ex:StorageEngine .
+ex:RDF a ex:DataModel .
+ex:KnowledgeGraphs a ex:DataModel .
+ex:Entities a ex:DataModel .
+ex:Relationships a ex:DataModel .
+ex:SPARQL a ex:QueryEngine .
+ex:Federation a ex:QueryEngine .
+ex:QueryPlans a ex:QueryEngine .
+ex:Joins a ex:QueryEngine .
+ex:ConcurrentQueries a ex:QueryEngine .
+ex:Endpoints a ex:QueryEngine .
+ex:SHACL a ex:Validation .
+ex:Shapes a ex:Validation .
+ex:Turtle a ex:Serialization .
+ex:JSONLD a ex:Serialization .
+ex:NQuads a ex:Serialization .
