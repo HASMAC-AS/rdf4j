@@ -252,6 +252,14 @@ public class TupleResultBuilder {
 	}
 
 	/**
+	 * Synchronously consumes the evaluator's exclusively owned scratch row after all source getters have completed. The
+	 * list must not be exposed to value callbacks or retained; arbitrary Java objects use result(Object...).
+	 */
+	final boolean queryResultValues(List<Value> values) throws QueryResultHandlerException {
+		return out instanceof WorkbenchPageResultWriter page && page.tryOrderedQueryValues(variables, values);
+	}
+
+	/**
 	 * {@link #start(String...)} must be called before using this method.
 	 *
 	 * @param name   the variable name, from the set of provided variable names
