@@ -37,3 +37,7 @@ No comparison is against upstream main, no HTTP/Workbench result, and no concurr
 ## Profiles
 
 Only after clean timing, separate warmed JFR forks for all arms/routes or an explicitly labeled targeted subset agreed with the owner. Record SOURCE_PULL binding/restoration, ValueStore write-owner lookup, other read/replay context scopes and value/IR costs. Use adequate recorded duration (native at least 30 queries; regular at least 5) after 20 warmups. Class/source identities remain the same. Profiles never replace clean latency evidence.
+
+## GC observability in clean timing
+
+Every clean JVM uses identical low-volume `-Xlog:gc:file=<fork>.gc.log:time,uptime,level,tags`. No JFR or PrintCompilation in clean measurements. Retain all samples regardless of GC, and use logs only to explain observable events rather than filter inconvenient runs. Exact per-fork command and common flags are recorded.
