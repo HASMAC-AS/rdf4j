@@ -632,7 +632,7 @@ class LmdbMapGrowthReplayLifecycleTest {
 		SailRepository repository = new SailRepository(store);
 		ExecutorService executor = Executors.newFixedThreadPool(2);
 		java.util.concurrent.atomic.AtomicInteger observed = new java.util.concurrent.atomic.AtomicInteger();
-		try (var probe = new org.eclipse.rdf4j.sail.lmdb.evaluation.NativeMemoReplayProbe(failOnReplayOpen)) {
+		try (var probe = new org.eclipse.rdf4j.sail.lmdb.evaluation.NativeMemoReplayProbe(failOnReplayOpen, grouped)) {
 			repository.init();
 			java.util.Set<String> expected = new java.util.TreeSet<>();
 			try (var seed = repository.getConnection()) {
@@ -664,14 +664,17 @@ class LmdbMapGrowthReplayLifecycleTest {
 									+ SECOND_PREDICATE + "> ?tag }" + (grouped ? "" : " ORDER BY ?v ?s LIMIT 200"));
 					tuple.setForcedLmdbExecutionStrategy("irKernel");
 					java.util.Set<String> output = new java.util.HashSet<>();
-					try (var result = tuple.evaluate()) {
+					try (var result = grouped ? evaluateGroupedSail(reader, tuple) : tuple.evaluate()) {
 						// Consumption can happen under another caller context. Reopening this query must use
 						// its captured context, and must restore this unrelated context on return.
 						var previous = org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.set(
 								"caller context", org.eclipse.rdf4j.query.Query.QueryType.TUPLE, "batch");
 						var callerContext = org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.get();
 						try {
-							while (result.hasNext()) {
+							// A public availability check would seal this streaming Sail result before value capture.
+							boolean firstDirectPull = grouped;
+							while (firstDirectPull || result.hasNext()) {
+								firstDirectPull = false;
 								assertSame(callerContext, org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.get());
 								var row = result.next();
 								observed.incrementAndGet();
@@ -694,7 +697,7 @@ class LmdbMapGrowthReplayLifecycleTest {
 			boolean hit = probe.awaitHit();
 			if (!hit && query.isDone())
 				query.get();
-			assertTrue(hit, "compiled evaluation must hit the real memo before returning output");
+			assertTrue(hit, "compiled evaluation must reach the real populated memo barrier before returning output");
 			assertEquals(0, observed.get(), "never request replay after exposing a row");
 			// Permit a different producer on replay: an old certificate must never be inherited by a scan.
 			if (grouped)
@@ -737,6 +740,24 @@ class LmdbMapGrowthReplayLifecycleTest {
 			} finally {
 				repository.shutDown();
 			}
+		}
+	}
+
+
+	/** A direct first Sail next keeps value capture within the first unobserved tracked pull. */
+	private static TupleQueryResult evaluateGroupedSail(
+			org.eclipse.rdf4j.repository.sail.SailRepositoryConnection reader,
+			org.eclipse.rdf4j.repository.sail.SailTupleQuery tuple) {
+		var previous = org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.set(
+				tuple.getParsedQuery().getSourceString(), org.eclipse.rdf4j.query.Query.QueryType.TUPLE, "irKernel");
+		try {
+			var expression = tuple.getParsedQuery().getTupleExpr();
+			var rows = reader.getSailConnection().evaluate(expression, null,
+					org.eclipse.rdf4j.query.impl.EmptyBindingSet.getInstance(), true);
+			return new org.eclipse.rdf4j.query.impl.IteratingTupleQueryResult(
+					new java.util.ArrayList<>(expression.getBindingNames()), rows);
+		} finally {
+			org.eclipse.rdf4j.sail.helpers.SlowQueryContextHolder.restore(previous);
 		}
 	}
 

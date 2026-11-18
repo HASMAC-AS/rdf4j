@@ -14,7 +14,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Test-scope bridge: stops on a genuine memo hit, never warms or manufactures a query cache entry. */
+/** Test-scope bridge: observes real memo use, never warms or manufactures a query cache entry. */
 public final class NativeMemoReplayProbe implements AutoCloseable {
 	private final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
 	private final AtomicBoolean first = new AtomicBoolean(true);
@@ -34,6 +34,10 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 	}
 
 	public NativeMemoReplayProbe(boolean failOnReplayOpen) {
+		this(failOnReplayOpen, false);
+	}
+
+	public NativeMemoReplayProbe(boolean failOnReplayOpen, boolean groupedPopulationBarrier) {
 		LmdbNativeDispatchLoop.observeSelections((target, label, id, record) -> {
 			routes.add(record.point() + ":" + id);
 			if (failOnReplayOpen && routes.size() == 2) {
@@ -45,20 +49,47 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 			synchronized (contexts) {
 				contexts.putIfAbsent(memo, compiled);
 			}
-			if (first.compareAndSet(true, false)) {
-				firstCompiled = compiled;
-				firstGrouped = NativeKernelGrouping.TRACKERS.get();
-				firstGroupingChecks = NativeKernelGrouping.CHECKS.get();
-				entered.countDown();
-				try {
-					if (!release.await(20, TimeUnit.SECONDS))
-						throw new AssertionError("memo barrier timed out");
-				} catch (InterruptedException failure) {
-					Thread.currentThread().interrupt();
-					throw new AssertionError("memo barrier interrupted", failure);
-				}
-			}
+			if (!groupedPopulationBarrier)
+				pauseFirst(memo, compiled, false);
 		};
+		if (groupedPopulationBarrier) {
+			NativeValueMemo.testPopulatedAccessObserver = memo -> pauseFirst(memo,
+					LmdbNativeKernelExecution.COMPILED_BINDS.get(), true);
+		}
+	}
+
+	private void pauseFirst(NativeValueMemo memo, long compiled, boolean requireGroupedPopulation) {
+		if (!first.compareAndSet(true, false)) {
+			return;
+		}
+		firstCompiled = compiled;
+		firstGrouped = NativeKernelGrouping.TRACKERS.get();
+		firstGroupingChecks = NativeKernelGrouping.CHECKS.get();
+		if (requireGroupedPopulation) {
+			org.junit.jupiter.api.Assertions.assertTrue(firstCompiled > initialCompiled, "barrier requires compiled bind");
+			org.junit.jupiter.api.Assertions.assertTrue(firstGrouped > initialGrouped,
+					"barrier requires consumed grouping certificate");
+			var population = memo.snapshot();
+			org.junit.jupiter.api.Assertions.assertTrue(population.occupied() > 0 && population.reserved() > 0,
+					"barrier requires actual admitted memo population");
+			org.junit.jupiter.api.Assertions.assertTrue(java.util.Arrays.stream(memo.references)
+					.filter(java.util.Objects::nonNull).map(java.lang.ref.WeakReference::get)
+					.anyMatch(value -> value instanceof org.eclipse.rdf4j.sail.lmdb.model.LmdbValue nativeValue
+							&& nativeValue.getSemanticVersion() != org.eclipse.rdf4j.sail.lmdb.model.LmdbValue.UNKNOWN_ID),
+					"barrier requires a live versioned entry from the real lookup");
+			synchronized (contexts) {
+				contexts.putIfAbsent(memo, compiled);
+			}
+			System.out.println("grouped populated barrier " + population);
+		}
+		entered.countDown();
+		try {
+			if (!release.await(20, TimeUnit.SECONDS))
+				throw new AssertionError("memo barrier timed out");
+		} catch (InterruptedException failure) {
+			Thread.currentThread().interrupt();
+			throw new AssertionError("memo barrier interrupted", failure);
+		}
 	}
 
 	public boolean awaitHit() throws InterruptedException {
@@ -104,6 +135,7 @@ public final class NativeMemoReplayProbe implements AutoCloseable {
 	public void close() {
 		release();
 		NativeValueMemo.testHitObserver = null;
+		NativeValueMemo.testPopulatedAccessObserver = null;
 		LmdbNativeDispatchLoop.observeSelections(null);
 	}
 }
