@@ -49,6 +49,8 @@ public final class ThreadLocalQueryBenchmark {
         String shape = System.getProperty("audit.shape", "narrow");
         if (!List.of("narrow", "wide").contains(shape)) throw new IllegalArgumentException(shape);
         for (Class<?> c : List.of(ThreadLocalQueryBenchmark.class, LmdbNativeTypeMatrix.class,
+                Class.forName("org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration", false, ThreadLocalQueryBenchmark.class.getClassLoader()),
+                org.eclipse.rdf4j.sail.lmdb.ValueStore.class,
                 LmdbNativeKernelExecution.class, org.eclipse.rdf4j.common.iteration.CancellationSignal.class,
                 Class.forName("org.eclipse.rdf4j.sail.lmdb.LmdbRecordIterator", false, ThreadLocalQueryBenchmark.class.getClassLoader())))
             System.out.println("origin " + c.getName() + " " + c.getProtectionDomain().getCodeSource().getLocation());

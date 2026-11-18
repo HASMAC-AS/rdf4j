@@ -50,3 +50,7 @@ Spotless reformatted 26 pre-existing files during root bootstrap. They remain ou
 ## Measurement outcome
 
 The 3-warmup/5-measurement pilot was rejected for gain claims because unchanged controls showed large JIT/warmup deltas. The prespecified replacement used 20 warmups, 10 measurements, four independent forks per arm in every regime. Co-scan observed means were 8.61 ms baseline and 9.40 ms candidate, with inconsistent paired effects; all samples remain included. Profiles instead prioritize per-pull context binding/restoration. See RESULTS.md for scope, uncertainty and exact evidence. The prototype is preserved for further investigation/combination, not recommended as a demonstrated speedup.
+
+## Follow-up completed: four-arm per-pull/read-context experiment
+
+SOURCE_PULL-only passed 202 selected safety tests, with 10 compatible extra-flag tests. The no-writer fast guard and combined runtime each passed the same 330 selected tests. Four independent forks per arm/route used 20 warmups and 10 measurements (48 forks total); 12 separate profiles followed. Results do not establish a win or synergy. Guard-only Janino is a promising 4.65% pooled latency reduction, but the descriptive unadjusted four-block interval includes zero. See source-pull/FOUR-ARM-RESULTS.md for all arms, uncertainty and exact code identities. No additional measurement round was selected.

@@ -20,3 +20,7 @@ The first candidate only changes type-matrix co-scan/flush-run cancellation poll
 ## Next direction
 
 Separate JFR profiles point to per-pull context binding/restoration and read/value scopes rather than masked co-scan polling. These sample shares are not recoverable wall-time percentages. [NEXT-CANDIDATES.md](NEXT-CANDIDATES.md) lists safe boundaries and tests. [RECORD-CANCELLATION-DESIGN.md](RECORD-CANCELLATION-DESIGN.md) explains a direct cooperative record-iterator flag with explicit parent/probe references, forwarding and per-logical-open ownership. That design is not yet implemented.
+
+## Follow-up: per-pull scope and writer guard
+
+The four-arm follow-up is complete: baseline, SOURCE_PULL-only, no-writer-guard-only and both, across regular/interpreted/Janino routes. Guard-only and combined each passed the same 330 selected safety tests. All 48 timing forks and 12 separate profiles passed route/result/resource checks. Guard-only Janino is promising (4.65% lower pooled mean), but its small-sample interval includes no improvement; no established gain or synergy. The combined arm was not best on regular or Janino. See [the complete four-arm report](source-pull/FOUR-ARM-RESULTS.md). No main, Workbench or whole-repository validation claim is made.

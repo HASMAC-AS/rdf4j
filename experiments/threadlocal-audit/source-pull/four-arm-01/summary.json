@@ -1,0 +1,1817 @@
+{
+  "scope": "SOURCE_PULL x writer guard, frozen previous measured baseline, not main",
+  "reference": {
+    "rows": "100000",
+    "checksum": "1899306305404719472",
+    "checksum2": "3694550068168048289"
+  },
+  "warning": "Within-JVM measurements are not independent forks. Interaction below1 alone does not establish synergy without consistent effects beyond noise.",
+  "results": {
+    "regular": {
+      "arms": {
+        "A": {
+          "meanMs": 1510.51155725,
+          "forkMinMs": 1468.8380925,
+          "forkMaxMs": 1590.6150642,
+          "firstRowMeanMs": 7.834152725,
+          "allocationMeanBytes": 2317146460.8,
+          "measuredIndexMeanMs": [
+            1478.67605325,
+            1590.33382725,
+            1649.31150325,
+            1504.12142975,
+            1468.83104825,
+            1474.800525,
+            1476.96604,
+            1488.3069965,
+            1516.92104625,
+            1456.847103
+          ]
+        },
+        "B": {
+          "meanMs": 1513.5716199,
+          "forkMinMs": 1502.8122147,
+          "forkMaxMs": 1529.6629198,
+          "firstRowMeanMs": 8.2712517,
+          "allocationMeanBytes": 2315033088.6,
+          "measuredIndexMeanMs": [
+            1549.78446575,
+            1581.01834625,
+            1542.69145475,
+            1510.62050475,
+            1499.5365485,
+            1588.502276,
+            1483.3939045,
+            1467.2686872499999,
+            1441.00809125,
+            1471.89192
+          ]
+        },
+        "C": {
+          "meanMs": 1474.81629855,
+          "forkMinMs": 1438.4023288,
+          "forkMaxMs": 1511.731288,
+          "firstRowMeanMs": 7.494595075,
+          "allocationMeanBytes": 2350604209.8,
+          "measuredIndexMeanMs": [
+            1540.22072975,
+            1472.750893,
+            1443.6213465,
+            1455.392503,
+            1427.7116245,
+            1471.556556,
+            1448.77989675,
+            1544.2353355,
+            1484.977769,
+            1458.9163315
+          ]
+        },
+        "D": {
+          "meanMs": 1488.0824546,
+          "forkMinMs": 1443.4697535999999,
+          "forkMaxMs": 1511.0422163,
+          "firstRowMeanMs": 7.7132334,
+          "allocationMeanBytes": 2349424947.2,
+          "measuredIndexMeanMs": [
+            1534.16289725,
+            1573.92215775,
+            1577.89507775,
+            1439.4194762500001,
+            1484.8449515,
+            1462.23535575,
+            1468.476508,
+            1456.7129705,
+            1430.4114555,
+            1452.74369575
+          ]
+        }
+      },
+      "contrasts": {
+        "B/A": {
+          "latencyReductionPercent": -0.20258452411785477,
+          "throughputIncreasePercent": -0.2021749489596214
+        },
+        "C/A": {
+          "latencyReductionPercent": 2.363123838985104,
+          "throughputIncreasePercent": 2.420318973630442
+        },
+        "D/A": {
+          "latencyReductionPercent": 1.4848679933858855,
+          "throughputIncreasePercent": 1.5072486461127577
+        },
+        "D/B": {
+          "latencyReductionPercent": 1.6840409112377719,
+          "throughputIncreasePercent": 1.7128866227276163
+        },
+        "D/C": {
+          "latencyReductionPercent": -0.8995124384672648,
+          "throughputIncreasePercent": -0.8914933449414186
+        }
+      },
+      "blocks": [
+        {
+          "block": 1,
+          "latencyReductionPercent": {
+            "B/A": -2.9096276858710413,
+            "C/A": 1.4098309885709925,
+            "D/A": 1.7271024648348066,
+            "D/B": 4.5056330053582005,
+            "D/C": 0.32180843125143577
+          },
+          "logInteraction": -0.031904289473460246,
+          "interactionRatio": 0.9685992827902716
+        },
+        {
+          "block": 2,
+          "latencyReductionPercent": {
+            "B/A": 3.831985863321108,
+            "C/A": 9.569426244341228,
+            "D/A": 5.002646441049585,
+            "D/B": 1.2173076341835287,
+            "D/C": -5.050039620041535
+          },
+          "logInteraction": 0.08833999544330506,
+          "interactionRatio": 1.092359456136206
+        },
+        {
+          "block": 3,
+          "latencyReductionPercent": {
+            "B/A": -2.726258395039549,
+            "C/A": -2.0981673833716075,
+            "D/A": -2.4671267782161888,
+            "D/B": 0.25225450714544406,
+            "D/C": -0.3613770984342457
+          },
+          "logInteraction": -0.0232903218379672,
+          "interactionRatio": 0.9769788043139758
+        },
+        {
+          "block": 4,
+          "latencyReductionPercent": {
+            "B/A": 0.6364266536761032,
+            "C/A": 0.04671159456427487,
+            "D/A": 1.3915163514431894,
+            "D/B": 0.7599260698236798,
+            "D/C": 1.3454332301945482
+          },
+          "logInteraction": -0.007161057122999637,
+          "interactionRatio": 0.9928645221519233
+        }
+      ],
+      "forks": [
+        {
+          "file": "regular-01-A.log",
+          "arm": "A",
+          "meanMs": 1468.8380925,
+          "minMs": 1370.170479,
+          "maxMs": 1536.692319,
+          "firstRowMs": 7.8192327,
+          "closeMeanMs": 0.1194054,
+          "allocationMeanBytes": 2335176920.8,
+          "byIndexMs": [
+            1476.147645,
+            1515.300719,
+            1536.692319,
+            1473.491989,
+            1437.413346,
+            1423.402511,
+            1468.347421,
+            1471.268406,
+            1516.14609,
+            1370.170479
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 65,
+            "totalPauseMs": 1841.152,
+            "maxPauseMs": 83.405,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-02-B.log",
+          "arm": "B",
+          "meanMs": 1511.5758123,
+          "minMs": 1381.033572,
+          "maxMs": 1775.068953,
+          "firstRowMs": 10.4145269,
+          "closeMeanMs": 0.1147727,
+          "allocationMeanBytes": 2220920251.2,
+          "byIndexMs": [
+            1387.811668,
+            1694.027243,
+            1489.436284,
+            1559.625618,
+            1476.077154,
+            1775.068953,
+            1497.323225,
+            1411.70283,
+            1443.651576,
+            1381.033572
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 63,
+            "totalPauseMs": 1844.852,
+            "maxPauseMs": 90.21,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-03-D.log",
+          "arm": "D",
+          "meanMs": 1443.4697535999999,
+          "minMs": 1353.327625,
+          "maxMs": 1668.785483,
+          "firstRowMs": 7.1981079,
+          "closeMeanMs": 0.120673,
+          "allocationMeanBytes": 2354148909.6,
+          "byIndexMs": [
+            1378.771516,
+            1437.318808,
+            1668.785483,
+            1421.222946,
+            1386.356987,
+            1353.327625,
+            1448.451582,
+            1433.400835,
+            1456.637946,
+            1450.423808
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1759.393,
+            "maxPauseMs": 57.446,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-04-C.log",
+          "arm": "C",
+          "meanMs": 1448.1299579,
+          "minMs": 1360.328286,
+          "maxMs": 1639.040196,
+          "firstRowMs": 7.1355645,
+          "closeMeanMs": 0.1215841,
+          "allocationMeanBytes": 2354153676.8,
+          "byIndexMs": [
+            1639.040196,
+            1469.231978,
+            1468.140534,
+            1384.05467,
+            1374.234196,
+            1380.299003,
+            1360.328286,
+            1483.285762,
+            1501.622301,
+            1421.062653
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1953.472,
+            "maxPauseMs": 71.612,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-05-B.log",
+          "arm": "B",
+          "meanMs": 1529.6629198,
+          "minMs": 1436.748808,
+          "maxMs": 1698.340748,
+          "firstRowMs": 7.2846553,
+          "closeMeanMs": 0.1304615,
+          "allocationMeanBytes": 2354148392.8,
+          "byIndexMs": [
+            1698.340748,
+            1494.701232,
+            1618.258334,
+            1438.395851,
+            1481.957055,
+            1647.241564,
+            1544.058867,
+            1464.954571,
+            1436.748808,
+            1471.972168
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1908.638,
+            "maxPauseMs": 85.345,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-06-C.log",
+          "arm": "C",
+          "meanMs": 1438.4023288,
+          "minMs": 1349.655293,
+          "maxMs": 1663.999368,
+          "firstRowMs": 7.3151951,
+          "closeMeanMs": 0.1135766,
+          "allocationMeanBytes": 2354127409.6,
+          "byIndexMs": [
+            1387.094173,
+            1419.252654,
+            1390.846686,
+            1434.720541,
+            1401.617056,
+            1489.350792,
+            1459.456535,
+            1663.999368,
+            1388.03019,
+            1349.655293
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1703.131,
+            "maxPauseMs": 68.908,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-07-A.log",
+          "arm": "A",
+          "meanMs": 1590.6150642,
+          "minMs": 1467.449588,
+          "maxMs": 1883.460239,
+          "firstRowMs": 8.0207343,
+          "closeMeanMs": 0.1885899,
+          "allocationMeanBytes": 2354115140,
+          "byIndexMs": [
+            1552.805035,
+            1704.84344,
+            1883.460239,
+            1628.13166,
+            1467.449588,
+            1478.313934,
+            1483.236803,
+            1496.115872,
+            1607.695327,
+            1604.098744
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1859.455,
+            "maxPauseMs": 80.572,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-08-D.log",
+          "arm": "D",
+          "meanMs": 1511.0422163,
+          "minMs": 1368.690384,
+          "maxMs": 1657.411616,
+          "firstRowMs": 7.7276842,
+          "closeMeanMs": 0.1473529,
+          "allocationMeanBytes": 2330948349.6,
+          "byIndexMs": [
+            1532.711042,
+            1612.989354,
+            1657.411616,
+            1379.266364,
+            1531.676312,
+            1626.91263,
+            1415.210889,
+            1368.690384,
+            1448.025556,
+            1537.528016
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1868.239,
+            "maxPauseMs": 81.095,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-09-C.log",
+          "arm": "C",
+          "meanMs": 1501.0016195,
+          "minMs": 1444.842678,
+          "maxMs": 1545.622656,
+          "firstRowMs": 8.0351994,
+          "closeMeanMs": 0.1171211,
+          "allocationMeanBytes": 2339987397.6,
+          "byIndexMs": [
+            1545.622656,
+            1507.083075,
+            1518.67146,
+            1444.842678,
+            1501.022016,
+            1464.997075,
+            1468.089429,
+            1497.466726,
+            1527.390107,
+            1534.830973
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 2012.219,
+            "maxPauseMs": 95.692,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-10-D.log",
+          "arm": "D",
+          "meanMs": 1506.4258956,
+          "minMs": 1423.483156,
+          "maxMs": 1692.203524,
+          "firstRowMs": 8.29048,
+          "closeMeanMs": 0.1337004,
+          "allocationMeanBytes": 2358454812.8,
+          "byIndexMs": [
+            1643.820566,
+            1692.203524,
+            1423.483156,
+            1543.561969,
+            1506.303276,
+            1433.066599,
+            1480.923997,
+            1464.26022,
+            1433.880504,
+            1442.755145
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1799.133,
+            "maxPauseMs": 101.129,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-11-B.log",
+          "arm": "B",
+          "meanMs": 1510.2355328,
+          "minMs": 1395.714348,
+          "maxMs": 1616.172533,
+          "firstRowMs": 8.0224919,
+          "closeMeanMs": 0.1193075,
+          "allocationMeanBytes": 2330914785.6,
+          "byIndexMs": [
+            1616.172533,
+            1599.600378,
+            1475.154097,
+            1519.730504,
+            1533.690426,
+            1439.037554,
+            1395.714348,
+            1549.965933,
+            1456.073503,
+            1517.216052
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1763.821,
+            "maxPauseMs": 86.915,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-12-A.log",
+          "arm": "A",
+          "meanMs": 1470.1553005,
+          "minMs": 1404.39632,
+          "maxMs": 1597.320813,
+          "firstRowMs": 8.0185852,
+          "closeMeanMs": 0.1164451,
+          "allocationMeanBytes": 2225178589.6,
+          "byIndexMs": [
+            1457.684581,
+            1537.936604,
+            1597.320813,
+            1443.294892,
+            1417.217243,
+            1465.754681,
+            1428.244281,
+            1470.605311,
+            1479.098279,
+            1404.39632
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 63,
+            "totalPauseMs": 1875.442,
+            "maxPauseMs": 80.296,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-13-D.log",
+          "arm": "D",
+          "meanMs": 1491.3919529,
+          "minMs": 1380.267814,
+          "maxMs": 1581.348465,
+          "firstRowMs": 7.6366615,
+          "closeMeanMs": 0.1417007,
+          "allocationMeanBytes": 2354147716.8,
+          "byIndexMs": [
+            1581.348465,
+            1553.176945,
+            1561.900056,
+            1413.626626,
+            1515.043231,
+            1435.634569,
+            1529.319564,
+            1560.500443,
+            1383.101816,
+            1380.267814
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1800.696,
+            "maxPauseMs": 68.931,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-14-A.log",
+          "arm": "A",
+          "meanMs": 1512.4377718,
+          "minMs": 1428.066952,
+          "maxMs": 1603.254546,
+          "firstRowMs": 7.4780587,
+          "closeMeanMs": 0.17792449999999999,
+          "allocationMeanBytes": 2354115192.8,
+          "byIndexMs": [
+            1428.066952,
+            1603.254546,
+            1579.772642,
+            1471.567178,
+            1553.244016,
+            1531.730974,
+            1528.035655,
+            1515.238397,
+            1464.744489,
+            1448.722869
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1732.68,
+            "maxPauseMs": 63.443,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-15-C.log",
+          "arm": "C",
+          "meanMs": 1511.731288,
+          "minMs": 1396.826706,
+          "maxMs": 1589.125894,
+          "firstRowMs": 7.4924213,
+          "closeMeanMs": 0.1330055,
+          "allocationMeanBytes": 2354148355.2,
+          "byIndexMs": [
+            1589.125894,
+            1495.435865,
+            1396.826706,
+            1557.952123,
+            1433.97323,
+            1551.579354,
+            1507.245337,
+            1532.189486,
+            1522.868478,
+            1530.116407
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1735.449,
+            "maxPauseMs": 60.507,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "regular-16-B.log",
+          "arm": "B",
+          "meanMs": 1502.8122147,
+          "minMs": 1427.558478,
+          "maxMs": 1587.917104,
+          "firstRowMs": 7.3633327,
+          "closeMeanMs": 0.1367323,
+          "allocationMeanBytes": 2354148924.8,
+          "byIndexMs": [
+            1496.812914,
+            1535.744532,
+            1587.917104,
+            1524.730046,
+            1506.421559,
+            1492.661033,
+            1496.479178,
+            1442.451415,
+            1427.558478,
+            1517.345888
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 66,
+            "totalPauseMs": 1818.679,
+            "maxPauseMs": 60.867,
+            "includesWarmupAndStartup": true
+          }
+        }
+      ]
+    },
+    "interpreted": {
+      "arms": {
+        "A": {
+          "meanMs": 230.97344594999998,
+          "forkMinMs": 219.5996457,
+          "forkMaxMs": 250.29848529999998,
+          "firstRowMeanMs": 11.920129150000001,
+          "allocationMeanBytes": 188398076.8,
+          "measuredIndexMeanMs": [
+            225.01310125,
+            228.09456849999998,
+            226.394743,
+            221.620839,
+            232.994683,
+            269.58731675,
+            229.47490425,
+            221.0699885,
+            229.2877915,
+            226.19652374999998
+          ]
+        },
+        "B": {
+          "meanMs": 232.87862475,
+          "forkMinMs": 229.3827993,
+          "forkMaxMs": 237.1566059,
+          "firstRowMeanMs": 11.934657125000001,
+          "allocationMeanBytes": 187866899.0,
+          "measuredIndexMeanMs": [
+            229.71892474999999,
+            233.90056125,
+            236.36725825000002,
+            230.501801,
+            241.4813875,
+            236.105043,
+            246.5582325,
+            227.2940375,
+            224.5858655,
+            222.27313625
+          ]
+        },
+        "C": {
+          "meanMs": 234.059419575,
+          "forkMinMs": 226.7514632,
+          "forkMaxMs": 254.0033014,
+          "firstRowMeanMs": 11.820421849999999,
+          "allocationMeanBytes": 189062678.4,
+          "measuredIndexMeanMs": [
+            229.33887625,
+            231.62351275,
+            233.9220655,
+            228.494717,
+            238.9836465,
+            254.49246775,
+            235.65152799999998,
+            224.32674825,
+            235.7845845,
+            227.97604925000002
+          ]
+        },
+        "D": {
+          "meanMs": 230.7086474,
+          "forkMinMs": 221.8859618,
+          "forkMaxMs": 238.1721512,
+          "firstRowMeanMs": 11.72771665,
+          "allocationMeanBytes": 187864307.8,
+          "measuredIndexMeanMs": [
+            216.05336325,
+            229.5670695,
+            224.6966075,
+            228.66451625,
+            240.39260050000001,
+            238.79626125,
+            242.188852,
+            220.84908000000001,
+            237.85577775000002,
+            228.022346
+          ]
+        }
+      },
+      "contrasts": {
+        "B/A": {
+          "latencyReductionPercent": -0.8248475456405613,
+          "throughputIncreasePercent": -0.8180994722230328
+        },
+        "C/A": {
+          "latencyReductionPercent": -1.336072903232366,
+          "throughputIncreasePercent": -1.3184573518141063
+        },
+        "D/A": {
+          "latencyReductionPercent": 0.11464458561929458,
+          "throughputIncreasePercent": 0.11477617028410325
+        },
+        "D/B": {
+          "latencyReductionPercent": 0.9318061510924514,
+          "throughputIncreasePercent": 0.9405704443482543
+        },
+        "D/C": {
+          "latencyReductionPercent": 1.431590397465854,
+          "throughputIncreasePercent": 1.452382566827004
+        }
+      },
+      "blocks": [
+        {
+          "block": 1,
+          "latencyReductionPercent": {
+            "B/A": 7.575276045827506,
+            "C/A": -1.480159216928345,
+            "D/A": 6.478158379810218,
+            "D/B": -1.1870391590904639,
+            "D/C": 7.842239959169284
+          },
+          "logInteraction": -0.002892626577676971,
+          "interactionRatio": 0.997111553035591
+        },
+        {
+          "block": 2,
+          "latencyReductionPercent": {
+            "B/A": -7.9949856676840625,
+            "C/A": -3.9226973579766566,
+            "D/A": -1.0411292298364572,
+            "D/B": 6.439054919869724,
+            "D/C": 2.772799591810271
+          },
+          "logInteraction": -0.1050342851344066,
+          "interactionRatio": 0.9002936553681451
+        },
+        {
+          "block": 3,
+          "latencyReductionPercent": {
+            "B/A": 1.2375980916856877,
+            "C/A": 2.147692895239861,
+            "D/A": 1.5347151110896795,
+            "D/B": 0.30084021212831713,
+            "D/C": -0.6264316113609114
+          },
+          "logInteraction": 0.018697977990615122,
+          "interactionRatio": 1.0188738798067818
+        },
+        {
+          "block": 4,
+          "latencyReductionPercent": {
+            "B/A": -5.366217447508026,
+            "C/A": -2.2607809629033637,
+            "D/A": -7.411303290442017,
+            "D/B": -1.940931251473299,
+            "D/C": -5.0366545991929135
+          },
+          "logInteraction": -0.003132686494526027,
+          "interactionRatio": 0.9968722152479346
+        }
+      ],
+      "forks": [
+        {
+          "file": "interpreted-01-A.log",
+          "arm": "A",
+          "meanMs": 250.29848529999998,
+          "minMs": 219.749618,
+          "maxMs": 363.687797,
+          "firstRowMs": 12.9020229,
+          "closeMeanMs": 0.1732523,
+          "allocationMeanBytes": 188369836.8,
+          "byIndexMs": [
+            230.709869,
+            253.836425,
+            242.025663,
+            219.749618,
+            226.222756,
+            363.687797,
+            242.977319,
+            232.18345,
+            244.467235,
+            247.124721
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 9,
+            "totalPauseMs": 77.14,
+            "maxPauseMs": 15.654,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-02-B.log",
+          "arm": "B",
+          "meanMs": 231.3376841,
+          "minMs": 224.836856,
+          "maxMs": 240.92451,
+          "firstRowMs": 11.1862589,
+          "closeMeanMs": 0.1205135,
+          "allocationMeanBytes": 188402848,
+          "byIndexMs": [
+            225.430854,
+            230.168216,
+            229.362844,
+            232.019258,
+            237.482581,
+            240.92451,
+            235.629221,
+            232.312092,
+            225.210409,
+            224.836856
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 60.298,
+            "maxPauseMs": 14.375,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-03-D.log",
+          "arm": "D",
+          "meanMs": 234.083753,
+          "minMs": 210.564913,
+          "maxMs": 294.36292,
+          "firstRowMs": 12.7518459,
+          "closeMeanMs": 0.2703773,
+          "allocationMeanBytes": 183826740.8,
+          "byIndexMs": [
+            214.443628,
+            238.289556,
+            233.003372,
+            242.10513,
+            244.782221,
+            232.080448,
+            294.36292,
+            211.288014,
+            219.917328,
+            210.564913
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 77.747,
+            "maxPauseMs": 23.046,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-04-C.log",
+          "arm": "C",
+          "meanMs": 254.0033014,
+          "minMs": 237.038559,
+          "maxMs": 301.280696,
+          "firstRowMs": 13.2396979,
+          "closeMeanMs": 0.1221072,
+          "allocationMeanBytes": 191029417.6,
+          "byIndexMs": [
+            239.193506,
+            248.86688,
+            271.02516,
+            241.009224,
+            255.508378,
+            301.280696,
+            256.31626,
+            241.490862,
+            248.303489,
+            237.038559
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 102.74499999999999,
+            "maxPauseMs": 45.413,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-05-B.log",
+          "arm": "B",
+          "meanMs": 237.1566059,
+          "minMs": 219.700672,
+          "maxMs": 269.217389,
+          "firstRowMs": 11.7416913,
+          "closeMeanMs": 0.1207177,
+          "allocationMeanBytes": 190809597.6,
+          "byIndexMs": [
+            246.366198,
+            239.788391,
+            269.217389,
+            243.007939,
+            242.449848,
+            239.464617,
+            222.98564,
+            224.258581,
+            219.700672,
+            224.326784
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 90.001,
+            "maxPauseMs": 36.215,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-06-C.log",
+          "arm": "C",
+          "meanMs": 228.2138752,
+          "minMs": 221.061861,
+          "maxMs": 241.190689,
+          "firstRowMs": 10.7408562,
+          "closeMeanMs": 0.1189557,
+          "allocationMeanBytes": 188403398.4,
+          "byIndexMs": [
+            221.061861,
+            225.148504,
+            221.900395,
+            224.1447,
+            241.190689,
+            233.5099,
+            230.940263,
+            221.290156,
+            237.094889,
+            225.857395
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 65.619,
+            "maxPauseMs": 24.99,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-07-A.log",
+          "arm": "A",
+          "meanMs": 219.5996457,
+          "minMs": 209.210013,
+          "maxMs": 231.377055,
+          "firstRowMs": 12.1625798,
+          "closeMeanMs": 0.1020482,
+          "allocationMeanBytes": 188411710.4,
+          "byIndexMs": [
+            209.210013,
+            219.858629,
+            213.870103,
+            219.115894,
+            226.657943,
+            231.377055,
+            216.851436,
+            215.897136,
+            220.783023,
+            222.375225
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 69.695,
+            "maxPauseMs": 27.195,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-08-D.log",
+          "arm": "D",
+          "meanMs": 221.8859618,
+          "minMs": 207.980237,
+          "maxMs": 237.287057,
+          "firstRowMs": 10.3524289,
+          "closeMeanMs": 0.1274012,
+          "allocationMeanBytes": 188450750.4,
+          "byIndexMs": [
+            207.980237,
+            219.319488,
+            212.136097,
+            213.770905,
+            230.411143,
+            237.287057,
+            219.565089,
+            216.269374,
+            229.094952,
+            233.025276
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 59.910000000000004,
+            "maxPauseMs": 18.7,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-09-C.log",
+          "arm": "C",
+          "meanMs": 227.2690385,
+          "minMs": 216.087904,
+          "maxMs": 237.184862,
+          "firstRowMs": 11.6625573,
+          "closeMeanMs": 0.1062647,
+          "allocationMeanBytes": 188406376.8,
+          "byIndexMs": [
+            237.184862,
+            234.352558,
+            223.611297,
+            226.636648,
+            235.71748,
+            236.102713,
+            225.869507,
+            216.087904,
+            219.166055,
+            217.961361
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 64.85,
+            "maxPauseMs": 20.244,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-10-D.log",
+          "arm": "D",
+          "meanMs": 228.6927236,
+          "minMs": 218.353396,
+          "maxMs": 241.00118,
+          "firstRowMs": 12.4241129,
+          "closeMeanMs": 0.11162860000000001,
+          "allocationMeanBytes": 188376892,
+          "byIndexMs": [
+            219.701013,
+            227.572068,
+            223.452307,
+            227.437746,
+            239.512408,
+            241.00118,
+            234.313595,
+            218.353396,
+            228.403066,
+            227.180457
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 86.589,
+            "maxPauseMs": 30.024,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-11-B.log",
+          "arm": "B",
+          "meanMs": 229.3827993,
+          "minMs": 219.073302,
+          "maxMs": 239.409457,
+          "firstRowMs": 12.970638600000001,
+          "closeMeanMs": 0.120951,
+          "allocationMeanBytes": 188405471.2,
+          "byIndexMs": [
+            222.862122,
+            231.475508,
+            225.207489,
+            225.859264,
+            239.409457,
+            237.354869,
+            235.003114,
+            226.269705,
+            231.313163,
+            219.073302
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 83.222,
+            "maxPauseMs": 24.903,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-12-A.log",
+          "arm": "A",
+          "meanMs": 232.2572101,
+          "minMs": 217.285465,
+          "maxMs": 250.510172,
+          "firstRowMs": 11.6860893,
+          "closeMeanMs": 0.1469281,
+          "allocationMeanBytes": 188440480,
+          "byIndexMs": [
+            246.46293,
+            222.606553,
+            230.461215,
+            227.225701,
+            240.309352,
+            250.510172,
+            235.970974,
+            217.285465,
+            227.323468,
+            224.416271
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 71.83200000000001,
+            "maxPauseMs": 21.268,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-13-D.log",
+          "arm": "D",
+          "meanMs": 238.1721512,
+          "minMs": 220.513804,
+          "maxMs": 274.007765,
+          "firstRowMs": 11.3824789,
+          "closeMeanMs": 0.12248830000000001,
+          "allocationMeanBytes": 190802848,
+          "byIndexMs": [
+            222.088575,
+            233.087166,
+            230.194654,
+            231.344284,
+            246.86463,
+            244.81636,
+            220.513804,
+            237.485536,
+            274.007765,
+            241.318738
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 115.533,
+            "maxPauseMs": 46.329,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-14-A.log",
+          "arm": "A",
+          "meanMs": 221.7384427,
+          "minMs": 210.869878,
+          "maxMs": 238.788681,
+          "firstRowMs": 10.9298246,
+          "closeMeanMs": 0.1045903,
+          "allocationMeanBytes": 188370280,
+          "byIndexMs": [
+            213.669593,
+            216.076667,
+            219.221991,
+            220.392143,
+            238.788681,
+            232.774243,
+            222.099888,
+            218.913903,
+            224.57744,
+            210.869878
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 66.513,
+            "maxPauseMs": 17.686,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-15-C.log",
+          "arm": "C",
+          "meanMs": 226.7514632,
+          "minMs": 218.126109,
+          "maxMs": 247.076562,
+          "firstRowMs": 11.638576,
+          "closeMeanMs": 0.1075136,
+          "allocationMeanBytes": 188411520.8,
+          "byIndexMs": [
+            219.915276,
+            218.126109,
+            219.15141,
+            222.188296,
+            223.518039,
+            247.076562,
+            229.480082,
+            218.438071,
+            238.573905,
+            231.046882
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 63.034,
+            "maxPauseMs": 24.334,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "interpreted-16-B.log",
+          "arm": "B",
+          "meanMs": 233.6374097,
+          "minMs": 220.855603,
+          "maxMs": 292.614955,
+          "firstRowMs": 11.8400397,
+          "closeMeanMs": 0.1134915,
+          "allocationMeanBytes": 183849679.2,
+          "byIndexMs": [
+            224.216525,
+            234.17013,
+            221.681311,
+            221.120743,
+            246.583664,
+            226.676176,
+            292.614955,
+            226.335772,
+            222.119218,
+            220.855603
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 115.843,
+            "maxPauseMs": 71.515,
+            "includesWarmupAndStartup": true
+          }
+        }
+      ]
+    },
+    "janino": {
+      "arms": {
+        "A": {
+          "meanMs": 177.039336375,
+          "forkMinMs": 171.8544714,
+          "forkMaxMs": 183.19189839999999,
+          "firstRowMeanMs": 12.819613924999999,
+          "allocationMeanBytes": 174700894.4,
+          "measuredIndexMeanMs": [
+            179.32411175,
+            171.1384795,
+            171.95934125,
+            172.90045874999998,
+            185.679177,
+            179.71685324999999,
+            184.34189,
+            181.228073,
+            174.8955235,
+            169.20945575
+          ]
+        },
+        "B": {
+          "meanMs": 181.2723219,
+          "forkMinMs": 158.6595592,
+          "forkMaxMs": 190.6643957,
+          "firstRowMeanMs": 13.239739375,
+          "allocationMeanBytes": 176243121.6,
+          "measuredIndexMeanMs": [
+            174.03336975,
+            183.331273,
+            170.10457375,
+            184.19945625,
+            195.62530225,
+            184.42969475,
+            190.72978075,
+            194.48579074999998,
+            173.40697075,
+            162.377007
+          ]
+        },
+        "C": {
+          "meanMs": 168.803901225,
+          "forkMinMs": 166.913785,
+          "forkMaxMs": 171.7344015,
+          "firstRowMeanMs": 11.4662926,
+          "allocationMeanBytes": 177299963.2,
+          "measuredIndexMeanMs": [
+            162.6969545,
+            161.4594295,
+            160.126217,
+            163.33633675,
+            173.431544,
+            170.80277875000002,
+            184.988558,
+            171.6777465,
+            170.94730900000002,
+            168.57213825
+          ]
+        },
+        "D": {
+          "meanMs": 172.846136925,
+          "forkMinMs": 169.3188419,
+          "forkMaxMs": 177.3143559,
+          "firstRowMeanMs": 11.62235645,
+          "allocationMeanBytes": 175427521.6,
+          "measuredIndexMeanMs": [
+            172.3872205,
+            162.112638,
+            160.9682965,
+            174.60198375,
+            177.536515,
+            176.49876899999998,
+            182.846486,
+            190.57267274999998,
+            169.2867995,
+            161.64998825
+          ]
+        }
+      },
+      "contrasts": {
+        "B/A": {
+          "latencyReductionPercent": -2.3909858744803447,
+          "throughputIncreasePercent": -2.335152703199306
+        },
+        "C/A": {
+          "latencyReductionPercent": 4.651754417196818,
+          "throughputIncreasePercent": 4.878699538479814
+        },
+        "D/A": {
+          "latencyReductionPercent": 2.3685128603951,
+          "throughputIncreasePercent": 2.4259723269485
+        },
+        "D/B": {
+          "latencyReductionPercent": 4.648357171509265,
+          "throughputIncreasePercent": 4.874962857084997
+        },
+        "D/C": {
+          "latencyReductionPercent": -2.39463405209579,
+          "throughputIncreasePercent": -2.3386323651271246
+        }
+      },
+      "blocks": [
+        {
+          "block": 1,
+          "latencyReductionPercent": {
+            "B/A": -8.028687172682014,
+            "C/A": 2.3002101455931956,
+            "D/A": 2.988736674308945,
+            "D/B": 10.198609402130199,
+            "D/C": 0.7047369597639852
+          },
+          "logInteraction": -0.08429894743124677,
+          "interactionRatio": 0.9191564355634001
+        },
+        {
+          "block": 2,
+          "latencyReductionPercent": {
+            "B/A": 10.530316376467841,
+            "C/A": 5.875677383350075,
+            "D/A": 4.519442177450217,
+            "D/B": -6.718336262716651,
+            "D/C": -1.4408977065615058
+          },
+          "logInteraction": 0.12557650284532773,
+          "interactionRatio": 1.1338019047144672
+        },
+        {
+          "block": 3,
+          "latencyReductionPercent": {
+            "B/A": -8.15839470790749,
+            "C/A": 1.8209580318199303,
+            "D/A": -1.3806756266919074,
+            "D/B": 6.266475292573914,
+            "D/C": -3.2610153799927044
+          },
+          "logInteraction": -0.046336857717158786,
+          "interactionRatio": 0.9547203031152537
+        },
+        {
+          "block": 4,
+          "latencyReductionPercent": {
+            "B/A": -4.079054458884301,
+            "C/A": 8.378947832334916,
+            "D/A": 3.2084074412321195,
+            "D/B": 7.001852522589247,
+            "D/C": -5.643397744047718
+          },
+          "logInteraction": 0.014918500925339195,
+          "interactionRatio": 1.015030337211426
+        }
+      ],
+      "forks": [
+        {
+          "file": "janino-01-A.log",
+          "arm": "A",
+          "meanMs": 175.777657,
+          "minMs": 160.507427,
+          "maxMs": 198.113073,
+          "firstRowMs": 12.835928,
+          "closeMeanMs": 0.1211073,
+          "allocationMeanBytes": 175130594.4,
+          "byIndexMs": [
+            175.229857,
+            162.46964,
+            160.507427,
+            163.924962,
+            177.07217,
+            172.644564,
+            183.914372,
+            182.895465,
+            198.113073,
+            181.00504
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 70.285,
+            "maxPauseMs": 21.199,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-02-B.log",
+          "arm": "B",
+          "meanMs": 189.8902952,
+          "minMs": 163.159449,
+          "maxMs": 237.314953,
+          "firstRowMs": 13.2576236,
+          "closeMeanMs": 0.2354543,
+          "allocationMeanBytes": 175361984.8,
+          "byIndexMs": [
+            173.861828,
+            237.314953,
+            188.642412,
+            172.878,
+            213.073063,
+            176.403283,
+            182.597296,
+            207.222903,
+            183.749765,
+            163.159449
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 68.111,
+            "maxPauseMs": 21.799,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-03-D.log",
+          "arm": "D",
+          "meanMs": 170.5241257,
+          "minMs": 153.899615,
+          "maxMs": 199.076176,
+          "firstRowMs": 12.0273638,
+          "closeMeanMs": 0.1136439,
+          "allocationMeanBytes": 174314234.4,
+          "byIndexMs": [
+            164.596123,
+            158.92126,
+            162.975912,
+            196.110466,
+            167.004084,
+            182.213046,
+            199.076176,
+            162.228973,
+            153.899615,
+            158.215602
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 55.369,
+            "maxPauseMs": 12.756,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-04-C.log",
+          "arm": "C",
+          "meanMs": 171.7344015,
+          "minMs": 158.131472,
+          "maxMs": 190.318309,
+          "firstRowMs": 12.4082905,
+          "closeMeanMs": 0.1073404,
+          "allocationMeanBytes": 179898440.8,
+          "byIndexMs": [
+            165.435289,
+            162.342892,
+            158.131472,
+            159.974159,
+            172.746667,
+            171.129691,
+            190.318309,
+            179.103061,
+            181.39635,
+            176.766125
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 73.25500000000001,
+            "maxPauseMs": 22.187,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-05-B.log",
+          "arm": "B",
+          "meanMs": 158.6595592,
+          "minMs": 151.634541,
+          "maxMs": 171.433323,
+          "firstRowMs": 11.4881036,
+          "closeMeanMs": 0.1074737,
+          "allocationMeanBytes": 169485036,
+          "byIndexMs": [
+            171.433323,
+            153.163644,
+            152.875979,
+            155.696013,
+            159.329648,
+            159.499325,
+            162.144275,
+            156.211864,
+            164.60698,
+            151.634541
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 65.098,
+            "maxPauseMs": 16.942,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-06-C.log",
+          "arm": "C",
+          "meanMs": 166.913785,
+          "minMs": 158.970243,
+          "maxMs": 177.573925,
+          "firstRowMs": 11.172873599999999,
+          "closeMeanMs": 0.1154879,
+          "allocationMeanBytes": 179893032,
+          "byIndexMs": [
+            166.447608,
+            158.970243,
+            162.412304,
+            164.830121,
+            177.573925,
+            175.11128,
+            174.176617,
+            164.979137,
+            159.826624,
+            164.809991
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 54.252,
+            "maxPauseMs": 16.707,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-07-A.log",
+          "arm": "A",
+          "meanMs": 177.3333187,
+          "minMs": 165.518187,
+          "maxMs": 203.578496,
+          "firstRowMs": 12.7524888,
+          "closeMeanMs": 0.1101306,
+          "allocationMeanBytes": 179866524,
+          "byIndexMs": [
+            173.666892,
+            168.564584,
+            171.536169,
+            169.025792,
+            203.578496,
+            185.941566,
+            191.617621,
+            165.518187,
+            168.966337,
+            174.917543
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 61.384,
+            "maxPauseMs": 20.459,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-08-D.log",
+          "arm": "D",
+          "meanMs": 169.3188419,
+          "minMs": 158.528892,
+          "maxMs": 176.872191,
+          "firstRowMs": 11.5237673,
+          "closeMeanMs": 0.1325074,
+          "allocationMeanBytes": 177498908,
+          "byIndexMs": [
+            172.363807,
+            168.810684,
+            160.933999,
+            173.537962,
+            172.963538,
+            176.613677,
+            176.872191,
+            167.306167,
+            165.257502,
+            158.528892
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 57.6,
+            "maxPauseMs": 13.759,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-09-C.log",
+          "arm": "C",
+          "meanMs": 168.7250736,
+          "minMs": 160.722273,
+          "maxMs": 180.744651,
+          "firstRowMs": 11.4452189,
+          "closeMeanMs": 0.1200776,
+          "allocationMeanBytes": 169500704,
+          "byIndexMs": [
+            164.28992,
+            160.722273,
+            162.514023,
+            166.525792,
+            162.152377,
+            170.098446,
+            175.735019,
+            180.744651,
+            174.171058,
+            170.297177
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 54.787,
+            "maxPauseMs": 12.222,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-10-D.log",
+          "arm": "D",
+          "meanMs": 174.2272242,
+          "minMs": 154.867064,
+          "maxMs": 222.883844,
+          "firstRowMs": 11.1241776,
+          "closeMeanMs": 0.1213544,
+          "allocationMeanBytes": 175371262.4,
+          "byIndexMs": [
+            173.130726,
+            154.867064,
+            160.177294,
+            161.926172,
+            180.159828,
+            173.207943,
+            174.561382,
+            222.883844,
+            177.671933,
+            163.686056
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 71.796,
+            "maxPauseMs": 20.611,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-11-B.log",
+          "arm": "B",
+          "meanMs": 185.8750375,
+          "minMs": 161.584139,
+          "maxMs": 244.295438,
+          "firstRowMs": 13.7196026,
+          "closeMeanMs": 0.1121884,
+          "allocationMeanBytes": 180171670.4,
+          "byIndexMs": [
+            173.630507,
+            172.575388,
+            169.892544,
+            170.205535,
+            185.749643,
+            214.203916,
+            202.210922,
+            244.295438,
+            164.402343,
+            161.584139
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 90.025,
+            "maxPauseMs": 37.982,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-12-A.log",
+          "arm": "A",
+          "meanMs": 171.8544714,
+          "minMs": 161.46002,
+          "maxMs": 183.437137,
+          "firstRowMs": 12.3223381,
+          "closeMeanMs": 0.1237365,
+          "allocationMeanBytes": 174266672.8,
+          "byIndexMs": [
+            183.437137,
+            170.776582,
+            163.808232,
+            172.14832,
+            167.873703,
+            177.92929,
+            170.121374,
+            182.159449,
+            161.46002,
+            168.830607
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 110.477,
+            "maxPauseMs": 60.254,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-13-D.log",
+          "arm": "D",
+          "meanMs": 177.3143559,
+          "minMs": 159.785981,
+          "maxMs": 209.871707,
+          "firstRowMs": 11.8141171,
+          "closeMeanMs": 0.1187821,
+          "allocationMeanBytes": 174525681.6,
+          "byIndexMs": [
+            179.458226,
+            165.851544,
+            159.785981,
+            166.833335,
+            190.01861,
+            173.96041,
+            180.876195,
+            209.871707,
+            180.318148,
+            166.169403
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 67.13,
+            "maxPauseMs": 19.873,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-14-A.log",
+          "arm": "A",
+          "meanMs": 183.19189839999999,
+          "minMs": 152.084633,
+          "maxMs": 194.339191,
+          "firstRowMs": 13.3677008,
+          "closeMeanMs": 0.1130608,
+          "allocationMeanBytes": 169539786.4,
+          "byIndexMs": [
+            184.962561,
+            182.743112,
+            191.985537,
+            186.502761,
+            194.192339,
+            182.351993,
+            191.714193,
+            194.339191,
+            171.042664,
+            152.084633
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 82.1,
+            "maxPauseMs": 24.624,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-15-C.log",
+          "arm": "C",
+          "meanMs": 167.8423448,
+          "minMs": 154.615001,
+          "maxMs": 199.724287,
+          "firstRowMs": 10.8387874,
+          "closeMeanMs": 0.1111404,
+          "allocationMeanBytes": 179907676,
+          "byIndexMs": [
+            154.615001,
+            163.80231,
+            157.447069,
+            162.015275,
+            181.253207,
+            166.871698,
+            199.724287,
+            161.884137,
+            168.395204,
+            162.41526
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 84.139,
+            "maxPauseMs": 32.224,
+            "includesWarmupAndStartup": true
+          }
+        },
+        {
+          "file": "janino-16-B.log",
+          "arm": "B",
+          "meanMs": 190.6643957,
+          "minMs": 169.00736,
+          "maxMs": 238.018277,
+          "firstRowMs": 14.4936277,
+          "closeMeanMs": 0.1582104,
+          "allocationMeanBytes": 179953795.2,
+          "byIndexMs": [
+            177.207821,
+            170.271107,
+            169.00736,
+            238.018277,
+            224.348855,
+            187.612255,
+            215.96663,
+            170.212958,
+            180.868795,
+            173.129899
+          ],
+          "wholeJvmGc": {
+            "pauseCount": 8,
+            "totalPauseMs": 70.716,
+            "maxPauseMs": 21.92,
+            "includesWarmupAndStartup": true
+          }
+        }
+      ]
+    }
+  }
+}

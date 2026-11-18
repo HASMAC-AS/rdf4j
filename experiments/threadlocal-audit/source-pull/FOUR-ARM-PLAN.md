@@ -1,6 +1,6 @@
 # Prespecified SOURCE_PULL × writer-owner four-arm experiment
 
-Supersedes the three-arm-route A/B execution plan for the next experiment. No CPU measurement has begun. All four combinations must pass the relevant behavioral tests before timing.
+Supersedes the three-arm-route A/B execution plan for the next experiment. This protocol was fixed before measurement. All four combinations passed the relevant behavioral qualification before timing; all 48 timing forks and 12 separate profiles are now complete. The protocol and raw samples were not reduced after seeing outcomes.
 
 ## Arms and immutable runtime construction
 
@@ -15,7 +15,7 @@ A's code provenance remains the previous immutable measured runtime, not local H
 
 ## Fixed factorial protocol
 
-Routes: regular, native interpreted (`irKernelInterpreted`), Janino (`irKernel`). All three are affected routes, not placebo controls. Same 100-group/fanout-10 fixture, 26,700 triples, 100,000 distinct six-slot results. Same dual full-RDF-term checksums, route/factory/bind assertions, zero spill and returned reservations. Generic collection sync threshold zero equally; native 640 MiB cap; all common best-combination flags pinned.
+Routes: regular, native interpreted (`irKernelInterpreted`), Janino (`irKernel`). All three are affected routes, not placebo controls. Same 100-group/fanout-10 fixture, 26,700 triples, 100,000 distinct six-slot results. Same dual full-RDF-term checksums, route/factory/bind assertions, zero spill and returned reservations. Generic collection sync threshold zero equally; native 640 MiB cap; all inherited measured-combination flags pinned.
 
 Each route uses **16 fresh JVM forks**, four independent forks per arm, each **20 warmups and 10 measurements**. Fixed balanced order in four blocks:
 
@@ -41,3 +41,11 @@ Only after clean timing, separate warmed JFR forks for all arms/routes or an exp
 ## GC observability in clean timing
 
 Every clean JVM uses identical low-volume `-Xlog:gc:file=<fork>.gc.log:time,uptime,level,tags`. No JFR or PrintCompilation in clean measurements. Retain all samples regardless of GC, and use logs only to explain observable events rather than filter inconvenient runs. Exact per-fork command and common flags are recorded.
+
+## Active grouped-wave configuration
+
+`repository.partialReady=true` is active. Grouped value waves are unset/default false, as in the preceding measured combination; do not change mid-series. The five legacy tests that fail equally under the extra grouped-wave qualification are not running under this benchmark configuration. The inherited flags are a measured combination baseline, not a universally best setting.
+
+## Profile attribution across refactoring
+
+SOURCE_PULL's old `sourceHasNext`/`sourceNext` helper names disappear after consolidation, but its binding remains in `prepareNext`. Aggregate all RepositoryValueIteration-related visible ThreadLocal callers, including restore and inlined/truncated stacks; disappearance of a helper is not proof of zero work. The source-level 2 get/4 set → 1 get/2 set successful-row count is static reasoning, not measured machine instructions. The focused writer test verifies no readContext.get when writeTxn is zero; other ValueStore lookups remain and JFR relative denominators cannot measure wall-time saved.
