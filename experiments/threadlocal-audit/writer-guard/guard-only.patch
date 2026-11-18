@@ -1,0 +1,12 @@
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/ValueStore.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/ValueStore.java
+@@ -16127,6 +16127,9 @@
+ 	}
+ 
+ 	private boolean isWriteTransactionOwner() {
++		if (writeTxn == 0) {
++			return false;
++		}
+ 		long borrowed = readContext.get().borrowedTxn;
+ 		long transaction = writeTxn;
+ 		// A nonowner's empty borrowed context must not become an owner when the shared writer is cleared.

@@ -7530,7 +7530,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 						ValueStoreRevision completed = store.completedRevision(revision);
 						target = language != null ? new LmdbLiteral(completed, label, language, direction, id)
 								: datatype != null ? new LmdbLiteral(completed, label, datatype, id)
-										: new LmdbLiteral(completed, label, org.eclipse.rdf4j.model.vocabulary.XSD.STRING, id);
+										: new LmdbLiteral(completed, label,
+												org.eclipse.rdf4j.model.vocabulary.XSD.STRING, id);
 						break;
 					}
 					LmdbLiteral literal = (LmdbLiteral) target;
@@ -7562,7 +7563,8 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			withValueReadTransaction(selected, (outerStack, outerTxn) -> readTransaction(env, (stack, txn) -> {
 				try (ValueOverlayRegistry.SnapshotLease overlay = borrowValueOverlay(txn)) {
 					OverlayMaterializer materializer = overlay != null && TYPED_OVERLAY_MATERIALIZATION
-							? new OverlayMaterializer() : null;
+							? new OverlayMaterializer()
+							: null;
 					MDBVal keyData = MDBVal.calloc(stack);
 					MDBVal valueData = MDBVal.calloc(stack);
 					ByteBuffer keyBuffer = idBuffer(stack);
@@ -16125,6 +16127,9 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 	}
 
 	private boolean isWriteTransactionOwner() {
+		if (writeTxn == 0) {
+			return false;
+		}
 		long borrowed = readContext.get().borrowedTxn;
 		long transaction = writeTxn;
 		// A nonowner's empty borrowed context must not become an owner when the shared writer is cleared.
