@@ -1,0 +1,757 @@
+{
+  "warning": "Java ExecutionSample across all JVM threads only; nearest categories exclusive, inclusive frame counts overlap; neither wall time nor exact calls. Native samples separate; Node/client CPU absent. Allocation weights sampled, not exact bytes.",
+  "javaSamples": 1001,
+  "threadLocalVisibleSamples": 135,
+  "threadNames": {
+    "http-nio-127.0.0.1-18080-exec-1": 95,
+    "http-nio-127.0.0.1-18080-exec-9": 38,
+    "http-nio-127.0.0.1-18080-exec-3": 87,
+    "http-nio-127.0.0.1-18080-exec-4": 122,
+    "http-nio-127.0.0.1-18080-exec-2": 88,
+    "http-nio-127.0.0.1-18080-exec-8": 114,
+    "http-nio-127.0.0.1-18080-exec-6": 114,
+    "http-nio-127.0.0.1-18080-exec-5": 145,
+    "http-nio-127.0.0.1-18080-exec-10": 122,
+    "http-nio-127.0.0.1-18080-exec-7": 63,
+    "http-nio-127.0.0.1-18080-Acceptor": 2,
+    "rdf4j-SharedHttpClientSessionManager-65": 1,
+    "rdf4j-SharedHttpClientSessionManager-70": 1,
+    "rdf4j-SharedHttpClientSessionManager-73": 1,
+    "JFR Periodic Tasks": 1,
+    "rdf4j-SharedHttpClientSessionManager-76": 1,
+    "http-nio-127.0.0.1-18080-Poller": 2,
+    "rdf4j-SharedHttpClientSessionManager-77": 1,
+    "rdf4j-SharedHttpClientSessionManager-79": 1,
+    "rdf4j-SharedHttpClientSessionManager-88": 1,
+    "rdf4j-SharedHttpClientSessionManager-89": 1
+  },
+  "nearestCategories": {
+    "container_jdk_other": 114,
+    "kernel": 136,
+    "lifetime_read_replay": 279,
+    "cancellation": 73,
+    "snapshot_binding": 125,
+    "binary_writer": 61,
+    "memo_values": 49,
+    "workbench_ndjson": 153,
+    "transport_mapping": 5,
+    "binary_parser": 6
+  },
+  "threadLocalCallers": {
+    "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead": 26,
+    "org.eclipse.rdf4j.http.client.QueryExecutionContext.activateExternalValueInitializer": 24,
+    "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead": 23,
+    "org.eclipse.rdf4j.sail.lmdb.LmdbSailStore.enterReadResourceContext": 17,
+    "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext": 7,
+    "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbFusedSipFactorizedRuntime.attach": 6,
+    "org.eclipse.rdf4j.http.client.QueryExecutionContext.lambda$activateExternalValueInitializer$0": 6,
+    "org.eclipse.rdf4j.sail.lmdb.ValueResolutionScope.lambda$activateForeground$0": 5,
+    "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.beginReadThread": 5,
+    "org.eclipse.rdf4j.sail.lmdb.ValueResolutionScope.activateForeground": 3,
+    "org.eclipse.rdf4j.common.iteration.CancellationSignal.current": 3,
+    "org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$ReadResourceContext.close": 3,
+    "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbFusedSipFactorizedRuntime$Scope.<init>": 2,
+    "org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbFusedSipFactorizedRuntime$Scope.close": 2,
+    "org.eclipse.rdf4j.http.client.QueryExecutionContext.replay": 1,
+    "org.eclipse.rdf4j.query.algebra.evaluation.util.QueryEvaluationUtility.withFreshPreparedQuerySafetySnapshot": 1,
+    "org.eclipse.rdf4j.http.client.QueryExecutionContext.setExternalValueInitializer": 1
+  },
+  "threadLocalMethods": {
+    "java.lang.ThreadLocal.get": 95,
+    "java.lang.ThreadLocal$ThreadLocalMap.getEntry": 58,
+    "java.lang.ThreadLocal.setInitialValue": 35,
+    "java.lang.ThreadLocal$ThreadLocalMap.set": 30,
+    "java.lang.ThreadLocal.remove": 22,
+    "java.lang.ThreadLocal$ThreadLocalMap.expungeStaleEntry": 22,
+    "java.lang.ThreadLocal$ThreadLocalMap.remove": 22,
+    "java.lang.ThreadLocal.set": 18,
+    "java.lang.ThreadLocal$ThreadLocalMap.cleanSomeSlots": 11,
+    "java.lang.ThreadLocal$SuppliedThreadLocal.initialValue": 3,
+    "java.lang.ThreadLocal.getMap": 2,
+    "java.lang.ThreadLocal$ThreadLocalMap.getEntryAfterMiss": 2
+  },
+  "topLeaves": [
+    [
+      "tools.jackson.core.json.UTF8JsonGenerator._verifyValueWrite",
+      114
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.getEntry",
+      56
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext",
+      35
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeValueMemo.value",
+      35
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.CancellationSignal.isCancelled",
+      28
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.RowState.bind",
+      28
+    ],
+    [
+      "java.lang.Iterable.forEach",
+      26
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.isCancellationRequested",
+      24
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.csf.ImmutablePagedQuadCsfIndex$SharedPartitionLookup$ExactAccelerator.findSlot",
+      23
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.expungeStaleEntry",
+      22
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.set",
+      19
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.closeResources",
+      19
+    ],
+    [
+      "org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.slot",
+      18
+    ],
+    [
+      "java.lang.ThreadLocal.setInitialValue",
+      18
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.poll",
+      18
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.endReadOperationLocked",
+      17
+    ],
+    [
+      "org.apache.catalina.connector.OutputBuffer.isBlocking",
+      14
+    ],
+    [
+      "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl",
+      12
+    ],
+    [
+      "java.util.ArrayList.remove",
+      11
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.cleanSomeSlots",
+      11
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.collectMaterializationValues",
+      11
+    ],
+    [
+      "jdk.internal.util.ArraysSupport.mismatch",
+      11
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration$$Lambda.0x0000000010a7b140.accept",
+      11
+    ],
+    [
+      "java.util.HashMap.putVal",
+      10
+    ],
+    [
+      "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.findNamespace",
+      10
+    ],
+    [
+      "java.util.concurrent.ConcurrentHashMap.get",
+      9
+    ],
+    [
+      "org.eclipse.rdf4j.http.client.QueryExecutionContext.lambda$activateReplaySafepoint$0",
+      9
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.ValueStore.getLazyValue",
+      8
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.csf.ImmutablePagedQuadCsfIndex.findLocalReference",
+      8
+    ],
+    [
+      "org.eclipse.rdf4j.http.client.QueryExecutionContext.checkpoint",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter$CompactRows.add",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.PlanValueCatalog.indexOf",
+      7
+    ],
+    [
+      "tools.jackson.core.json.JsonWriteContext.createChildArrayContext",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.IterationWrapper.next",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.findMaterializedDuplicate",
+      7
+    ],
+    [
+      "java.util.HashMap.getNode",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.writeNamedRecord",
+      6
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall",
+      6
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.util.QueryStreamCompression.write",
+      6
+    ],
+    [
+      "java.util.Collections$UnmodifiableCollection.size",
+      6
+    ]
+  ],
+  "topInclusiveFrames": [
+    [
+      "org.apache.coyote.http11.Http11Processor.service",
+      985
+    ],
+    [
+      "org.apache.coyote.AbstractProcessorLight.process",
+      985
+    ],
+    [
+      "org.apache.coyote.AbstractProtocol$ConnectionHandler.process",
+      984
+    ],
+    [
+      "org.apache.catalina.connector.CoyoteAdapter.service",
+      982
+    ],
+    [
+      "org.apache.catalina.core.StandardHostValve.invoke",
+      981
+    ],
+    [
+      "org.apache.catalina.valves.ErrorReportValve.invoke",
+      981
+    ],
+    [
+      "org.apache.catalina.core.StandardEngineValve.invoke",
+      981
+    ],
+    [
+      "org.apache.catalina.core.ApplicationFilterChain.doFilter",
+      980
+    ],
+    [
+      "org.apache.catalina.core.StandardWrapperValve.invoke",
+      979
+    ],
+    [
+      "org.apache.catalina.core.StandardContextValve.invoke",
+      979
+    ],
+    [
+      "org.apache.catalina.authenticator.AuthenticatorBase.invoke",
+      979
+    ],
+    [
+      "bench.ProfileBenchmarkServer.lambda$benchmarkObservationFilter$0",
+      978
+    ],
+    [
+      "org.apache.tomcat.util.net.SocketProcessorBase.run",
+      977
+    ],
+    [
+      "org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun",
+      977
+    ],
+    [
+      "bench.ProfileBenchmarkServer$$Lambda.0x00000000104018f0.doFilter",
+      977
+    ],
+    [
+      "org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker",
+      975
+    ],
+    [
+      "org.springframework.web.filter.OncePerRequestFilter.doFilter",
+      975
+    ],
+    [
+      "org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal",
+      973
+    ],
+    [
+      "org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal",
+      973
+    ],
+    [
+      "java.lang.Thread.runWith",
+      972
+    ],
+    [
+      "org.springframework.web.filter.RequestContextFilter.doFilterInternal",
+      970
+    ],
+    [
+      "org.springframework.web.filter.FormContentFilter.doFilterInternal",
+      969
+    ],
+    [
+      "org.apache.tomcat.websocket.server.WsFilter.doFilter",
+      968
+    ],
+    [
+      "org.eclipse.rdf4j.tools.serverboot.ErrorLoggingFilter.doFilterInternal",
+      968
+    ],
+    [
+      "org.eclipse.rdf4j.tools.serverboot.ServerPrefixForwardFilter.doFilter",
+      968
+    ],
+    [
+      "java.lang.Thread.run",
+      967
+    ],
+    [
+      "org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run",
+      963
+    ],
+    [
+      "org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run",
+      960
+    ],
+    [
+      "org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute",
+      921
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.compression.HttpCompressionFilter.doFilter",
+      732
+    ],
+    [
+      "org.springframework.web.servlet.FrameworkServlet.service",
+      731
+    ],
+    [
+      "org.springframework.web.servlet.FrameworkServlet.processRequest",
+      731
+    ],
+    [
+      "org.springframework.web.servlet.DispatcherServlet.doService",
+      731
+    ],
+    [
+      "jakarta.servlet.http.HttpServlet.service",
+      731
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.security.RequestIntegrityFilter.doFilter",
+      730
+    ],
+    [
+      "org.eclipse.rdf4j.tools.serverboot.LoggingDispatcherServlet.doDispatch",
+      729
+    ],
+    [
+      "org.springframework.web.servlet.DispatcherServlet.doDispatch",
+      728
+    ],
+    [
+      "org.springframework.web.servlet.FrameworkServlet.doPost",
+      713
+    ],
+    [
+      "org.springframework.web.servlet.DispatcherServlet.processDispatchResult",
+      693
+    ],
+    [
+      "org.springframework.web.servlet.DispatcherServlet.render",
+      693
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.repository.QueryResultView.render",
+      688
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal",
+      687
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute",
+      684
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1",
+      684
+    ],
+    [
+      "org.eclipse.rdf4j.query.QueryResults.report",
+      683
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext",
+      580
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.ConvertingIteration.hasNext",
+      575
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext",
+      563
+    ],
+    [
+      "org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext",
+      560
+    ],
+    [
+      "org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext",
+      558
+    ],
+    [
+      "org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext",
+      558
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext",
+      548
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext",
+      547
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall",
+      475
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead",
+      469
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead",
+      438
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext",
+      302
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.security.WorkbenchCsrfFilter.doFilter",
+      239
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.proxy.RedirectFilter.doFilter",
+      238
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.proxy.CacheFilter.doFilter",
+      237
+    ]
+  ],
+  "topStacks": [
+    [
+      "tools.jackson.core.json.UTF8JsonGenerator._verifyValueWrite <- tools.jackson.core.json.UTF8JsonGenerator.writeString <- tools.jackson.databind.ser.jdk.StringSerializer.serialize <- tools.jackson.databind.ser.jdk.ObjectArraySerializer.serializeContents <- tools.jackson.databind.ser.jdk.ObjectArraySerializer.serialize <- tools.jackson.databind.ser.jdk.ObjectArraySerializer.serialize <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serializeContentsImpl <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serializeContents <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serialize <- tools.jackson.databind.ser.SerializationContextExt._serialize <- tools.jackson.databind.ser.SerializationContextExt.serializeValue <- tools.jackson.databind.ObjectMapper._configAndWriteValue <- tools.jackson.databind.ObjectMapper.writeValue <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter$CompactRows.add <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter.handleSolution <- org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result",
+      101
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeValueMemo.value <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.collectMaterializationValues <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$next$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x0000000010a71660.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext",
+      35
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.RowState.bind <- org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeKernelExecution$KernelRowCursor.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeKernelExecution$FusedRuntimeRowCursor.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.RowState.advance <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeUnorderedInput.advance <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.getNextElement <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeContextClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.base.SailClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$hasNext$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x000000001090a6c0.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead",
+      28
+    ],
+    [
+      "java.lang.Iterable.forEach <- org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.<init> <- org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.copy <- org.eclipse.rdf4j.sail.features.SailResultValueExtractor$1.snapshot <- org.eclipse.rdf4j.sail.features.SailResultValueExtractor$1.snapshot <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.query.QueryResults.report",
+      26
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.poll <- org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeKernelExecution$KernelRowCursor.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.LmdbNativeKernelExecution$FusedRuntimeRowCursor.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.RowState.advance <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeUnorderedInput.advance <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.getNextElement <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeContextClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.base.SailClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$hasNext$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x000000001090a6c0.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead",
+      18
+    ],
+    [
+      "org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.slot <- org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.index <- org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.getValue <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl <- org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render <- org.springframework.web.servlet.DispatcherServlet.render <- org.springframework.web.servlet.DispatcherServlet.processDispatchResult <- org.springframework.web.servlet.DispatcherServlet.doDispatch <- org.eclipse.rdf4j.tools.serverboot.LoggingDispatcherServlet.doDispatch <- org.springframework.web.servlet.DispatcherServlet.doService",
+      17
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$hasNext$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x000000001090a6c0.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext",
+      15
+    ],
+    [
+      "org.apache.catalina.connector.OutputBuffer.isBlocking <- org.apache.catalina.connector.CoyoteOutputStream.checkNonBlockingWrite <- org.apache.catalina.connector.CoyoteOutputStream.write <- org.eclipse.rdf4j.http.server.compression.HttpCompressionFilter$CompressedHttpServletResponseWrapper$1.write <- org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.writePayload <- org.eclipse.rdf4j.http.client.QueryResponseHeartbeat$HeartbeatOutputStream.write <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter$RowOutputStream.drain <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter$RowOutputStream.finishRow <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl <- org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render",
+      14
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$hasNext$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x000000001090a6c0.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext",
+      13
+    ],
+    [
+      "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl <- org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render <- org.springframework.web.servlet.DispatcherServlet.render <- org.springframework.web.servlet.DispatcherServlet.processDispatchResult <- org.springframework.web.servlet.DispatcherServlet.doDispatch <- org.eclipse.rdf4j.tools.serverboot.LoggingDispatcherServlet.doDispatch <- org.springframework.web.servlet.DispatcherServlet.doService <- org.springframework.web.servlet.FrameworkServlet.processRequest <- org.springframework.web.servlet.FrameworkServlet.doPost <- jakarta.servlet.http.HttpServlet.service",
+      12
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.collectMaterializationValues <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$next$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x0000000010a71660.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext",
+      11
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration$$Lambda.0x0000000010a7b140.accept <- org.eclipse.rdf4j.sail.features.CompactBindingSetSnapshot.extractValues <- org.eclipse.rdf4j.sail.features.SailResultValueExtractor$1.extract <- org.eclipse.rdf4j.sail.features.SailResultValueExtractor$1.extract <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal",
+      11
+    ],
+    [
+      "tools.jackson.core.json.UTF8JsonGenerator._verifyValueWrite <- tools.jackson.core.json.UTF8JsonGenerator.writeStartArray <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serialize <- tools.jackson.databind.ser.SerializationContextExt._serialize <- tools.jackson.databind.ser.SerializationContextExt.serializeValue <- tools.jackson.databind.ObjectMapper._configAndWriteValue <- tools.jackson.databind.ObjectMapper.writeValue <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter$CompactRows.add <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter.handleSolution <- org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateBrowserBatch <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.lambda$extractQueryAndEvaluate$0 <- org.eclipse.rdf4j.workbench.util.QueryEvaluator$$Lambda.0x00000000108de878.execute <- org.eclipse.rdf4j.http.client.QueryCircuitBreaker.execute",
+      10
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.closeResources <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext",
+      10
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.csf.ImmutablePagedQuadCsfIndex$SharedPartitionLookup$ExactAccelerator.findSlot <- org.eclipse.rdf4j.sail.lmdb.csf.ImmutablePagedQuadCsfIndex$SharedPartitionLookup$ExactAccelerator.findOrdinal <- org.eclipse.rdf4j.sail.lmdb.csf.ImmutablePagedQuadCsfIndex$SharedPartitionLookup$DecodedRunCursor.bindSize <- org.eclipse.rdf4j.sail.lmdb.LmdbDecodedNativeAdjacency$DecodedBoundRunCursor.bindSize <- org.eclipse.rdf4j.sail.lmdb.LmdbDecodedNativeAdjacency$DecodedBoundRunCursor.bind <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m8_3$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m8_2$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m8_1$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m8_0$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m7_1$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m7_0$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m0_4$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m6_3$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m6_2$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m6_1$ <- org.eclipse.rdf4j.sail.lmdb.gen.IrKernel_c954fcf873ce4d02.m6_0$",
+      10
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.CancellationSignal.isCancelled <- org.eclipse.rdf4j.sail.helpers.AbstractSailConnection.admitResultPull <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.beginPull <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.next <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.next <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute",
+      10
+    ],
+    [
+      "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.findNamespace <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.writeQName <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.writeValue <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl <- org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render <- org.springframework.web.servlet.DispatcherServlet.render <- org.springframework.web.servlet.DispatcherServlet.processDispatchResult <- org.springframework.web.servlet.DispatcherServlet.doDispatch <- org.eclipse.rdf4j.tools.serverboot.LoggingDispatcherServlet.doDispatch <- org.springframework.web.servlet.DispatcherServlet.doService",
+      10
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.expungeStaleEntry <- java.lang.ThreadLocal$ThreadLocalMap.remove <- java.lang.ThreadLocal.remove <- java.lang.ThreadLocal.remove <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext",
+      10
+    ],
+    [
+      "org.eclipse.rdf4j.common.iteration.CancellationSignal.isCancelled <- org.eclipse.rdf4j.sail.helpers.AbstractSailConnection.admitResultPull <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.beginPull <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render",
+      9
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.getEntry <- java.lang.ThreadLocal.get <- java.lang.ThreadLocal.get <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext",
+      9
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.closeResources <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext",
+      9
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.endReadOperationLocked <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext",
+      9
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.endReadOperationLocked <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.hasNext",
+      8
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.ValueStore.getLazyValue <- org.eclipse.rdf4j.sail.lmdb.ValueStore.getLazyValue <- org.eclipse.rdf4j.sail.lmdb.ValueStore.getLazyValue <- org.eclipse.rdf4j.sail.lmdb.LmdbSailStore$LmdbSailDataset.lazyValue <- org.eclipse.rdf4j.sail.lmdb.evaluation.CompositeNativeLmdbQuerySource.lazyValue <- org.eclipse.rdf4j.sail.lmdb.evaluation.SyntheticValueSource.lazyValue <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeValueMemo.value <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.collectMaterializationValues <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$next$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x0000000010a71660.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall",
+      8
+    ],
+    [
+      "java.lang.ThreadLocal.setInitialValue <- java.lang.ThreadLocal.get <- java.lang.ThreadLocal.get <- org.eclipse.rdf4j.http.client.QueryExecutionContext.activateExternalValueInitializer <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext",
+      8
+    ],
+    [
+      "java.util.ArrayList.remove <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.endDelegateCall <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.next <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.next <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render <- org.springframework.web.servlet.DispatcherServlet.render <- org.springframework.web.servlet.DispatcherServlet.processDispatchResult",
+      7
+    ],
+    [
+      "java.util.concurrent.ConcurrentHashMap.get <- java.util.Properties.getProperty <- java.util.Properties.getProperty <- java.lang.System.getProperty <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.enabled <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsStep.project <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsStep.project <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsStep.emit <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.getNextElement <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeContextClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.base.SailClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$hasNext$0",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.isCancellationRequested <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.isCancellationRequested <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.isCancellationRequested <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeCancellationToken.pollCancellation <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.cancellationFailure <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeContextClosingIteration.next <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeContextClosingIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.base.SailClosingIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter$CompactRows.add <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter.handleSolution <- org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateBrowserBatch <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.lambda$extractQueryAndEvaluate$0 <- org.eclipse.rdf4j.workbench.util.QueryEvaluator$$Lambda.0x00000000108de878.execute <- org.eclipse.rdf4j.http.client.QueryCircuitBreaker.execute <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluate <- org.eclipse.rdf4j.workbench.commands.QueryServlet.evaluateQuery <- org.eclipse.rdf4j.workbench.commands.QueryServlet.lambda$service$1 <- org.eclipse.rdf4j.workbench.commands.QueryServlet$$Lambda.0x00000000108d9d78.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.workbench.commands.QueryServlet.service <- org.eclipse.rdf4j.workbench.commands.QueryServlet.handleStandardBrowserRequest",
+      7
+    ],
+    [
+      "tools.jackson.core.json.JsonWriteContext.createChildArrayContext <- tools.jackson.core.json.UTF8JsonGenerator.writeStartArray <- tools.jackson.databind.ser.jdk.ObjectArraySerializer.serialize <- tools.jackson.databind.ser.jdk.ObjectArraySerializer.serialize <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serializeContentsImpl <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serializeContents <- tools.jackson.databind.ser.jdk.IndexedListSerializer.serialize <- tools.jackson.databind.ser.SerializationContextExt._serialize <- tools.jackson.databind.ser.SerializationContextExt.serializeValue <- tools.jackson.databind.ObjectMapper._configAndWriteValue <- tools.jackson.databind.ObjectMapper.writeValue <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter$CompactRows.add <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter.handleSolution <- org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateBrowserBatch",
+      7
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.findMaterializedDuplicate <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeProjectedBindingSet.collectMaterializationValues <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$1.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$next$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x0000000010a71660.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext",
+      7
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.expungeStaleEntry <- java.lang.ThreadLocal$ThreadLocalMap.remove <- java.lang.ThreadLocal.remove <- java.lang.ThreadLocal.remove <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext",
+      6
+    ],
+    [
+      "org.eclipse.rdf4j.workbench.util.QueryStreamCompression.write <- org.eclipse.rdf4j.http.client.QueryResponseHeartbeat.writePayload <- org.eclipse.rdf4j.http.client.QueryResponseHeartbeat$HeartbeatOutputStream.write <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter$RowOutputStream.drain <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter$RowOutputStream.finishRow <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl <- org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render <- org.springframework.web.servlet.DispatcherServlet.render <- org.springframework.web.servlet.DispatcherServlet.processDispatchResult <- org.springframework.web.servlet.DispatcherServlet.doDispatch",
+      6
+    ],
+    [
+      "jdk.internal.util.ArraysSupport.mismatch <- java.lang.String.startsWith <- java.lang.String.startsWith <- org.eclipse.rdf4j.rio.helpers.TripleTermUtil.isEncodedTriple <- org.eclipse.rdf4j.rio.helpers.TripleTermUtil.fromRDFEncodedValue <- org.eclipse.rdf4j.query.resultio.TripleTermDecodingQueryResultHandler$$Lambda.0x00000000108a12c0.apply <- org.eclipse.rdf4j.query.resultio.ValueMappingBindingSet$2.getValue <- org.eclipse.rdf4j.http.client.BNodeOriginTransport.map <- org.eclipse.rdf4j.http.client.BNodeOriginTransport$1.convert <- org.eclipse.rdf4j.http.client.BNodeOriginTransport$1.convert <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateBrowserBatch <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.lambda$extractQueryAndEvaluate$0 <- org.eclipse.rdf4j.workbench.util.QueryEvaluator$$Lambda.0x00000000108de878.execute",
+      6
+    ],
+    [
+      "org.eclipse.rdf4j.http.client.QueryExecutionContext.lambda$activateReplaySafepoint$0 <- org.eclipse.rdf4j.http.client.QueryExecutionContext$$Lambda.0x00000000107c9c70.close <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.lambda$executeObservedRead$2 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$$Lambda.0x0000000010a7a178.run <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.closeResources <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext",
+      6
+    ],
+    [
+      "java.util.concurrent.ConcurrentLinkedDeque.pollFirst <- tools.jackson.core.util.RecyclerPool$ConcurrentDequePoolBase.acquirePooled <- tools.jackson.core.util.RecyclerPool.acquireAndLinkPooled <- tools.jackson.core.TokenStreamFactory._getBufferRecycler <- tools.jackson.core.TokenStreamFactory._createContext <- tools.jackson.core.base.TextualTSFactory.createGenerator <- tools.jackson.databind.ObjectMapper.writeValue <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter$CompactRows.add <- org.eclipse.rdf4j.workbench.util.WorkbenchPageResultWriter.handleSolution <- org.eclipse.rdf4j.workbench.util.TupleResultBuilder.result <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.addResult <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.evaluateBrowserBatch <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.extractQueryAndEvaluateInternal <- org.eclipse.rdf4j.workbench.util.QueryEvaluator.lambda$extractQueryAndEvaluate$0 <- org.eclipse.rdf4j.workbench.util.QueryEvaluator$$Lambda.0x00000000108de878.execute <- org.eclipse.rdf4j.http.client.QueryCircuitBreaker.execute",
+      6
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.evaluation.NativeDistinctTracker.add <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeOrderedDistinctTracker.add <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.getNextElement <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRowsIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.evaluation.NativeContextClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.base.SailClosingIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.lambda$hasNext$0 <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration$$Lambda.0x000000001090a6c0.execute <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext",
+      5
+    ],
+    [
+      "java.lang.ThreadLocal$ThreadLocalMap.getEntry <- java.lang.ThreadLocal.get <- java.lang.ThreadLocal.get <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeObservedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection.executeTrackedRead <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.trackedCall <- org.eclipse.rdf4j.sail.lmdb.LmdbStoreConnection$ReplayableIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.prepareNext <- org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.hasNext <- org.eclipse.rdf4j.common.iteration.IterationWrapper.hasNext <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.hasNext <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.hasNext <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.hasNext",
+      5
+    ],
+    [
+      "org.eclipse.rdf4j.sail.lmdb.RepositoryValueIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.sail.helpers.SailBaseIteration.next <- org.eclipse.rdf4j.sail.helpers.CleanerIteration.next <- org.eclipse.rdf4j.common.iteration.TimeLimitIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.next <- org.eclipse.rdf4j.http.server.repository.PrefetchedQueryResults$PrefetchedTupleQueryResult.next <- org.eclipse.rdf4j.common.iteration.ConvertingIteration.next <- org.eclipse.rdf4j.common.iteration.IterationWrapper.next <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render",
+      5
+    ],
+    [
+      "org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.writeNamedRecord <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.writeQName <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.writeValue <- org.eclipse.rdf4j.query.resultio.binary.BinaryQueryResultWriter.handleSolutionImpl <- org.eclipse.rdf4j.query.resultio.AbstractQueryResultWriter.handleSolution <- org.eclipse.rdf4j.query.QueryResults.report <- org.eclipse.rdf4j.http.server.repository.TupleQueryResultView.renderInternal <- org.eclipse.rdf4j.http.server.repository.QueryResultView.lambda$render$1 <- org.eclipse.rdf4j.http.server.repository.QueryResultView$$Lambda.0x00000000109f6538.execute <- org.eclipse.rdf4j.http.client.CancellableOperationCoordinator.execute <- org.eclipse.rdf4j.http.server.repository.QueryResultView.render <- org.springframework.web.servlet.DispatcherServlet.render <- org.springframework.web.servlet.DispatcherServlet.processDispatchResult <- org.springframework.web.servlet.DispatcherServlet.doDispatch <- org.eclipse.rdf4j.tools.serverboot.LoggingDispatcherServlet.doDispatch <- org.springframework.web.servlet.DispatcherServlet.doService",
+      5
+    ]
+  ],
+  "nativeSamples": 991,
+  "nativeTopLeaves": [
+    [
+      "sun.nio.ch.EPoll.wait",
+      464
+    ],
+    [
+      "sun.nio.ch.Net.accept",
+      462
+    ],
+    [
+      "java.util.zip.Deflater.deflateBytesBytes",
+      43
+    ],
+    [
+      "sun.nio.ch.Net.poll",
+      13
+    ],
+    [
+      "java.io.FileOutputStream.open0",
+      3
+    ],
+    [
+      "sun.nio.ch.SocketDispatcher.write0",
+      3
+    ],
+    [
+      "java.io.FileDescriptor.close0",
+      2
+    ],
+    [
+      "sun.nio.ch.SocketDispatcher.read0",
+      1
+    ]
+  ],
+  "sampledAllocationWeight": 25625201544,
+  "sampledAllocationTopClasses": [
+    [
+      "java/util/HashMap$Node",
+      5790275464
+    ],
+    [
+      "[Ljava/lang/Object;",
+      4438302832
+    ],
+    [
+      "[B",
+      3705840480
+    ],
+    [
+      "[Ljava/util/HashMap$Node;",
+      2047764032
+    ],
+    [
+      "[Ljdk/internal/classfile/impl/StackMapGenerator$Type;",
+      1781292456
+    ],
+    [
+      "java/time/Instant",
+      1036738344
+    ],
+    [
+      "tools/jackson/core/json/JsonWriteContext",
+      516555696
+    ],
+    [
+      "java/lang/ThreadLocal$ThreadLocalMap$Entry",
+      422696416
+    ],
+    [
+      "tools/jackson/core/json/UTF8JsonGenerator",
+      367211384
+    ],
+    [
+      "java/lang/String",
+      317305264
+    ],
+    [
+      "[Lorg/eclipse/rdf4j/model/Value;",
+      307318528
+    ],
+    [
+      "java/util/LinkedHashMap",
+      252931000
+    ],
+    [
+      "[Ljava/lang/Runnable;",
+      248179816
+    ],
+    [
+      "tools/jackson/core/io/IOContext",
+      231607496
+    ],
+    [
+      "org/eclipse/rdf4j/http/client/QueryExecutionContext$ReplaySafepoint",
+      227834504
+    ],
+    [
+      "org.eclipse.rdf4j.http.client.QueryExecutionContext$$Lambda/0x00000000107c8f50",
+      216391216
+    ],
+    [
+      "tools/jackson/databind/ser/SerializationContextExt$Impl",
+      216216088
+    ],
+    [
+      "java/nio/HeapCharBuffer",
+      190612736
+    ],
+    [
+      "java/nio/HeapByteBuffer",
+      180925176
+    ],
+    [
+      "[I",
+      178418312
+    ]
+  ]
+}

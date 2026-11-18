@@ -7,11 +7,11 @@ Parent approved this distinct non-ThreadLocal experiment after reviewing actual 
 Keep existing packed row List/Object[] construction, including all RDF getter/prepacking failures before serializer output. Replace only generic ObjectMapper serializer dispatch with schema-specific Jackson token calls for the fixed packed-term protocol. Keep a fresh generator per row, Jackson escaping/validation, exact term encoding, record cap, oversized streaming, flushing, disconnect behavior and exception translation. Do not fold in generator reuse, array elimination, binding round-trip changes, resource holder, initializer restoration or cancellation experiments.
 
 ## Plan
-- [in_progress] Establish byte-identical baseline and serialization contracts
-- [todo] Implement minimal protocol-specialized token emission
-- [todo] Independently review and validate output failures
-- [todo] Compare qualified actual HTTP factorial configurations
-- [todo] Publish complete evidence and qualified recommendation
+- [done] Establish byte-identical baseline and serialization contracts
+- [done] Implement minimal protocol-specialized token emission
+- [done] Independently review and validate output failures
+- [done] Compare qualified actual HTTP factorial configurations
+- [in_progress] Publish complete evidence and qualified recommendation
 
 ## Qualification
 Capture baseline output/differential contracts and a structural expected-red test before production edits. Exact bytes and parsed RDF terms for bound/unbound cells, IRIs, blank-node provenance, languages, directional literals, datatypes, nested triples, escaping/Unicode/surrogates, unsupported or throwing values, large rows and cap crossings. Preserve first-batch and subsequent-batch boundaries, interleaved metadata/progress/terminal records, output ownership, flush/disconnect exceptions and no unbounded buffering. Match original frozen Workbench class-family bytes before compiling the isolated candidate.
@@ -21,3 +21,9 @@ Use immutable base5ac89b5 and depth0750336 engine identities, frozen reconstruct
 
 ## Ownership
 writer_guard_design owns tests/implementation and first CPU window. native_token_path reviews protocol/Jackson/ownership semantics independently. inventory freezes provenance and later owns exact-output HTTP qualification and matched timings. Coordinator checkpoints authorized source and evidence. Canonical benchmark lock prevents builds/tests/profiles overlapping clean timings. Preserve all artifacts and historical negative results.
+
+## Qualified source checkpoint
+Standalone serializer e2dc1ea1 and depth+serializer d94617b3 are archived at 0f4fefc1 with separate exact runtime identities. Full Workbench JVM module suite passed 1,561 tests; the final test-only structural guard was then checked by 25 focused tests and 25 tests on each frozen application configuration. Production source unchanged after the full suite. Four actual HTTP arms passed complete output/checksum/origin qualification before the fixed 16-server series. No speedup claim pending complete balanced results.
+
+## Final result
+All 16 clean forks and four separate profiles completed. Depth+serializer reduced full-response latency 8.11% versus depth, with all four paired blocks favorable, but standalone serializer and combined versus baseline remain uncertain. First-row latency is an adverse tradeoff, particularly serializer alone. No established synergy or universally fastest configuration. Profiles confirm the intended generic dispatch change without assigning exact wall-time savings. Preserve all results and convergence limitations; see ../serializer-workbench/RESULTS.md.
