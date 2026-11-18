@@ -37,7 +37,12 @@ import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.KernelScanner;
  * Each scan site also reuses one cursor wrapper. A correlated scan is re-opened once per outer row, so allocating a
  * wrapper per open would put garbage on the hottest path in the engine.
  */
-final class LmdbNativeKernelScanner implements KernelScanner, Closeable {
+final class LmdbNativeKernelScanner
+		implements KernelScanner, Closeable, org.eclipse.rdf4j.common.iteration.CooperativeCancellation {
+	private final NativeRecordCancellation cancellation;
+	private volatile boolean closed;
+	private volatile boolean unsupportedBinding;
+	private volatile boolean opening;
 
 	private final NativeLmdbQuerySource source;
 	private final LmdbNativeRuntimePlan.Invocation runtimePlan;
@@ -63,15 +68,28 @@ final class LmdbNativeKernelScanner implements KernelScanner, Closeable {
 	}
 
 	LmdbNativeKernelScanner(RowState row, StatementOrder[] scanOrders) {
-		this(row.source, row.runtimePlan, scanSites(scanOrders));
+		this(row.source, row.runtimePlan, scanSites(scanOrders), ownedCancellation(row));
 	}
 
 	LmdbNativeKernelScanner(RowState row, LmdbNativeKernelBindings.ScanSite[] scanSites) {
-		this(row.source, row.runtimePlan, scanSites);
+		this(row.source, row.runtimePlan, scanSites, ownedCancellation(row));
 	}
 
 	private LmdbNativeKernelScanner(NativeLmdbQuerySource source, LmdbNativeRuntimePlan.Invocation runtimePlan,
 			LmdbNativeKernelBindings.ScanSite[] scanSites) {
+		this(source, runtimePlan, scanSites, null);
+	}
+
+	private static NativeRecordCancellation ownedCancellation(RowState row) {
+		return Boolean.getBoolean("rdf4j.lmdb.recordCancellation.owned")
+				? new NativeRecordCancellation(row.cancellation, LmdbNativeProbeDeadline.currentOrNull(),
+						org.eclipse.rdf4j.common.iteration.CancellationSignal.current())
+				: null;
+	}
+
+	private LmdbNativeKernelScanner(NativeLmdbQuerySource source, LmdbNativeRuntimePlan.Invocation runtimePlan,
+			LmdbNativeKernelBindings.ScanSite[] scanSites, NativeRecordCancellation cancellation) {
+		this.cancellation = cancellation;
 		this.source = source;
 		this.runtimePlan = runtimePlan;
 		this.scanSites = scanSites.clone();
@@ -120,12 +138,18 @@ final class LmdbNativeKernelScanner implements KernelScanner, Closeable {
 
 	@Override
 	public KernelQuadCursor open(int scanId, long subj, long pred, long obj, long context) {
+		opening = true;
 		try {
+			if (cancellation != null) {
+				if (closed)
+					throw new IllegalStateException("Owned scanner is closed");
+				cancellation.check();
+			}
 			NativeLmdbQuerySource.AdjacencyAccessObserver observer = runtimePlan == null ? null
 					: runtimePlan.adjacencyAccessAt("JaninoScan[" + scanId + "]");
 			ReusableCursor cursor = cursors[scanId];
 			if (cursor == null) {
-				cursor = new ReusableCursor();
+				cursor = new ReusableCursor(cancellation);
 				cursors[scanId] = cursor;
 			}
 			if (scanId == rootScanId && rootPartition != null) {
@@ -178,6 +202,8 @@ final class LmdbNativeKernelScanner implements KernelScanner, Closeable {
 			return cursor;
 		} catch (IOException e) {
 			throw new QueryEvaluationException(e);
+		} finally {
+			opening = false;
 		}
 	}
 
@@ -214,7 +240,18 @@ final class LmdbNativeKernelScanner implements KernelScanner, Closeable {
 	}
 
 	@Override
+	public boolean requestCancellation() {
+		if (closed || cancellation == null)
+			return false;
+		cancellation.requestCancellation();
+		// A declined leaf may be blocked inside a long fill with only its original ambient checks.
+		// Stop future admission, but do not claim bounded in-fill acceptance on that compatibility path.
+		return !opening && !unsupportedBinding;
+	}
+
+	@Override
 	public void close() {
+		closed = true;
 		for (int i = 0; i < probes.length; i++) {
 			NativeLmdbQuerySource.NativeProbe probe = probes[i];
 			probes[i] = null;
@@ -237,16 +274,28 @@ final class LmdbNativeKernelScanner implements KernelScanner, Closeable {
 	 * the iterator: the owning probe closes it on its next open or when the scanner shuts down, which is the contract
 	 * {@code NativeProbe} already documents.
 	 */
-	private static final class ReusableCursor implements KernelQuadCursor {
+	private final class ReusableCursor implements KernelQuadCursor {
 
 		private RecordIterator delegate;
+		private final NativeRecordCancellation cancellation;
+
+		ReusableCursor(NativeRecordCancellation cancellation) {
+			this.cancellation = cancellation;
+		}
 
 		void reset(RecordIterator delegate) {
+			if (delegate != null && cancellation != null && !delegate.bindCancellation(cancellation)) {
+				unsupportedBinding = true;
+			}
 			this.delegate = delegate;
+			if (delegate != null && cancellation != null)
+				cancellation.check();
 		}
 
 		@Override
 		public int fill(long[] quadBuffer, int maxRows) {
+			if (cancellation != null)
+				cancellation.check();
 			RecordIterator current = delegate;
 			if (current == null) {
 				return 0;

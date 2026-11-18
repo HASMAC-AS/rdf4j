@@ -25,6 +25,7 @@ import java.util.function.Function;
 import org.eclipse.rdf4j.common.annotation.Experimental;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
+import org.eclipse.rdf4j.query.QueryInterruptedException;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.codegen.JaninoKernel;
@@ -2003,6 +2004,11 @@ final class LmdbNativeKernelExecution {
 	}
 
 	private static Throwable serialTerminalFailure(Throwable problem) {
+		// Explicit leaf/lifecycle interruption can arrive during binding, before executionStarted. It is a
+		// terminal outcome, never an optimizer decline. Preserve the wrapper and its cleanup failures.
+		if (causeOf(problem, QueryInterruptedException.class) != null) {
+			return problem;
+		}
 		if (!hasControlCause(problem)) {
 			return null;
 		}

@@ -282,7 +282,7 @@ final class LmdbStatementAccessArbiter {
 	}
 
 	private static final class MeasuredRecordIterator implements RecordIterator {
-		private RecordIterator delegate;
+		private volatile RecordIterator delegate;
 		private RuntimeEvidence evidence;
 		private long regime;
 		private int variantKey;
@@ -316,6 +316,18 @@ final class LmdbStatementAccessArbiter {
 			this.exhausted = false;
 			this.observer = observer;
 			this.adjacency = adjacency;
+		}
+
+		@Override
+		public boolean bindCancellation(RecordIterator.Cancellation owner) {
+			RecordIterator current = delegate;
+			return current != null && current.bindCancellation(owner);
+		}
+
+		@Override
+		public boolean requestCancellation() {
+			RecordIterator current = delegate;
+			return current != null && current.requestCancellation();
 		}
 
 		@Override

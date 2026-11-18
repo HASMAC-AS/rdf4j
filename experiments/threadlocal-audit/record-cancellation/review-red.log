@@ -1,0 +1,234 @@
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+11:03:19,406 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+11:03:19,406 |-INFO in ch.qos.logback.classic.util.ContextInitializer@15f193b8 - No custom configurators were discovered as a service.
+11:03:19,407 |-INFO in ch.qos.logback.classic.util.ContextInitializer@15f193b8 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:03:19,407 |-INFO in ch.qos.logback.classic.util.ContextInitializer@15f193b8 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:03:19,407 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/core/sail/lmdb/target/test-classes/logback-test.xml]
+11:03:19,472 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+11:03:19,472 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+11:03:19,500 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+11:03:19,505 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@2516fc68 - No contradictions in caller extraction instruction were detected
+11:03:19,506 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+11:03:19,506 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+11:03:19,512 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+11:03:19,545 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+11:03:19,545 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+11:03:19,545 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+11:03:19,546 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+11:03:19,546 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+11:03:19,546 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@304a9d7b - End of configuration.
+11:03:19,546 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@6bfdb014 - Registering current configuration as safe fallback point
+11:03:19,548 |-INFO in ch.qos.logback.classic.util.ContextInitializer@15f193b8 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 140 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/lwjgl/lwjgl/3.4.2/lwjgl-3.4.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+
+Test run finished after 22291 ms
+[         8 containers found      ]
+[         0 containers skipped    ]
+[         8 containers started    ]
+[         0 containers aborted    ]
+[         8 containers successful ]
+[         0 containers failed     ]
+[        19 tests found           ]
+[         0 tests skipped         ]
+[        19 tests started         ]
+[         0 tests aborted         ]
+[        14 tests successful      ]
+[         5 tests failed          ]
+
+
+Failures (5):
+  JUnit Jupiter:NativeRecordCancellationTest:scannerBindsOneOwnerAcrossReopensAndNormalCloseDoesNotCancel(boolean):[1] true
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRecordCancellationTest', methodName = 'scannerBindsOneOwnerAcrossReopensAndNormalCloseDoesNotCancel', methodParameterTypes = 'boolean']
+    => java.lang.IllegalStateException: Could not initialize plugin: interface org.mockito.plugins.MockMaker (alternate: null)
+       org.mockito.internal.configuration.plugins.PluginLoader$1.invoke(PluginLoader.java:85)
+       jdk.proxy2/jdk.proxy2.$Proxy33.isTypeMockable(Unknown Source)
+       org.mockito.internal.util.MockUtil.typeMockabilityOf(MockUtil.java:78)
+       org.mockito.internal.util.MockCreationValidator.validateType(MockCreationValidator.java:22)
+       org.mockito.internal.creation.MockSettingsImpl.validatedSettings(MockSettingsImpl.java:275)
+       [...]
+     Caused by: java.lang.IllegalStateException: Internal problem occurred, please report it. Mockito is unable to load the default implementation of class that is a part of Mockito distribution. Failed to load interface org.mockito.plugins.MockMaker
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:105)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.getDefaultPlugin(DefaultMockitoPlugins.java:79)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:75)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:49)
+       org.mockito.internal.configuration.plugins.PluginRegistry.<init>(PluginRegistry.java:29)
+       [...]
+     Caused by: java.lang.reflect.InvocationTargetException
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:74)
+       java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+       java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:483)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:103)
+       [...]
+     Caused by: org.mockito.exceptions.base.MockitoInitializationException: 
+Could not initialize inline Byte Buddy mock maker.
+
+It appears as if your JDK does not supply a working agent attachment mechanism.
+Java               : 25
+JVM vendor name    : Eclipse Adoptium
+JVM vendor version : 25.0.5+8-LTS
+JVM name           : OpenJDK 64-Bit Server VM
+JVM version        : 25.0.5+8-LTS
+JVM info           : mixed mode, sharing
+OS name            : Linux
+OS version         : 6.18.57
+
+       org.mockito.internal.creation.bytebuddy.InlineDelegateByteBuddyMockMaker.<init>(InlineDelegateByteBuddyMockMaker.java:279)
+       org.mockito.internal.creation.bytebuddy.InlineByteBuddyMockMaker.<init>(InlineByteBuddyMockMaker.java:23)
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+       [...]
+     Caused by: java.lang.IllegalStateException: Could not self-attach to current VM using external process - set a property net.bytebuddy.agent.attacher.dump to dump the process output to a file at the specified location
+       net.bytebuddy.agent.ByteBuddyAgent.installExternal(ByteBuddyAgent.java:672)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:599)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:579)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:531)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:508)
+       [...]
+  JUnit Jupiter:NativeRecordCancellationTest:scannerBindsOneOwnerAcrossReopensAndNormalCloseDoesNotCancel(boolean):[2] false
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRecordCancellationTest', methodName = 'scannerBindsOneOwnerAcrossReopensAndNormalCloseDoesNotCancel', methodParameterTypes = 'boolean']
+    => java.lang.IllegalStateException: Could not initialize plugin: interface org.mockito.plugins.MockMaker (alternate: null)
+       org.mockito.internal.configuration.plugins.PluginLoader$1.invoke(PluginLoader.java:85)
+       jdk.proxy2/jdk.proxy2.$Proxy33.isTypeMockable(Unknown Source)
+       org.mockito.internal.util.MockUtil.typeMockabilityOf(MockUtil.java:78)
+       org.mockito.internal.util.MockCreationValidator.validateType(MockCreationValidator.java:22)
+       org.mockito.internal.creation.MockSettingsImpl.validatedSettings(MockSettingsImpl.java:275)
+       [...]
+     Caused by: java.lang.IllegalStateException: Internal problem occurred, please report it. Mockito is unable to load the default implementation of class that is a part of Mockito distribution. Failed to load interface org.mockito.plugins.MockMaker
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:105)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.getDefaultPlugin(DefaultMockitoPlugins.java:79)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:75)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:49)
+       org.mockito.internal.configuration.plugins.PluginRegistry.<init>(PluginRegistry.java:29)
+       [...]
+     Caused by: java.lang.reflect.InvocationTargetException
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:74)
+       java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+       java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:483)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:103)
+       [...]
+     Caused by: org.mockito.exceptions.base.MockitoInitializationException: 
+Could not initialize inline Byte Buddy mock maker.
+
+It appears as if your JDK does not supply a working agent attachment mechanism.
+Java               : 25
+JVM vendor name    : Eclipse Adoptium
+JVM vendor version : 25.0.5+8-LTS
+JVM name           : OpenJDK 64-Bit Server VM
+JVM version        : 25.0.5+8-LTS
+JVM info           : mixed mode, sharing
+OS name            : Linux
+OS version         : 6.18.57
+
+       org.mockito.internal.creation.bytebuddy.InlineDelegateByteBuddyMockMaker.<init>(InlineDelegateByteBuddyMockMaker.java:279)
+       org.mockito.internal.creation.bytebuddy.InlineByteBuddyMockMaker.<init>(InlineByteBuddyMockMaker.java:23)
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+       [...]
+     Caused by: java.lang.IllegalStateException: Could not self-attach to current VM using external process - set a property net.bytebuddy.agent.attacher.dump to dump the process output to a file at the specified location
+       net.bytebuddy.agent.ByteBuddyAgent.installExternal(ByteBuddyAgent.java:672)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:599)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:579)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:531)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:508)
+       [...]
+  JUnit Jupiter:NativeRecordCancellationTest:cancellationDuringUnknownAdmissionDoesNotClaimBoundedSupport()
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRecordCancellationTest', methodName = 'cancellationDuringUnknownAdmissionDoesNotClaimBoundedSupport', methodParameterTypes = '']
+    => java.lang.IllegalStateException: Could not initialize plugin: interface org.mockito.plugins.MockMaker (alternate: null)
+       org.mockito.internal.configuration.plugins.PluginLoader$1.invoke(PluginLoader.java:85)
+       jdk.proxy2/jdk.proxy2.$Proxy33.isTypeMockable(Unknown Source)
+       org.mockito.internal.util.MockUtil.typeMockabilityOf(MockUtil.java:78)
+       org.mockito.internal.util.MockCreationValidator.validateType(MockCreationValidator.java:22)
+       org.mockito.internal.creation.MockSettingsImpl.validatedSettings(MockSettingsImpl.java:275)
+       [...]
+     Caused by: java.lang.IllegalStateException: Internal problem occurred, please report it. Mockito is unable to load the default implementation of class that is a part of Mockito distribution. Failed to load interface org.mockito.plugins.MockMaker
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:105)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.getDefaultPlugin(DefaultMockitoPlugins.java:79)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:75)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:49)
+       org.mockito.internal.configuration.plugins.PluginRegistry.<init>(PluginRegistry.java:29)
+       [...]
+     Caused by: java.lang.reflect.InvocationTargetException
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:74)
+       java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+       java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:483)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:103)
+       [...]
+     Caused by: org.mockito.exceptions.base.MockitoInitializationException: 
+Could not initialize inline Byte Buddy mock maker.
+
+It appears as if your JDK does not supply a working agent attachment mechanism.
+Java               : 25
+JVM vendor name    : Eclipse Adoptium
+JVM vendor version : 25.0.5+8-LTS
+JVM name           : OpenJDK 64-Bit Server VM
+JVM version        : 25.0.5+8-LTS
+JVM info           : mixed mode, sharing
+OS name            : Linux
+OS version         : 6.18.57
+
+       org.mockito.internal.creation.bytebuddy.InlineDelegateByteBuddyMockMaker.<init>(InlineDelegateByteBuddyMockMaker.java:279)
+       org.mockito.internal.creation.bytebuddy.InlineByteBuddyMockMaker.<init>(InlineByteBuddyMockMaker.java:23)
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+       [...]
+     Caused by: java.lang.IllegalStateException: Could not self-attach to current VM using external process - set a property net.bytebuddy.agent.attacher.dump to dump the process output to a file at the specified location
+       net.bytebuddy.agent.ByteBuddyAgent.installExternal(ByteBuddyAgent.java:672)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:599)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:579)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:531)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:508)
+       [...]
+  JUnit Jupiter:NativeRecordCancellationTest:localStopBeforeFirstOpenDoesNotPoisonFreshScannerOnSameRow()
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRecordCancellationTest', methodName = 'localStopBeforeFirstOpenDoesNotPoisonFreshScannerOnSameRow', methodParameterTypes = '']
+    => java.lang.IllegalStateException: Could not initialize plugin: interface org.mockito.plugins.MockMaker (alternate: null)
+       org.mockito.internal.configuration.plugins.PluginLoader$1.invoke(PluginLoader.java:85)
+       jdk.proxy2/jdk.proxy2.$Proxy33.isTypeMockable(Unknown Source)
+       org.mockito.internal.util.MockUtil.typeMockabilityOf(MockUtil.java:78)
+       org.mockito.internal.util.MockCreationValidator.validateType(MockCreationValidator.java:22)
+       org.mockito.internal.creation.MockSettingsImpl.validatedSettings(MockSettingsImpl.java:275)
+       [...]
+     Caused by: java.lang.IllegalStateException: Internal problem occurred, please report it. Mockito is unable to load the default implementation of class that is a part of Mockito distribution. Failed to load interface org.mockito.plugins.MockMaker
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:105)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.getDefaultPlugin(DefaultMockitoPlugins.java:79)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:75)
+       org.mockito.internal.configuration.plugins.PluginLoader.loadPlugin(PluginLoader.java:49)
+       org.mockito.internal.configuration.plugins.PluginRegistry.<init>(PluginRegistry.java:29)
+       [...]
+     Caused by: java.lang.reflect.InvocationTargetException
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:74)
+       java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+       java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:483)
+       org.mockito.internal.configuration.plugins.DefaultMockitoPlugins.create(DefaultMockitoPlugins.java:103)
+       [...]
+     Caused by: org.mockito.exceptions.base.MockitoInitializationException: 
+Could not initialize inline Byte Buddy mock maker.
+
+It appears as if your JDK does not supply a working agent attachment mechanism.
+Java               : 25
+JVM vendor name    : Eclipse Adoptium
+JVM vendor version : 25.0.5+8-LTS
+JVM name           : OpenJDK 64-Bit Server VM
+JVM version        : 25.0.5+8-LTS
+JVM info           : mixed mode, sharing
+OS name            : Linux
+OS version         : 6.18.57
+
+       org.mockito.internal.creation.bytebuddy.InlineDelegateByteBuddyMockMaker.<init>(InlineDelegateByteBuddyMockMaker.java:279)
+       org.mockito.internal.creation.bytebuddy.InlineByteBuddyMockMaker.<init>(InlineByteBuddyMockMaker.java:23)
+       java.base/jdk.internal.reflect.DirectConstructorHandleAccessor.newInstance(DirectConstructorHandleAccessor.java:62)
+       [...]
+     Caused by: java.lang.IllegalStateException: Could not self-attach to current VM using external process - set a property net.bytebuddy.agent.attacher.dump to dump the process output to a file at the specified location
+       net.bytebuddy.agent.ByteBuddyAgent.installExternal(ByteBuddyAgent.java:672)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:599)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:579)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:531)
+       net.bytebuddy.agent.ByteBuddyAgent.install(ByteBuddyAgent.java:508)
+       [...]
+  JUnit Jupiter:LmdbRecordIteratorFilteredKeyCancellationTest:terminalDisposalDropsOwnerAndRejectsRebinding()
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.LmdbRecordIteratorFilteredKeyCancellationTest', methodName = 'terminalDisposalDropsOwnerAndRejectsRebinding', methodParameterTypes = '']
+    => org.opentest4j.AssertionFailedError: 
+expected: null
+ but was: org.eclipse.rdf4j.sail.lmdb.LmdbRecordIteratorFilteredKeyCancellationTest$DirectOwner@19569ebd
+       org.eclipse.rdf4j.sail.lmdb.LmdbRecordIteratorFilteredKeyCancellationTest.terminalDisposalDropsOwnerAndRejectsRebinding(LmdbRecordIteratorFilteredKeyCancellationTest.java:86)

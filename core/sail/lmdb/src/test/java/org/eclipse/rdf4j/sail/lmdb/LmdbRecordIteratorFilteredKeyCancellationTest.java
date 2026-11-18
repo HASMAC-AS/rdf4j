@@ -60,6 +60,94 @@ class LmdbRecordIteratorFilteredKeyCancellationTest {
 		}
 	}
 
+	private static final class DirectOwner implements RecordIterator.Cancellation {
+		volatile boolean requested;
+
+		@Override
+		public boolean requestCancellation() {
+			requested = true;
+			return true;
+		}
+
+		@Override
+		public void check() {
+			if (requested)
+				throw new org.eclipse.rdf4j.query.QueryInterruptedException("owned test stop");
+		}
+	}
+
+	@Test
+	void terminalDisposalDropsOwnerAndRejectsRebinding() throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn()) {
+			var iterator = openMismatchIterator(txn);
+			assertThat(iterator.bindCancellation(new DirectOwner())).isTrue();
+			iterator.dispose();
+			var owner = LmdbRecordIterator.class.getDeclaredField("cancellationOwner");
+			owner.setAccessible(true);
+			assertThat(owner.get(iterator)).isNull();
+			assertThat(catchThrowable(() -> iterator.bindCancellation(new DirectOwner())))
+					.isInstanceOf(IllegalStateException.class);
+		}
+	}
+
+	@Test
+	void ownedBindingIgnoresConflictingAmbientAndSurvivesReset() throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn()) {
+			var iterator = new LmdbRecordIterator(index, true, 1L, -1L, 1L, 1L, true, txn, null, true);
+			var owner = new DirectOwner();
+			try {
+				assertThat(iterator.bindCancellation(owner)).isTrue();
+				assertThat(NativeCancellationTestAccess.withCancelledNativeToken(iterator::next)).isNotNull();
+				assertThat(catchThrowable(() -> iterator.bindCancellation(new DirectOwner())))
+						.isInstanceOf(IllegalStateException.class);
+				iterator.close();
+				iterator.reset(index, true, 1L, -1L, 1L, 1L, true);
+				assertThat(iterator.bindCancellation(owner)).isTrue();
+				assertThat(iterator.next()).isNotNull();
+				assertThat(iterator.requestCancellation()).isTrue();
+				assertThat(catchThrowable(() -> iterator.fill(new long[PHYSICAL_ROWS * 4], PHYSICAL_ROWS)))
+						.isInstanceOf(org.eclipse.rdf4j.query.QueryInterruptedException.class);
+				assertThat(catchThrowable(() -> iterator.reset(index, true, 1L, -1L, 1L, 1L, true)))
+						.isInstanceOf(org.eclipse.rdf4j.query.QueryInterruptedException.class);
+			} finally {
+				iterator.dispose();
+			}
+		}
+	}
+
+	@Test
+	void genericLocalCancellationCannotBeErasedByOwnedBinding() throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn(); var iterator = openMismatchIterator(txn)) {
+			assertThat(iterator.requestCancellation()).isTrue();
+			assertThat(catchThrowable(() -> iterator.bindCancellation(new DirectOwner())))
+					.isInstanceOf(org.eclipse.rdf4j.query.QueryInterruptedException.class);
+			assertThat(catchThrowable(iterator::next))
+					.isInstanceOf(org.eclipse.rdf4j.query.QueryInterruptedException.class);
+		}
+	}
+
+	@ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(booleans = { false, true })
+	void directRequestDoesNotWaitForNativeReadLock(boolean owned) throws Exception {
+		try (Txn txn = tripleStore.getTxnManager().createReadTxn();
+				var iterator = openMismatchIterator(txn);
+				var requester = java.util.concurrent.Executors.newSingleThreadExecutor()) {
+			if (owned)
+				assertThat(iterator.bindCancellation(new DirectOwner())).isTrue();
+			index.onFirstFilteredKey = () -> {
+				try {
+					assertThat(requester.submit(iterator::requestCancellation).get(2, TimeUnit.SECONDS)).isTrue();
+				} catch (Exception failure) {
+					throw new AssertionError("request blocked behind native read", failure);
+				}
+			};
+			assertThat(catchThrowable(iterator::next))
+					.isInstanceOf(org.eclipse.rdf4j.query.QueryInterruptedException.class);
+			assertThat(index.filteredKeyVisits()).isBetween(1, MAX_FILTERED_VISITS_AFTER_SIGNAL);
+			assertThat(iterator.next()).isNull();
+		}
+	}
+
 	@Test
 	void uncancelledControlVisitsMoreThanOneThousandFilteredKeysForNextAndFill() throws Exception {
 		try (Txn txn = tripleStore.getTxnManager().createReadTxn()) {

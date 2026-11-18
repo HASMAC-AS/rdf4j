@@ -28,7 +28,12 @@ import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
  * A statement iterator that wraps a RecordIterator containing statement records and translates these records to
  * {@link Statement} objects.
  */
-class LmdbStatementIterator extends AbstractCloseableIteration<Statement> implements IndexReportingIterator {
+class LmdbStatementIterator extends AbstractCloseableIteration<Statement>
+		implements IndexReportingIterator, org.eclipse.rdf4j.common.iteration.CooperativeCancellation {
+	@Override
+	public boolean requestCancellation() {
+		return !isClosed() && recordIt.requestCancellation();
+	}
 
 	/**
 	 * Number of times the same advisory minimum bound must be hinted before an actual cursor seek is issued. Short lags

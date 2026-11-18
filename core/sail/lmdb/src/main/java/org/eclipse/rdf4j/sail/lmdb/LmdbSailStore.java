@@ -3739,6 +3739,16 @@ class LmdbSailStore implements SailStore {
 		}
 		return new RecordIterator() {
 			@Override
+			public boolean bindCancellation(RecordIterator.Cancellation owner) {
+				return physical.bindCancellation(owner);
+			}
+
+			@Override
+			public boolean requestCancellation() {
+				return physical.requestCancellation();
+			}
+
+			@Override
 			public long[] next() {
 				try {
 					long[] quad;
@@ -17128,6 +17138,16 @@ class LmdbSailStore implements SailStore {
 			private NativeSourceReadLockedRecordIterator(RecordIterator delegate, long readStamp) {
 				this.delegate = delegate;
 				this.readStamp = readStamp;
+			}
+
+			@Override
+			public boolean bindCancellation(RecordIterator.Cancellation owner) {
+				return delegate.bindCancellation(owner);
+			}
+
+			@Override
+			public boolean requestCancellation() {
+				return delegate.requestCancellation();
 			}
 
 			@Override

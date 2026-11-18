@@ -1,0 +1,54 @@
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+11:03:42,476 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found logback-core version 1.6.6
+11:03:42,477 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6badba10 - No custom configurators were discovered as a service.
+11:03:42,477 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6badba10 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:03:42,478 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6badba10 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+11:03:42,480 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback-test.xml] at [file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/core/sail/lmdb/target/test-classes/logback-test.xml]
+11:03:42,534 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - <level> element is deprecated. Near [level] on line 9
+11:03:42,535 |-WARN in ch.qos.logback.classic.joran.action.LevelAction - Please use "level" attribute within <logger> or <root> elements instead.
+11:03:42,569 |-INFO in ch.qos.logback.classic.model.processor.ConfigurationModelHandlerFull - Scan attribute not set.
+11:03:42,598 |-INFO in ch.qos.logback.classic.model.processor.CallerInstructionLogic@2b7e8044 - No contradictions in caller extraction instruction were detected
+11:03:42,605 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [STDOUT]
+11:03:42,605 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+11:03:42,611 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+11:03:42,630 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - NOTE: Writing to the console can be slow. Try to avoid logging to the 
+11:03:42,630 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - console in production environments, especially in high volume systems.
+11:03:42,630 |-INFO in ch.qos.logback.core.ConsoleAppender[STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+11:03:42,631 |-INFO in ch.qos.logback.classic.model.processor.LevelModelHandler - ROOT level set to WARN
+11:03:42,631 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [STDOUT] to Logger[ROOT]
+11:03:42,632 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@550de6b8 - End of configuration.
+11:03:42,632 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@3a1706e1 - Registering current configuration as safe fallback point
+11:03:42,634 |-INFO in ch.qos.logback.classic.util.ContextInitializer@6badba10 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 154 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.lwjgl.system.MemoryBackendUnsafeLegacy (file:/workspace/scratch/bfa8fbb86df5/rdf4j-threadlocal/.m2_repo/org/lwjgl/lwjgl/3.4.2/lwjgl-3.4.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.lwjgl.system.MemoryBackendUnsafeLegacy
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+
+Test run finished after 1682 ms
+[         8 containers found      ]
+[         0 containers skipped    ]
+[         8 containers started    ]
+[         0 containers aborted    ]
+[         8 containers successful ]
+[         0 containers failed     ]
+[        19 tests found           ]
+[         0 tests skipped         ]
+[        19 tests started         ]
+[         0 tests aborted         ]
+[        17 tests successful      ]
+[         2 tests failed          ]
+
+
+Failures (2):
+  JUnit Jupiter:NativeRecordCancellationTest:cancellationDuringUnknownAdmissionDoesNotClaimBoundedSupport()
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRecordCancellationTest', methodName = 'cancellationDuringUnknownAdmissionDoesNotClaimBoundedSupport', methodParameterTypes = '']
+    => org.opentest4j.AssertionFailedError: 
+Expecting value to be false but was true
+       org.eclipse.rdf4j.sail.lmdb.evaluation.NativeRecordCancellationTest.cancellationDuringUnknownAdmissionDoesNotClaimBoundedSupport(NativeRecordCancellationTest.java:136)
+  JUnit Jupiter:LmdbRecordIteratorFilteredKeyCancellationTest:terminalDisposalDropsOwnerAndRejectsRebinding()
+    MethodSource [className = 'org.eclipse.rdf4j.sail.lmdb.LmdbRecordIteratorFilteredKeyCancellationTest', methodName = 'terminalDisposalDropsOwnerAndRejectsRebinding', methodParameterTypes = '']
+    => org.opentest4j.AssertionFailedError: 
+expected: null
+ but was: org.eclipse.rdf4j.sail.lmdb.LmdbRecordIteratorFilteredKeyCancellationTest$DirectOwner@19bedeb8
+       org.eclipse.rdf4j.sail.lmdb.LmdbRecordIteratorFilteredKeyCancellationTest.terminalDisposalDropsOwnerAndRejectsRebinding(LmdbRecordIteratorFilteredKeyCancellationTest.java:86)

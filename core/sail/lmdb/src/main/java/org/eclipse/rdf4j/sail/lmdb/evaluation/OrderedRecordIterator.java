@@ -23,6 +23,30 @@ import org.eclipse.rdf4j.sail.lmdb.TripleIndex;
 /** Merges already ordered native LMDB cursors without materializing their rows. */
 final class OrderedRecordIterator implements RecordIterator {
 
+	@Override
+	public boolean bindCancellation(RecordIterator.Cancellation owner) {
+		if (closed) {
+			return false;
+		}
+		// Binding is evaluation-thread confined. Priming may already have retired other children.
+		boolean accepted = true;
+		for (Head head : heads) {
+			accepted &= iterators.get(head.ordinal).bindCancellation(owner);
+		}
+		if (pendingAdvance != null) {
+			accepted &= iterators.get(pendingAdvance.ordinal).bindCancellation(owner);
+		}
+		return accepted;
+	}
+
+	@Override
+	public boolean requestCancellation() {
+		boolean accepted = false;
+		for (RecordIterator iterator : iterators)
+			accepted |= iterator.requestCancellation();
+		return accepted;
+	}
+
 	private final List<RecordIterator> iterators;
 	private final PriorityQueue<Head> heads;
 	private final int[] components;

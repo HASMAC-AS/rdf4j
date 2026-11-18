@@ -11714,6 +11714,16 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 			private boolean closed;
 
 			@Override
+			public boolean bindCancellation(RecordIterator.Cancellation owner) {
+				return iterator.bindCancellation(owner);
+			}
+
+			@Override
+			public boolean requestCancellation() {
+				return iterator.requestCancellation();
+			}
+
+			@Override
 			public long[] next() {
 				return iterator.next();
 			}

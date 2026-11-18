@@ -126,6 +126,53 @@ class LmdbRecordIterator implements RecordIterator {
 	private long sourceRowsMatchedActual;
 	private long sourceRowsFilteredActual;
 	private int cancellationPollTick;
+	private volatile boolean cancellationRequested;
+	private volatile RecordIterator.Cancellation cancellationOwner;
+	// Untimed diagnostics only. The JIT can eliminate these branches in ordinary measurement forks.
+	private static final boolean TRACE_CANCELLATION = Boolean.getBoolean("rdf4j.lmdb.recordCancellation.trace");
+	static final java.util.concurrent.atomic.AtomicLong OWNED_BINDS = new java.util.concurrent.atomic.AtomicLong();
+	static final java.util.concurrent.atomic.AtomicLong OWNED_POLLS = new java.util.concurrent.atomic.AtomicLong();
+	static final java.util.concurrent.atomic.AtomicLong OWNED_RESETS = new java.util.concurrent.atomic.AtomicLong();
+
+	@Override
+	public boolean bindCancellation(RecordIterator.Cancellation owner) {
+		java.util.Objects.requireNonNull(owner);
+		if (closed || disposed || resourcesFreed)
+			throw new IllegalStateException("Record iterator is closed");
+		if (cancellationRequested)
+			throw new org.eclipse.rdf4j.query.QueryInterruptedException("Record scan interrupted");
+		if (cancellationOwner != null && cancellationOwner != owner) {
+			throw new IllegalStateException("A retained record cursor cannot change its cancellation owner");
+		}
+		cancellationOwner = owner;
+		if (TRACE_CANCELLATION)
+			OWNED_BINDS.incrementAndGet();
+		return true;
+	}
+
+	@Override
+	public boolean requestCancellation() {
+		if (closed)
+			return false;
+		cancellationRequested = true;
+		RecordIterator.Cancellation owner = cancellationOwner;
+		if (owner != null)
+			owner.requestCancellation();
+		return true;
+	}
+
+	private void checkRecordCancellation() {
+		RecordIterator.Cancellation owner = cancellationOwner;
+		if (owner != null) {
+			if (TRACE_CANCELLATION)
+				OWNED_POLLS.incrementAndGet();
+			owner.check();
+		} else {
+			NativeLmdbQuerySource.checkpointCancellation();
+		}
+		if (cancellationRequested)
+			throw new org.eclipse.rdf4j.query.QueryInterruptedException("Record scan interrupted");
+	}
 
 	LmdbRecordIterator(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj,
 			long context, boolean explicit, Txn txnRef) throws IOException {
@@ -665,6 +712,8 @@ class LmdbRecordIterator implements RecordIterator {
 			return;
 		}
 		resourcesFreed = true;
+		// Final disposal only: retained close keeps the owner for correlated-key reuse.
+		cancellationOwner = null;
 		if (cursor != 0) {
 			if (cursorPool != null && txnRef.lease() == txnLease) {
 				cursorPool.release(pooledCursor, cursor, dbi, txnRef, txn, txnRefVersion);
@@ -721,6 +770,11 @@ class LmdbRecordIterator implements RecordIterator {
 	 */
 	void reset(TripleIndex index, boolean rangeSearch, long subj, long pred, long obj, long context,
 			boolean explicit) throws IOException {
+		if (cancellationOwner != null || cancellationRequested) {
+			checkRecordCancellation();
+			if (TRACE_CANCELLATION && cancellationOwner != null)
+				OWNED_RESETS.incrementAndGet();
+		}
 		long readStamp;
 		try {
 			readStamp = txnLockManager.readLock();
@@ -854,18 +908,18 @@ class LmdbRecordIterator implements RecordIterator {
 
 	private void pollCancellationAtEntry() {
 		if (cancellationPollTick == 0) {
-			NativeLmdbQuerySource.checkpointCancellation();
+			checkRecordCancellation();
 		}
 	}
 
 	private void pollCancellationCandidate() {
 		if ((++cancellationPollTick & 1023) == 0) {
-			NativeLmdbQuerySource.checkpointCancellation();
+			checkRecordCancellation();
 		}
 	}
 
-	private static void pollCancellationAtExhaustion() {
-		NativeLmdbQuerySource.checkpointCancellation();
+	private void pollCancellationAtExhaustion() {
+		checkRecordCancellation();
 	}
 
 	private void closeInternal(boolean maybeCalledAsync, boolean currentThreadHasReadLock) {

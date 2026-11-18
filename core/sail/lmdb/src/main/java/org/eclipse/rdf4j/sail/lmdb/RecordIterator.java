@@ -22,7 +22,26 @@ import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
  */
 @Experimental
 @InternalUseOnly
-public interface RecordIterator extends Closeable {
+public interface RecordIterator extends Closeable, org.eclipse.rdf4j.common.iteration.CooperativeCancellation {
+
+	/** Terminal operation owner supplied only by an explicitly owned native execution. */
+	interface Cancellation extends org.eclipse.rdf4j.common.iteration.CooperativeCancellation {
+		void check();
+	}
+
+	/**
+	 * Bind before owned consumption; false retains the implementation's ambient compatibility path. Binding,
+	 * consumption, reset and disposal are serialized on the evaluation thread. Only {@link #requestCancellation()} may
+	 * be called concurrently from another thread.
+	 */
+	default boolean bindCancellation(Cancellation cancellation) {
+		return false;
+	}
+
+	@Override
+	default boolean requestCancellation() {
+		return false;
+	}
 
 	/**
 	 * Returns the next record.
