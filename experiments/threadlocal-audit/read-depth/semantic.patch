@@ -1,0 +1,153 @@
+diff --git a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreConnection.java b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreConnection.java
+index 94169592..4cec351d 100644
+--- a/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreConnection.java
++++ b/core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStoreConnection.java
+@@ -162,7 +162,6 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 			.newSetFromMap(new IdentityHashMap<>());
+ 	private final Set<ReplayPlanIteration<?>> pendingPlanReplays = Collections
+ 			.newSetFromMap(new IdentityHashMap<>());
+-	private final ThreadLocal<Integer> internalReadScopeDepth = ThreadLocal.withInitial(() -> 0);
+ 	/** Namespace reads never touch the statements an initial run import still holds in its runs. */
+ 	private final ThreadLocal<Integer> namespaceReadDepth = ThreadLocal.withInitial(() -> 0);
+ 	private final ThreadLocal<ReadExposureScope> activeReadExposureScope = new ThreadLocal<>();
+@@ -183,6 +182,8 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 		private ReadThreadRegistration previous;
+ 		private ReadThreadRegistration next;
+ 		private int depth;
++		// Thread-confined scope state, distinct from admission depth while setup is incomplete.
++		private int internalScopeDepth;
+ 		private long cancellationGeneration;
+ 		private volatile boolean interruptedByConnection;
+ 	}
+@@ -792,7 +793,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 
+ 	@Override
+ 	protected <T> T executeReadOperation(ReadOperation<T> operation) throws SailException {
+-		if (internalReadScopeDepth.get() > 0) {
++		if (readThreadRegistration.get().internalScopeDepth > 0) {
+ 			throwIfReadScopeRequestedReplay();
+ 			return operation.execute();
+ 		}
+@@ -1386,7 +1387,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 				prepareForReadAttempt();
+ 				long generation = beginReadCreation();
+ 				if (generation < 0) {
+-					if (internalReadScopeDepth.get() > 0) {
++					if (readThreadRegistration.get().internalScopeDepth > 0) {
+ 						// prepareForReadAttempt() does not wait in a nested scope, and the owning tracked read
+ 						// holds activeReadOperations, so the requested replay cannot start until it unwinds.
+ 						throw new LmdbSailStore.MapResizeConflictException(resizeKind(null),
+@@ -1532,7 +1533,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 					}
+ 				}
+ 				if (retry) {
+-					if (internalReadScopeDepth.get() > 0) {
++					if (readThreadRegistration.get().internalScopeDepth > 0) {
+ 						throw new LmdbSailStore.MapResizeConflictException(growthKind,
+ 								"LMDB map changed while opening a read result; retry its owning read operation");
+ 					}
+@@ -1967,7 +1968,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 				&& existingResult.operationAttempt.sealed) {
+ 			return;
+ 		}
+-		if (internalReadScopeDepth.get() > 0) {
++		if (readThreadRegistration.get().internalScopeDepth > 0) {
+ 			return;
+ 		}
+ 		while (true) {
+@@ -2609,7 +2610,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 
+ 	private <T> T executeTrackedRead(ReadOperation<T> operation, ReplayableIteration<?> observationOwner)
+ 			throws SailException {
+-		if (internalReadScopeDepth.get() > 0) {
++		if (readThreadRegistration.get().internalScopeDepth > 0) {
+ 			throwIfReadScopeRequestedReplay();
+ 			return operation.execute();
+ 		}
+@@ -2653,8 +2654,9 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 							.toArray(Runnable[]::new));
+ 					throw failure;
+ 				}
+-				int oldDepth = internalReadScopeDepth.get();
+-				internalReadScopeDepth.set(oldDepth + 1);
++				ReadThreadRegistration internalRegistration = readThreadRegistration.get();
++				int oldDepth = internalRegistration.internalScopeDepth;
++				internalRegistration.internalScopeDepth = oldDepth + 1;
+ 				T result = null;
+ 				Throwable failure = null;
+ 				try {
+@@ -2662,11 +2664,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 				} catch (RuntimeException | Error readFailure) {
+ 					failure = readFailure;
+ 				} finally {
+-					if (oldDepth == 0) {
+-						internalReadScopeDepth.remove();
+-					} else {
+-						internalReadScopeDepth.set(oldDepth);
+-					}
++					internalRegistration.internalScopeDepth = oldDepth;
+ 				}
+ 
+ 				if (failure == null) {
+@@ -2869,7 +2867,8 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 		QueryExecutionContext.Activation externalValueBinding = null;
+ 		QueryExecutionContext.Activation workerAdmission = null;
+ 		SailClosable readResourceBinding = null;
+-		int oldDepth = internalReadScopeDepth.get();
++		ReadThreadRegistration internalRegistration = readThreadRegistration.get();
++		int oldDepth = internalRegistration.internalScopeDepth;
+ 		T result = null;
+ 		Throwable failure = null;
+ 		try {
+@@ -2880,7 +2879,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 					.enterReadResourceContext(() -> owner.readViews);
+ 			workerAdmission = QueryExecutionContext.activateReplaySafepoint(NO_REPLAY_CHECKPOINT,
+ 					() -> observedWorkerScope(owner));
+-			internalReadScopeDepth.set(oldDepth + 1);
++			internalRegistration.internalScopeDepth = oldDepth + 1;
+ 			result = operation.execute();
+ 			if (lifecycleCancellation.isCancelled()) {
+ 				throw new SailException("The LMDB read operation was cancelled");
+@@ -2891,11 +2890,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 		} catch (RuntimeException | Error readFailure) {
+ 			failure = readFailure;
+ 		} finally {
+-			if (oldDepth == 0) {
+-				internalReadScopeDepth.remove();
+-			} else {
+-				internalReadScopeDepth.set(oldDepth);
+-			}
++			internalRegistration.internalScopeDepth = oldDepth;
+ 			QueryExecutionContext.Activation closeWorkerAdmission = workerAdmission;
+ 			QueryExecutionContext.Activation closeExternalValueBinding = externalValueBinding;
+ 			SailClosable closeValueBinding = valueBinding;
+@@ -3495,13 +3490,14 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 			}
+ 			SailClosable binding = null;
+ 			ReadExposureScope exposure = null;
+-			int oldDepth = internalReadScopeDepth.get();
++			ReadThreadRegistration internalRegistration = readThreadRegistration.get();
++			int oldDepth = internalRegistration.internalScopeDepth;
+ 			try {
+ 				binding = lmdbStore.getBackingStore().enterCapturedReadViews(admission, generation, views, preferred);
+ 				exposure = beginReadExposureScope(observationOwner, operationAttempt, valueScope, true);
+ 				exposure.admissionAttempt = admission;
+ 				exposure.captureAll(views);
+-				internalReadScopeDepth.set(oldDepth + 1);
++				internalRegistration.internalScopeDepth = oldDepth + 1;
+ 			} catch (RuntimeException | Error failure) {
+ 				if (exposure != null) {
+ 					try {
+@@ -3537,11 +3533,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
+ 				} catch (RuntimeException | Error cleanup) {
+ 					failure = cleanup;
+ 				} finally {
+-					if (oldDepth == 0) {
+-						internalReadScopeDepth.remove();
+-					} else {
+-						internalReadScopeDepth.set(oldDepth);
+-					}
++					readThreadRegistration.get().internalScopeDepth = oldDepth;
+ 				}
+ 				try {
+ 					retainedBinding.close();

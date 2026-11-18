@@ -1,0 +1,112 @@
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbRecordIterator.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbSailStore.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStatementAccessArbiter.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/LmdbStatementIterator.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/RecordIterator.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/RepositoryValueIteration.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/ValueStore.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeAggregateState.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeKernelExecution.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeKernelScanner.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativePrimitiveTupleTable.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeRowPlans.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeRowStep.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeTypeMatrix.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeBoundedDistinct.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeBudgetedWideDistinct.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeExpressionDomain.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeSegmentedTupleTable.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/OrderedRecordIterator.java
+ M core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/valueoverlay/CompressedValueOverlay.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbAdjacencyGroupingDomainTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/LmdbRecordIteratorFilteredKeyCancellationTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/RepositoryGroupedWaveTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/RepositoryPartialReadyTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreOverlayMaterializationBenchmark.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreOverlayMaterializationTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeTypeMatrixCancellationTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeAggregateMemoEligibilityTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeMemoPolicyTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeSegmentedCancellationTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeSegmentedTupleTableTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeValueMemoTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeWideDistinctLifecycleTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeWideDistinctReadmissionTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/SpillProbeReuseQueryProbe.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/WideDistinctBudgetTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/WideNativeDistinctTrackerTest.java
+ M core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/valueoverlay/ValueOverlayDeduplicatedBatchTest.java
+ M experiments/threadlocal-audit/PLAN.md
+?? core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeCancellationCheckpoint.java
+?? core/sail/lmdb/src/main/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeRecordCancellation.java
+?? core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/RepositorySourcePullScopeTest.java
+?? core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/ValueStoreWriterGuardTest.java
+?? core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/LmdbNativeKernelInterruptionClassificationTest.java
+?? core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeCancellationCheckpointTest.java
+?? core/sail/lmdb/src/test/java/org/eclipse/rdf4j/sail/lmdb/evaluation/NativeRecordCancellationTest.java
+?? experiments/threadlocal-audit/BENCHMARK-PLAN.md
+?? experiments/threadlocal-audit/CheckpointTestLauncher.java
+?? experiments/threadlocal-audit/NATIVE-CHECKPOINT-PLAN.md
+?? experiments/threadlocal-audit/NEXT-CANDIDATES.md
+?? experiments/threadlocal-audit/OBSERVED-READ-DESIGN.md
+?? experiments/threadlocal-audit/README.md
+?? experiments/threadlocal-audit/RECORD-CANCELLATION-DESIGN.md
+?? experiments/threadlocal-audit/RESULTS.md
+?? experiments/threadlocal-audit/SOURCE-PULL-PLAN.md
+?? experiments/threadlocal-audit/ThreadLocalCoScanBenchmark.java
+?? experiments/threadlocal-audit/ThreadLocalQueryBenchmark.java
+?? experiments/threadlocal-audit/analyze-series.py
+?? experiments/threadlocal-audit/baseline-classes/
+?? experiments/threadlocal-audit/baseline-type-matrix.javap
+?? experiments/threadlocal-audit/baseline-type-matrix.sha256
+?? experiments/threadlocal-audit/baseline-type-matrix/
+?? experiments/threadlocal-audit/best-flags.txt
+?? experiments/threadlocal-audit/bootstrap-formatting-check.json
+?? experiments/threadlocal-audit/bootstrap-formatting.patch
+?? experiments/threadlocal-audit/candidate-classes/
+?? experiments/threadlocal-audit/copyright-check.log
+?? experiments/threadlocal-audit/cp-a.txt
+?? experiments/threadlocal-audit/cp-b.txt
+?? experiments/threadlocal-audit/harness-classes/
+?? experiments/threadlocal-audit/harness-test-dependencies/
+?? experiments/threadlocal-audit/initial-offline-build.log
+?? experiments/threadlocal-audit/matched-01/
+?? experiments/threadlocal-audit/matched-02/
+?? experiments/threadlocal-audit/mvn.sh
+?? experiments/threadlocal-audit/native-checkpoint-baseline-javac.log
+?? experiments/threadlocal-audit/native-checkpoint-baseline.log
+?? experiments/threadlocal-audit/native-checkpoint-classpath.txt
+?? experiments/threadlocal-audit/native-checkpoint-green.log
+?? experiments/threadlocal-audit/native-checkpoint-null-red.log
+?? experiments/threadlocal-audit/native-checkpoint-probe-green.log
+?? experiments/threadlocal-audit/native-checkpoint-route-green.log
+?? experiments/threadlocal-audit/native-checkpoint-tightened-baseline.log
+?? experiments/threadlocal-audit/online-build-dns-failure.log
+?? experiments/threadlocal-audit/online-build-stale-proxy.log
+?? experiments/threadlocal-audit/online-build-trust-failure.log
+?? experiments/threadlocal-audit/profiles-01/
+?? experiments/threadlocal-audit/read-depth/
+?? experiments/threadlocal-audit/record-cancellation/
+?? experiments/threadlocal-audit/rerun-regular.sh
+?? experiments/threadlocal-audit/root-build-checkpoint-red.log
+?? experiments/threadlocal-audit/run-matched.sh
+?? experiments/threadlocal-audit/run-profiles.sh
+?? experiments/threadlocal-audit/run-safety.sh
+?? experiments/threadlocal-audit/run-smoke.sh
+?? experiments/threadlocal-audit/safety-suite-fallback.log
+?? experiments/threadlocal-audit/safety-suite.log
+?? experiments/threadlocal-audit/smoke-coscan.log
+?? experiments/threadlocal-audit/smoke-interpreted.log
+?? experiments/threadlocal-audit/smoke-janino.log
+?? experiments/threadlocal-audit/smoke-regular.log
+?? experiments/threadlocal-audit/source-pull-baseline.log
+?? experiments/threadlocal-audit/source-pull-copyright.log
+?? experiments/threadlocal-audit/source-pull-flags-baseline.log
+?? experiments/threadlocal-audit/source-pull-flags-focused.log
+?? experiments/threadlocal-audit/source-pull-flags-green.log
+?? experiments/threadlocal-audit/source-pull-green-safety.log
+?? experiments/threadlocal-audit/source-pull/
+?? experiments/threadlocal-audit/summarize-matched.py
+?? experiments/threadlocal-audit/summarize-profiles.py
+?? experiments/threadlocal-audit/test-launcher/
+?? experiments/threadlocal-audit/writer-guard/
