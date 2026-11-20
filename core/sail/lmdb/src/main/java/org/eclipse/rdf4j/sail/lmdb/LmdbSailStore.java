@@ -14059,6 +14059,15 @@ class LmdbSailStore implements SailStore {
 		}
 
 		@Override
+		public boolean mayMatchLiteralText(long id, org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary.Query query) {
+			try {
+				return valueStore.mayMatchLiteralText(lease.readView.valueSnapshot(), id, query);
+			} catch (IOException failure) {
+				throw new QueryEvaluationException(failure);
+			}
+		}
+
+		@Override
 		public int literalDatatypeIds(long[] ids, int offset, int length, long[] target, int targetOffset) {
 			try {
 				return valueStore.literalDatatypeIds(lease.readView.valueSnapshot(), ids, offset, length, target,
@@ -15574,6 +15583,15 @@ class LmdbSailStore implements SailStore {
 				return valueStore.literalDatatypeId(readView.valueSnapshot(), id);
 			} catch (IOException e) {
 				throw new QueryEvaluationException(e);
+			}
+		}
+
+		@Override
+		public boolean mayMatchLiteralText(long id, org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary.Query query) {
+			try {
+				return valueStore.mayMatchLiteralText(readView.valueSnapshot(), id, query);
+			} catch (IOException failure) {
+				throw new QueryEvaluationException(failure);
 			}
 		}
 

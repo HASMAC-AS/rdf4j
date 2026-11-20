@@ -33,6 +33,7 @@ import org.eclipse.rdf4j.query.algebra.Str;
 import org.eclipse.rdf4j.query.algebra.ValueConstant;
 import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.query.algebra.Var;
+import org.eclipse.rdf4j.query.algebra.evaluation.function.string.LowerCase;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.sail.lmdb.evaluation.fragment.EffectClass;
 
@@ -228,6 +229,10 @@ final class LmdbNativeScalarExpressionCompiler {
 	 * library's single normative evaluator.
 	 */
 	private LmdbNativeCompiledValue compileLibraryFunction(FunctionCall call) {
+		if (FN.LOWER_CASE.stringValue().equals(call.getURI())
+				&& !LmdbLiteralTextFilter.builtin(call, LowerCase.class)) {
+			return null;
+		}
 		LmdbNativeFunctionLibrary.Entry entry = LmdbNativeFunctionLibrary.entry(call.getURI());
 		if (entry == null) {
 			return null;
@@ -345,6 +350,10 @@ final class LmdbNativeScalarExpressionCompiler {
 		if (expr instanceof FunctionCall call && call.getArgs().size() == 1
 				&& (FN.LOWER_CASE.stringValue().equals(call.getURI())
 						|| FN.UPPER_CASE.stringValue().equals(call.getURI()))) {
+			if (FN.LOWER_CASE.stringValue().equals(call.getURI())
+					&& !LmdbLiteralTextFilter.builtin(call, LowerCase.class)) {
+				return null;
+			}
 			List<ValueExpr> args = call.getArgs();
 			LmdbNativeCompiledString arg = compileString(args.get(0));
 			if (arg == null) {

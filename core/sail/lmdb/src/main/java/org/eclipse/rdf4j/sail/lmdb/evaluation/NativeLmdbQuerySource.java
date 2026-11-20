@@ -109,6 +109,15 @@ public interface NativeLmdbQuerySource {
 	}
 
 	/**
+	 * Necessary lexical match for a stored literal, under this source's admitted dictionary snapshot. False proves
+	 * impossibility; true includes missing summaries, inline values, synthetic values, and incompatible normalization.
+	 * Callers retain ordinary expression evaluation for candidates and must use this only at an acceptance boundary.
+	 */
+	default boolean mayMatchLiteralText(long id, org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary.Query query) {
+		return true;
+	}
+
+	/**
 	 * Bulk form of {@link #literalDatatypeId(long)}. Implementations backed by a transactional value store should keep
 	 * one read transaction and reusable native key/value handles for the complete batch. The default preserves exact
 	 * source semantics and is intentionally scalar.

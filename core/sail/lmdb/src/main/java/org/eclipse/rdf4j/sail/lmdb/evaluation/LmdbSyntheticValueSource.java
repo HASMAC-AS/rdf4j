@@ -467,6 +467,11 @@ class SyntheticValueSource implements NativeLmdbQuerySource {
 	}
 
 	@Override
+	public boolean mayMatchLiteralText(long id, org.eclipse.rdf4j.sail.lmdb.text.LiteralTextSummary.Query query) {
+		return synthetic(id) || delegate.mayMatchLiteralText(id, query);
+	}
+
+	@Override
 	public int literalDatatypeIds(long[] ids, int offset, int length, long[] target, int targetOffset) {
 		int populated = delegate.literalDatatypeIds(ids, offset, length, target, targetOffset);
 		for (int i = 0; i < length; i++) {
