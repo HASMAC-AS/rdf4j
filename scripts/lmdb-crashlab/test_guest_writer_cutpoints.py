@@ -128,6 +128,11 @@ class GuestWriterCutpointTests(unittest.TestCase):
                 )
                 if outcome.name != "actual-cutpoint-witness.json":
                     failure = outcome.read_text(encoding="utf-8", errors="replace").strip()
+                    diagnostic = results / "actual-frozen-replay-diagnostic-child.json"
+                    if diagnostic.is_file():
+                        failure += "\nFrozen replay diagnostics: " + diagnostic.read_text(
+                            encoding="utf-8", errors="replace"
+                        ).strip()
                     self.fail(f"{scenario} did not reach {cutpoint}: {failure}")
 
                 witness = json.loads(outcome.read_text(encoding="utf-8"))

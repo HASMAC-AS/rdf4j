@@ -898,6 +898,8 @@ class LmdbAutogrowIsolationIT {
 				assertThat(statements.hasNext()).isTrue();
 				statements.next();
 				assertThat(statements.hasNext()).as("the iterator must be exhausted before map growth").isFalse();
+				// Reserve actual map growth without relying on how much space these rows occupy in the index.
+				reserveTripleAndValueMapsForRealGrowth(backing);
 				addCommittedBatches(writer, "exhausted-subject:", "exhausted-value:");
 
 				assertThat(statements.hasNext()).as("an exhausted iterator cannot observe snapshot invalidation")

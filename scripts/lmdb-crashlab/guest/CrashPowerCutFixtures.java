@@ -43,6 +43,9 @@ final class CrashPowerCutFixtures {
 	static final String A_NAMESPACE = "urn:crash:powercut:namespace:A";
 	static final String B_NAMESPACE = "urn:crash:powercut:namespace:B";
 	static final int LARGE_ADDITION_COUNT = 20_000;
+	// The paused mixed replay must fill the statement map already grown by baseline A,
+	// including on the more compact chunked indexes. Leave continuous trials unchanged.
+	private static final int MIXED_REPLAY_ADDITION_COUNT = 40_000;
 	static final int SMALL_ADDITION_COUNT = 64;
 	static final String PAYLOAD_HEADER = "# RDF4J-POWER-CUT-PAYLOAD-V1";
 	static final List<String> RUNNING_TRIALS = List.of("running-normal-preflight-write",
@@ -77,7 +80,7 @@ final class CrashPowerCutFixtures {
 	}
 
 	static List<Operation> followup(String scenario) {
-		int count = "mixed-replay-before-native-commit".equals(scenario) ? LARGE_ADDITION_COUNT
+		int count = "mixed-replay-before-native-commit".equals(scenario) ? MIXED_REPLAY_ADDITION_COUNT
 				: SMALL_ADDITION_COUNT;
 		List<Operation> operations = new ArrayList<>(count + 5);
 		operations.add(Operation.statement("DELETE_EXPLICIT", A_REMOVE_AND_READD));
