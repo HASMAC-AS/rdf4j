@@ -7126,12 +7126,16 @@ public class ValueStore extends AbstractValueFactory implements BNodeIdResolver,
 		for (int way = 0; way < VALUE_CACHE_WAYS; way++) {
 			CanonicalValueEntry entry = (CanonicalValueEntry) CANONICAL_CACHE_ELEMENT.getAcquire(arrays.canonical,
 					idx + way);
-			if (entry != null && entry.id == id && entry.isCurrent()) {
-				return entry.value;
-			}
-			if (slot < 0 && (entry == null || !entry.isCurrent())) {
+			if (entry != null && entry.id == id) {
+				if (entry.isCurrent()) {
+					return entry.value;
+				}
 				slot = idx + way;
 				previous = entry;
+			} else if (slot < 0 && entry == null) {
+				// Unrelated occupants are not lookup candidates. Checking them for a stale eviction hint
+				// can recursively inspect descendants; a full set already has a bounded replacement policy.
+				slot = idx + way;
 			}
 		}
 		if (slot < 0) {

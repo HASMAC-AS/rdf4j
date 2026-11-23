@@ -40,6 +40,7 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.lmdb.config.LmdbStoreConfig;
+import org.eclipse.rdf4j.sail.lmdb.model.LmdbIRI;
 import org.eclipse.rdf4j.sail.lmdb.model.LmdbValue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -206,6 +207,36 @@ class LmdbCanonicalValueCacheTest {
 		assertEquals(1, store.resolutions.get());
 		assertEquals(expected, unresolved);
 		assertSame(unresolved, store.getLazyValue(id));
+	}
+
+	@Test
+	void publishingACollidingIdDoesNotInspectUnrelatedPayloads() throws Exception {
+		store.close();
+		store = new CountingValueStore(directory.resolve("single-set"), 20);
+		assertEquals(4, store.valueCacheCapacity(ValuePosition.NONE));
+		store.startTransaction(true);
+		long first = store.storeValue(SUBJECT);
+		long second = store.storeValue(PREDICATE);
+		store.commit();
+		store.clearCaches();
+		AtomicInteger checks = new AtomicInteger();
+		LmdbIRI counted = new LmdbIRI(store.getRevision(), SUBJECT.stringValue(), first) {
+			@Override
+			public long getSemanticVersion() {
+				checks.incrementAndGet();
+				return super.getSemanticVersion();
+			}
+		};
+		store.cacheValue(first, counted);
+		checks.set(0);
+
+		LmdbValue colliding = store.getLazyValue(second);
+		assertEquals(0, checks.get(), "A different ID is not a candidate; its descendant versions need no check");
+		assertSame(counted, store.getLazyValue(first));
+		assertTrue(checks.get() > 0, "Returning a matching ID must still validate its semantic witness");
+		counted.setFromInitializedValue(store.createIRI("urn:canonical:changed"));
+		assertEquals(SUBJECT, store.getLazyValue(first), "Mutation still rejects the stale same-ID shell");
+		assertEquals(PREDICATE, colliding);
 	}
 
 	@Test
