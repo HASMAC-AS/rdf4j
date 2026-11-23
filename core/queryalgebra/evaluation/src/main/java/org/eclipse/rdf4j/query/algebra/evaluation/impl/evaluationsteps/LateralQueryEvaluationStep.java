@@ -26,12 +26,15 @@ import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
+import org.eclipse.rdf4j.query.algebra.BinaryTupleOperator;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Distinct;
+import org.eclipse.rdf4j.query.algebra.EmptySet;
 import org.eclipse.rdf4j.query.algebra.ExtensionElem;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.Group;
 import org.eclipse.rdf4j.query.algebra.GroupElem;
+import org.eclipse.rdf4j.query.algebra.Join;
 import org.eclipse.rdf4j.query.algebra.Lateral;
 import org.eclipse.rdf4j.query.algebra.MultiProjection;
 import org.eclipse.rdf4j.query.algebra.Order;
@@ -41,6 +44,7 @@ import org.eclipse.rdf4j.query.algebra.ProjectionElemList;
 import org.eclipse.rdf4j.query.algebra.Reduced;
 import org.eclipse.rdf4j.query.algebra.SingletonSet;
 import org.eclipse.rdf4j.query.algebra.Slice;
+import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
 import org.eclipse.rdf4j.query.algebra.UnaryTupleOperator;
 import org.eclipse.rdf4j.query.algebra.Var;
@@ -98,7 +102,7 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 		this.right = prepareRightStep(rightArg, context);
 		this.rightInputBindingNames = lateral.getRightInputBindingNames();
 		this.scopedRightVariants = reuseScopedRight && !lateral.isRuntimeTelemetryEnabled()
-				&& !rightInputBindingNames.isEmpty() && !hasOneShotValues(rightArg) ? new HashMap<>() : null;
+				&& !rightInputBindingNames.isEmpty() && isReusableRightShape(rightArg) ? new HashMap<>() : null;
 	}
 
 	@Override
@@ -145,15 +149,32 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 				new BindingSetQueryEvaluationContext(context));
 	}
 
-	private static boolean hasOneShotValues(TupleExpr root) {
-		boolean[] oneShot = { false };
-		root.visit(new AbstractSimpleQueryModelVisitor<RuntimeException>(true) {
-			@Override
-			public void meet(BindingSetAssignment assignment) {
-				oneShot[0] |= !assignment.hasRepeatableBindingSets();
-			}
-		});
-		return oneShot[0];
+	// Limit reuse to local structural plans with no extension callbacks or mutable sources. Opaque expressions,
+	// prepared functions, SERVICE, GRAPH, and VALUES (including one-shot sources) retain the unshared path.
+	private static boolean isReusableRightShape(TupleExpr node) {
+		Class<?> kind = node.getClass();
+		if (kind == StatementPattern.class) {
+			StatementPattern pattern = (StatementPattern) node;
+			return pattern.getSubjectVar().getClass() == Var.class && pattern.getPredicateVar().getClass() == Var.class
+					&& pattern.getObjectVar().getClass() == Var.class
+					&& (pattern.getContextVar() == null || pattern.getContextVar().getClass() == Var.class);
+		}
+		if (kind == Projection.class) {
+			Projection projection = (Projection) node;
+			return projection.getProjectionContext() == null && projection.getInheritedGraphParameter() == null
+					&& projection.getProjectionElemList().getClass() == ProjectionElemList.class
+					&& projection.getProjectionElemList().getElements().stream()
+							.allMatch(element -> element.getClass() == ProjectionElem.class)
+					&& isReusableRightShape(projection.getArg());
+		}
+		if (kind == Slice.class) {
+			return isReusableRightShape(((Slice) node).getArg());
+		}
+		if (kind == Join.class || kind == Lateral.class) {
+			var binary = (BinaryTupleOperator) node;
+			return isReusableRightShape(binary.getLeftArg()) && isReusableRightShape(binary.getRightArg());
+		}
+		return kind == SingletonSet.class || kind == EmptySet.class;
 	}
 
 	private QueryEvaluationStep prepareRightStep(TupleExpr expression, QueryEvaluationContext evaluationContext) {

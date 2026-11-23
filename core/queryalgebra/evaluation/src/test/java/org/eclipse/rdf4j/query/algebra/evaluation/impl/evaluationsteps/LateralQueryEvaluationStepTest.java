@@ -31,7 +31,10 @@ import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Bound;
+import org.eclipse.rdf4j.query.algebra.Extension;
+import org.eclipse.rdf4j.query.algebra.ExtensionElem;
 import org.eclipse.rdf4j.query.algebra.Filter;
+import org.eclipse.rdf4j.query.algebra.FunctionCall;
 import org.eclipse.rdf4j.query.algebra.Join;
 import org.eclipse.rdf4j.query.algebra.Lateral;
 import org.eclipse.rdf4j.query.algebra.Projection;
@@ -196,6 +199,24 @@ class LateralQueryEvaluationStepTest {
 			}
 		}
 		assertThat(prepared).hasValue(2 + 12 + (12 - 8));
+	}
+
+	@Test
+	void doesNotReusePreparationContainingOpaqueScalarFunctions() {
+		var extension = new Extension(statementUsing("s"));
+		extension.addElement(new ExtensionElem(new FunctionCall("urn:example:custom"), "derived"));
+		Lateral lateral = new Lateral(new SingletonSet(), extension, Set.of("s"));
+		var context = new QueryEvaluationContext.Minimal(null);
+		EvaluationStrategy strategy = mock(EvaluationStrategy.class);
+		AtomicInteger prepared = new AtomicInteger();
+		when(strategy.precompile(any(TupleExpr.class), any(QueryEvaluationContext.class))).thenAnswer(call -> {
+			prepared.incrementAndGet();
+			return QueryEvaluationStep.EMPTY;
+		});
+		QueryEvaluationStep step = LateralQueryEvaluationStep.supply(strategy, lateral, context, true);
+		step.evaluate(EmptyBindingSet.getInstance()).close();
+		step.evaluate(EmptyBindingSet.getInstance()).close();
+		assertThat(prepared).as("a custom function's preparation remains invocation local").hasValue(4);
 	}
 
 	@Test
