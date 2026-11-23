@@ -80,7 +80,8 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 	public static QueryEvaluationStep supply(EvaluationStrategy strategy, Lateral lateral,
 			QueryEvaluationContext context, boolean reuseScopedRight) {
 		QueryEvaluationStep left = strategy.precompile(lateral.getLeftArg(), context);
-		return new LateralQueryEvaluationStep(left, strategy, lateral.getRightArg(), context, lateral, reuseScopedRight);
+		return new LateralQueryEvaluationStep(left, strategy, lateral.getRightArg(), context, lateral,
+				reuseScopedRight);
 	}
 
 	public LateralQueryEvaluationStep(QueryEvaluationStep left, QueryEvaluationStep right, Lateral lateral) {
@@ -163,7 +164,9 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 			Projection projection = (Projection) node;
 			return projection.getProjectionContext() == null && projection.getInheritedGraphParameter() == null
 					&& projection.getProjectionElemList().getClass() == ProjectionElemList.class
-					&& projection.getProjectionElemList().getElements().stream()
+					&& projection.getProjectionElemList()
+							.getElements()
+							.stream()
 							.allMatch(element -> element.getClass() == ProjectionElem.class)
 					&& isReusableRightShape(projection.getArg());
 		}

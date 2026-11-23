@@ -172,7 +172,8 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 	/** Opens a restricted member cursor for the same prepared group occurrence. */
 	@InternalUseOnly
 	public static GroupIterator withMembers(EvaluationStrategy strategy, Group group, BindingSet parentBindings,
-			QueryEvaluationContext context, CloseableIteration<BindingSet> members, PreparedArguments preparedArguments) {
+			QueryEvaluationContext context, CloseableIteration<BindingSet> members,
+			PreparedArguments preparedArguments) {
 		GroupIterator groups = new GroupIterator(strategy, group, parentBindings, context, ignored -> members,
 				preparedArguments);
 		groups.argumentsIter = members;
@@ -657,8 +658,8 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 
 	/**
 	 * Lazily reuses scalar argument code for a single prepared group occurrence. The whitelist excludes expressions
-	 * with custom callbacks, blank-node allocation, or subqueries. No accumulator, DISTINCT set or separator
-	 * value is shared across invocations.
+	 * with custom callbacks, blank-node allocation, or subqueries. No accumulator, DISTINCT set or separator value is
+	 * shared across invocations.
 	 */
 	@InternalUseOnly
 	public static final class PreparedArguments {

@@ -910,7 +910,8 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 		GroupIterator.PreparedArguments reusable = usesStandardRuntimePreparation() && !node.isRuntimeTelemetryEnabled()
 				? new GroupIterator.PreparedArguments(this, context)
 				: null;
-		QueryEvaluationStep standard = bindings -> new GroupIterator(this, node, bindings, context, arguments, reusable);
+		QueryEvaluationStep standard = bindings -> new GroupIterator(this, node, bindings, context, arguments,
+				reusable);
 		if (!RestrictionCompiler.enabled(this, context) || !RestrictionModifierRules.wholeGroups(node)) {
 			return standard;
 		}
