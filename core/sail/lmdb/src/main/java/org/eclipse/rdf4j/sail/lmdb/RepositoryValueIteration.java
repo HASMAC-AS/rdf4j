@@ -210,10 +210,20 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 		return prepared[0] ? null : roots;
 	}
 
+	private static final class RootPreparationCheck implements Consumer<Value> {
+		private boolean prepared = true;
+
+		@Override
+		public void accept(Value root) {
+			// A later root can invoke extension code even when an earlier root needs preparation.
+			prepared &= isPrepared(root);
+		}
+	}
+
 	private static List<Value> bindingRootsRequiringPreparation(MapBindingSet bindings) {
-		boolean[] prepared = { true };
-		bindings.forEachValue(value -> prepared[0] &= isPrepared(value));
-		if (prepared[0]) {
+		RootPreparationCheck check = new RootPreparationCheck();
+		bindings.forEachValue(check);
+		if (check.prepared) {
 			return null;
 		}
 		List<Value> roots = new ArrayList<>(bindings.size());

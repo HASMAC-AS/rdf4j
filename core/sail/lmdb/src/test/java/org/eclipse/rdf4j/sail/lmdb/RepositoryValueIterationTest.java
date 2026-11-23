@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,10 +40,14 @@ import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.IterationWrapper;
 import org.eclipse.rdf4j.common.iteration.TimeLimitIteration;
+import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleTripleTerm;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.model.vocabulary.XSD;
+import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryInterruptedException;
+import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.sail.SailException;
 import org.eclipse.rdf4j.sail.base.SailClosable;
 import org.eclipse.rdf4j.sail.features.SailResultValueExtractor;
@@ -52,6 +58,43 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class RepositoryValueIterationTest {
+
+	@Test
+	void returningFromNestedTupleCheckDoesNotMarkOuterColdRootPrepared(@TempDir File directory) throws Exception {
+		BindingSet escaped;
+		try (ObservedValues store = new ObservedValues(directory);
+				ValueResolutionScope creator = store.openValueResolutionScope()) {
+			Value cold = seed(store, creator, 1).getFirst();
+			AtomicInteger checks = new AtomicInteger();
+			Literal object = mock(Literal.class);
+			when(object.getDatatype()).thenAnswer(call -> {
+				if (checks.getAndIncrement() == 0) {
+					MapBindingSet ready = new MapBindingSet();
+					ready.addBinding("ready", XSD.STRING);
+					var nested = new CloseableIteratorIteration<>(List.<BindingSet>of(ready).iterator());
+					try (var rows = new RepositoryValueIteration<>(nested, SailResultValueExtractor.BINDING_SETS,
+							store, creator, ignored -> {
+							})) {
+						assertSame(XSD.STRING, rows.next().getValue("ready"));
+					}
+				}
+				return XSD.STRING;
+			});
+			MapBindingSet outer = new MapBindingSet();
+			outer.addBinding("cold", cold);
+			outer.addBinding("callback", object);
+			var source = new CloseableIteratorIteration<>(List.<BindingSet>of(outer).iterator());
+			try (var rows = new RepositoryValueIteration<>(source, SailResultValueExtractor.BINDING_SETS,
+					store, creator, ignored -> {
+					})) {
+				escaped = rows.next();
+				assertTrue(((LmdbValue) cold).isInitialized(),
+						"the nested all-ready row must not suppress outer preparation");
+				assertTrue(checks.get() > 0, "all roots must be tested even after a cold root");
+			}
+		}
+		assertEquals("batch-value-0", escaped.getValue("cold").stringValue());
+	}
 
 	@Test
 	void timeoutCancelsSourceBeforeDrainingAnAdmittedValueScope(@TempDir File directory) throws Exception {
