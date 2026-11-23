@@ -499,7 +499,7 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 		if (operator instanceof Count) {
 			if (((Count) operator).getArg() == null) {
 				WildCardCountAggregate wildCardCountAggregate = new WildCardCountAggregate();
-				Supplier<Predicate<BindingSet>> potentialDistinctTest = operator.isDistinct() ? DistinctBindingSets::new
+				Supplier<Predicate<BindingSet>> potentialDistinctTest = operator.isDistinct() ? this::distinctBindingSets
 						: () -> ALWAYS_TRUE_BINDING_SET;
 				return new AggregatePredicateCollectorSupplier<>(wildCardCountAggregate, potentialDistinctTest,
 						() -> new CountCollector(vf), ge.getName());
@@ -775,17 +775,14 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 		}
 	}
 
-	private class DistinctBindingSets implements Predicate<BindingSet> {
-		private final Set<BindingSet> distinctValues;
-
-		public DistinctBindingSets() {
-			distinctValues = cf.createSet();
+	private Predicate<BindingSet> distinctBindingSets() {
+		if (cf.getClass() == DefaultCollectionFactory.class) {
+			// COUNT(DISTINCT *) compares complete input mappings, including projected alias columns.
+			Set<DistinctBindingSetKey> seen = cf.createSet();
+			return row -> seen.add(row == null ? null : new DistinctBindingSetKey(row));
 		}
-
-		@Override
-		public boolean test(BindingSet value) {
-			return distinctValues.add(value);
-		}
+		Set<BindingSet> seen = cf.createSet();
+		return seen::add;
 	}
 
 	private static class CountAggregate extends AggregateFunction<CountCollector, Value> {

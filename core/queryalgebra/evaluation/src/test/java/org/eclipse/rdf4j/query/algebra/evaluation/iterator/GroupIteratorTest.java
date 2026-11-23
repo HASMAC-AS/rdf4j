@@ -219,6 +219,66 @@ public class GroupIteratorTest {
 	}
 
 	@Test
+	void wildcardDistinctUsesTheWholeBindingDomainWithoutQuadraticComparisons() {
+		AtomicInteger comparisons = new AtomicInteger();
+		List<BindingSet> members = new ArrayList<>();
+		for (int i = 0; i < 256; i++) {
+			IRI value = VF.createIRI("urn:distinct:" + i);
+			QueryBindingSet row = new QueryBindingSet() {
+				@Override
+				public boolean equals(Object other) {
+					comparisons.incrementAndGet();
+					return super.equals(other);
+				}
+			};
+			row.addBinding("k", value);
+			row.addBinding("copy", value);
+			members.add(row);
+			members.add(new QueryBindingSet(row));
+		}
+		// All three mappings iterate no bindings, but explicit nulls still occupy different names.
+		QueryBindingSet undefinedK = new QueryBindingSet();
+		undefinedK.setBinding("k", null);
+		QueryBindingSet undefinedCopy = new QueryBindingSet();
+		undefinedCopy.setBinding("copy", null);
+		members.addAll(List.of(EmptyBindingSet.getInstance(), EmptyBindingSet.getInstance(), undefinedK,
+				new QueryBindingSet(undefinedK), undefinedCopy));
+		Group group = new Group(new SingletonSet());
+		group.addGroupElement(new GroupElem("count", new Count(null, true)));
+		try (var it = GroupIterator.withMembers(EVALUATOR, group, EmptyBindingSet.getInstance(), CONTEXT,
+				new CloseableIteratorIteration<>(members.iterator()))) {
+			assertThat(((Literal) it.next().getValue("count")).intValue()).isEqualTo(259);
+			assertThat(it.hasNext()).isFalse();
+		}
+		assertThat(comparisons.get()).isLessThan(4096);
+	}
+
+	@Test
+	void wildcardDistinctPassesOriginalBindingsToCustomFactory() {
+		AtomicInteger observed = new AtomicInteger();
+		var factory = new DefaultCollectionFactory() {
+			@Override
+			public <T> Set<T> createSet() {
+				return new HashSet<>() {
+					@Override
+					public boolean add(T value) {
+						assertThat(value).isInstanceOf(BindingSet.class);
+						observed.incrementAndGet();
+						return super.add(value);
+					}
+				};
+			}
+		};
+		Group group = new Group(NONEMPTY_ASSIGNMENT);
+		group.addGroupElement(new GroupElem("count", new Count(null, true)));
+		try (var it = new GroupIterator(EVALUATOR, group, EmptyBindingSet.getInstance(), 0, CONTEXT, VF, factory)) {
+			assertThat(((Literal) it.next().getValue("count")).intValue()).isEqualTo(9);
+			assertThat(it.hasNext()).isFalse();
+		}
+		assertThat(observed.get()).isEqualTo(9);
+	}
+
+	@Test
 	void groupingOnTwoEqualTermsDoesNotCompareEveryPairOfFinalSolutions() {
 		int cardinality = 256;
 		AtomicInteger comparisons = new AtomicInteger();
