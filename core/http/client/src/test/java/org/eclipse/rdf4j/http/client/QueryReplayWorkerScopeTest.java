@@ -35,6 +35,35 @@ class QueryReplayWorkerScopeTest {
 	private static final ThreadLocal<String> ACTIVE_WORKER_SCOPE = new ThreadLocal<>();
 
 	@Test
+	void prunedWorkerChainObservesEachSourceCheckpointClosing() throws Exception {
+		AtomicInteger outerCalls = new AtomicInteger(), middleCalls = new AtomicInteger(),
+				innerCalls = new AtomicInteger();
+		var worker = Executors.newSingleThreadExecutor();
+		try (var outer = QueryExecutionContext.activateReplaySafepoint(outerCalls::incrementAndGet);
+				var middle = QueryExecutionContext.activateReplaySafepoint(middleCalls::incrementAndGet);
+				var inner = QueryExecutionContext.activateReplaySafepoint(innerCalls::incrementAndGet)) {
+			middle.close(); // Capture copies the remaining links rather than retaining the inactive middle link.
+			var captured = QueryExecutionContext.captureReplayContext();
+			Runnable runCaptured = () -> captured.run(QueryExecutionContext::checkpointReplaySafepoint);
+			worker.submit(runCaptured).get(5, TimeUnit.SECONDS);
+			assertEquals(1, innerCalls.get());
+			assertEquals(1, outerCalls.get());
+			inner.close();
+			worker.submit(runCaptured).get(5, TimeUnit.SECONDS);
+			assertEquals(1, innerCalls.get());
+			assertEquals(2, outerCalls.get());
+			outer.close();
+			worker.submit(runCaptured).get(5, TimeUnit.SECONDS);
+			assertEquals(1, innerCalls.get());
+			assertEquals(0, middleCalls.get());
+			assertEquals(2, outerCalls.get());
+		} finally {
+			worker.shutdownNow();
+			assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
+		}
+	}
+
+	@Test
 	void admissionOnlyScopeStillInstallsWorkerOwnershipWithoutAnActiveReplayCallback() throws Exception {
 		var checkpoint = QueryExecutionContext.replayCheckpoint();
 		var executor = Executors.newSingleThreadExecutor();
