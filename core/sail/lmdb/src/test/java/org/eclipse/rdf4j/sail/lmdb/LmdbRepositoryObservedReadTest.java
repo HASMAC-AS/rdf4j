@@ -97,6 +97,67 @@ class LmdbRepositoryObservedReadTest {
 	}
 
 	@Test
+	void nestedPublicReadDuringAdmissionSetupStillEstablishesItsOwnReadScope(@TempDir File directory) {
+		var store = new ObservedStore(directory, fallbackConfig());
+		var repository = new SailRepository(store);
+		try (var connection = repository.getConnection()) {
+			seed(connection);
+			try (var outer = connection.prepareTupleQuery(QUERY).evaluate()) {
+				outer.next();
+				var nestedCalls = new AtomicInteger();
+				store.onEnteringReadContext = () -> {
+					store.onEnteringReadContext = null;
+					try (var inner = connection.prepareTupleQuery("SELECT ?n WHERE { VALUES ?n { 7 8 } }").evaluate()) {
+						assertEquals("7", inner.next().getValue("n").stringValue());
+						int before = store.readActivations.get();
+						assertEquals("8", inner.next().getValue("n").stringValue());
+						assertTrue(store.readActivations.get() > before,
+								"An admitted thread is not inside internal evaluation until setup is complete");
+					}
+					nestedCalls.incrementAndGet();
+				};
+				outer.next();
+				assertEquals(1, nestedCalls.get());
+				assertEquals(0, store.activeReads.get());
+			}
+		} finally {
+			repository.shutDown();
+		}
+	}
+
+	@Test
+	void returningFromCapturedWorkerReadPreservesForegroundNesting(@TempDir File directory) {
+		var store = new CallbackStore(directory, fallbackConfig());
+		var repository = new SailRepository(store);
+		try (var connection = repository.getConnection()) {
+			seed(connection);
+			try (var outer = connection.prepareTupleQuery(QUERY).evaluate()) {
+				outer.next();
+				var entered = new AtomicInteger();
+				store.callback = phase -> {
+					if (phase != Pull.VALUE) {
+						return;
+					}
+					store.callback = ignored -> {
+					};
+					var worker = QueryExecutionContext.captureReplayContext();
+					assertNotNull(worker);
+					worker.run(() -> assertEquals(4, connection.size()));
+					int before = store.readActivations.get();
+					assertEquals(4, connection.size());
+					assertEquals(before, store.readActivations.get(), "The enclosing evaluation is still internal");
+					entered.incrementAndGet();
+				};
+				outer.next();
+				assertEquals(1, entered.get());
+				assertEquals(0, store.activeReads.get());
+			}
+		} finally {
+			repository.shutDown();
+		}
+	}
+
+	@Test
 	void opaqueSourceWrapperKeepsItsOwnPullBoundaries(@TempDir File directory) {
 		var store = new ObservedStore(directory);
 		var repository = new SailRepository(store);
@@ -271,6 +332,10 @@ class LmdbRepositoryObservedReadTest {
 		}
 	}
 
+	private static LmdbStoreConfig fallbackConfig() {
+		return new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(false).setDirectAdjacencyEnabled(false);
+	}
+
 	private static void seed(RepositoryConnection connection) {
 		var values = connection.getValueFactory();
 		var predicate = values.createIRI("urn:observed-read:p");
@@ -294,6 +359,10 @@ class LmdbRepositoryObservedReadTest {
 
 		private CallbackStore(File directory) {
 			super(directory);
+		}
+
+		private CallbackStore(File directory, LmdbStoreConfig config) {
+			super(directory, config);
 		}
 
 		@Override
@@ -338,8 +407,14 @@ class LmdbRepositoryObservedReadTest {
 		final AtomicInteger readActivations = new AtomicInteger();
 		final AtomicInteger activeReads = new AtomicInteger();
 
+		private Runnable onEnteringReadContext;
+
 		private ObservedStore(File directory) {
-			super(directory, new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true));
+			this(directory, new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true));
+		}
+
+		private ObservedStore(File directory, LmdbStoreConfig config) {
+			super(directory, config);
 		}
 
 		@Override
@@ -348,6 +423,9 @@ class LmdbRepositoryObservedReadTest {
 			return new LmdbSailStore(directory, properties, config, sketchBasedJoinEstimatorEnabled) {
 				@Override
 				SailClosable enterReadResourceContext(Supplier<? extends Iterable<ReadViewLease>> ownedViews) {
+					if (onEnteringReadContext != null) {
+						onEnteringReadContext.run();
+					}
 					SailClosable activation = super.enterReadResourceContext(ownedViews);
 					readActivations.incrementAndGet();
 					activeReads.incrementAndGet();
