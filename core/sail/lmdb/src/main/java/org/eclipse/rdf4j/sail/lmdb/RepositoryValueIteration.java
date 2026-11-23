@@ -29,6 +29,7 @@ import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CooperativeCancellation;
 import org.eclipse.rdf4j.http.client.QueryExecutionContext;
 import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.TripleTerm;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.base.InternedIRI;
@@ -185,6 +186,8 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 			roots = projected.capturedRootsRequiringPreparation(RepositoryValueIteration::isPrepared);
 		} else if (extractor == SailResultValueExtractor.BINDING_SETS && nextRow instanceof MapBindingSet bindings) {
 			roots = bindingRootsRequiringPreparation(bindings);
+		} else if (extractor == SailResultValueExtractor.STATEMENTS && nextRow instanceof Statement statement) {
+			roots = statementRootsRequiringPreparation(statement);
 		} else {
 			roots = rootsRequiringPreparation(nextRow);
 		}
@@ -196,6 +199,16 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 		row = nextRow;
 		rowReady = true;
 		return true;
+	}
+
+	private static List<Value> statementRootsRequiringPreparation(Statement snapshot) {
+		Value subject = snapshot.getSubject(), predicate = snapshot.getPredicate();
+		Value object = snapshot.getObject(), context = snapshot.getContext();
+		// The built-in extractor has already detached the statement. Check all roots in its encounter order.
+		if (isPrepared(subject) & isPrepared(predicate) & isPrepared(object) & isPrepared(context)) {
+			return null;
+		}
+		return context == null ? List.of(subject, predicate, object) : List.of(subject, predicate, object, context);
 	}
 
 	private List<Value> rootsRequiringPreparation(T nextRow) {

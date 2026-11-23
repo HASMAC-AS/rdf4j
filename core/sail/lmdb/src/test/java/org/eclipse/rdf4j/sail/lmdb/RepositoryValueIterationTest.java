@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +40,9 @@ import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.IterationWrapper;
 import org.eclipse.rdf4j.common.iteration.TimeLimitIteration;
+import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleTripleTerm;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
@@ -52,6 +57,45 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class RepositoryValueIterationTest {
+
+	@Test
+	void statementRootsVisitLaterDatatypeAfterColdSubject(@TempDir File directory) throws Exception {
+		try (ObservedValues store = new ObservedValues(directory);
+				ValueResolutionScope creator = store.openValueResolutionScope()) {
+			Resource cold = (Resource) seed(store, creator, 1).getFirst();
+			var factory = SimpleValueFactory.getInstance();
+			Literal object = mock(Literal.class);
+			var failure = new IllegalStateException("later datatype getter failed");
+			when(object.getDatatype()).thenThrow(failure);
+			var source = new CloseableIteratorIteration<>(List.of(
+					factory.createStatement(cold, factory.createIRI("urn:p"), object)).iterator());
+			try (var rows = new RepositoryValueIteration<>(source, SailResultValueExtractor.STATEMENTS,
+					store, creator, ignored -> {
+					})) {
+				assertSame(failure, assertThrows(IllegalStateException.class, rows::hasNext));
+				assertTrue(store.decoded.isEmpty(), "a preparation failure must precede the first decode wave");
+			}
+		}
+	}
+
+	@Test
+	void statementPreparationIncludesEscapingNamedGraphAfterClose(@TempDir File directory) throws Exception {
+		Statement escaped;
+		try (ObservedValues store = new ObservedValues(directory);
+				ValueResolutionScope creator = store.openValueResolutionScope()) {
+			var values = seed(store, creator, 2);
+			var factory = SimpleValueFactory.getInstance();
+			var source = new CloseableIteratorIteration<>(List.of(factory.createStatement((Resource) values.get(0),
+					factory.createIRI("urn:p"), factory.createLiteral(7), (Resource) values.get(1))).iterator());
+			try (var rows = new RepositoryValueIteration<>(source, SailResultValueExtractor.STATEMENTS,
+					store, creator, ignored -> {
+					})) {
+				escaped = rows.next();
+			}
+		}
+		assertEquals("batch-value-0", escaped.getSubject().stringValue());
+		assertEquals("batch-value-1", escaped.getContext().stringValue());
+	}
 
 	@Test
 	void timeoutCancelsSourceBeforeDrainingAnAdmittedValueScope(@TempDir File directory) throws Exception {
