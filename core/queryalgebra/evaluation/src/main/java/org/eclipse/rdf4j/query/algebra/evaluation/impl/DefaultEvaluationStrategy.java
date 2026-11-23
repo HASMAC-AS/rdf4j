@@ -30,6 +30,7 @@ import java.util.function.UnaryOperator;
 
 import org.eclipse.rdf4j.collection.factory.api.CollectionFactory;
 import org.eclipse.rdf4j.collection.factory.impl.DefaultCollectionFactory;
+import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.iteration.AbstractCloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.ConvertingIteration;
@@ -1290,6 +1291,15 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 		return captured == null ? bindings : captured;
 	}
 
+	/**
+	 * Allows invocation-time algebra preparation reuse for strategies with the built-in binding and preparation
+	 * contract. Unknown strategy subclasses retain their existing dispatch and preparation behavior.
+	 */
+	@InternalUseOnly
+	protected boolean usesStandardRuntimePreparation() {
+		return getClass() == DefaultEvaluationStrategy.class || getClass() == StrictEvaluationStrategy.class;
+	}
+
 	protected QueryEvaluationStep prepare(DescribeOperator node, QueryEvaluationContext context)
 			throws QueryEvaluationException {
 		QueryEvaluationStep child = precompile(node.getArg(), context);
@@ -1298,7 +1308,8 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 
 			try {
 				evaluate = child.evaluate(bs);
-				return new DescribeIteration(evaluate, DefaultEvaluationStrategy.this, node.getBindingNames(), bs);
+				return new DescribeIteration(evaluate, DefaultEvaluationStrategy.this, node.getBindingNames(), bs,
+						usesStandardRuntimePreparation());
 			} catch (Throwable t) {
 				if (evaluate != null) {
 					evaluate.close();
