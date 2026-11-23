@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.query.Binding;
 import org.eclipse.rdf4j.query.BindingSet;
@@ -56,17 +57,26 @@ import org.eclipse.rdf4j.query.algebra.helpers.TupleExprs;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
 
 public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
+	private static final int MAX_SCOPED_RIGHT_VARIANTS = 8;
 	private final QueryEvaluationStep left;
 	private final QueryEvaluationStep right;
 	private final EvaluationStrategy strategy;
 	private final TupleExpr rightArg;
 	private final QueryEvaluationContext context;
 	private final Set<String> rightInputBindingNames;
+	// Owned by this prepared occurrence, never shared across separately prepared queries or contexts.
+	private final Map<Set<String>, QueryEvaluationStep> scopedRightVariants;
 
 	public static QueryEvaluationStep supply(EvaluationStrategy strategy, Lateral lateral,
 			QueryEvaluationContext context) {
+		return supply(strategy, lateral, context, false);
+	}
+
+	@InternalUseOnly
+	public static QueryEvaluationStep supply(EvaluationStrategy strategy, Lateral lateral,
+			QueryEvaluationContext context, boolean reuseScopedRight) {
 		QueryEvaluationStep left = strategy.precompile(lateral.getLeftArg(), context);
-		return new LateralQueryEvaluationStep(left, strategy, lateral.getRightArg(), context, lateral);
+		return new LateralQueryEvaluationStep(left, strategy, lateral.getRightArg(), context, lateral, reuseScopedRight);
 	}
 
 	public LateralQueryEvaluationStep(QueryEvaluationStep left, QueryEvaluationStep right, Lateral lateral) {
@@ -76,16 +86,19 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 		this.rightArg = null;
 		this.context = null;
 		this.rightInputBindingNames = lateral.getRightInputBindingNames();
+		this.scopedRightVariants = null;
 	}
 
 	private LateralQueryEvaluationStep(QueryEvaluationStep left, EvaluationStrategy strategy, TupleExpr rightArg,
-			QueryEvaluationContext context, Lateral lateral) {
+			QueryEvaluationContext context, Lateral lateral, boolean reuseScopedRight) {
 		this.left = left;
 		this.strategy = strategy;
 		this.rightArg = rightArg;
 		this.context = context;
 		this.right = prepareRightStep(rightArg, context);
 		this.rightInputBindingNames = lateral.getRightInputBindingNames();
+		this.scopedRightVariants = reuseScopedRight && !lateral.isRuntimeTelemetryEnabled()
+				&& !rightInputBindingNames.isEmpty() && !hasOneShotValues(rightArg) ? new HashMap<>() : null;
 	}
 
 	@Override
@@ -106,9 +119,41 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 	}
 
 	private QueryEvaluationStep prepareRight(BindingSet originalBindings) {
-		TupleExpr prepared = prepareRightScope(rightArg, rightInputBindingNames, originalBindings.getBindingNames());
-		return prepared == rightArg ? right
-				: prepareRightStep(prepared, new BindingSetQueryEvaluationContext(context));
+		Set<String> newInputNames = newLateralBindingNames(rightInputBindingNames, originalBindings.getBindingNames());
+		if (!requiresRightScope(rightArg, newInputNames)) {
+			return right;
+		}
+		if (scopedRightVariants != null) {
+			// Rewriting observes only which potential lateral names are newly supplied, never their values.
+			synchronized (scopedRightVariants) {
+				QueryEvaluationStep existing = scopedRightVariants.get(newInputNames);
+				if (existing != null) {
+					return existing;
+				}
+				if (scopedRightVariants.size() < MAX_SCOPED_RIGHT_VARIANTS) {
+					QueryEvaluationStep prepared = prepareScopedRight(newInputNames);
+					scopedRightVariants.put(Set.copyOf(newInputNames), prepared);
+					return prepared;
+				}
+			}
+		}
+		return prepareScopedRight(newInputNames);
+	}
+
+	private QueryEvaluationStep prepareScopedRight(Set<String> newInputNames) {
+		return prepareRightStep(rewriteRightScope(rightArg, rightInputBindingNames, newInputNames),
+				new BindingSetQueryEvaluationContext(context));
+	}
+
+	private static boolean hasOneShotValues(TupleExpr root) {
+		boolean[] oneShot = { false };
+		root.visit(new AbstractSimpleQueryModelVisitor<RuntimeException>(true) {
+			@Override
+			public void meet(BindingSetAssignment assignment) {
+				oneShot[0] |= !assignment.hasRepeatableBindingSets();
+			}
+		});
+		return oneShot[0];
 	}
 
 	private QueryEvaluationStep prepareRightStep(TupleExpr expression, QueryEvaluationContext evaluationContext) {
@@ -123,12 +168,27 @@ public final class LateralQueryEvaluationStep implements QueryEvaluationStep {
 	 */
 	public static TupleExpr prepareRightScope(TupleExpr rightArg, Set<String> rightInputBindingNames,
 			Set<String> originalBindingNames) {
-		Set<String> lateralBindingNames = new HashSet<>(rightInputBindingNames);
-		lateralBindingNames.removeAll(originalBindingNames);
-		if (lateralBindingNames.isEmpty()
-				|| TupleExprs.preservesDirectSubSelectBindings(rightArg, lateralBindingNames)) {
-			return rightArg;
+		Set<String> lateralBindingNames = newLateralBindingNames(rightInputBindingNames, originalBindingNames);
+		return requiresRightScope(rightArg, lateralBindingNames)
+				? rewriteRightScope(rightArg, rightInputBindingNames, lateralBindingNames)
+				: rightArg;
+	}
+
+	private static Set<String> newLateralBindingNames(Set<String> allowed, Set<String> original) {
+		if (original.isEmpty()) {
+			return allowed;
 		}
+		Set<String> newInputNames = new HashSet<>(allowed);
+		newInputNames.removeAll(original);
+		return newInputNames;
+	}
+
+	private static boolean requiresRightScope(TupleExpr rightArg, Set<String> newInputNames) {
+		return !newInputNames.isEmpty() && !TupleExprs.preservesDirectSubSelectBindings(rightArg, newInputNames);
+	}
+
+	private static TupleExpr rewriteRightScope(TupleExpr rightArg, Set<String> rightInputBindingNames,
+			Set<String> lateralBindingNames) {
 		TupleExpr scopedRight = rightArg.clone();
 		scopedRight.visit(new HiddenLateralBindingRenamer(lateralBindingNames));
 		// The clone is otherwise parentless, so scope-sensitive steps inside it cannot discover which input bindings

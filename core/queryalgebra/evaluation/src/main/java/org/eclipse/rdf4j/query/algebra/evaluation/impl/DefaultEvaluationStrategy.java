@@ -1546,7 +1546,7 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 		} else if (expr instanceof Difference) {
 			return prepare((Difference) expr, context);
 		} else if (expr instanceof Lateral) {
-			return LateralQueryEvaluationStep.supply(this, (Lateral) expr, context);
+			return LateralQueryEvaluationStep.supply(this, (Lateral) expr, context, usesStandardRuntimePreparation());
 		} else if (expr == null) {
 			throw new IllegalArgumentException("expr must not be null");
 		} else {
