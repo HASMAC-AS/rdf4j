@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,6 +39,7 @@ import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CooperativeCancellation;
 import org.eclipse.rdf4j.common.iteration.IterationWrapper;
 import org.eclipse.rdf4j.http.client.QueryExecutionContext;
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.QueryInterruptedException;
@@ -94,6 +96,58 @@ class LmdbRepositoryObservedReadTest {
 		} finally {
 			repository.shutDown();
 		}
+	}
+
+	@Test
+	void laterFallbackPullRestoresTheConsumingThreadsContext(@TempDir File directory) throws Exception {
+		var store = new CallbackStore(directory, false);
+		var repository = new SailRepository(store);
+		Value escaped;
+		try (var connection = repository.getConnection(); var pool = Executors.newSingleThreadExecutor()) {
+			seed(connection);
+			try (var rows = connection.prepareTupleQuery(QUERY).evaluate()) {
+				rows.next();
+				escaped = rows.next().getValue("s");
+				var owner = new Object();
+				Consumer<Value> caller = value -> {
+				};
+				QueryExecutionContext.WorkerScope worker = new QueryExecutionContext.WorkerScope() {
+					@Override
+					public QueryExecutionContext.Activation activate() {
+						return () -> {
+						};
+					}
+
+					@Override
+					public boolean ownsCancellation(Object candidate) {
+						return owner == candidate;
+					}
+				};
+				var captures = new AtomicInteger();
+				store.callback = phase -> {
+					var observed = QueryExecutionContext.getExternalValueInitializer();
+					assertNotNull(observed);
+					assertNotSame(caller, observed);
+					assertTrue(QueryExecutionContext.captureReplayContext().ownsCancellation(owner));
+					captures.incrementAndGet();
+				};
+				pool.submit(() -> {
+					try (var outer = QueryExecutionContext.activateWorkerAdmission(() -> worker);
+							var initializer = QueryExecutionContext.activateExternalValueInitializer(caller)) {
+						assertNotNull(rows.next());
+						assertSame(caller, QueryExecutionContext.getExternalValueInitializer());
+						assertTrue(QueryExecutionContext.captureReplayContext().ownsCancellation(owner));
+					}
+					assertNull(QueryExecutionContext.captureReplayContext());
+				}).get(10, TimeUnit.SECONDS);
+				assertEquals(2, captures.get());
+				assertEquals(0, store.activeReads.get());
+				assertNull(QueryExecutionContext.captureReplayContext());
+			}
+		} finally {
+			repository.shutDown();
+		}
+		assertTrue(escaped.stringValue().startsWith("urn:observed-read:s"));
 	}
 
 	@Test
@@ -296,6 +350,10 @@ class LmdbRepositoryObservedReadTest {
 			super(directory);
 		}
 
+		private CallbackStore(File directory, boolean nativeEvaluation) {
+			super(directory, nativeEvaluation);
+		}
+
 		@Override
 		protected NotifyingSailConnection getConnectionInternal() {
 			return new LmdbStoreConnection(this) {
@@ -340,6 +398,11 @@ class LmdbRepositoryObservedReadTest {
 
 		private ObservedStore(File directory) {
 			super(directory, new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true));
+		}
+
+		private ObservedStore(File directory, boolean nativeEvaluation) {
+			super(directory, new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(nativeEvaluation)
+					.setDirectAdjacencyEnabled(nativeEvaluation));
 		}
 
 		@Override

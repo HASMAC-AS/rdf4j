@@ -2911,15 +2911,23 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 	 */
 	private <T> T executeObservedRead(ReadOperation<T> operation, ReplayableIteration<?> owner,
 			SourcePull retainOnAvailable) throws SailException {
-		return new ObservedRead(owner).execute(operation, retainOnAvailable);
+		// Only the serialized outer repository pull has a reusable frame. A reentrant pull uses another marker.
+		ObservedRead read = retainOnAvailable == null ? null : retainOnAvailable.reusableFrame;
+		if (read == null) {
+			read = new ObservedRead(owner);
+			if (retainOnAvailable != null) {
+				retainOnAvailable.reusableFrame = read;
+			}
+		}
+		read.begin();
+		return read.execute(operation, retainOnAvailable);
 	}
 
 	final class ObservedRead implements SailClosable {
 		private final ReplayableIteration<?> owner;
-		private final CancellationSignal lifecycleCancellation = CancellationSignal.current();
-		private final int oldDepth;
+		private CancellationSignal lifecycleCancellation;
+		private int oldDepth;
 		private SailClosable valueBinding;
-		private QueryExecutionContext.Activation externalValueBinding;
 		private QueryExecutionContext.Activation workerAdmission;
 		private SailClosable readResourceBinding;
 		private boolean awaitingRow;
@@ -2927,6 +2935,10 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 
 		private ObservedRead(ReplayableIteration<?> owner) {
 			this.owner = owner;
+		}
+
+		private void begin() {
+			CancellationSignal currentCancellation = CancellationSignal.current();
 			throwIfCancelled(owner);
 			synchronized (readAttemptLock) {
 				if (transactionFinished && isActive() && !isDetachedAttemptResultLocked(owner)
@@ -2936,15 +2948,15 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 				beginReadThread();
 				activeReadOperations++;
 			}
+			lifecycleCancellation = currentCancellation;
 			oldDepth = internalReadScopeDepth.get();
 			try {
 				ValueResolutionScope valueScope = owner.valueScope;
 				valueBinding = valueScope == null ? null : valueScope.activateForeground();
-				externalValueBinding = QueryExecutionContext
-						.activateExternalValueInitializer(LmdbStoreConnection::protectValueTree);
 				readResourceBinding = lmdbStore.getBackingStore()
 						.enterReadResourceContext(owner.currentReadViews);
-				workerAdmission = QueryExecutionContext.activateWorkerAdmission(owner.captureObservedWorkerScope);
+				workerAdmission = QueryExecutionContext.activateObservedRead(owner.captureObservedWorkerScope,
+						LmdbStoreConnection::protectValueTree);
 				internalReadScopeDepth.set(oldDepth + 1);
 				owner.openObservedReads++;
 				counted = true;
@@ -3009,9 +3021,14 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 			// entry) avoids removing and re-creating the map entry on every one of the very frequent activations.
 			internalReadScopeDepth.set(oldDepth);
 			Throwable failure = closeActivation(workerAdmission, primary);
-			failure = closeActivation(externalValueBinding, failure);
 			failure = closeActivation(readResourceBinding, failure);
 			failure = closeActivation(valueBinding, failure);
+			// The frame can survive until the next row, but no installed capability or lifecycle token may.
+			valueBinding = null;
+			workerAdmission = null;
+			readResourceBinding = null;
+			lifecycleCancellation = null;
+			awaitingRow = false;
 
 			List<CloseableIteration<?>> deferredCloses;
 			boolean retirePending;

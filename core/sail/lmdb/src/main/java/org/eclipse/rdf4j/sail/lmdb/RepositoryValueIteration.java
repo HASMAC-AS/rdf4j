@@ -258,6 +258,8 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 		private SourcePull previous;
 		private boolean inUse;
 		private boolean availabilityClaimed;
+		// Bound to the one registered replayable source. Calls using this marker are serialized by the exposure.
+		LmdbStoreConnection.ObservedRead reusableFrame;
 		private LmdbStoreConnection.ObservedRead observedRead;
 		private Object projectionOwner;
 
