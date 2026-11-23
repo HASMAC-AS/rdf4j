@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.model.Value;
@@ -165,6 +166,31 @@ public class MapBindingSet extends AbstractBindingSet implements MutableBindingS
 			}
 		}
 		bindings.values().forEach(binding -> action.accept(binding.getValue()));
+	}
+
+	/**
+	 * Tests every bound value in encounter order, even after a negative result. The predicate can have observable
+	 * effects (such as checking a deferred value's datatype). As with {@link #forEachValue}, a compact visit uses the
+	 * projected array present at entry.
+	 */
+	@InternalUseOnly
+	public boolean testAllValues(Predicate<? super Value> predicate) {
+		if (bindings instanceof CompactBindings compact) {
+			Value[] projected = compact.values;
+			if (projected != null) {
+				boolean all = true;
+				for (Value value : projected) {
+					if (value != null) {
+						all &= predicate.test(value);
+					}
+				}
+				return all;
+			}
+		}
+		// Compact bindings are private to snapshots. Other representations, including subclasses, keep their traversal.
+		boolean[] all = { true };
+		forEachValue(value -> all[0] &= predicate.test(value));
+		return all[0];
 	}
 
 	@Override

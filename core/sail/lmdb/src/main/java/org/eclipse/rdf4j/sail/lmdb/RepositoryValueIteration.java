@@ -211,9 +211,7 @@ final class RepositoryValueIteration<T> implements CloseableIteration<T>, Cooper
 	}
 
 	private static List<Value> bindingRootsRequiringPreparation(MapBindingSet bindings) {
-		boolean[] prepared = { true };
-		bindings.forEachValue(value -> prepared[0] &= isPrepared(value));
-		if (prepared[0]) {
+		if (bindings.testAllValues(RepositoryValueIteration::isPrepared)) {
 			return null;
 		}
 		List<Value> roots = new ArrayList<>(bindings.size());
