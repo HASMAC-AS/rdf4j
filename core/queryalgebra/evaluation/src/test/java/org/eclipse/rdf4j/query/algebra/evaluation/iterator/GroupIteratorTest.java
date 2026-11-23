@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +39,7 @@ import java.util.function.Predicate;
 
 import org.assertj.core.api.SoftAssertions;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.LookAheadIteration;
 import org.eclipse.rdf4j.http.client.QueryCircuitBreaker;
 import org.eclipse.rdf4j.http.client.QueryCircuitBreakerHandle;
@@ -68,6 +70,7 @@ import org.eclipse.rdf4j.query.algebra.Group;
 import org.eclipse.rdf4j.query.algebra.GroupConcat;
 import org.eclipse.rdf4j.query.algebra.GroupElem;
 import org.eclipse.rdf4j.query.algebra.Join;
+import org.eclipse.rdf4j.query.algebra.Lateral;
 import org.eclipse.rdf4j.query.algebra.LeftJoin;
 import org.eclipse.rdf4j.query.algebra.MathExpr;
 import org.eclipse.rdf4j.query.algebra.Max;
@@ -78,10 +81,12 @@ import org.eclipse.rdf4j.query.algebra.SingletonSet;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.Sum;
 import org.eclipse.rdf4j.query.algebra.ValueConstant;
+import org.eclipse.rdf4j.query.algebra.ValueExpr;
 import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryBindingSet;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
+import org.eclipse.rdf4j.query.algebra.evaluation.QueryValueEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.ValueExprEvaluationException;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.DefaultEvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.EmptyTripleSource;
@@ -163,6 +168,107 @@ public class GroupIteratorTest {
 	@AfterAll
 	public static void cleanUp() {
 		CustomAggregateFunctionRegistry.getInstance().remove(AGGREGATE_FUNCTION_FACTORY);
+	}
+
+	@Test
+	public void correlatedGroupReusesArgumentsButNotDistinctStateOrSeparator() {
+		var arithmetic = new MathExpr(Var.of("a"), new ValueConstant(VF.createLiteral(1)), MathExpr.MathOp.PLUS);
+		var label = Var.of("label");
+		var arithmeticPreparations = new AtomicInteger();
+		var labelPreparations = new AtomicInteger();
+		var strategy = new DefaultEvaluationStrategy(new EmptyTripleSource(), null) {
+			@Override
+			public QueryValueEvaluationStep precompile(ValueExpr arg, QueryEvaluationContext context) {
+				if (arg == arithmetic) {
+					arithmeticPreparations.incrementAndGet();
+				} else if (arg == label) {
+					labelPreparations.incrementAndGet();
+				}
+				return super.precompile(arg, context);
+			}
+		};
+		var group = new Group(new SingletonSet());
+		group.addGroupElement(new GroupElem("sum", new Sum(arithmetic, true)));
+		var concat = new GroupConcat(label, true);
+		concat.setSeparator(Var.of("separator"));
+		group.addGroupElement(new GroupElem("concat", concat));
+		var prepared = new GroupIterator.PreparedArguments(strategy, CONTEXT);
+		QueryEvaluationStep members = bindings -> {
+			int start = ((Literal) bindings.getValue("start")).intValue();
+			var first = groupMember(start, "first");
+			var second = groupMember(start + 1, "second");
+			return new CloseableIteratorIteration<>(List.of(first, second, second).iterator());
+		};
+		var first = groupParent(1, ":");
+		var second = groupParent(4, "/");
+		try (var left = new GroupIterator(strategy, group, first, CONTEXT, members, prepared);
+				var right = GroupIterator.withMembers(strategy, group, second, CONTEXT, members.evaluate(second),
+						prepared)) {
+			var leftRow = left.next();
+			var rightRow = right.next();
+			assertThat(((Literal) leftRow.getValue("sum")).intValue()).isEqualTo(5);
+			assertThat(((Literal) rightRow.getValue("sum")).intValue()).isEqualTo(11);
+			assertThat(leftRow.getValue("concat").stringValue()).isEqualTo("first:second");
+			assertThat(rightRow.getValue("concat").stringValue()).isEqualTo("first/second");
+			assertThat(left.hasNext()).isFalse();
+			assertThat(right.hasNext()).isFalse();
+		}
+		assertThat(arithmeticPreparations.get()).isEqualTo(1);
+		assertThat(labelPreparations.get()).isEqualTo(1);
+	}
+
+	@Test
+	public void lateralGroupCompilesArithmeticOnceForAllRows() {
+		var preparations = new AtomicInteger();
+		var strategy = new DefaultEvaluationStrategy(new EmptyTripleSource(), null) {
+			@Override
+			protected boolean usesStandardRuntimePreparation() {
+				return true;
+			}
+
+			@Override
+			public QueryValueEvaluationStep precompile(ValueExpr arg, QueryEvaluationContext context) {
+				if (arg instanceof MathExpr) {
+					preparations.incrementAndGet();
+				}
+				return super.precompile(arg, context);
+			}
+		};
+		var values = new BindingSetAssignment();
+		values.setBindingNames(Set.of("a"));
+		var left = new ArrayList<BindingSet>();
+		for (int i = 0; i < 32; i++) {
+			var row = new QueryBindingSet();
+			row.addBinding("a", VF.createLiteral(i));
+			left.add(row);
+		}
+		values.setBindingSets(left);
+		var group = new Group(new SingletonSet());
+		group.addGroupElement(new GroupElem("sum",
+				new Sum(new MathExpr(Var.of("a"), new ValueConstant(VF.createLiteral(1)), MathExpr.MathOp.PLUS))));
+		var step = strategy.precompile(new Lateral(values, group), CONTEXT);
+		try (var rows = step.evaluate(EmptyBindingSet.getInstance())) {
+			for (int i = 1; i <= 32; i++) {
+				assertThat(rows.hasNext()).isTrue();
+				assertThat(((Literal) rows.next().getValue("sum")).intValue()).isEqualTo(i);
+			}
+			assertThat(rows.hasNext()).isFalse();
+		}
+		assertThat(preparations.get()).isEqualTo(1);
+	}
+
+	private static BindingSet groupMember(int value, String label) {
+		var bindings = new QueryBindingSet();
+		bindings.addBinding("a", VF.createLiteral(value));
+		bindings.addBinding("label", VF.createLiteral(label));
+		return bindings;
+	}
+
+	private static BindingSet groupParent(int start, String separator) {
+		var bindings = new QueryBindingSet();
+		bindings.addBinding("start", VF.createLiteral(start));
+		bindings.addBinding("separator", VF.createLiteral(separator));
+		return bindings;
 	}
 
 	@Test

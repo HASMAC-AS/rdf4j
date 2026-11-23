@@ -15,9 +15,11 @@ package org.eclipse.rdf4j.query.algebra.evaluation.iterator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -33,6 +35,7 @@ import org.eclipse.rdf4j.collection.factory.api.BindingSetKey;
 import org.eclipse.rdf4j.collection.factory.api.CollectionFactory;
 import org.eclipse.rdf4j.collection.factory.impl.DefaultCollectionFactory;
 import org.eclipse.rdf4j.common.annotation.Experimental;
+import org.eclipse.rdf4j.common.annotation.InternalUseOnly;
 import org.eclipse.rdf4j.common.iteration.AbstractCloseableIteratorIteration;
 import org.eclipse.rdf4j.common.iteration.CloseableIteration;
 import org.eclipse.rdf4j.common.iteration.CooperativeCancellation;
@@ -54,6 +57,7 @@ import org.eclipse.rdf4j.query.algebra.Count;
 import org.eclipse.rdf4j.query.algebra.Group;
 import org.eclipse.rdf4j.query.algebra.GroupConcat;
 import org.eclipse.rdf4j.query.algebra.GroupElem;
+import org.eclipse.rdf4j.query.algebra.MathExpr;
 import org.eclipse.rdf4j.query.algebra.MathExpr.MathOp;
 import org.eclipse.rdf4j.query.algebra.Max;
 import org.eclipse.rdf4j.query.algebra.Min;
@@ -61,7 +65,9 @@ import org.eclipse.rdf4j.query.algebra.NAryValueOperator;
 import org.eclipse.rdf4j.query.algebra.Sample;
 import org.eclipse.rdf4j.query.algebra.Sum;
 import org.eclipse.rdf4j.query.algebra.UnaryValueOperator;
+import org.eclipse.rdf4j.query.algebra.ValueConstant;
 import org.eclipse.rdf4j.query.algebra.ValueExpr;
+import org.eclipse.rdf4j.query.algebra.Var;
 import org.eclipse.rdf4j.query.algebra.evaluation.EvaluationStrategy;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryEvaluationStep;
 import org.eclipse.rdf4j.query.algebra.evaluation.QueryValueEvaluationStep;
@@ -105,6 +111,7 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 	private final Object solutionBoundary = new Object();
 
 	private final QueryEvaluationStep arguments;
+	private final PreparedArguments preparedArguments;
 
 	// The iteration of the arguments, stored while building entries for allowing premature closing
 	private volatile CloseableIteration<BindingSet> argumentsIter;
@@ -135,15 +142,22 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 			long iterationCacheSyncThreshold, QueryEvaluationContext context, ValueFactory vf, CollectionFactory cf)
 			throws QueryEvaluationException {
 		this(strategy, group, parentBindings, iterationCacheSyncThreshold, context, vf, cf,
-				strategy.precompile(group.getArg(), context));
+				strategy.precompile(group.getArg(), context), null);
 	}
 
 	@Experimental
 	public GroupIterator(EvaluationStrategy strategy, Group group, BindingSet parentBindings,
 			QueryEvaluationContext context, QueryEvaluationStep arguments) throws QueryEvaluationException {
+		this(strategy, group, parentBindings, context, arguments, null);
+	}
+
+	/** Opens a group occurrence using shared immutable evaluators, but fresh accumulators. */
+	@InternalUseOnly
+	public GroupIterator(EvaluationStrategy strategy, Group group, BindingSet parentBindings,
+			QueryEvaluationContext context, QueryEvaluationStep arguments, PreparedArguments preparedArguments)
+			throws QueryEvaluationException {
 		this(strategy, group, parentBindings, 0, context, SimpleValueFactory.getInstance(),
-				new DefaultCollectionFactory(),
-				arguments);
+				new DefaultCollectionFactory(), arguments, preparedArguments);
 	}
 
 	/**
@@ -152,14 +166,22 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 	@Experimental
 	public static GroupIterator withMembers(EvaluationStrategy strategy, Group group, BindingSet parentBindings,
 			QueryEvaluationContext context, CloseableIteration<BindingSet> members) {
-		GroupIterator groups = new GroupIterator(strategy, group, parentBindings, context, ignored -> members);
+		return withMembers(strategy, group, parentBindings, context, members, null);
+	}
+
+	/** Opens a restricted member cursor for the same prepared group occurrence. */
+	@InternalUseOnly
+	public static GroupIterator withMembers(EvaluationStrategy strategy, Group group, BindingSet parentBindings,
+			QueryEvaluationContext context, CloseableIteration<BindingSet> members, PreparedArguments preparedArguments) {
+		GroupIterator groups = new GroupIterator(strategy, group, parentBindings, context, ignored -> members,
+				preparedArguments);
 		groups.argumentsIter = members;
 		return groups;
 	}
 
 	private GroupIterator(EvaluationStrategy strategy, Group group, BindingSet parentBindings,
 			long iterationCacheSyncThreshold, QueryEvaluationContext context, ValueFactory vf, CollectionFactory cf,
-			QueryEvaluationStep arguments) throws QueryEvaluationException {
+			QueryEvaluationStep arguments, PreparedArguments preparedArguments) throws QueryEvaluationException {
 		this.strategy = strategy;
 		this.group = group;
 		this.parentBindings = parentBindings;
@@ -169,6 +191,7 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 		this.vf = vf;
 		this.cf = cf;
 		this.arguments = arguments;
+		this.preparedArguments = preparedArguments;
 	}
 
 	/*---------*
@@ -628,7 +651,43 @@ public class GroupIterator extends AbstractCloseableIteratorIteration<BindingSet
 
 	private QueryStepEvaluator precompileUnaryArg(AggregateOperator operator) {
 		ValueExpr ve = ((UnaryValueOperator) operator).getArg();
-		return new QueryStepEvaluator(strategy.precompile(ve, context));
+		QueryStepEvaluator prepared = preparedArguments == null ? null : preparedArguments.get(ve);
+		return prepared != null ? prepared : new QueryStepEvaluator(strategy.precompile(ve, context));
+	}
+
+	/**
+	 * Lazily reuses scalar argument code for a single prepared group occurrence. The whitelist excludes expressions
+	 * with custom callbacks, blank-node allocation, or subqueries. No accumulator, DISTINCT set or separator
+	 * value is shared across invocations.
+	 */
+	@InternalUseOnly
+	public static final class PreparedArguments {
+		private final EvaluationStrategy strategy;
+		private final QueryEvaluationContext context;
+		private Map<ValueExpr, Optional<QueryStepEvaluator>> steps;
+
+		public PreparedArguments(EvaluationStrategy strategy, QueryEvaluationContext context) {
+			this.strategy = strategy;
+			this.context = context;
+		}
+
+		private synchronized QueryStepEvaluator get(ValueExpr expression) {
+			if (steps == null) {
+				steps = new IdentityHashMap<>(4);
+			}
+			return steps.computeIfAbsent(expression,
+					arg -> reusable(arg) ? Optional.of(new QueryStepEvaluator(strategy.precompile(arg, context)))
+							: Optional.empty())
+					.orElse(null);
+		}
+
+		private static boolean reusable(ValueExpr expression) {
+			return expression.getClass() == Var.class && !((Var) expression).hasValue()
+					|| expression.getClass() == ValueConstant.class
+							&& ((ValueConstant) expression).getValue() instanceof Literal
+					|| expression.getClass() == MathExpr.class && reusable(((MathExpr) expression).getLeftArg())
+							&& reusable(((MathExpr) expression).getRightArg());
+		}
 	}
 
 	private NAryQueryStepEvaluator precompileNAryArg(AggregateOperator operator) {

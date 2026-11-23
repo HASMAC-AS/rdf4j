@@ -907,14 +907,17 @@ public class DefaultEvaluationStrategy implements EvaluationStrategy, FederatedS
 
 	protected QueryEvaluationStep prepare(Group node, QueryEvaluationContext context) throws QueryEvaluationException {
 		QueryEvaluationStep arguments = precompile(node.getArg(), context);
-		QueryEvaluationStep standard = bindings -> new GroupIterator(this, node, bindings, context, arguments);
+		GroupIterator.PreparedArguments reusable = usesStandardRuntimePreparation() && !node.isRuntimeTelemetryEnabled()
+				? new GroupIterator.PreparedArguments(this, context)
+				: null;
+		QueryEvaluationStep standard = bindings -> new GroupIterator(this, node, bindings, context, arguments, reusable);
 		if (!RestrictionCompiler.enabled(this, context) || !RestrictionModifierRules.wholeGroups(node)) {
 			return standard;
 		}
 		Set<String> keys = node.getGroupBindingNames();
 		return RestrictionCompiler.attach(standard, RestrictionCompiler.unary("group/whole-members", node, context,
 				arguments, name -> keys.contains(name) ? name : null,
-				(input, members) -> GroupIterator.withMembers(this, node, input, context, members)));
+				(input, members) -> GroupIterator.withMembers(this, node, input, context, members, reusable)));
 	}
 
 	protected QueryEvaluationStep prepare(Intersection node, QueryEvaluationContext context)
