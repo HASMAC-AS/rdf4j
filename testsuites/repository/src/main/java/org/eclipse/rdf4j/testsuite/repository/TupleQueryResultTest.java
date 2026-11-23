@@ -17,11 +17,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -231,15 +229,19 @@ public abstract class TupleQueryResultTest {
 		}
 		con.commit();
 
-		for (int evaluateCount = 0; evaluateCount < 1000; evaluateCount++) {
-			try (ByteArrayOutputStream stream = new ByteArrayOutputStream(191226);
-					RepositoryConnection nextCon = rep.getConnection()) {
-				TupleQueryResultWriter sparqlWriter = QueryResultIO.createTupleWriter(TupleQueryResultFormat.SPARQL,
-						stream);
-				TupleQuery tupleQuery = nextCon.prepareTupleQuery(QueryLanguage.SPARQL,
-						"SELECT ?s ?p ?o WHERE { ?s ?p ?o . }");
-				tupleQuery.setIncludeInferred(false);
-				tupleQuery.evaluate(sparqlWriter);
+		// The serialized bytes are not inspected. Reuse only the output buffer, not the writer,
+		// connection or prepared query, so every iteration still exercises the full streaming lifecycle.
+		try (ByteArrayOutputStream stream = new ByteArrayOutputStream(191226)) {
+			for (int evaluateCount = 0; evaluateCount < 1000; evaluateCount++) {
+				stream.reset();
+				try (RepositoryConnection nextCon = rep.getConnection()) {
+					TupleQueryResultWriter sparqlWriter = QueryResultIO.createTupleWriter(TupleQueryResultFormat.SPARQL,
+							stream);
+					TupleQuery tupleQuery = nextCon.prepareTupleQuery(QueryLanguage.SPARQL,
+							"SELECT ?s ?p ?o WHERE { ?s ?p ?o . }");
+					tupleQuery.setIncludeInferred(false);
+					tupleQuery.evaluate(sparqlWriter);
+				}
 			}
 		}
 	}
@@ -291,20 +293,32 @@ public abstract class TupleQueryResultTest {
 		con.add(RDF.TYPE, RDF.TYPE, RDF.PROPERTY);
 		con.commit();
 
-		for (int i = 0; i < 100; i++) {
-			try (RepositoryConnection repCon = rep.getConnection()) {
-				evaluateQueryWithoutClosing(repCon);
-				System.gc();
-				Thread.sleep(1);
-				while (unclosedQueryResults.stream().map(Reference::get).anyMatch(Objects::nonNull)) {
-					System.gc();
-					Thread.sleep(100);
-					assertTrue(stopWatch.getTime(TimeUnit.SECONDS) < 60, "Test timed out after 60 seconds");
+		// Keep the 100 independent connection/result lifecycles, but collect abandoned results
+		// in small batches instead of requesting a full GC for each individual connection.
+		for (int i = 0; i < 10; i++) {
+			collectAbandonedResults(10, stopWatch);
+			unclosedQueryResults.clear();
+		}
+	}
 
-				}
+	private void collectAbandonedResults(int remaining, StopWatch stopWatch) throws InterruptedException {
+		if (remaining == 0) {
+			System.gc();
+			Thread.sleep(1);
+			while (unclosedQueryResults.stream().anyMatch(reference -> !reference.refersTo(null))) {
+				System.gc();
+				Thread.sleep(100);
+				assertTrue(stopWatch.getTime(TimeUnit.SECONDS) < 60, "Test timed out after 60 seconds");
 			}
+			return;
 		}
 
+		// Keep every connection open until its unclosed result has been collected. Nested
+		// try-with-resources also closes every connection if an evaluation or assertion fails.
+		try (RepositoryConnection repCon = rep.getConnection()) {
+			evaluateQueryWithoutClosing(repCon);
+			collectAbandonedResults(remaining - 1, stopWatch);
+		}
 	}
 
 	private void evaluateQueryWithoutClosing(RepositoryConnection repCon) {
