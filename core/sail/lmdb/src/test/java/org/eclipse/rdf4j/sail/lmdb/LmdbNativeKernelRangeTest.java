@@ -98,6 +98,7 @@ class LmdbNativeKernelRangeTest {
 				.setDirectAdjacencyMaxBytes(1L << 30);
 		repository = new SailRepository(new LmdbStore(dataDir, config));
 		try (SailRepositoryConnection connection = repository.getConnection()) {
+			connection.begin();
 			ValueFactory vf = connection.getValueFactory();
 			IRI score = vf.createIRI(EX, "score");
 			IRI kind = vf.createIRI(EX, "kind");
@@ -114,6 +115,7 @@ class LmdbNativeKernelRangeTest {
 				connection.add(subject, observation, observed);
 				connection.add(observed, observationValue, vf.createLiteral(i));
 			}
+			connection.commit();
 		}
 	}
 

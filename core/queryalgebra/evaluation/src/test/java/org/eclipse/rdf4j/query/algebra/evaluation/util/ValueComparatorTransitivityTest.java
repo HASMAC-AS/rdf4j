@@ -410,10 +410,15 @@ public class ValueComparatorTransitivityTest {
 			ValueComparator cmp = new ValueComparator(policy);
 			cmp.setStrict(strict);
 
-			for (Value a : values) {
-				for (Value b : values) {
+			// Compare every directed pair here, then reuse the signs for every triple below.
+			int[][] comparisons = new int[values.size()][values.size()];
+			for (int aIndex = 0; aIndex < values.size(); aIndex++) {
+				Value a = values.get(aIndex);
+				for (int bIndex = 0; bIndex < values.size(); bIndex++) {
+					Value b = values.get(bIndex);
 					int ab = signum(cmp.compare(a, b));
 					int ba = signum(cmp.compare(b, a));
+					comparisons[aIndex][bIndex] = ab;
 					assertEquals(-ba, ab, () -> "antisymmetry violated (policy=" + policy + ", strict=" + strict
 							+ "): compare(" + label(a) + ", " + label(b) + ")=" + ab + " but compare(" + label(b)
 							+ ", " + label(a) + ")=" + ba);
@@ -425,12 +430,15 @@ public class ValueComparatorTransitivityTest {
 				}
 			}
 
-			for (Value a : values) {
-				for (Value b : values) {
-					int ab = signum(cmp.compare(a, b));
-					for (Value c : values) {
-						int bc = signum(cmp.compare(b, c));
-						int ac = signum(cmp.compare(a, c));
+			for (int aIndex = 0; aIndex < values.size(); aIndex++) {
+				Value a = values.get(aIndex);
+				for (int bIndex = 0; bIndex < values.size(); bIndex++) {
+					Value b = values.get(bIndex);
+					int ab = comparisons[aIndex][bIndex];
+					for (int cIndex = 0; cIndex < values.size(); cIndex++) {
+						Value c = values.get(cIndex);
+						int bc = comparisons[bIndex][cIndex];
+						int ac = comparisons[aIndex][cIndex];
 						if (ab < 0 && bc < 0) {
 							assertTrue(ac < 0, () -> "transitivity violated (policy=" + policy + ", strict=" + strict
 									+ "): " + label(a) + " < " + label(b) + " and " + label(b) + " < " + label(c)

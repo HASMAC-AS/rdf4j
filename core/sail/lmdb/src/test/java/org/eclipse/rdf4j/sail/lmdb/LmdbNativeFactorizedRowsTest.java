@@ -55,6 +55,7 @@ public class LmdbNativeFactorizedRowsTest {
 		repository = new SailRepository(new LmdbStore(dataDir,
 				new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			ValueFactory vf = conn.getValueFactory();
 			IRI p1 = vf.createIRI(EX, "p1");
 			IRI p2 = vf.createIRI(EX, "p2");
@@ -91,6 +92,7 @@ public class LmdbNativeFactorizedRowsTest {
 			conn.add(x1, p2, vf.createIRI(EX, "y1"));
 			conn.add(x1, p2, vf.createIRI(EX, "y2"));
 			conn.add(x2, p2, vf.createIRI(EX, "y1"));
+			conn.commit();
 		}
 	}
 

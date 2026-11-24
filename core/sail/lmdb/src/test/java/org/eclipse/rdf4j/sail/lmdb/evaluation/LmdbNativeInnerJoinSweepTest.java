@@ -57,6 +57,7 @@ class LmdbNativeInnerJoinSweepTest {
 		repository = new SailRepository(new LmdbStore(dataDir,
 				new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			ValueFactory vf = conn.getValueFactory();
 			IRI seed = vf.createIRI(EX, "seed");
 			IRI inner = vf.createIRI(EX, "inner");
@@ -77,6 +78,7 @@ class LmdbNativeInnerJoinSweepTest {
 			}
 			// Duplicate outer edge: outer0 carries a second seed binding to seedNode1 — bag multiplicity.
 			conn.add(vf.createIRI(EX, "outer0"), seed, vf.createIRI(EX, "seedNode1"));
+			conn.commit();
 		}
 		System.setProperty(NATIVE_FLAG, "true");
 	}

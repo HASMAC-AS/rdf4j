@@ -71,6 +71,7 @@ public class LmdbNativeFunctionLibraryDifferentialTest {
 		repository = new SailRepository(new LmdbStore(dataDir,
 				new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			ValueFactory vf = conn.getValueFactory();
 			IRI label = vf.createIRI(EX, "label");
 			IRI num = vf.createIRI(EX, "num");
@@ -108,6 +109,7 @@ public class LmdbNativeFunctionLibraryDifferentialTest {
 			conn.add(vf.createIRI(EX, "a2"), any, vf.createBNode("bn1"));
 			conn.add(vf.createIRI(EX, "a3"), any, vf.createLiteral("relative/path"));
 			conn.add(vf.createIRI(EX, "a4"), any, vf.createLiteral("http://example.org/abs"));
+			conn.commit();
 		}
 	}
 

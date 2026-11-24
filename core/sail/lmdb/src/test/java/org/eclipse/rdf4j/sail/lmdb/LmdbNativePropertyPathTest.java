@@ -117,6 +117,7 @@ public class LmdbNativePropertyPathTest {
 				.setNativeEvaluationEnabled(true)
 				.setDirectAdjacencyEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			ValueFactory vf = conn.getValueFactory();
 			IRI p = vf.createIRI(EX, "p");
 			IRI q = vf.createIRI(EX, "q");
@@ -145,6 +146,7 @@ public class LmdbNativePropertyPathTest {
 			conn.add(vf.createIRI(EX, "qOnlySubject"), q, vf.createIRI(EX, "qOnlyObject"));
 			// one p edge in a named graph (default dataset still sees it)
 			conn.add(e, p, vf.createIRI(EX, "inGraph"), vf.createIRI(EX, "g1"));
+			conn.commit();
 		}
 	}
 

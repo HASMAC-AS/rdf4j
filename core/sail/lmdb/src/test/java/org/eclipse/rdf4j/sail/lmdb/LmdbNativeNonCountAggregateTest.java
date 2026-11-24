@@ -55,6 +55,7 @@ public class LmdbNativeNonCountAggregateTest {
 		repository = new SailRepository(new LmdbStore(dataDir,
 				new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			ValueFactory vf = conn.getValueFactory();
 			IRI cat = vf.createIRI(EX, "cat");
 			IRI price = vf.createIRI(EX, "price");
@@ -96,6 +97,7 @@ public class LmdbNativeNonCountAggregateTest {
 			conn.add(vf.createIRI(EX, "item1"), link, vf.createIRI(EX, "n1"));
 			conn.add(vf.createIRI(EX, "item1"), link, vf.createIRI(EX, "n2"));
 			conn.add(vf.createIRI(EX, "item2"), link, vf.createIRI(EX, "n1"));
+			conn.commit();
 		}
 	}
 

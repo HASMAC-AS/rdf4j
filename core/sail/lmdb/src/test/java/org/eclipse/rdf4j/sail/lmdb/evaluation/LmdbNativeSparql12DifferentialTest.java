@@ -76,7 +76,9 @@ public class LmdbNativeSparql12DifferentialTest {
 		repository = new SailRepository(new LmdbStore(dataDir,
 				new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			loadFixture(conn);
+			conn.commit();
 		}
 	}
 

@@ -15,8 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.QueryEvaluationContext;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
@@ -60,12 +62,14 @@ public class HashJoinIterationFuzzTest {
 		for (int round = 0; round < 400; round++) {
 			List<BindingSet> left = randomRows(random, "l");
 			List<BindingSet> right = randomRows(random, "r");
+			List<Map<String, Value>> expectedInnerJoin = JoinTestSupport.referenceJoin(left, right, false);
+			List<Map<String, Value>> expectedLeftJoin = JoinTestSupport.referenceJoin(left, right, true);
 			for (String[] keys : KEY_SETS) {
 				for (boolean leftJoin : new boolean[] { false, true }) {
 					HashJoinIteration iteration = new HashJoinIteration(JoinTestSupport.step(left),
 							JoinTestSupport.step(right), EmptyBindingSet.getInstance(), leftJoin, keys,
 							new QueryEvaluationContext.Minimal(null));
-					assertEquals(JoinTestSupport.referenceJoin(left, right, leftJoin), JoinTestSupport.drain(iteration),
+					assertEquals(leftJoin ? expectedLeftJoin : expectedInnerJoin, JoinTestSupport.drain(iteration),
 							"round " + round + " keys " + String.join(",", keys) + " leftJoin=" + leftJoin);
 				}
 			}
@@ -78,11 +82,12 @@ public class HashJoinIterationFuzzTest {
 		for (int round = 0; round < 400; round++) {
 			List<BindingSet> left = randomRows(random, "l");
 			List<BindingSet> right = randomRows(random, "r");
+			List<Map<String, Value>> expected = JoinTestSupport.referenceJoin(left, right, true);
 			for (String[] keys : KEY_SETS) {
 				ScopedLeftJoinIterator iteration = new ScopedLeftJoinIterator(JoinTestSupport.step(left),
 						JoinTestSupport.step(right), null, EmptyBindingSet.getInstance(),
 						new QueryEvaluationContext.Minimal(null), keys);
-				assertEquals(JoinTestSupport.referenceJoin(left, right, true), JoinTestSupport.drain(iteration),
+				assertEquals(expected, JoinTestSupport.drain(iteration),
 						"round " + round + " keys " + String.join(",", keys));
 			}
 		}

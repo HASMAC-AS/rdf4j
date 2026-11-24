@@ -60,6 +60,7 @@ public class LmdbNativeExpressionSemanticsDivergenceTest {
 		repository = new SailRepository(new LmdbStore(dataDir,
 				new LmdbStoreConfig("spoc,posc,ospc").setNativeEvaluationEnabled(true)));
 		try (SailRepositoryConnection conn = repository.getConnection()) {
+			conn.begin();
 			ValueFactory vf = conn.getValueFactory();
 			IRI label = vf.createIRI(EX, "label");
 			IRI name = vf.createIRI(EX, "name");
@@ -137,6 +138,7 @@ public class LmdbNativeExpressionSemanticsDivergenceTest {
 					vf.createLiteral("\uD83D\uDE00", "en"));
 			conn.add(vf.createIRI(EX, "codepointTyped"), codePointString,
 					vf.createLiteral("\uD83D\uDE00", XSD.STRING));
+			conn.commit();
 		}
 	}
 
