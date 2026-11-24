@@ -3354,7 +3354,7 @@ public class LmdbStoreConnection extends SailSourceConnection implements SailRes
 		private final OperationReadAttempt operationAttempt;
 		private LmdbSailStore.ReadAttemptLease admissionAttempt;
 		private final Set<LmdbSailStore.ReadViewLease> readViews = Collections
-				.newSetFromMap(new IdentityHashMap<>());
+				.newSetFromMap(new IdentityHashMap<>(1));
 		private volatile LmdbSailStore.MapGrowthToken growthToken;
 		private LmdbSailStore.MapResizeKind growthKind;
 		private QueryExecutionContext.Activation replaySafepoint;
