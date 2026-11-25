@@ -146,10 +146,10 @@ class GraphPatternOptimizerTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "?g", "<urn:g1>" })
-	void factorsOptionalWithSelectorFreeBodies(String selector) {
+	void optionalKeepsGraphBoundariesWithSelectorFreeBodies(String selector) {
 		TupleExpr plan = equivalent("GRAPH " + selector + " { ?s <urn:p> ?o } "
 				+ "OPTIONAL { GRAPH " + selector + " { ?s <urn:q> ?v } }");
-		assertThat(nodes(plan, Graph.class)).hasSize(1);
+		assertThat(nodes(plan, Graph.class)).hasSize(2);
 		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), new CatalogSource()))
 				.hasSize(selector.equals("?g") ? 4 : 2);
 	}
@@ -157,7 +157,7 @@ class GraphPatternOptimizerTest {
 	@TestFactory
 	Stream<DynamicTest> optionalConditionsRetainTheirBindingAndActiveGraphScopes() {
 		return Stream.of(
-				new OptionalExample("?v > 15", 1, List.of(VF.createLiteral(30), VF.createLiteral(40))),
+				new OptionalExample("?v > 15", 2, List.of(VF.createLiteral(30), VF.createLiteral(40))),
 				new OptionalExample("?g = <urn:g1>", 2, List.of(VF.createLiteral(10))),
 				new OptionalExample("EXISTS { ?s <urn:q> <urn:default-only> }", 2,
 						List.of(VF.createLiteral(10), VF.createLiteral(30), VF.createLiteral(40))))
@@ -177,10 +177,10 @@ class GraphPatternOptimizerTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "?g", "<urn:g1>" })
-	void factorsMinusWithAnAssuredSharedKey(String selector) {
+	void minusKeepsGraphBoundariesWithAnAssuredSharedKey(String selector) {
 		TupleExpr plan = equivalent("GRAPH " + selector + " { ?s <urn:p> ?o } "
 				+ "MINUS { GRAPH " + selector + " { ?s <urn:q> ?v } }");
-		assertThat(nodes(plan, Graph.class)).hasSize(1);
+		assertThat(nodes(plan, Graph.class)).hasSize(2);
 		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), new CatalogSource()))
 				.hasSize(1);
 	}

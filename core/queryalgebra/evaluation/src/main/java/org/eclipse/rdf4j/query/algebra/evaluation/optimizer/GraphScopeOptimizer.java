@@ -28,6 +28,7 @@ import org.eclipse.rdf4j.query.QueryExecutionPolicy.GraphJoinOptimization;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Graph;
 import org.eclipse.rdf4j.query.algebra.Join;
+import org.eclipse.rdf4j.query.algebra.LeftJoin;
 import org.eclipse.rdf4j.query.algebra.QueryModelNode;
 import org.eclipse.rdf4j.query.algebra.Service;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
@@ -161,7 +162,10 @@ public class GraphScopeOptimizer implements QueryOptimizer {
 											: GraphScopeOptimizer::sharesBindingName);
 					// A body consisting entirely of magic call syntax has no statement to execute in a named graph.
 					// Keep its existing constant-graph lowering irrespective of the physical join policy.
-					if (retainForRestriction && !onlyMagicStatements(graph.getArg(), magicStatements())) {
+					// Otherwise OPTIONAL needs the GRAPH boundary even when no restricted join is selected: a later
+					// UNION scope pass can erase flags on lowered statements and expose OPTIONAL-left bindings.
+					if ((retainForRestriction || hasOptionalAncestor(graph))
+							&& !onlyMagicStatements(graph.getArg(), magicStatements())) {
 						return;
 					}
 					if (!logical.beforeGraphRemoval(graph)) {
@@ -177,6 +181,17 @@ public class GraphScopeOptimizer implements QueryOptimizer {
 			}
 		});
 		logical.finish();
+	}
+
+	private static boolean hasOptionalAncestor(Graph graph) {
+		QueryModelNode branch = graph;
+		while (branch.getParentNode() instanceof TupleExpr parent && !(parent instanceof Service)) {
+			if (parent instanceof LeftJoin) {
+				return true;
+			}
+			branch = parent;
+		}
+		return false;
 	}
 
 	private static boolean onlyMagicStatements(TupleExpr expression, Set<StatementPattern> consumed) {
@@ -209,7 +224,7 @@ public class GraphScopeOptimizer implements QueryOptimizer {
 		return isPositiveGraphPattern(expression, graphName, false);
 	}
 
-	private static boolean isSelectorFreeValues(BindingSetAssignment values, String selector) {
+	static boolean isSelectorFreeValues(BindingSetAssignment values, String selector) {
 		if (!values.hasRepeatableBindingSets() || values.getDeclaredBindingNames().contains(selector)) {
 			return false;
 		}
