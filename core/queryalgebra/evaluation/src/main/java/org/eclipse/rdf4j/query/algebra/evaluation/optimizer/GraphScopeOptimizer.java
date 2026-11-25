@@ -42,9 +42,10 @@ import org.eclipse.rdf4j.query.algebra.helpers.QueryAlgebraBindingAnalysis;
 import org.eclipse.rdf4j.query.impl.RemoteBNode;
 
 /**
- * Exposes a positive basic graph pattern in one known named graph to ordinary statement and join optimization.
- * Arbitrary graph bodies retain their scope boundary. Run after assigning original query bindings and before join
- * selection, so selected statement nodes also remain the nodes reported by executed explanations.
+ * Normalizes compatible GRAPH selections, then exposes positive basic graph patterns in a known named graph to ordinary
+ * statement and join optimization. Arbitrary graph bodies retain their scope boundary. Run after assigning original
+ * query bindings and before join selection, so selected statement nodes also remain the nodes reported by executed
+ * explanations.
  */
 public class GraphScopeOptimizer implements QueryOptimizer {
 
@@ -120,6 +121,7 @@ public class GraphScopeOptimizer implements QueryOptimizer {
 
 	@Override
 	public void optimize(TupleExpr tupleExpr, Dataset dataset, BindingSet bindings) {
+		GraphPatternOptimizer logical = GraphPatternOptimizer.optimize(tupleExpr, dataset);
 		QueryAlgebraBindingAnalysis analysis = QueryAlgebraBindingAnalysis.withBindingValues(tupleExpr, bindings);
 		tupleExpr.visit(new AbstractQueryModelVisitor<RuntimeException>() {
 			private Set<StatementPattern> magicStatements;
@@ -162,6 +164,9 @@ public class GraphScopeOptimizer implements QueryOptimizer {
 					if (retainForRestriction && !onlyMagicStatements(graph.getArg(), magicStatements())) {
 						return;
 					}
+					if (!logical.beforeGraphRemoval(graph)) {
+						return;
+					}
 					TupleExpr lowered = lowerBasicGraphPattern(graph.getArg(), graph.getGraphName());
 					// GRAPH receives invocation input, not bindings produced by an ordinary join sibling. Keep that
 					// boundary when the physical context lookup replaces its active-graph evaluator.
@@ -171,6 +176,7 @@ public class GraphScopeOptimizer implements QueryOptimizer {
 				}
 			}
 		});
+		logical.finish();
 	}
 
 	private static boolean onlyMagicStatements(TupleExpr expression, Set<StatementPattern> consumed) {

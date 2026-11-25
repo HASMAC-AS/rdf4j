@@ -422,9 +422,8 @@ class GraphScopeOptimizerTest {
 
 		strategy.optimize(plan, new EvaluationStatistics(), bindings);
 
-		assertThat(graphs(plan)).singleElement().satisfies(graph -> {
-			assertThat(graph.getGraphName().getValue()).isEqualTo(TARGET_GRAPH);
-		});
+		// The effective read dataset excludes every named graph, including the captured API selector.
+		assertThat(graphs(plan)).isEmpty();
 		assertThat(evaluate(strategy, plan, EmptyBindingSet.getInstance())).isEmpty();
 		assertThat(source.contextEnumerations).isZero();
 	}
@@ -543,7 +542,7 @@ class GraphScopeOptimizerTest {
 	@Test
 	void arbitraryBodiesAndRemoteGraphRetainTheirBoundaries() {
 		for (String graphName : List.of("?g", "<urn:g>")) {
-			for (String body : List.of("", "VALUES ?o { 1 }", "?s <urn:p> ?o FILTER(BOUND(?g))",
+			for (String body : List.of("", "VALUES ?o { 1 }", "?s <urn:p> ?o FILTER EXISTS { ?s <urn:q> ?v }",
 					"OPTIONAL { ?s <urn:p> ?o }", "{ SELECT ?o WHERE { ?s <urn:p> ?o } }")) {
 				DefaultEvaluationStrategy strategy = new DefaultEvaluationStrategy(new EmptyTripleSource(), null);
 				TupleExpr plan = parse("SELECT * WHERE { GRAPH " + graphName + " { " + body + " } }");
