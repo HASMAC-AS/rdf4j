@@ -14,27 +14,55 @@ package org.eclipse.rdf4j.query.algebra.evaluation.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
+import org.eclipse.rdf4j.model.IRI;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.model.vocabulary.RDF4J;
+import org.eclipse.rdf4j.model.vocabulary.SESAME;
+import org.eclipse.rdf4j.model.vocabulary.XSD;
+import org.eclipse.rdf4j.query.BindingSet;
 import org.eclipse.rdf4j.query.QueryExecutionPolicy;
 import org.eclipse.rdf4j.query.QueryExecutionPolicy.GraphJoinOptimization;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.QueryParseOptions;
 import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
+import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Filter;
 import org.eclipse.rdf4j.query.algebra.Graph;
 import org.eclipse.rdf4j.query.algebra.QueryRoot;
 import org.eclipse.rdf4j.query.algebra.StatementPattern;
 import org.eclipse.rdf4j.query.algebra.TupleExpr;
+import org.eclipse.rdf4j.query.algebra.ValueExpr;
+import org.eclipse.rdf4j.query.algebra.Var;
+import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.GraphScopeOptimizer;
 import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.ParentReferenceChecker;
 import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
+import org.eclipse.rdf4j.query.impl.ListBindingSet;
+import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.parser.QueryParserUtil;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GraphPatternFilterOptimizerTest {
+
+	private static final SimpleValueFactory VF = SimpleValueFactory.getInstance();
+	private static final IRI G1 = VF.createIRI("urn:g1");
+	private static final IRI G2 = VF.createIRI("urn:g2");
+	private static final IRI P = VF.createIRI("urn:p");
+	private static final QueryExecutionPolicy POLICY = QueryExecutionPolicy.DEFAULT
+			.withGraphJoinOptimization(GraphJoinOptimization.FORCE_INDEPENDENT);
 
 	@Test
 	void equalityRestrictsOnlyTheSelectorOccurrence() {
@@ -77,6 +105,316 @@ class GraphPatternFilterOptimizerTest {
 		});
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"?g IN (<urn:g1>)",
+			"?g IN (<urn:g1>, <urn:g1>)",
+			"(?g = <urn:g1> || sameTerm(<urn:g1>, ?g))",
+			"(?g IN (<urn:g1>, <urn:g2>)) && (?g IN (<urn:g1>, <urn:g3>))"
+	})
+	void finiteSelectorDomainRestrictsOnlyOneGraph(String condition) {
+		TupleExpr original = parse("SELECT * { GRAPH ?g { ?s <urn:p> ?o } FILTER(" + condition + ") }");
+		ValueExpr originalCondition = filters(original).getFirst().getCondition().clone();
+		TupleExpr optimized = original.clone();
+		CatalogSource before = new CatalogSource();
+		CatalogSource after = new CatalogSource();
+		List<BindingSet> expected = evaluate(original, EmptyBindingSet.getInstance(), before);
+
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement().satisfies(graph -> {
+			assertThat(graph.getGraphName().getValue()).isEqualTo(G1);
+			assertThat(graph.getGraphName().isConstant()).isFalse();
+			assertThat(graph.getParentNode()).isInstanceOf(Filter.class);
+		});
+		assertThat(filters(optimized)).singleElement()
+				.satisfies(filter -> assertThat(filter.getCondition()).isEqualTo(originalCondition));
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), after))
+				.containsExactlyInAnyOrderElementsOf(expected)
+				.hasSize(2);
+		assertThat(before.statementReads).isEqualTo(4);
+		assertThat(after.statementReads).isEqualTo(1);
+	}
+
+	@Test
+	void duplicateSelectorCandidatesDoNotMultiplyDuplicateRows() {
+		TupleExpr original = parse("SELECT * { GRAPH ?g { VALUES ?n { 1 1 } } "
+				+ "FILTER(?g IN (<urn:g1>, <urn:g1>)) }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement()
+				.satisfies(graph -> assertThat(graph.getGraphName().getValue()).isEqualTo(G1));
+		ListBindingSet expectedRow = new ListBindingSet(List.of("g", "n"), G1, integer(1));
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.containsExactlyInAnyOrder(expectedRow, expectedRow)
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"(?g IN (<urn:g1>, <urn:g2>)) && (?g IN (<urn:g3>, <urn:g4>))",
+			"(?g = <urn:g1>) && (?g IN (<urn:g2>, <urn:g3>))",
+			"?g IN ()"
+	})
+	void emptySelectorDomainKeepsDeclarationsAndFilterWithoutReadingGraphs(String condition) {
+		TupleExpr original = parse("SELECT * { GRAPH ?g { ?s <urn:p> ?o } FILTER(" + condition + ") }");
+		Set<String> declarations = graphs(original).getFirst().getBindingNames();
+		ValueExpr originalCondition = filters(original).getFirst().getCondition().clone();
+		TupleExpr optimized = original.clone();
+		CatalogSource before = new CatalogSource();
+		CatalogSource after = new CatalogSource();
+		assertThat(evaluate(original, EmptyBindingSet.getInstance(), before)).isEmpty();
+
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).isEmpty();
+		assertThat(filters(optimized)).singleElement().satisfies(filter -> {
+			assertThat(filter.getCondition()).isEqualTo(originalCondition);
+			assertThat(filter.getArg()).isInstanceOf(BindingSetAssignment.class);
+			BindingSetAssignment empty = (BindingSetAssignment) filter.getArg();
+			assertThat(empty.getDeclaredBindingNames()).containsExactlyInAnyOrderElementsOf(declarations);
+			assertThat(empty.getPossibleBindingNames()).isEmpty();
+			assertThat(empty.getBindingSets()).isEmpty();
+		});
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), after)).isEmpty();
+		assertThat(before.contextEnumerations).isEqualTo(1);
+		assertThat(before.statementReads).isEqualTo(4);
+		assertThat(after.contextEnumerations).isZero();
+		assertThat(after.statementReads).isZero();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"?g IN (<urn:g1>, <urn:g2>)",
+			"(?g = <urn:g1> || ?o = 3)",
+			"?g IN (<urn:g1>, \"urn:g1\")",
+			"?g IN (<urn:g1>, ?candidate)",
+			"?g NOT IN (<urn:g1>)"
+	})
+	void incompleteOrMultipleSelectorDomainsRemainUnchanged(String condition) {
+		TupleExpr original = parse("SELECT * { GRAPH ?g { VALUES ?candidate { <urn:g2> } ?s <urn:p> ?o } "
+				+ "FILTER(" + condition + ") }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement()
+				.satisfies(graph -> assertThat(graph.getGraphName().hasValue()).isFalse());
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
+	@Test
+	void oversizedSelectorDomainsFallBackWithoutTruncatingCandidates() {
+		List<String> candidates = new ArrayList<>();
+		candidates.add("<urn:g1>");
+		for (int i = 0; i < 65; i++) {
+			candidates.add("<urn:overflow-" + i + ">");
+		}
+		candidates.add("<urn:g2>");
+		String membership = "?g IN (" + String.join(", ", candidates) + ")";
+		String disjunction = String.join(" || ", candidates.stream().map(iri -> "?g = " + iri).toList());
+		for (String condition : List.of(membership, disjunction)) {
+			TupleExpr original = parse("SELECT * { GRAPH ?g { ?s <urn:p> ?o } FILTER(" + condition + ") }");
+			TupleExpr optimized = original.clone();
+			optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+			assertThat(graphs(optimized)).singleElement()
+					.satisfies(graph -> assertThat(graph.getGraphName().hasValue()).isFalse());
+			assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+					.hasSize(3)
+					.containsExactlyInAnyOrderElementsOf(
+							evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+		}
+
+		TupleExpr constrained = parse("SELECT * { GRAPH ?g { ?s <urn:p> ?o } FILTER((" + membership
+				+ ") && ?g = <urn:g1>) }");
+		TupleExpr constrainedOriginal = constrained.clone();
+		optimize(constrained, GraphJoinOptimization.FORCE_INDEPENDENT);
+		assertThat(graphs(constrained)).singleElement()
+				.satisfies(graph -> assertThat(graph.getGraphName().getValue()).isEqualTo(G1));
+		assertThat(evaluate(constrained, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.hasSize(2)
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(constrainedOriginal, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
+	@Test
+	void selectorListsDoNotChangeDefaultGraphAliasSelection() {
+		for (IRI alias : List.of(RDF4J.NIL, SESAME.NIL)) {
+			TupleExpr original = parse("SELECT * { GRAPH ?g { ?s <urn:p> ?o } FILTER(?g IN (<" + alias + ">)) }");
+			TupleExpr optimized = original.clone();
+			optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+			assertThat(graphs(optimized)).singleElement()
+					.satisfies(graph -> assertThat(graph.getGraphName().hasValue()).isFalse());
+			assertThat(evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource())).isEmpty();
+			assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource())).isEmpty();
+		}
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "?g IN (<urn:g1>)", "(?g IN (<urn:g1>)) && (?g IN (<urn:g2>))" })
+	void selectorDomainCannotReadANameExcludedByTheFilterScope(String condition) {
+		TupleExpr original = parse("SELECT * { GRAPH ?g { ?s <urn:p> ?o } FILTER(" + condition + ") }");
+		filters(original).getFirst().setConditionBindingScope(Filter.ConditionBindingScope.retain(Set.of("s", "o")));
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement()
+				.satisfies(graph -> assertThat(graph.getGraphName().hasValue()).isFalse());
+		assertThat(evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource())).isEmpty();
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource())).isEmpty();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "?g IN (<urn:g1>)", "(?g IN (<urn:g1>)) && (?g IN (<urn:g2>))" })
+	void selectorDomainDoesNotSkipVolatileBodies(String condition) {
+		TupleExpr original = parse("SELECT ?g { GRAPH ?g { BIND(RAND() AS ?random) } FILTER(" + condition + ") }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement()
+				.satisfies(graph -> assertThat(graph.getGraphName().hasValue()).isFalse());
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
+	@Test
+	void selectorListHintPreservesBodyVisibilityAndInvocationCompatibility() {
+		TupleExpr original = parse("SELECT ?g ?seen { GRAPH ?g { BIND(BOUND(?g) AS ?seen) } "
+				+ "FILTER(?g IN (<urn:g1>, <urn:g1>)) }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement().satisfies(graph -> {
+			assertThat(graph.getGraphName().getValue()).isEqualTo(G1);
+			assertThat(graph.getGraphName().isConstant()).isFalse();
+			assertThat(graph.getArg().toString()).doesNotContain("value=urn:g1");
+		});
+		for (BindingSet input : List.of(EmptyBindingSet.getInstance(), binding("g", G1), binding("g", G2),
+				binding("g", VF.createLiteral("not a graph")))) {
+			assertThat(evaluate(optimized, input, new CatalogSource()))
+					.containsExactlyInAnyOrderElementsOf(evaluate(original, input, new CatalogSource()));
+		}
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.containsExactly(new ListBindingSet(List.of("g", "seen"), G1, VF.createLiteral(false)));
+		assertThat(evaluate(optimized, binding("g", G1), new CatalogSource()))
+				.containsExactly(new ListBindingSet(List.of("g", "seen"), G1, VF.createLiteral(true)));
+		assertThat(evaluate(optimized, binding("g", G2), new CatalogSource())).isEmpty();
+	}
+
+	@Test
+	void emptySelectorDomainDoesNotBypassTheOptionalTraversalBarrier() {
+		TupleExpr original = parse("SELECT ?outside ?leak { VALUES ?outside { 1 } OPTIONAL { "
+				+ "{ GRAPH ?g { VALUES ?x { 1 } } FILTER(?g IN (<urn:g1>) && ?g IN (<urn:g2>)) } "
+				+ "UNION { BIND(?outside AS ?leak) } } }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).singleElement()
+				.satisfies(graph -> assertThat(graph.getGraphName().hasValue()).isFalse());
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.containsExactly(new ListBindingSet(List.of("outside"), integer(1)))
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "?g", "<urn:g1>", "<urn:missing>" })
+	void emptyValuesBodyNeedsNoGraphSelection(String selector) {
+		TupleExpr original = parse("SELECT * { GRAPH " + selector + " { VALUES (?x ?unbound) {} } }");
+		Set<String> declarations = graphs(original).getFirst().getBindingNames();
+		TupleExpr optimized = original.clone();
+		CatalogSource before = new CatalogSource();
+		CatalogSource after = new CatalogSource();
+		assertThat(evaluate(original, EmptyBindingSet.getInstance(), before)).isEmpty();
+
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).isEmpty();
+		assertThat(assignments(optimized)).singleElement().satisfies(empty -> {
+			assertThat(empty.getDeclaredBindingNames()).containsExactlyInAnyOrderElementsOf(declarations);
+			assertThat(empty.getBindingSets()).isEmpty();
+		});
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), after)).isEmpty();
+		assertThat(before.contextEnumerations).isEqualTo(1);
+		assertThat(before.statementReads).isZero();
+		assertThat(after.contextEnumerations).isZero();
+		assertThat(after.statementReads).isZero();
+	}
+
+	@Test
+	void emptyValuesFoldingKeepsAnEnclosingUnionInvocationFrame() {
+		TupleExpr original = parse("SELECT ?outside ?seen { VALUES ?outside { 1 } "
+				+ "{ { GRAPH ?g { VALUES ?x {} } } UNION { BIND(BOUND(?outside) AS ?seen) } } }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).isEmpty();
+		ListBindingSet expected = new ListBindingSet(List.of("outside", "seen"), integer(1), VF.createLiteral(false));
+		assertThat(evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource())).containsExactly(expected);
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource())).containsExactly(expected);
+		assertThat(evaluate(original.clone(), EmptyBindingSet.getInstance(), new CatalogSource(), true))
+				.containsExactly(expected);
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = { 1, 2 })
+	void undefValuesRowsAreNotAnEmptyTable(int copies) {
+		TupleExpr original = parse("SELECT ?g { GRAPH ?g { VALUES ?x { " + "UNDEF ".repeat(copies) + "} } }");
+		TupleExpr optimized = original.clone();
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).hasSize(1);
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.hasSize(4 * copies)
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
+	@Test
+	void emptyValuesCheckDoesNotConsumeAnOpaqueSource() {
+		AtomicInteger iteratorOpens = new AtomicInteger();
+		BindingSetAssignment values = new BindingSetAssignment();
+		values.setDeclaredBindingNames(Set.of("x"));
+		values.setBindingSets(() -> {
+			iteratorOpens.incrementAndGet();
+			return List.<BindingSet>of().iterator();
+		});
+		TupleExpr plan = new QueryRoot(new Graph(Var.of("g"), values));
+
+		optimize(plan, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(iteratorOpens).hasValue(0);
+		assertThat(graphs(plan)).hasSize(1);
+		assertThat(evaluate(plan, EmptyBindingSet.getInstance(), new CatalogSource())).isEmpty();
+		assertThat(iteratorOpens.get()).isPositive();
+	}
+
+	@Test
+	void emptyValuesCheckInspectsCurrentRowsRatherThanCachedPossibleNames() {
+		List<BindingSet> rows = new ArrayList<>();
+		BindingSetAssignment values = new BindingSetAssignment();
+		values.setDeclaredBindingNames(Set.of("x"));
+		values.setBindingSets(rows);
+		assertThat(values.getPossibleBindingNames()).isEmpty();
+		rows.add(new ListBindingSet(List.of("x"), integer(1)));
+		TupleExpr original = new QueryRoot(new Graph(Var.of("g"), values));
+		TupleExpr optimized = original.clone();
+
+		optimize(optimized, GraphJoinOptimization.FORCE_INDEPENDENT);
+
+		assertThat(graphs(optimized)).hasSize(1);
+		assertThat(evaluate(optimized, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.hasSize(4)
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, EmptyBindingSet.getInstance(), new CatalogSource()));
+	}
+
 	private static TupleExpr parse(String sparql) {
 		return new QueryRoot(QueryParserUtil.parseTupleQuery(QueryLanguage.SPARQL, sparql, null,
 				QueryParseOptions.DEFAULT.withGraphAlgebraMode(GraphAlgebraMode.GRAPH)).getTupleExpr());
@@ -99,5 +437,95 @@ class GraphPatternFilterOptimizerTest {
 			}
 		});
 		return graphs;
+	}
+
+	private static List<Filter> filters(TupleExpr plan) {
+		List<Filter> filters = new ArrayList<>();
+		plan.visit(new AbstractQueryModelVisitor<RuntimeException>() {
+			@Override
+			public void meet(Filter filter) {
+				filters.add(filter);
+				super.meet(filter);
+			}
+		});
+		return filters;
+	}
+
+	private static List<BindingSetAssignment> assignments(TupleExpr plan) {
+		List<BindingSetAssignment> assignments = new ArrayList<>();
+		plan.visit(new AbstractQueryModelVisitor<RuntimeException>() {
+			@Override
+			public void meet(BindingSetAssignment assignment) {
+				assignments.add(assignment);
+			}
+		});
+		return assignments;
+	}
+
+	private static List<BindingSet> evaluate(TupleExpr plan, BindingSet input, CatalogSource source) {
+		return evaluate(plan, input, source, false);
+	}
+
+	private static List<BindingSet> evaluate(TupleExpr plan, BindingSet input, CatalogSource source, boolean pipeline) {
+		DefaultEvaluationStrategy strategy = new DefaultEvaluationStrategy(source, null, null);
+		strategy.setQueryExecutionPolicy(POLICY);
+		if (pipeline) {
+			strategy.optimize(plan, new EvaluationStatistics(), input);
+		}
+		List<BindingSet> rows = new ArrayList<>();
+		try (CloseableIteration<BindingSet> result = strategy.precompile(plan).evaluate(input)) {
+			while (result.hasNext()) {
+				rows.add(result.next());
+			}
+		}
+		return rows;
+	}
+
+	private static MapBindingSet binding(String name, Value value) {
+		MapBindingSet input = new MapBindingSet();
+		input.addBinding(name, value);
+		return input;
+	}
+
+	private static Value integer(int value) {
+		return VF.createLiteral(Integer.toString(value), XSD.INTEGER);
+	}
+
+	/** Graph existence is separate from statements, including the empty named graph. */
+	private static final class CatalogSource implements TripleSource {
+		private static final Resource BLANK_GRAPH = VF.createBNode("finite-selector-blank");
+		private final List<Resource> names = List.of(G1, G2, VF.createIRI("urn:empty"), BLANK_GRAPH);
+		private final List<Statement> statements = List.of(
+				VF.createStatement(VF.createIRI("urn:default"), P, integer(99)),
+				VF.createStatement(VF.createIRI("urn:one"), P, integer(1), G1),
+				VF.createStatement(VF.createIRI("urn:two"), P, integer(2), G1),
+				VF.createStatement(VF.createIRI("urn:three"), P, integer(3), G2),
+				VF.createStatement(VF.createIRI("urn:four"), P, integer(4), BLANK_GRAPH));
+		private int contextEnumerations;
+		private int statementReads;
+
+		@Override
+		public CloseableIteration<? extends Resource> getContextIDs() {
+			contextEnumerations++;
+			return new CloseableIteratorIteration<>(names.iterator());
+		}
+
+		@Override
+		public CloseableIteration<? extends Statement> getStatements(Resource subject, IRI predicate, Value object,
+				Resource... contexts) {
+			statementReads++;
+			List<Statement> selected = statements.stream()
+					.filter(statement -> (subject == null || subject.equals(statement.getSubject()))
+							&& (predicate == null || predicate.equals(statement.getPredicate()))
+							&& (object == null || object.equals(statement.getObject()))
+							&& (contexts.length == 0 || Arrays.asList(contexts).contains(statement.getContext())))
+					.toList();
+			return new CloseableIteratorIteration<>(selected.iterator());
+		}
+
+		@Override
+		public SimpleValueFactory getValueFactory() {
+			return VF;
+		}
 	}
 }

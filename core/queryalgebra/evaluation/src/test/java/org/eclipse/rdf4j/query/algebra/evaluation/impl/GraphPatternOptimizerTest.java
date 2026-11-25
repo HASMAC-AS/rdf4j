@@ -42,6 +42,7 @@ import org.eclipse.rdf4j.query.QueryParseOptions.GraphAlgebraMode;
 import org.eclipse.rdf4j.query.algebra.BindingSetAssignment;
 import org.eclipse.rdf4j.query.algebra.Bound;
 import org.eclipse.rdf4j.query.algebra.EmptySet;
+import org.eclipse.rdf4j.query.algebra.Exists;
 import org.eclipse.rdf4j.query.algebra.Extension;
 import org.eclipse.rdf4j.query.algebra.ExtensionElem;
 import org.eclipse.rdf4j.query.algebra.Filter;
@@ -65,6 +66,7 @@ import org.eclipse.rdf4j.query.algebra.evaluation.optimizer.ParentReferenceCheck
 import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor;
 import org.eclipse.rdf4j.query.impl.BlankNodeAllocationScope;
 import org.eclipse.rdf4j.query.impl.EmptyBindingSet;
+import org.eclipse.rdf4j.query.impl.ListBindingSet;
 import org.eclipse.rdf4j.query.impl.MapBindingSet;
 import org.eclipse.rdf4j.query.impl.RemoteBNode;
 import org.eclipse.rdf4j.query.impl.SimpleDataset;
@@ -107,23 +109,169 @@ class GraphPatternOptimizerTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "?g", "<urn:g1>" })
-	void factorsSameSelectorJoins(String selector) {
+	void factorsSameSelectorJoinsWithSharedPredicate(String selector) {
+		TupleExpr plan = equivalent("GRAPH " + selector + " { ?s ?p ?o } "
+				+ "GRAPH " + selector + " { ?t ?p ?v }");
+		assertThat(nodes(plan, Graph.class)).hasSize(1);
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.hasSize(selector.equals("?g") ? 9 : 5);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "?g", "<urn:g1>" })
+	void sameSelectorJoinsKeepUnprovedSharedSubjectBoundaries(String selector) {
 		TupleExpr plan = equivalent("GRAPH " + selector + " { ?s <urn:p> ?o } "
 				+ "GRAPH " + selector + " { ?s <urn:q> ?v }");
-		assertThat(nodes(plan, Graph.class)).hasSize(1);
+		assertThat(nodes(plan, Graph.class)).hasSize(2);
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.hasSize(selector.equals("?g") ? 3 : 1);
 	}
 
 	@Test
 	void joinsSelectTheGraphOnlyOnce() {
-		TupleExpr original = parse("GRAPH ?g { ?s <urn:p> ?o } GRAPH ?g { ?s <urn:q> ?v }");
+		TupleExpr original = parse("GRAPH ?g { ?s ?p ?o } GRAPH ?g { ?t ?p ?v }");
 		TupleExpr optimized = optimize(original.clone(), null, EmptyBindingSet.getInstance());
 		CatalogSource before = new CatalogSource();
 		CatalogSource after = new CatalogSource();
 		List<BindingSet> expected = evaluate(original, null, EmptyBindingSet.getInstance(), before);
 		assertThat(evaluate(optimized, null, EmptyBindingSet.getInstance(), after))
 				.containsExactlyInAnyOrderElementsOf(expected)
-				.hasSize(3);
+				.hasSize(9);
 		assertThat(after.contextEnumerations).isEqualTo(1).isLessThan(before.contextEnumerations);
+	}
+
+	@Test
+	void predicateKeyGraphChainSelectsTheGraphOnlyOnce() {
+		TupleExpr original = parse("GRAPH ?g { ?s ?p ?o } GRAPH ?g { ?t ?p ?v } "
+				+ "GRAPH ?g { ?u ?p ?w }");
+		TupleExpr optimized = optimize(original.clone(), null, EmptyBindingSet.getInstance());
+		assertThat(nodes(optimized, Graph.class)).hasSize(1);
+		String firstPass = optimized.toString();
+		optimize(optimized, null, EmptyBindingSet.getInstance());
+		assertThat(optimized.toString()).isEqualTo(firstPass);
+		CatalogSource before = new CatalogSource();
+		CatalogSource after = new CatalogSource();
+		List<BindingSet> expected = evaluate(original, null, EmptyBindingSet.getInstance(), before);
+		assertThat(evaluate(optimized, null, EmptyBindingSet.getInstance(), after))
+				.containsExactlyInAnyOrderElementsOf(expected)
+				.hasSize(13);
+		assertThat(before.contextEnumerations).isEqualTo(3);
+		assertThat(after.contextEnumerations).isEqualTo(1);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "1", "<urn:key>" })
+	void factorsSameSelectorJoinsWithFiniteScalarValues(String term) {
+		TupleExpr plan = equivalent("GRAPH ?g { VALUES ?key { " + term + " " + term + " } } "
+				+ "GRAPH ?g { VALUES ?key { " + term + " UNDEF } }");
+		assertThat(nodes(plan, Graph.class)).hasSize(1);
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), new CatalogSource())).hasSize(16)
+				.allSatisfy(row -> assertThat(row.hasBinding("key")).isTrue());
+	}
+
+	@Test
+	void sharedTripleTermsDoNotAuthorizeGraphFactoring() {
+		Value triple = VF.createTripleTerm(ALICE, P, VF.createLiteral(1));
+		TupleExpr original = new QueryRoot(new Join(new Graph(Var.of("g"), stableValues("x", triple)),
+				new Graph(Var.of("g"), stableValues("x", triple))));
+		TupleExpr plan = optimize(original.clone(), null, EmptyBindingSet.getInstance());
+		assertThat(nodes(plan, Graph.class)).hasSize(2);
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.containsExactlyInAnyOrderElementsOf(
+						evaluate(original, null, EmptyBindingSet.getInstance(), new CatalogSource()))
+				.hasSize(4);
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void adjacentGraphFactoringPreservesSharedBlankNodeProvenance(boolean statementBodies) {
+		BNode remote = (BNode) RemoteBNode.newResponseScope(new BlankNodeAllocationScope(), VF, new Object(), false)
+				.map(VF.createBNode("response-label"));
+		BNode local = VF.createBNode(remote.getID());
+		TupleExpr left = statementBodies
+				? new StatementPattern(Var.of("s", ALICE, false, true), Var.of("p", P, false, true), Var.of("x"))
+				: stableValues("x", remote);
+		TupleExpr right = statementBodies
+				? new StatementPattern(Var.of("s", ALICE, false, true), Var.of("q", Q, false, true), Var.of("x"))
+				: stableValues("x", local);
+		TupleExpr original = new QueryRoot(new Filter(
+				new Join(new Graph(Var.of("g"), left), new Graph(Var.of("g"), right)),
+				new Exists(new Graph(Var.of("x"), new SingletonSet()))));
+		TripleSource source = provenanceSource(local, remote);
+		List<BindingSet> expected = evaluate(original, null, EmptyBindingSet.getInstance(), source);
+		assertThat(expected).hasSize(2)
+				.allSatisfy(row -> assertThat(row.getValue("x")).isSameAs(local));
+		TupleExpr plan = optimize(original.clone(), null, EmptyBindingSet.getInstance());
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), source))
+				.containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	void adjacentGraphFactoringChecksUndeclaredSharedProvenance() {
+		BNode remote = (BNode) RemoteBNode.newResponseScope(new BlankNodeAllocationScope(), VF, new Object(), false)
+				.map(VF.createBNode("response-label"));
+		BNode local = VF.createBNode(remote.getID());
+		BindingSetAssignment left = stableValues("x", remote);
+		BindingSetAssignment right = stableValues("x", local);
+		left.setDeclaredBindingNames(Set.of("a"));
+		right.setDeclaredBindingNames(Set.of("b"));
+		assertThat(left.getBindingNames()).containsExactly("a");
+		assertThat(right.getBindingNames()).containsExactly("b");
+		assertThat(left.getPossibleBindingNames()).containsExactly("x");
+		assertThat(right.getPossibleBindingNames()).containsExactly("x");
+		TupleExpr original = new QueryRoot(new Filter(
+				new Join(new Graph(Var.of("g"), left), new Graph(Var.of("g"), right)),
+				new Exists(new Graph(Var.of("x"), new SingletonSet()))));
+		TripleSource source = provenanceSource(local, remote);
+		List<BindingSet> expected = evaluate(original, null, EmptyBindingSet.getInstance(), source);
+		assertThat(expected).hasSize(2)
+				.allSatisfy(row -> assertThat(row.getValue("x")).isSameAs(local));
+		TupleExpr plan = optimize(original.clone(), null, EmptyBindingSet.getInstance());
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), source))
+				.containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	void adjacentGraphFactoringPreservesPrevaluedBindingProvenanceWithApiInput() {
+		BNode remote = (BNode) RemoteBNode.newResponseScope(new BlankNodeAllocationScope(), VF, new Object(), false)
+				.map(VF.createBNode("response-label"));
+		BNode local = VF.createBNode(remote.getID());
+		StatementPattern left = new StatementPattern(Var.of("s"), Var.of("q", Q, false, true),
+				Var.of("x", local, false, false));
+		TupleExpr original = new QueryRoot(new Filter(
+				new Join(new Graph(Var.of("g"), left), new Graph(Var.of("g"), new SingletonSet())),
+				new Exists(new Graph(Var.of("x"), new SingletonSet()))));
+		BindingSet input = binding("x", remote);
+		TripleSource source = provenanceSource(local, remote);
+		assertThat(evaluate(original, null, input, source)).isEmpty();
+		TupleExpr plan = optimize(original.clone(), null, input);
+		assertThat(evaluate(plan, null, input, source)).isEmpty();
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void separatedGraphJoinsPreserveBlankNodeProvenance(boolean statementOperands) {
+		BNode remote = (BNode) RemoteBNode.newResponseScope(new BlankNodeAllocationScope(), VF, new Object(), false)
+				.map(VF.createBNode("response-label"));
+		BNode local = VF.createBNode(remote.getID());
+		TupleExpr separator = statementOperands
+				? new StatementPattern(Var.of("t"), Var.of("separator", VF.createIRI("urn:separator"), false, true),
+						Var.of("x"))
+				: stableValues("x", remote, remote);
+		TupleExpr right = statementOperands
+				? new StatementPattern(Var.of("s", ALICE, false, true), Var.of("q", Q, false, true), Var.of("x"))
+				: stableValues("x", local);
+		TupleExpr original = new QueryRoot(new Filter(new Join(
+				new Join(new Graph(Var.of("g"), stableValues("a", VF.createLiteral(1))), separator),
+				new Graph(Var.of("g"), right)), new Exists(new Graph(Var.of("x"), new SingletonSet()))));
+		TripleSource source = provenanceSource(local, remote);
+		assertThat(evaluate(original, null, EmptyBindingSet.getInstance(), source)).isEmpty();
+		TupleExpr plan = optimize(original.clone(), null, EmptyBindingSet.getInstance());
+		assertThat(evaluate(plan, null, EmptyBindingSet.getInstance(), source)).isEmpty();
+		assertThat(nodes(plan, Graph.class)).hasSize(3);
+		if (!statementOperands) {
+			assertThat(evaluatePipeline(original.clone(), source)).isEmpty();
+		}
 	}
 
 	@ParameterizedTest
@@ -375,8 +523,10 @@ class GraphPatternOptimizerTest {
 	@Test
 	void graphBodyScopeSurvivesFactoringWithInvocationBindings() {
 		for (Resource graph : List.of(G1, BLANK_GRAPH)) {
-			TupleExpr plan = equivalent("GRAPH ?g { ?s <urn:p> ?o } GRAPH ?g { ?s <urn:q> ?v }", null,
+			TupleExpr plan = equivalent("GRAPH ?g { VALUES ?p { <urn:q> } ?s ?p ?o } "
+					+ "GRAPH ?g { ?t ?p ?v }", null,
 					binding("g", graph));
+			assertThat(nodes(plan, Graph.class)).hasSize(1);
 			assertThat(evaluate(plan, null, binding("g", graph), new CatalogSource())).hasSize(1);
 		}
 	}
@@ -410,6 +560,13 @@ class GraphPatternOptimizerTest {
 		List<String> queries = List.of(
 				"GRAPH ?g { GRAPH ?g { ?s <urn:p> ?o } }",
 				"GRAPH ?g { ?s <urn:p> ?o } GRAPH ?g { ?s <urn:q> ?v }",
+				"GRAPH ?g { ?s ?p ?o } GRAPH ?g { ?t ?p ?v } GRAPH ?g { ?u ?p ?w }",
+				"GRAPH ?g { ?s <urn:p> ?o } ?s <urn:q> <urn:default-only> . GRAPH ?g { ?s <urn:q> ?v }",
+				"GRAPH <urn:g1> { ?s <urn:p> ?o } ?s <urn:q> <urn:default-only> . "
+						+ "GRAPH <urn:g1> { ?s <urn:q> ?v }",
+				"GRAPH ?g { ?s <urn:p> ?o } VALUES ?x { 1 1 UNDEF } GRAPH ?g { ?s <urn:q> ?v }",
+				"GRAPH ?g { ?s <urn:p> ?o } VALUES ?x { 1 UNDEF } GRAPH ?g { ?s <urn:q> ?v } "
+						+ "?s <urn:q> <urn:default-only> . GRAPH ?g { ?s <urn:p> ?again }",
 				"{ GRAPH ?g { ?s <urn:p> ?o } } UNION { GRAPH ?g { ?s <urn:p> ?o } }",
 				"GRAPH ?g { ?s <urn:p> ?o } OPTIONAL { GRAPH ?g { ?s <urn:q> ?v } }",
 				"GRAPH ?g { ?s <urn:p> ?o } MINUS { GRAPH ?g { ?s <urn:q> ?v } }",
@@ -706,7 +863,7 @@ class GraphPatternOptimizerTest {
 	}
 
 	private static List<BindingSet> evaluate(TupleExpr plan, Dataset dataset, BindingSet input,
-			CatalogSource source) {
+			TripleSource source) {
 		DefaultEvaluationStrategy strategy = new DefaultEvaluationStrategy(source, dataset, null);
 		strategy.setQueryExecutionPolicy(POLICY);
 		List<BindingSet> rows = new ArrayList<>();
@@ -716,6 +873,61 @@ class GraphPatternOptimizerTest {
 			}
 		}
 		return rows;
+	}
+
+	private static List<BindingSet> evaluatePipeline(TupleExpr plan, TripleSource source) {
+		DefaultEvaluationStrategy strategy = new DefaultEvaluationStrategy(source, null, null);
+		strategy.setQueryExecutionPolicy(POLICY);
+		strategy.optimize(plan, new EvaluationStatistics(), EmptyBindingSet.getInstance());
+		List<BindingSet> rows = new ArrayList<>();
+		try (CloseableIteration<BindingSet> result = strategy.precompile(plan)
+				.evaluate(EmptyBindingSet.getInstance())) {
+			while (result.hasNext()) {
+				rows.add(result.next());
+			}
+		}
+		return rows;
+	}
+
+	private static BindingSetAssignment stableValues(String name, Value... values) {
+		BindingSetAssignment assignment = new BindingSetAssignment();
+		assignment.setDeclaredBindingNames(Set.of(name));
+		assignment.setBindingSets(Arrays.stream(values)
+				.map(value -> (BindingSet) new ListBindingSet(List.of(name), value))
+				.toList());
+		return assignment;
+	}
+
+	private static TripleSource provenanceSource(BNode local, BNode remote) {
+		List<Resource> names = List.of(G1, local);
+		IRI separator = VF.createIRI("urn:separator");
+		List<Statement> statements = List.of(
+				VF.createStatement(ALICE, separator, remote), VF.createStatement(BOB, separator, remote),
+				VF.createStatement(ALICE, P, remote, G1), VF.createStatement(ALICE, Q, local, G1),
+				VF.createStatement(ALICE, P, remote, local), VF.createStatement(ALICE, Q, local, local));
+		return new TripleSource() {
+			@Override
+			public CloseableIteration<? extends Resource> getContextIDs() {
+				return new CloseableIteratorIteration<>(names.iterator());
+			}
+
+			@Override
+			public CloseableIteration<? extends Statement> getStatements(Resource subject, IRI predicate, Value object,
+					Resource... contexts) {
+				return new CloseableIteratorIteration<>(statements.stream()
+						.filter(statement -> (subject == null || subject.equals(statement.getSubject()))
+								&& (predicate == null || predicate.equals(statement.getPredicate()))
+								&& (object == null || object.equals(statement.getObject()))
+								&& (contexts.length == 0 || Arrays.asList(contexts).contains(statement.getContext())))
+						.toList()
+						.iterator());
+			}
+
+			@Override
+			public ValueFactory getValueFactory() {
+				return VF;
+			}
+		};
 	}
 
 	private static List<BindingSet> evaluatePipeline(String body, Dataset dataset) {
